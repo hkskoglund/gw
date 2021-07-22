@@ -46,10 +46,12 @@ export class Scanner {
         const d = Date.now();
         let mac,name,ip;
 
+        mac = msg.toString('hex', 5, 11);
+        name = msg.toString('utf8', 18, msg.length - 1);
+        ip = msg[11].toString() + '.' + msg[12].toString() + '.' + msg[13].toString() + '.' + msg[14].toString();
+
         if (!this.gw[rinfo.address]) {
-             mac = msg.toString('hex', 5, 11);
-             name = msg.toString('utf8', 18, msg.length - 1);
-             ip = msg[11].toString() + '.' + msg[12].toString() + '.' + msg[13].toString() + '.' + msg[14].toString();
+           
             this.gw[rinfo.address] = { name: name, mac: mac, ip: ip, rinfo: rinfo, broadcast: msg, lastbroadcast: d };
         }
         else
