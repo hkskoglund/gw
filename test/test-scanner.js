@@ -1,4 +1,4 @@
-import { Scanner } from './scanner.js'
+import { Scanner } from '../scanner.js'
 
 let s = new Scanner();
 
