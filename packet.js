@@ -16,9 +16,8 @@ export class Packet {
         if (cmd === undefined)
           return;
 
-        var tempPacketLength = 0x00;
+        var tempPacketLength = 0x03;
         this.#arr = [0xff, 0xff, cmd, tempPacketLength]
-
     }
 
     writeString() {

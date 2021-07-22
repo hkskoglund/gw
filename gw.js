@@ -35,6 +35,11 @@ export class GW {
         //  READ_WUNDERGROUND: 32
     }
 
+    static Protocol = {
+        ECOWITT : 'ecowitt',
+        WUNDERGROUND : 'wunderground'
+    }
+
     version = null;
     mac = null;
 
@@ -61,7 +66,7 @@ export class GW {
 
     constructor() {
         this.#pgwSocket = new PromiseSocket(this.#gwSocket);
-        this.#pgwSocket.setTimeout(5000);
+        this.#pgwSocket.setTimeout(60000);
         this.#logger = new Logger(Config.log_level);
         this.createServer();
 
@@ -89,8 +94,7 @@ export class GW {
                         var tempParams = new URLSearchParams(body);
                         tempParams.delete("PASSKEY"); // hide
                         console.log(Date.now(),tempParams.toString());
-                        // At this point, we have the headers, method, url and body, and can now
-                        // do whatever we need to in order to respond to this request.
+                        
                         response.writeHead(200);
                         response.end();
           });
@@ -104,6 +108,8 @@ export class GW {
         //let gwHostname = os.networkInterfaces()[Config.interface][0].address;
 
         httpServer.listen(Config.hostport,Config.hostname); 
+        // Test: sudo netstat -plnt | grep node
+
 
     }
 
@@ -128,26 +134,26 @@ export class GW {
             return;
         }
 
-        for (let cmd of [GW.Command.READ_MAC, GW.Command.READ_VER, GW.Command.READ_CUSTOMIZED, GW.Command.READ_USR_PATH]) {
-            recvPacket = await this.get(cmd);
+        for (let p of [new Packet(GW.Command.READ_MAC).writeCRC(), new Packet(GW.Command.READ_VER).writeCRC(), new Packet(GW.Command.READ_CUSTOMIZED).writeCRC(), new Packet(GW.Command.READ_USR_PATH).writeCRC()]) {
+            recvPacket = await this.write(p);
             if (recvPacket)
                 this.parse(recvPacket.toBuffer());
 
         }
 
-        this.setCustomizedUrl(); // requires execution of READ_CUSTOMIZED and READ_USR_PATH         
-
+        this.setCustomizedUrl(); // requires execution of READ_CUSTOMIZED and READ_USR_PATH   
+        
         this.#logger.log('log', Logger.level.VERBOSE, 'Customized', this.customized);
 
     }
 
     setCustomizedUrl() {
         switch (this.customized.protocol) {
-            case 'wunderground':
+            case GW.Protocol.WUNDERGROUND:
                 //https://nodejs.org/api/url.html#url_new_url_input_base
                 this.customized.url = new URL(this.customized.wunderground.path, 'http:/' + this.customized.server + ':' + this.customized.port);
                 break;
-            case 'ecowitt':
+            case GW.Protocol.ECOWITT:
                 this.customized.url = new URL(this.customized.ecowitt.path, 'http:/' + this.customized.server + ':' + this.customized.port);
                 break;
 
@@ -161,12 +167,10 @@ export class GW {
         this.#pgwSocket.destroy();
     }
 
-    async get(command) {
-
-        let packet = (new Packet(command)).writeCRC();
-
+    async write(packet) {
+        //let packet = (new Packet(command)).writeCRC();
+        let command = packet.readUint8(2);
         let chunk;
-
         let responseCommand;
 
         try {
@@ -202,13 +206,19 @@ export class GW {
     // <Buffer ff ff 2b 26 06 74 65 73 74 69 64 07 74 65 73 74 6b 65 79 0e 74 65 73 74 6c 77 6f 6e 64 65 72 2e 6e 6f 40 00 10 01 01 01 1a>
 
 
+    async writeCustomized()
+    {
+        await this.write(this.create_customized_packet());
+        await this.write(this.create_user_path_packet());
+    }
+
     create_user_path_packet() {
         let p = (new Packet(GW.Command.WRITE_USR_PATH)).writeString(this.customized.ecowitt.path, this.customized.wunderground.path).writeCRC();
 
 
         this.#logger.log('log', Logger.level.VERBOSE, 'create_user_path_packet', this.customized, p.toBuffer());
 
-        return p.toBuffer();
+        return p;
 
     }
 
@@ -217,13 +227,13 @@ export class GW {
     {
         let p = new Packet(GW.Command.WRITE_CUSTOMIZED);
 
-        p.writeString(this.customized.wunderground.stationid, this.customized.wunderground.key, this.customized.server)
+        p.writeString(this.customized.wunderground.id, this.customized.wunderground.key, this.customized.server)
         p.writeUint16BE(this.customized.port, this.customized.upload_interval)
         p.writeUint8(Number(this.customized.protocol === 'wunderground'), Number(this.customized.enabled === true)).writeCRC();
 
         this.#logger.log('log', Logger.level.VERBOSE, 'create_customized_packet', this.customized, p.toBuffer());
 
-        return p.toBuffer();
+        return p;
     }
 
     parse_customized_string(data) {
@@ -307,14 +317,14 @@ export class GW {
             case GW.Command.READ_CUSTOMIZED:
 
                 server = this.parse_customized_string(data);
-                this.customized.wunderground.stationid = server[0];
+                this.customized.wunderground.id = server[0];
                 this.customized.wunderground.key = server[1];
                 this.customized.server = server[2]
                 // https://nodejs.org/api/buffer.html#buffer_buf_readuint16be_offset
                 this.customized.port = data.readUInt16BE(data.length - 7);
                 this.customized.upload_interval = data.readUInt16BE(data.length - 5);
                 this.customized.enabled = data.readUInt8(data.length - 2) == 1 ? true : false;
-                this.customized.protocol = data.readUInt8(data.length - 3) == 1 ? 'wunderground' : 'ecowitt';
+                this.customized.protocol = data.readUInt8(data.length - 3) == 1 ? GW.Protocol.WUNDERGROUND : GW.Protocol.ECOWITT;
 
                 this.#logger.log('log', Logger.level.NORMAL, 'Customized', this.customized);
 
