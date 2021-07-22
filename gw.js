@@ -3,11 +3,14 @@
 // Some info based on decompiling WSView with http://www.javadecompilers.com/apk (JADX decompiler)
 // WSView apk downloaded from https://apkpure.com/ws-view/com.ost.wsview
 
-import udp from 'dgram';
-import net from 'net';
+//https://stackoverflow.com/questions/35728117/difference-between-import-http-requirehttp-and-import-as-http-from-htt
+import * as http from 'http'
+//import * as os from 'os'
+
+import { URLSearchParams } from'url'
+
 import { PromiseSocket, TimeoutError } from 'promise-socket'
 import { Logger } from './logger.js'
-import { Scanner } from './scanner.js'
 import { Config } from './config.js'
 import { Packet } from './packet.js'
 
@@ -60,6 +63,47 @@ export class GW {
         this.#pgwSocket = new PromiseSocket(this.#gwSocket);
         this.#pgwSocket.setTimeout(5000);
         this.#logger = new Logger(Config.log_level);
+        this.createServer();
+
+    }
+
+// For wireless hotspot in fedora, zone nm-shared have closed ports
+// sudo firewall-cmd  --add-port 1024-65535/tcp --add-port 1024-65535/udp --zone=nm-shared
+// sudo firewall-cmd --runtime-to-permanent
+    createServer()
+    {
+        
+        let httpServer = http.createServer((request, response) => {
+            
+          const { headers, method, url } = request;
+          console.log(Date.now(),headers,method,url);
+          let body = [];
+          request.on('error', (err) => {
+            console.error(err);
+               }).on('data', (chunk) => {
+                     body.push(chunk);
+            
+                  }).on('end', () => {
+                        body = Buffer.concat(body).toString();
+                        // https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams#examples
+                        var tempParams = new URLSearchParams(body);
+                        tempParams.delete("PASSKEY"); // hide
+                        console.log(Date.now(),tempParams.toString());
+                        // At this point, we have the headers, method, url and body, and can now
+                        // do whatever we need to in order to respond to this request.
+                        response.writeHead(200);
+                        response.end();
+          });
+        });
+        
+        httpServer.on('listening', () => {
+            this.#logger.log('log',Logger.level.NORMAL,'Listening for customized http requests on '+Config.hostname+':'+Config.hostport);
+        });
+        
+        //iface_name = 'wlp7s0';
+        //let gwHostname = os.networkInterfaces()[Config.interface][0].address;
+
+        httpServer.listen(Config.hostport,Config.hostname); 
 
     }
 
