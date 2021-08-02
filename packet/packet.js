@@ -1,23 +1,28 @@
-import { Logger } from './logger.js'
-import { Config } from './config.js'
+import Logger  from '../logger.js'
+import Config  from '../config.js'
 
-export class Packet {
+class Packet {
 
     #arr
     #buf
     #checksum
-    #logger;
+    logger;
+    #twoBytePacketLength;
 
 
-    constructor(cmd) {
+    constructor(cmd,twoBytePacketLength) {
      
-        this.#logger = new Logger(Config.log_level);
+        this.logger = new Logger(Config.log_level);
 
         if (cmd === undefined)
           return;
 
-        var tempPacketLength = 0x03;
-        this.#arr = [0xff, 0xff, cmd, tempPacketLength]
+        this.#twoBytePacketLength = twoBytePacketLength;
+
+        this.#arr = [0xff, 0xff, cmd, 0x00]
+        if (twoBytePacketLength) 
+         this.#arr.push(0x00)
+         
     }
 
     writeString() {
@@ -48,12 +53,24 @@ export class Packet {
     }
 
     writeCRC() {
-        this.#arr[3] = this.#arr.length - 1; // Update PL
+        
+        if (this.#twoBytePacketLength)
+        {
+            
+           this.#arr[4] = (this.#arr.length - 1) & 0xff;
+           this.#arr[3] = (this.#arr.length - 1) & 0xff00;
+           console.log('TWO BYTE PL',this.#arr[3],this.#arr[4]);
+        }
+        else 
+        {
+            this.#arr[3] = this.#arr.length - 1; // Update PL
+        }
+          
         this.#arr.push(this.checksum());
 
         this.#buf = Buffer.from(this.#arr);
 
-        this.#logger.log('log', Logger.level.DEBUG,'Packet arr,buf,checksum', this.#arr, this.#buf, this.#checksum);
+        this.logger.log('log', Logger.level.DEBUG,'Packet arr,buf,checksum', this.#arr, this.#buf, this.#checksum);
 
         return this;
     }
@@ -119,4 +136,8 @@ export class Packet {
         return this.#checksum;
     }
 
+   
 }
+
+
+export default Packet;

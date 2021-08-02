@@ -1,6 +1,7 @@
 // Make sure GW1000 broadcast port is open in the firewall for Hotspot
 //sudo firewall-cmd  --permanent --add-port=59387/udp --zone=nm-shared
 // Some info based on decompiling WSView with http://www.javadecompilers.com/apk (JADX decompiler)
+// Protocol documentation : https://osswww.ecowitt.net/uploads/20210716/WN1900%20GW1000,1100%20WH2680,2650%20telenet%20v1.6.0%20.pdf (https://www.ecowitt.com/shop/forum/forumDetails/255)
 // WSView apk downloaded from https://apkpure.com/ws-view/com.ost.wsview
 
 //https://stackoverflow.com/questions/35728117/difference-between-import-http-requirehttp-and-import-as-http-from-htt
@@ -10,16 +11,34 @@ import * as http from 'http'
 import { URLSearchParams } from'url'
 
 import { PromiseSocket, TimeoutError } from 'promise-socket'
-import { Logger } from './logger.js'
-import { Config } from './config.js'
-import { Packet } from './packet.js'
+import  Logger  from './logger.js'
+import  Config  from './config.js'
+import  Packet  from './packet/packet.js'
+import  Packet_Customized from './packet/packet_customized.js'
+import Packet_Customized_Path from './packet/packet_customized_path.js'
+
 
 // https://www.npmjs.com/package/promise-socket
 
 // /WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/ConfigrouterFragment.java
 // Change router configuration ssid password - l 272 Savedata
 
-export class GW {
+
+class Customized {
+
+    enable()
+    {
+
+    }
+
+    disable()
+    {
+
+    }
+}
+
+
+ class GW {
 
     // Based on /WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/WH2350ALL/Alldefine.java
 
@@ -40,35 +59,27 @@ export class GW {
         WUNDERGROUND : 'wunderground'
     }
 
+    // Command result byte
+    static Result = {
+        SUCCESS : 0x00,
+        FAIL : 0x01
+    }
+
     version = null;
     mac = null;
 
-    customized = {
-        server: null,
-        port: null,
-        enabled: null,
-        protocol: null,
-        upload_interval: null,
-        ecowitt: {
-            path: null
-        },
-        wunderground: {
-            path: null,
-            stationid: null,
-            key: null
-        },
-        url: null
-    }
+    #parsedPacket; // Latest received and parsed packet
 
     #gwSocket;
     #pgwSocket;
     #logger;
+    #server;
 
     constructor() {
         this.#pgwSocket = new PromiseSocket(this.#gwSocket);
         this.#pgwSocket.setTimeout(60000);
         this.#logger = new Logger(Config.log_level);
-        this.createServer();
+        //this.#server = this.createServer();
 
     }
 
@@ -99,6 +110,8 @@ export class GW {
                         response.end();
           });
         });
+
+        this.#server = this.createServer();
         
         httpServer.on('listening', () => {
             this.#logger.log('log',Logger.level.NORMAL,'Listening for customized http requests on '+Config.hostname+':'+Config.hostport);
@@ -134,16 +147,14 @@ export class GW {
             return;
         }
 
-        for (let p of [new Packet(GW.Command.READ_MAC).writeCRC(), new Packet(GW.Command.READ_VER).writeCRC(), new Packet(GW.Command.READ_CUSTOMIZED).writeCRC(), new Packet(GW.Command.READ_USR_PATH).writeCRC()]) {
+       /* for (let p of [new Packet(GW.Command.READ_MAC).writeCRC(), new Packet(GW.Command.READ_VER).writeCRC(), new Packet(GW.Command.READ_CUSTOMIZED).writeCRC(), new Packet(GW.Command.READ_USR_PATH).writeCRC()]) {
             recvPacket = await this.write(p);
-            if (recvPacket)
-                this.parse(recvPacket.toBuffer());
 
         }
 
         this.setCustomizedUrl(); // requires execution of READ_CUSTOMIZED and READ_USR_PATH   
         
-        this.#logger.log('log', Logger.level.VERBOSE, 'Customized', this.customized);
+        this.#logger.log('log', Logger.level.VERBOSE, 'Customized', this.customized); */
 
     }
 
@@ -151,10 +162,10 @@ export class GW {
         switch (this.customized.protocol) {
             case GW.Protocol.WUNDERGROUND:
                 //https://nodejs.org/api/url.html#url_new_url_input_base
-                this.customized.url = new URL(this.customized.wunderground.path, 'http:/' + this.customized.server + ':' + this.customized.port);
+                this.customized.url = new URL(this.customized.path.wunderground, 'http:/' + this.customized.hostname + ':' + this.customized.port);
                 break;
             case GW.Protocol.ECOWITT:
-                this.customized.url = new URL(this.customized.ecowitt.path, 'http:/' + this.customized.server + ':' + this.customized.port);
+                this.customized.url = new URL(this.customized.path.ecowitt, 'http:/' + this.customized.hostname + ':' + this.customized.port);
                 break;
 
         }
@@ -165,6 +176,12 @@ export class GW {
         // Cleanup
         await this.#pgwSocket.end();
         this.#pgwSocket.destroy();
+    }
+
+    async get(cmd)
+    {
+        let p = await this.write(new Packet(cmd).writeCRC());
+        return this.#parsedPacket.get();
     }
 
     async write(packet) {
@@ -192,8 +209,11 @@ export class GW {
         }
 
         const recvPacket = (new Packet()).fromBuffer(chunk);
+        
+        if (recvPacket)
+          this.#parsedPacket = this.parse(recvPacket.toBuffer());
 
-        this.#logger.log('log', Logger.level.VERBOSE, 'Received packet', recvPacket.getBuffer())
+      //  this.#logger.log('log', Logger.level.VERBOSE, 'Received packet', recvPacket.getBuffer())
 
         if (!recvPacket.isChecksumOK())
             this.#logger.log('error', Logger.level.VERBOSE, 'Received packet has invalid checksum 0x' + recvPacket.getChecksum().toString(16), recvPacket)
@@ -206,73 +226,25 @@ export class GW {
     // <Buffer ff ff 2b 26 06 74 65 73 74 69 64 07 74 65 73 74 6b 65 79 0e 74 65 73 74 6c 77 6f 6e 64 65 72 2e 6e 6f 40 00 10 01 01 01 1a>
 
 
-    async writeCustomized()
+    async writeCustomized(customized)
     {
-        await this.write(this.create_customized_packet());
-        await this.write(this.create_user_path_packet());
+        await this.write(new Packet_Customized().create(customized));
+        await this.write(new Packet_Customized_Path().create(customized));
     }
 
-    create_user_path_packet() {
-        let p = (new Packet(GW.Command.WRITE_USR_PATH)).writeString(this.customized.ecowitt.path, this.customized.wunderground.path).writeCRC();
 
-
-        this.#logger.log('log', Logger.level.VERBOSE, 'create_user_path_packet', this.customized, p.toBuffer());
-
-        return p;
-
-    }
-
-    create_customized_packet()
-    // for write customized 0x2b command
+    create_broadcast_packet()
+    // UDP broadcast for local GW to port 46000
     {
-        let p = new Packet(GW.Command.WRITE_CUSTOMIZED);
+        let p = (new Packet(GW.Command.BROADCAST,true)).writeCRC();
 
-        p.writeString(this.customized.wunderground.id, this.customized.wunderground.key, this.customized.server)
-        p.writeUint16BE(this.customized.port, this.customized.upload_interval)
-        p.writeUint8(Number(this.customized.protocol === 'wunderground'), Number(this.customized.enabled === true)).writeCRC();
-
-        this.#logger.log('log', Logger.level.VERBOSE, 'create_customized_packet', this.customized, p.toBuffer());
+        this.#logger.log('log', Logger.level.VERBOSE, 'create_broadcast_packet', p.toBuffer());
 
         return p;
     }
 
-    parse_customized_string(data) {
-        /*
-          0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 39 30 31 32 33 34 35 36 37 38 39 40
-        
-         ff ff 2a 27 06 74 65 73 74 69 64 07 74 65 73 74 6b 65 79 0e 74 65 73 74 6c 77 75 6e 64 65 72 2e 6e 6f 01 00 02 58 01 01 2b> ��*'testidtestkeytestlwunder.no
-                  PL  L  t  e  s  t  i  d  L  t  e  s  t  k  e  y  L  t  e  s t  l  w  u  n  d  e  r  .  n  o| PORT|  UI | P| E| C
-         PL 0x27 =   39 (not including preamble ff ff) 
-         L = length, P = protocol (0 = ecowitt, 1 = wunderground), E = (0=disabled,1=enable), UI = upload interval 16-600s,C = checksum
-        */
-
-        let length_pos = 4,
-            end_position,
-            eof_string_pos;
-
-        let string = new Array();
-        switch (data[2]) {
-            case GW.Command.READ_CUSTOMIZED:
-                end_position = data.length - 7;
-                break;
-            case GW.Command.READ_USR_PATH:
-                end_position = data.length - 2;
-                break;
-            default:
-                this.#logger.log('log', Logger.level.DEBUG, 'Unable to find end_position of strings');
-                break;
-        }
-
-        while (length_pos < end_position) {
-            eof_string_pos = length_pos + 1 + data[length_pos];
-            string.push(data.toString('utf8', length_pos + 1, eof_string_pos));
-            length_pos = eof_string_pos;
-
-            this.#logger.log('log', Logger.level.DEBUG, 'customized string', string, 'length_pos', length_pos, ' end_position', end_position);
-        }
-
-        return string;
-    }
+ 
+    
 
     parse_livedata(data) {
         this.#logger.log('log', Logger.level.NORMAL, 'Parse livedata not implemented');
@@ -281,8 +253,9 @@ export class GW {
     parse(data) {
 
         let cmd = data[2],
-            server,
-            path;
+            path,
+            result,
+            p;
 
         switch (cmd) {
 
@@ -301,48 +274,51 @@ export class GW {
                 break;
 
             case GW.Command.READ_USR_PATH:
-                path = this.parse_customized_string(data);
-                this.customized.ecowitt.path = path[0];
-                if (path[1] != undefined)
-                    this.customized.wunderground.path = path[1];
-                else
-                    this.customized.wunderground.path = '';
 
-
-                this.#logger.log('log', Logger.level.NORMAL, 'Ecowitt path'.padEnd(19) + this.customized.ecowitt.path + '\n' + 'Wunderground path'.padEnd(19) + this.customized.wunderground.path);
-
-                this.create_user_path_packet();
+               p = new Packet_Customized_Path(data);
+    
                 break;
 
             case GW.Command.READ_CUSTOMIZED:
 
-                server = this.parse_customized_string(data);
-                this.customized.wunderground.id = server[0];
-                this.customized.wunderground.key = server[1];
-                this.customized.server = server[2]
-                // https://nodejs.org/api/buffer.html#buffer_buf_readuint16be_offset
-                this.customized.port = data.readUInt16BE(data.length - 7);
-                this.customized.upload_interval = data.readUInt16BE(data.length - 5);
-                this.customized.enabled = data.readUInt8(data.length - 2) == 1 ? true : false;
-                this.customized.protocol = data.readUInt8(data.length - 3) == 1 ? GW.Protocol.WUNDERGROUND : GW.Protocol.ECOWITT;
+                p = new Packet_Customized(data);
+                
+                break;
 
-                this.#logger.log('log', Logger.level.NORMAL, 'Customized', this.customized);
+            case GW.Command.WRITE_CUSTOMIZED:
+            case GW.Command.WRITE_USR_PATH:
+                result = data[4];
 
+                switch (result)
+                {
+                    case GW.Result.SUCCESS:
 
-                // this.create_customized_packet();
+                      this.#logger.log('log', Logger.level.VERBOSE,'  '+ this.getCommandName(cmd)+ ' ' +cmd.toString(16)+ ' SUCCESS');
+                      break;
+                    case GW.Result.FAIL:
+                       this.#logger.log('log', Logger.level.VERBOSE,'  '+this.getCommandName(cmd)+' ' + +cmd.toString(16)+ ' FAIL');
+                       break;
+                }
 
                 break;
 
+
+            case GW.Command.BROADCAST:
+
+            break;
+
+
             default:
-                this.#logger.log('log', Logger.level.NORMAL, 'Unable to parse command response', cmd.toString(16));
+                this.#logger.log('error', Logger.level.NORMAL, 'Unable to parse command response', cmd.toString(16));
                 break;
         }
 
-
+        return p;
     }
-
+    
 }
 
+export default GW;
 
 //iface_name = 'wlp7s0';
 //var ip4adr = os.networkInterfaces()[iface_name][0].address;
@@ -351,4 +327,3 @@ export class GW {
 
 //https://stackoverflow.com/questions/38987784/how-to-convert-a-hexadecimal-string-to-uint8array-and-back-in-javascript
 // client.write(Uint8Array.from(Buffer.from('ffff2a032d', 'hex'))); // IP, port number is two bytes after IP adr., and upload interval two bytes after port
-

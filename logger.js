@@ -1,6 +1,6 @@
 
 
-export class Logger {
+ class Logger {
     static level = {
         OFF: 0,
         NORMAL: 1,
@@ -16,6 +16,7 @@ export class Logger {
     }
 
     log(fd,lvl) {
+        let prefix =[];
 
         if (lvl > this.#max_level)
             return;
@@ -31,10 +32,16 @@ export class Logger {
         Array.prototype.shift.apply(arguments); // Remove fd
         Array.prototype.shift.apply(arguments); // Remove lvl
 
+        //Maybe add color : https://stackoverflow.com/questions/9781218/how-to-change-node-jss-console-font-color
+        if (fd === 'error')
+           prefix = ['ERROR'];
+        
         if (lvl > Logger.level.NORMAL)
-          console[fd].apply(this, [Date.now()].concat(Array.from(arguments)));
+          console[fd].apply(this, prefix.concat([Date.now()].concat(Array.from(arguments))));
         else
-         console[fd].apply(this, Array.from(arguments));
+         console[fd].apply(this, prefix.concat(Array.from(arguments)));
     }
   
 }
+
+export default Logger;
