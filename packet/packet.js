@@ -11,8 +11,9 @@ class Packet {
 
 
     constructor(cmd, twoBytePacketLength) {
-
+        this.timestamp = Date.now(); // Date.now() method returns the number of milliseconds elapsed since January 1, 1970 00:00:00 UTC (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/now)
         this.logger = new Logger(Config.log_level);
+        
         this.#twoBytePacketLength = twoBytePacketLength;
 
         if (cmd === undefined)

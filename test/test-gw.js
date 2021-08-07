@@ -21,11 +21,7 @@ async function testCustomized()
           ecowitt : '/ecowitt/test/test2',
           wunderground : '/wunderground/test/test2'
         },
-        //ecowitt : {
-       //     path : '/ecowitt/test'
-       // },
         wunderground : {
-   //         path : '/wunderground/test',
             id : 'idtestidtest2',
             key : 'keytestkeytest2'
         },
@@ -51,21 +47,12 @@ async function testCustomized()
         
 }
 
-async function testMAC()
-{
-  const mac = await gw.get(Command.READ_MAC);
-}
-
-async function testVersion()
-{
-  const version = await gw.get(Command.READ_VER);
-}
-
-
 async function testIterate(f,maxIterations)
 {
-  for (let i =0; i< maxIterations; i++)
+  for (let i =1; i<= maxIterations; i++) {
+    console.log(`====== TEST ITERATION : ${i}`)
     await f();
+  }
 }
 
 // https://codingwithspike.wordpress.com/2018/03/10/making-settimeout-an-async-await-function/
@@ -76,16 +63,38 @@ async function wait(ms) {
     });
   }
 
-  try {
-    console.log('======================================== TEST START')
-
-    await gw.connect('10.42.0.180');
-   // await testIterate(testCustomized,1);
-    await testIterate(testMAC,10);
-    await testIterate(testVersion,10);
-
-
-  } catch (e)
+  async function testReadSystem()
   {
-    console.log('Catched',e);
+    let timerId = setInterval( async () =>  {
+      await testIterate( async () => {  await gw.get(Command.READ_SYSTEM)},1);
+     },1000);
+
+     setTimeout(() => { clearTimeout(timerId)},8000);
+     
+     await testIterate( async () => { await gw.get(Command.READ_RAIN)},1);
+
   }
+
+  async function main()
+  {
+
+    try {
+      console.log('======================================== TEST START')
+  
+      await gw.connect('10.42.0.180');
+      
+      //await testIterate(testCustomized,1);
+      //await testIterate( async () => { await gw.get(Command.READ_MAC)},1);
+      //await testIterate( async () => { await gw.get(Command.READ_VER)},1);
+      await testIterate( async () => { await gw.get(Command.WRITE_REBOOT)},1);
+
+     //await testReadSystem();
+
+  
+    } catch (e)
+    {
+      console.log('===================== TEST CATCHED',e);
+    }
+  }
+
+  await main();

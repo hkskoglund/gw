@@ -6,12 +6,6 @@ class Packet_Customized_Path extends Packet_Customized {
 
     constructor(cmd, twoBytePacketLength) {
         super(cmd, twoBytePacketLength)
-
-        if (cmd instanceof Buffer) {  // Allow passing of received data and immediate parsing
-            this.fromBuffer(cmd);
-            this.parse(cmd);
-        }
-
     }
 
     create(customized) {

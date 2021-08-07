@@ -18,6 +18,9 @@ import Packet_Customized from './packet/customized.js'
 import Packet_Customized_Path from './packet/customized_path.js'
 import Packet_MAC from './packet/mac.js'
 import Packet_Version from './packet/version.js'
+import Packet_Result from './packet/result.js'
+import Packet_System from './packet/system.js'
+import Packet_Rain from './packet/rain.js'
 import { Command, CommandResult, Protocol } from './const.js'
 
 
@@ -39,7 +42,7 @@ class GW {
 
     constructor() {
         this.#pgwSocket = new PromiseSocket(this.#gwSocket);
-        this.#pgwSocket.setTimeout(60000);
+        this.#pgwSocket.setTimeout(1000);
         this.#logger = new Logger(Config.log_level);
         //this.#server = this.createServer();
 
@@ -87,35 +90,22 @@ class GW {
 
     }
 
-    getCommandName(cmd) {
-        https://stackoverflow.com/questions/56821332/how-to-to-use-find-with-object-entries/56821365
-        return Object.entries(Command).find(([key, value]) => value == cmd)[0]
-    }
-
     async connect(host) {
-        let recvPacket;
 
         https://www.npmjs.com/package/promise-socket#timeouterror
 
         try {
 
             await this.#pgwSocket.connect(Config.port.COMMAND, host);
-            // https://stackoverflow.com/questions/37576685/using-async-await-with-a-foreach-loop
+
 
         } catch (e) {
             this.#logger.log('error', Logger.level.NORMAL, 'Connect failed', e)
             this.#pgwSocket.destroy();
-            return;
+            return Promise.reject(e); // Allows catching in calling code
         }
 
-        /* for (let p of [new Packet(Command.READ_MAC).writeCRC(), new Packet(Command.READ_VER).writeCRC(), new Packet(Command.READ_CUSTOMIZED).writeCRC(), new Packet(Command.READ_USR_PATH).writeCRC()]) {
-             recvPacket = await this.write(p);
- 
-         }
- 
-         this.setCustomizedUrl(); // requires execution of READ_CUSTOMIZED and READ_USR_PATH   
-         
-         this.#logger.log('log', Logger.level.VERBOSE, 'Customized', this.customized); */
+        //  this.setCustomizedUrl(); // requires execution of READ_CUSTOMIZED and READ_USR_PATH   
 
     }
 
@@ -148,6 +138,7 @@ class GW {
 
     }
 
+   
     async write(packet) {
 
         let command = packet.readUint8(2);
@@ -158,35 +149,36 @@ class GW {
         // TEST return Promise.reject(new Error('write reject'));
 
         try {
-            this.#logger.log('log', Logger.level.VERBOSE, '>', this.getCommandName(command).padEnd(15), packet.toBuffer())
+            this.#logger.log('log', Logger.level.VERBOSE, '>', GW.getCommandName(command).padEnd(15), packet.toBuffer())
             const bytes = await this.#pgwSocket.write(packet.toBuffer());
         } catch (e) {
             this.#logger.log('error', Logger.level.VERBOSE, 'Write failed ' + command, e);
             return Promise.reject(e);
         }
 
-        try {
-            chunk = await this.#pgwSocket.read();
-            responseCommand = chunk[2];
-
-            if (chunk)
-                this.#logger.log('log', Logger.level.VERBOSE, '<', this.getCommandName(responseCommand).padEnd(15), chunk, chunk.toString());
-
-            recvPacket = (new Packet()).fromBuffer(chunk);
-
-            if (recvPacket)
-                this.#parsedPacket = this.parse(recvPacket.toBuffer());
-
-            //  this.#logger.log('log', Logger.level.VERBOSE, 'Received packet', recvPacket.getBuffer())
-
-            if (!recvPacket.isChecksumOK())
-                this.#logger.log('error', Logger.level.VERBOSE, 'Received packet has invalid checksum 0x' + recvPacket.getChecksum().toString(16), recvPacket)
-        } catch (e) {
-            this.#logger.log('error', Logger.level.VERBOSE, 'Read failed', e)
-            return Promise.reject(e);
-        }
-
-        return recvPacket;
+          try {
+              chunk = await this.#pgwSocket.read();
+              responseCommand = chunk[2];
+  
+              if (chunk)
+                  this.#logger.log('log', Logger.level.VERBOSE, '<', GW.getCommandName(responseCommand).padEnd(15), chunk, chunk.toString());
+  
+              recvPacket = (new Packet()).fromBuffer(chunk);
+  
+              if (!recvPacket.isChecksumOK())
+                  this.#logger.log('error', Logger.level.VERBOSE, 'Received packet has invalid checksum 0x' + recvPacket.getChecksum().toString(16), recvPacket)
+              else if (recvPacket)
+                  this.#parsedPacket = this.parse(recvPacket.toBuffer());
+  
+              //  this.#logger.log('log', Logger.level.VERBOSE, 'Received packet', recvPacket.getBuffer())
+  
+              
+          } catch (e) {
+              this.#logger.log('error', Logger.level.VERBOSE, 'Read failed', e)
+              return Promise.reject(e);
+          }
+  
+          return recvPacket; 
 
     }
 
@@ -227,6 +219,11 @@ class GW {
         return p;
     }
 
+    static getCommandName(cmd) {
+        https://stackoverflow.com/questions/56821332/how-to-to-use-find-with-object-entries/56821365
+        return Object.entries(Command).find(([key, value]) => value == cmd)[0]
+    }
+
     parse_livedata(data) {
         this.#logger.log('log', Logger.level.NORMAL, 'Parse livedata not implemented');
     }
@@ -243,11 +240,11 @@ class GW {
                 this.parse_livedata(data);
                 break;
 
-            
+
             case Command.READ_VER:
 
-               p = new Packet_Version(data);
-               break;
+                p = new Packet_Version(data);
+                break;
 
 
             case Command.READ_MAC:
@@ -268,19 +265,23 @@ class GW {
 
                 break;
 
+            case Command.READ_SYSTEM:
+
+                p = new Packet_System(data);
+
+                break;
+
+            case Command.READ_RAIN:
+
+                p = new Packet_Rain(data);
+
+                break;
+
             case Command.WRITE_CUSTOMIZED:
             case Command.WRITE_USR_PATH:
-                result = data[4];
+            case Command.WRITE_REBOOT:
 
-                switch (result) {
-                    case CommandResult.SUCCESS:
-
-                        this.#logger.log('log', Logger.level.VERBOSE, '  ' + this.getCommandName(cmd) + ' ' + cmd.toString(16) + ' SUCCESS');
-                        break;
-                    case CommandResult.FAIL:
-                        this.#logger.log('log', Logger.level.VERBOSE, '  ' + this.getCommandName(cmd) + ' ' + +cmd.toString(16) + ' FAIL');
-                        break;
-                }
+                p = new Packet_Result(data);
 
                 break;
 

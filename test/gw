@@ -1,0 +1,220 @@
+##!/bin/bash
+# example /gw -h 10.42.0.180  -s 3 
+# scan for 3 seconds 
+# example ./gw -h 10.42.0.180 -c mac
+# read mac
+# Info  from https://www.xmodulo.com/tcp-udp-socket-bash-shell.html
+# Writing CMD_BROADCAST 0x12 to HOST port 46000
+# https://brendanzagaeski.appspot.com/0006.html - hexdump examples
+
+#HOST=10.42.0.180
+
+FD_UDP=3
+DEBUG=0
+
+function connect 
+{
+  local UDP_SERVER_PORT=46000
+  local TCP_SERVER_PORT=45000
+  echo "Connecting host $HOST:$UDP_SERVER_PORT (UDP)"
+  exec 3<>/dev/udp/$1/$UDP_SERVER_PORT
+  echo "Connecting host $HOST:$TCP_SERVER_PORT (TCP)"
+  exec 4<>/dev/tcp/$1/$TCP_SERVER_PORT
+  #echo Current shell PID $$
+  if [[ $DEBUG -eq 1 ]] 
+  then
+    netstat -tunp | grep "$$"
+  fi
+}
+
+function disconnect
+{
+  #Close sockets
+  exec 3>&- 
+  exec 4>&-
+}
+
+
+function result
+{
+STATUS=$(hexdump -v -s 4 -n 1 -e '1/1 "%02x"'  $response)
+      if [ $STATUS == "00" ]
+      then
+         echo $COMMAND OK
+      else
+        echo $COMMAND FAILED
+      fi
+}
+
+
+#including checksum byte
+function command()
+{
+  local FD_TCP=4
+  local HEADER='\xff\xff'
+  local response='response'
+  echo -ne "$HEADER$1" >&$FD_TCP
+  RESPONSE=$(dd bs=1024 count=1 status=none<&$FD_TCP)
+  echo -ne $RESPONSE >$response
+  echo -ne $RESPONSE
+  #Copy response to byte array in hex
+  mapfile -d ' ' -t  BYTE <<< $(cat response | hexdump -v -e ''"$(stat -c%s response)"'/1 "0x%x "') 
+  echo BYTE  ${BYTE[@]}
+
+  if [[ $DEBUG -eq 1 ]] 
+  then
+     hexdump -C $response
+  fi
+  #Parsing using hexdump format string
+  case $COMMAND in
+    mac)
+       echo MAC: $(hexdump -v -s 4 -n 6 -e '5/1 "%02x:" /1 "%02x" "\n"'  $response)
+       ;;
+    version)
+      #LENGTH=$(hexdump -v -s 4 -n 1 -e '1/1 "%2d"'  $response)
+      #echo $LENGTH_BYTE Version: $(hexdump -v -s 5 -n $LENGTH -e ''"$LENGTH"'/1 "%_p" "\n"' $response) 
+      LENGTH=$(printf '%d\n' "'${RESPONSE:4:1}")
+      echo Version : ${RESPONSE:5:$LENGTH}
+        ;;
+    reboot)
+      result
+      ;;
+    ecowitt)
+      #ECOWITT_INTERVAL=$(hexdump -v -s 4 -n 1 -e '1/1 "%1d"'  $response)
+      # SKIP 0x in front of BYTE :2
+      #ECOWITT_INTERVAL=$(( "16#${BYTE[4]:2}" ))
+      ECOWITT_INTERVAL=$(printf '%d\n' "'${RESPONSE:4:1}")
+      echo Ecowitt upload interval: $ECOWITT_INTERVAL minutes
+      ;;
+    wunderground)
+      #LENGTH_ID=$(hexdump -v -s 4 -n 1 -e '1/1 "%2d"'  $response)
+      #LENGTH_ID=${BYTE[4]}
+      LENGTH_ID=$(printf '%d\n' "'${RESPONSE:4:1}")
+      if (( $LENGTH_ID > 0 ))
+      then
+          #WUNDERGROUND_ID=$(hexdump -v -s 5 -n $LENGTH_ID -e ''"$LENGTH_ID"'/1 "%_p" "\n"' $response)
+          WUNDERGROUND_ID=${RESPONSE:5:$LENGTH_ID}
+          echo  Wunderground station ID: $WUNDERGROUND_ID
+      fi
+      #LENGTH_PASSW=$(hexdump -v -s $(( 4 + 1 + $LENGTH_ID )) -n 1 -e '1/1 "%2d"'  $response)
+      #LENGTH_PASSW=${BYTE[$(( 4 + 1 + $LENGTH_ID ))]}
+      LENGTH_PASSW=$(printf '%d\n' "'${RESPONSE:$(( 4 + 1 + $LENGTH_ID )):1}")
+      if (( $LENGTH_PASSW > 0 ))
+      then
+          #WUNDERGROUND_PASSW=$(hexdump -v -s $(( 5 + $LENGTH_ID  + 1 )) -n $LENGTH_PASSW -e ''"$LENGTH_PASSW"'/1 "%_p" "\n"' $response)
+          #WUNDERGROUND_PASSW=$(cut -c $(( 5 + $LENGTH_ID  + 1 ))-$(( 5 + $LENGTH_ID  + 1 + $LENGTH_PASSW )) $response)
+          WUNDERGROUND_PASSW=${RESPONSE:$(( 6 + $LENGTH_ID )):$LENGTH_ID}
+          echo Wunderground password : $WUNDERGROUND_PASSW
+      fi
+      
+      ;;
+    customized)
+      LENGTH_ID=$(hexdump -v -s 4 -n 1 -e '1/1 "%2d"'  $response)
+      if (( $LENGTH_ID > 0 ))
+      then
+        CUSTOMIZED_ID=$(hexdump -v -s 5 -n $LENGTH_ID -e ''"$LENGTH_ID"'/1 "%_p" "\n"' $response) 
+        echo Customized id: $CUSTOMIZED_ID
+      fi
+      LENGTH_PASSW=$(hexdump -v -s $(( 4 + 1 + $LENGTH_ID )) -n 1 -e '1/1 "%2d"'  $response)
+      if (( $LENGTH_PASSW > 0 ))
+      then
+        CUSTOMIZED_PASSW=$(hexdump -v -s $(( 5 + $LENGTH_ID  + 1 )) -n $LENGTH_PASSW -e ''"$LENGTH_PASSW"'/1 "%_p" "\n"' $response)
+        echo Customized password: $CUSTOMIZED_PASSW
+      fi
+      LENGTH_SERVER=$(hexdump -v -s $(( 4 + 1 + $LENGTH_ID + $LENGTH_PASSW +1 )) -n 1 -e '1/1 "%2d"'  $response)
+       if (( $LENGTH_SERVER > 0 ))
+      then
+        CUSTOMIZED_SERVER=$(hexdump -v -s $(( 5 + $LENGTH_ID  + $LENGTH_PASSW + 1 + 1 )) -n $LENGTH_SERVER -e ''"$LENGTH_SERVER"'/1 "%_p" "\n"' $response)
+        echo Customized server: $CUSTOMIZED_SERVER
+      fi
+      RESPONSESIZE=$(stat -c%s $response)
+      CUSTOMIZED_PORT_MSB=$(hexdump -v -s $(( $RESPONSESIZE -7 )) -n 1 -e '/1 "%d"' $response  )
+      CUSTOMIZED_PORT_LSB=$(hexdump -v -s $(( $RESPONSESIZE -6 )) -n 1 -e '/1 "%d"' $response  )
+      CUSTOMIZED_PORT=$(( $CUSTOMIZED_PORT_MSB << 8 | $CUSTOMIZED_PORT_LSB )) 
+      echo Customized port: $CUSTOMIZED_PORT
+      CUSTOMIZED_INTERVAL_MSB=$(hexdump -v -s $(( $RESPONSESIZE -5 )) -n 1 -e '/1 "%d"' $response  )
+      CUSTOMIZED_INTERVAL_LSB=$(hexdump -v -s $(( $RESPONSESIZE -4 )) -n 1 -e '/1 "%d"' $response  )
+      CUSTOMIZED_INTERVAL=$(( $CUSTOMIZED_INTERVAL_MSB << 8 | $CUSTOMIZED_INTERVAL_LSB )) 
+      echo Customized interval: $CUSTOMIZED_INTERVAL
+      TYPE=$(hexdump -v -s $(( $RESPONSESIZE -3 )) -n 1 -e '/1 "%d"' $response  )
+      if (( $TYPE == 1)) 
+      then
+        echo Customized type: Wunderground
+      else
+        echo Customized type: Ecowitt 
+      fi
+
+      ;;
+
+  esac
+
+}
+
+function scan
+{
+  local GW_BROADCAST_PORT=59387
+  socat UDP-RECV:$GW_BROADCAST_PORT STDOUT | hexdump -C &
+  SOCATPID=$(pgrep socat)
+  sleep $SCAN && kill $SOCATPID
+}
+#https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+  key="$1"
+
+  case $key in
+    -h|--host)
+       HOST="$2"
+       #open file descriptors to UDP/TCP port on HOST
+       connect $2
+       shift # past argument
+      shift # past value
+      ;;
+    -c|--command)
+      COMMAND="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    -s|--scan)
+       SCAN="$2"
+       scan
+       shift # past argumentS
+      shift # past value
+      ;;
+    *)    # unknown option
+      POSITIONAL+=("$1") # save it in an array for later
+      shift # past argument
+      ;;
+  esac
+  
+  case $COMMAND in
+    reboot)
+      command '\x40\x03\x43' 
+      ;;
+    mac)
+      command '\x26\x03\x29' 
+      ;;
+    version)
+      command '\x50\x03\x53'
+      ;;
+    ecowitt)
+      command '\x1e\x03\x21'
+      ;;
+    wunderground)
+      command '\x20\x03\x23'
+      ;;
+    customized)
+      command '\x2a\x03\x2d'
+      ;;
+      
+  esac
+
+
+  done
+
+  set -- "${POSITIONAL[@]}" # restore positional parameters
+
+  disconnect
+
+##echo CMD_BROADCAST
+#command '\x12\x00\x04\x15' $FD_UDP
