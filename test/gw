@@ -6,11 +6,24 @@
 # Info  from https://www.xmodulo.com/tcp-udp-socket-bash-shell.html
 # Writing CMD_BROADCAST 0x12 to HOST port 46000
 # https://brendanzagaeski.appspot.com/0006.html - hexdump examples
+#Protocol documentation : https://osswww.ecowitt.net/uploads/20210716/WN1900%20GW1000,1100%20WH2680,2650%20telenet%20v1.6.0%20.pdf (https://www.ecowitt.com/shop/forum/forumDetails/255)
 
 #HOST=10.42.0.180
 
 FD_UDP=3
 DEBUG=0
+
+CMD_READ_PATH=0x51
+CMD_WRITE_PATH=0x52
+
+CMD_READ_VERSION=0x50
+CMD_REBOOT=0x40
+CMD_READ_MAC=0x26
+CMD_READ_WUNDERGROUND=0x20
+CMD_READ_ECOWITT=0x1e
+
+CMD_READ_CUSTOMIZED=0x2a
+CMD_WRITE_CUSTOMIZED=0x2b
 
 function connect 
 {
@@ -20,6 +33,8 @@ function connect
   exec 3<>/dev/udp/$1/$UDP_SERVER_PORT
   echo "Connecting host $HOST:$TCP_SERVER_PORT (TCP)"
   exec 4<>/dev/tcp/$1/$TCP_SERVER_PORT
+  
+
   #echo Current shell PID $$
   if [[ $DEBUG -eq 1 ]] 
   then
@@ -37,7 +52,7 @@ function disconnect
 
 function result
 {
-STATUS=$(hexdump -v -s 4 -n 1 -e '1/1 "%02x"'  $response)
+STATUS=${PACKET[4]}
       if [ $STATUS == "00" ]
       then
          echo $COMMAND OK
@@ -46,105 +61,116 @@ STATUS=$(hexdump -v -s 4 -n 1 -e '1/1 "%02x"'  $response)
       fi
 }
 
+function hexToString 
+{
+  #not possible to return string i bash
+  HEXTOSTRING=""
+  NEXT_LENGTH=$(( $1 + 1 + $(( 16#${PACKET[$1]} )) ))
+
+  for ((n=$(( $1 + 1 )); n < $NEXT_LENGTH; n++)); do 
+     HEXTOSTRING+=$( echo -en "\u${PACKET[$n]}" )
+   done
+}
+
+function printCustomized
+{
+   echo Customized id: $CUSTOMIZED_ID
+   echo Customized password : $CUSTOMIZED_PASSWORD
+   echo Customized server: $CUSTOMIZED_SERVER
+   echo Customized port: $CUSTOMIZED_PORT
+   echo Customized interval: $CUSTOMIZED_INTERVAL
+    if (( $CUSTOMIZED_TYPE == 1 )) 
+    then
+      echo Customized type: Wunderground "(1)"
+    else
+      echo Customized type: Ecowitt "(0)"
+    fi
+    if (( $CUSTOMIZED_ENABLED == 1 )) 
+    then
+      echo Customized enabled: 'ON (1)'
+    else
+      echo Customized enabled: 'OFF (0)'
+    fi
+}
+
 
 #including checksum byte
-function command()
+function command
 {
   local FD_TCP=4
   local HEADER='\xff\xff'
-  local response='response'
-  echo -ne "$HEADER$1" >&$FD_TCP
-  RESPONSE=$(dd bs=1024 count=1 status=none<&$FD_TCP)
-  echo -ne $RESPONSE >$response
-  echo -ne $RESPONSE
-  #Copy response to byte array in hex
-  mapfile -d ' ' -t  BYTE <<< $(cat response | hexdump -v -e ''"$(stat -c%s response)"'/1 "0x%x "') 
-  echo BYTE  ${BYTE[@]}
+  local response_filename='response'
+  local echo_cmd
+  for (( n=0; n < ${#PACKET_OUT[@]}; n++ )); do
+    echo_cmd+=${PACKET_OUT[$n]}
+  done;
+  echo_cmd=${echo_cmd//0x/'\x'}
+
+#  echo COMMAND !!!!!!!!!!!!!!!!! $echo_cmd
+#echo -ne "$echo_cmd" | hexdump -C
+#echo -ne "$HEADER$1" | hexdump -C
+
+  #echo -ne "$HEADER$1" >&$FD_TCP
+  echo -ne "$echo_cmd" >&$FD_TCP
+  dd bs=1024 count=1 status=none<&$FD_TCP >$response_filename
+
+  #Copy response to byte array in hex ff ff .. .. .. 
+  mapfile -d ' ' -t  PACKET <<< $(hexdump -v -e ''"$(stat -c%s response)"'/1 "%02x "' $response_filename) 
 
   if [[ $DEBUG -eq 1 ]] 
   then
-     hexdump -C $response
+     hexdump -C $response_filename
   fi
-  #Parsing using hexdump format string
+  
   case $COMMAND in
     mac)
-       echo MAC: $(hexdump -v -s 4 -n 6 -e '5/1 "%02x:" /1 "%02x" "\n"'  $response)
+       printf "MAC %02X:%02X:%02X:%02X:%02X:%02X\n" 0x${PACKET[5]} 0x${PACKET[6]} 0x${PACKET[7]} 0x${PACKET[8]} 0x${PACKET[9]} 0x${PACKET[10]}
        ;;
     version)
-      #LENGTH=$(hexdump -v -s 4 -n 1 -e '1/1 "%2d"'  $response)
-      #echo $LENGTH_BYTE Version: $(hexdump -v -s 5 -n $LENGTH -e ''"$LENGTH"'/1 "%_p" "\n"' $response) 
-      LENGTH=$(printf '%d\n' "'${RESPONSE:4:1}")
-      echo Version : ${RESPONSE:5:$LENGTH}
+      hexToString 4
+      VERSION=$HEXTOSTRING
+      echo Version : $VERSION
         ;;
-    reboot)
-      result
-      ;;
     ecowitt)
-      #ECOWITT_INTERVAL=$(hexdump -v -s 4 -n 1 -e '1/1 "%1d"'  $response)
-      # SKIP 0x in front of BYTE :2
-      #ECOWITT_INTERVAL=$(( "16#${BYTE[4]:2}" ))
-      ECOWITT_INTERVAL=$(printf '%d\n' "'${RESPONSE:4:1}")
+      ECOWITT_INTERVAL=$(( 16#${PACKET[4]} )) 
       echo Ecowitt upload interval: $ECOWITT_INTERVAL minutes
       ;;
     wunderground)
-      #LENGTH_ID=$(hexdump -v -s 4 -n 1 -e '1/1 "%2d"'  $response)
-      #LENGTH_ID=${BYTE[4]}
-      LENGTH_ID=$(printf '%d\n' "'${RESPONSE:4:1}")
-      if (( $LENGTH_ID > 0 ))
-      then
-          #WUNDERGROUND_ID=$(hexdump -v -s 5 -n $LENGTH_ID -e ''"$LENGTH_ID"'/1 "%_p" "\n"' $response)
-          WUNDERGROUND_ID=${RESPONSE:5:$LENGTH_ID}
-          echo  Wunderground station ID: $WUNDERGROUND_ID
-      fi
-      #LENGTH_PASSW=$(hexdump -v -s $(( 4 + 1 + $LENGTH_ID )) -n 1 -e '1/1 "%2d"'  $response)
-      #LENGTH_PASSW=${BYTE[$(( 4 + 1 + $LENGTH_ID ))]}
-      LENGTH_PASSW=$(printf '%d\n' "'${RESPONSE:$(( 4 + 1 + $LENGTH_ID )):1}")
-      if (( $LENGTH_PASSW > 0 ))
-      then
-          #WUNDERGROUND_PASSW=$(hexdump -v -s $(( 5 + $LENGTH_ID  + 1 )) -n $LENGTH_PASSW -e ''"$LENGTH_PASSW"'/1 "%_p" "\n"' $response)
-          #WUNDERGROUND_PASSW=$(cut -c $(( 5 + $LENGTH_ID  + 1 ))-$(( 5 + $LENGTH_ID  + 1 + $LENGTH_PASSW )) $response)
-          WUNDERGROUND_PASSW=${RESPONSE:$(( 6 + $LENGTH_ID )):$LENGTH_ID}
-          echo Wunderground password : $WUNDERGROUND_PASSW
-      fi
-      
+          hexToString 4
+          WUNDERGROUND_STATION_ID=$HEXTOSTRING
+          echo  Wunderground station ID: $WUNDERGROUND_STATION_ID
+
+          hexToString $NEXT_LENGTH
+          WUNDERGROUND_PASSWORD=$HEXTOSTRING
+          echo  Wunderground password : $WUNDERGROUND_PASSWORD 
       ;;
     customized)
-      LENGTH_ID=$(hexdump -v -s 4 -n 1 -e '1/1 "%2d"'  $response)
-      if (( $LENGTH_ID > 0 ))
-      then
-        CUSTOMIZED_ID=$(hexdump -v -s 5 -n $LENGTH_ID -e ''"$LENGTH_ID"'/1 "%_p" "\n"' $response) 
-        echo Customized id: $CUSTOMIZED_ID
-      fi
-      LENGTH_PASSW=$(hexdump -v -s $(( 4 + 1 + $LENGTH_ID )) -n 1 -e '1/1 "%2d"'  $response)
-      if (( $LENGTH_PASSW > 0 ))
-      then
-        CUSTOMIZED_PASSW=$(hexdump -v -s $(( 5 + $LENGTH_ID  + 1 )) -n $LENGTH_PASSW -e ''"$LENGTH_PASSW"'/1 "%_p" "\n"' $response)
-        echo Customized password: $CUSTOMIZED_PASSW
-      fi
-      LENGTH_SERVER=$(hexdump -v -s $(( 4 + 1 + $LENGTH_ID + $LENGTH_PASSW +1 )) -n 1 -e '1/1 "%2d"'  $response)
-       if (( $LENGTH_SERVER > 0 ))
-      then
-        CUSTOMIZED_SERVER=$(hexdump -v -s $(( 5 + $LENGTH_ID  + $LENGTH_PASSW + 1 + 1 )) -n $LENGTH_SERVER -e ''"$LENGTH_SERVER"'/1 "%_p" "\n"' $response)
-        echo Customized server: $CUSTOMIZED_SERVER
-      fi
-      RESPONSESIZE=$(stat -c%s $response)
-      CUSTOMIZED_PORT_MSB=$(hexdump -v -s $(( $RESPONSESIZE -7 )) -n 1 -e '/1 "%d"' $response  )
-      CUSTOMIZED_PORT_LSB=$(hexdump -v -s $(( $RESPONSESIZE -6 )) -n 1 -e '/1 "%d"' $response  )
-      CUSTOMIZED_PORT=$(( $CUSTOMIZED_PORT_MSB << 8 | $CUSTOMIZED_PORT_LSB )) 
-      echo Customized port: $CUSTOMIZED_PORT
-      CUSTOMIZED_INTERVAL_MSB=$(hexdump -v -s $(( $RESPONSESIZE -5 )) -n 1 -e '/1 "%d"' $response  )
-      CUSTOMIZED_INTERVAL_LSB=$(hexdump -v -s $(( $RESPONSESIZE -4 )) -n 1 -e '/1 "%d"' $response  )
-      CUSTOMIZED_INTERVAL=$(( $CUSTOMIZED_INTERVAL_MSB << 8 | $CUSTOMIZED_INTERVAL_LSB )) 
-      echo Customized interval: $CUSTOMIZED_INTERVAL
-      TYPE=$(hexdump -v -s $(( $RESPONSESIZE -3 )) -n 1 -e '/1 "%d"' $response  )
-      if (( $TYPE == 1)) 
-      then
-        echo Customized type: Wunderground
-      else
-        echo Customized type: Ecowitt 
-      fi
+     
+        hexToString 4
+        CUSTOMIZED_ID=$HEXTOSTRING
+       
+        hexToString $NEXT_LENGTH
+        CUSTOMIZED_PASSWORD=$HEXTOSTRING
+
+        hexToString $NEXT_LENGTH
+        CUSTOMIZED_SERVER=$HEXTOSTRING
+
+        CUSTOMIZED_PORT=$(( 0x${PACKET[-7]} << 8 | 0x${PACKET[-6]} )) 
+        CUSTOMIZED_INTERVAL=$(( 0x${PACKET[-5]} << 8 | 0x${PACKET[-4]} )) 
+        CUSTOMIZED_TYPE=$(( 0x${PACKET[-3]} ))
+        CUSTOMIZED_ENABLED=$(( 0x${PACKET[-2]} ))
+     
+        printCustomized
 
       ;;
+    path)
+     hexToString 4
+     PATH_ECOWITT=$HEXTOSTRING
+     hexToString $NEXT_LENGTH
+     PATH_WUNDERGROUND=$HEXTOSTRING
+     echo Path ecowitt: $PATH_ECOWITT
+     echo Path wunderground: $PATH_WUNDERGROUND
+     ;;
 
   esac
 
@@ -153,14 +179,125 @@ function command()
 function scan
 {
   local GW_BROADCAST_PORT=59387
-  socat UDP-RECV:$GW_BROADCAST_PORT STDOUT | hexdump -C &
+  socat UDP-RECV:$GW_BROADCAST_PORT STDPACKET_OUT | hexdump -C &
   SOCATPID=$(pgrep socat)
   sleep $SCAN && kill $SOCATPID
 }
+
+function checksum
+{
+  CHECKSUM=0;
+ for (( n=2; n< ${#PACKET_OUT[@]}; n++ )); do
+   CHECKSUM=$(( $CHECKSUM + ${PACKET_OUT[$n]} ));
+  done
+  [ $DEBUG -eq 1 ] && echo CHECKSUM $CHECKSUM
+  CHECKSUM=$(printf "0x%x" $(( $CHECKSUM & 0xff )))
+}
+
+function packet
+{
+  PACKET_OUT=(0xff 0xff)
+  PACKET_OUT+=($1)
+  PACKET_OUT+=(0x03)
+  checksum
+  PACKET_OUT+=($CHECKSUM)
+}
+
+function writeString
+{
+  PACKET_OUT+=(   $(printf "0x%02x"  ${#1}) )
+  for (( n=0; n < ${#1}; n++ )); do
+     PACKET_OUT+=( $(printf "0x%02x" "'${1:$n:1}") )
+  done
+}
+
+function writeUInt16BE
+{
+    local MSB=$(printf "0x%02x" $(( ($1 & 0xff00 ) >> 8 )) )
+    local LSB=$(printf "0x%02x" $(( $1 & 0x00ff )) )
+    PACKET_OUT+=( $MSB $LSB )
+}
+
+function customizedPacket
+{
+  #cat response | hexdump -C
+  PACKET_OUT=(0xff 0xff)
+  PACKET_OUT+=($CMD_WRITE_CUSTOMIZED)
+  PACKET_OUT+=( $(printf "0x%02x" $(( ${#CUSTOMIZED_ID} + ${#CUSTOMIZED_PASSWORD} + ${#CUSTOMIZED_SERVER} + 3 + 2 + 2 + 1 + 1 + 3 )) ) ) # includes checksum BYTE
+  writeString $CUSTOMIZED_ID
+  writeString $CUSTOMIZED_PASSWORD
+  writeString $CUSTOMIZED_SERVER
+  writeUInt16BE $CUSTOMIZED_PORT
+  writeUInt16BE $CUSTOMIZED_INTERVAL 
+  PACKET_OUT+=( $(printf "0x%02x" $CUSTOMIZED_TYPE) )
+  PACKET_OUT+=( $(printf "0x%02x" $CUSTOMIZED_ENABLED ) )
+  checksum
+  PACKET_OUT+=( $CHECKSUM )
+  [ $DEBUG -eq 1 ] && echo CUSTOMIZEDPACKET  PACKET_OUT ${PACKET_OUT[@]}
+}
+
+function updateCustomized
+{
+  local needUpdate
+
+   packet $CMD_READ_CUSTOMIZED
+    COMMAND=customized # Allow parsing in command function
+    command
+    case $1 in
+        CUSTOMIZED_ID)
+          [ $CUSTOMIZED_ID != $2 ] && CUSTOMIZED_ID=$2 && needUpdate=1
+          ;;
+        CUSTOMIZED_PASSWORD)
+          [ $CUSTOMIZED_PASSWORD != $2 ] && CUSTOMIZED_PASSWORD=$2 && needUpdate=1
+          ;;
+        CUSTOMIZED_SERVER)
+          [ $CUSTOMIZED_SERVER != $2 ] && CUSTOMIZED_SERVER=$2 && needUpdate=1
+          ;;
+        CUSTOMIZED_PORT)
+          [ $CUSTOMIZED_PORT != $2 ] && CUSTOMIZED_PORT=$2 && needUpdate=1
+          ;;
+        CUSTOMIZED_TYPE)
+          [ $CUSTOMIZED_TYPE != $2 ] && CUSTOMIZED_TYPE=$2 && needUpdate=1
+          ;;
+        CUSTOMIZED_ENABLED)
+          [ $CUSTOMIZED_ENABLED != $2 ] && CUSTOMIZED_ENABLED=$2 && needUpdate=1
+          ;;
+        CUSTOMIZED_INTERVAL)
+          [ $CUSTOMIZED_INTERVAL != $2 ] && CUSTOMIZED_INTERVAL=$2 && needUpdate=1
+          ;;
+    esac
+
+#https://stackoverflow.com/questions/18668556/how-can-i-compare-numbers-in-bash
+    if (( needUpdate == 1 )); then  
+    customizedPacket
+    COMMAND=CMD_WRITE_CUSTOMIZED
+    command
+    result
+    printCustomized
+  else
+    echo No update needed for $1
+  fi
+}
+
+function pathPacket
+{
+  PACKET_OUT=(0xff 0xff)
+  PACKET_OUT+=($CMD_WRITE_PATH)
+  PACKET_OUT+=( $(printf "0x%02x" $(( ${#1} + ${#2} + 2 + 3 )) ) )
+  writeString $1
+  writeString $2
+  checksum
+  PACKET_OUT+=($CHECKSUM)
+  
+  [ $DEBUG -eq 1 ] && echo PATHPACKET  PACKET_OUT ${PACKET_OUT[@]}
+  
+}
+
 #https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
 POSITIONAL=()
 while [[ $# -gt 0 ]]; do
   key="$1"
+  OPTION=""
 
   case $key in
     -h|--host)
@@ -181,32 +318,97 @@ while [[ $# -gt 0 ]]; do
        shift # past argumentS
       shift # past value
       ;;
+    -w|--write)
+     COMMAND=$key
+      OPTION="$2"
+      shift
+      shift
+      ;;
     *)    # unknown option
       POSITIONAL+=("$1") # save it in an array for later
       shift # past argument
       ;;
   esac
-  
+
   case $COMMAND in
     reboot)
-      command '\x40\x03\x43' 
+      packet $CMD_REBOOT
+      command
+      result
+      #command "\x$CMD_REBOOT\x03\x43" 
       ;;
     mac)
-      command '\x26\x03\x29' 
+      packet $CMD_READ_MAC
+      command
+      #command "\x$CMD_MAC\x03\x29" 
       ;;
     version)
-      command '\x50\x03\x53'
+      packet $CMD_READ_VERSION
+      command
+      #command "\x$CMD_VERSION\x03\x53"
       ;;
     ecowitt)
-      command '\x1e\x03\x21'
+       packet $CMD_READ_ECOWITT
+       command 
+      #command '\x1e\x03\x21'
       ;;
     wunderground)
-      command '\x20\x03\x23'
+      packet $CMD_READ_WUNDERGROUND
+      command 
+      #command '\x20\x03\x23'
       ;;
     customized)
-      command '\x2a\x03\x2d'
+      packet $CMD_READ_CUSTOMIZED
+      command
+      #command '\x2a\x03\x2d'
+      ;;
+    path)
+       packet $CMD_READ_PATH
+       command
+       #echo PACKET_OUT IS ${PACKET_OUT[@]}
+       #command  "\x$CMD_READ_PATH\x03\x54"
       ;;
       
+  esac
+
+  case $OPTION in
+    path)
+      pathPacket $1 $2
+      COMMAND=CMD_WRITE_PATH
+      command
+      result
+      shift # remove ecowitt path
+      shift # remove wu path
+      ;;
+    cport)
+       
+        updateCustomized CUSTOMIZED_PORT $1
+        shift # remove port
+        ;; 
+    cserver)
+       updateCustomized CUSTOMIZED_SERVER $1
+       shift
+       ;;
+    cid)
+       updateCustomized CUSTOMIZED_ID $1
+       shift
+      ;;
+    cpassword)
+      updateCustomized CUSTOMIZED_PASSWORD $1
+      shift
+      ;;
+    cinterval)
+      updateCustomized CUSTOMIZED_INTERVAL $1
+      shift
+      ;;
+    ctype)
+      updateCustomized CUSTOMIZED_TYPE $1
+      shift
+      ;;
+    cenabled)
+      updateCustomized CUSTOMIZED_ENABLED $1
+      shift
+      ;;
   esac
 
 
@@ -215,6 +417,7 @@ while [[ $# -gt 0 ]]; do
   set -- "${POSITIONAL[@]}" # restore positional parameters
 
   disconnect
+
 
 ##echo CMD_BROADCAST
 #command '\x12\x00\x04\x15' $FD_UDP

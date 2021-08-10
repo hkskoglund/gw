@@ -75,6 +75,13 @@ async function wait(ms) {
 
   }
 
+  function testPacketChecksum(epath,wupath)
+  {
+    var p = new Packet(Command.WRITE_USR_PATH);
+    p.writeString(epath,wupath).writeCRC();
+    console.log('==== TEST PACKET',p.getBuffer(),p.getChecksum())
+  }
+
   async function main()
   {
 
@@ -86,9 +93,11 @@ async function wait(ms) {
       //await testIterate(testCustomized,1);
       //await testIterate( async () => { await gw.get(Command.READ_MAC)},1);
       //await testIterate( async () => { await gw.get(Command.READ_VER)},1);
-      await testIterate( async () => { await gw.get(Command.WRITE_REBOOT)},1);
+      //await testIterate( async () => { await gw.get(Command.WRITE_REBOOT)},1);
 
      //await testReadSystem();
+
+     testPacketChecksum('/testecowittpath','/testwupath');
 
   
     } catch (e)
