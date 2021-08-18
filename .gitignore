@@ -2,5 +2,5 @@ node_modules/
 mockup/
 doc/
 test/rxpacket
-test/rxscan_sorted
 test/txpacket
+test/rxsocat_sorted

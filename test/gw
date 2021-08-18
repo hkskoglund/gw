@@ -15,7 +15,11 @@
 HTTP_UA_NAME="gw ShellScript"
 HTTP_FIRMWARE="http://download.ecowitt.net/down/filewave?v=FirwaveReadme.txt"
 
-DEBUG=1
+DEBUG=0
+
+PORT_TCP_COMMAND_SERVER=45000
+PORT_UDP_DISCOVERY_SERVER=59387
+PORT_UDP_DISCOVERY_CLIENT=46000
 
 #COMMANDS AT BYTE 2 ff ff |COMMAND| ...
 
@@ -42,40 +46,39 @@ ERROR_TCP_CONNECTION=1
 ERROR_UDP_CONNECTION=2
 ERROR_READ_RESPONSE=3
 
-#FILENAME_RXSCAN= 'rxscan'
-FILENAME_RXSCAN_SORTED='rxscan_sorted'
+FILENAME_RXSOCAT_SORTED='rxsocat_sorted'
 FILENAME_COMMAND='txpacket'
 FILENAME_RESPONSE='rxpacket'
+FILENAME_RXSOCAT='rxsocat'
 
 function connect {
-  local UDP_SERVER_PORT=46000
-  local TCP_SERVER_PORT=45000
+  
   #https://www.gnu.org/software/bash/manual/bash.html - 3.6 Redirections
-  if exec {FD_UDP}<>/dev/udp/"$1"/$UDP_SERVER_PORT; then
-    echo "Connected $1:$UDP_SERVER_PORT (UDP FD $FD_UDP)"
-  else
-    return $ERROR_UDP_CONNECTION
-  fi
+ # if exec {FD_UDP}<>/dev/udp/"$1"/$GW_UDP_SERVER_PORT; then
+ #   echo "Connected $1:$GW_UDP_SERVER_PORT (UDP FD $FD_UDP)"
+ # else
+ #   return $ERROR_UDP_CONNECTION
+ # fi
 
-  if exec {FD_TCP}<>/dev/tcp/"$1"/$TCP_SERVER_PORT; then
-    echo Connected "$1:$TCP_SERVER_PORT" "(TCP FD $FD_TCP)"
+  if exec {FD_TCP}<>/dev/tcp/"$1"/"$PORT_TCP_COMMAND_SERVER"; then
+    echo Connected "$1:$PORT_TCP_COMMAND_SERVER" "(TCP FD $FD_TCP)"
   else
     return $ERROR_TCP_CONNECTION
   fi
 
   #echo Current shell PID $$
 
-  if [ $DEBUG -eq 1 ]; then netstat -tunp | grep "$$"; fi
+  if [ "$DEBUG" -eq 1 ]; then netstat -tunp | grep "$$"; fi
 
 }
 
 function disconnect {
   #https://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
   #close sockets
-  if [ -n "${FD_UDP+x}" ]; then
+ # if [ -n "${FD_UDP+x}" ]; then
 
-    if ! exec {FD_UDP}>&-; then echo Failed to close $FD_UDP; fi
-  fi
+ #   if ! exec {FD_UDP}>&-; then echo Failed to close $FD_UDP; fi
+ # fi
 
   if [ -n "${FD_TCP+x}" ]; then
 
@@ -102,92 +105,65 @@ function hexToString {
   done
 }
 
-function printCustomizedType {
-  if ((CUSTOMIZED_TYPE == 1)); then
-    echo Customized type: Wunderground "(1)"
-  else
-    echo Customized type: Ecowitt "(0)"
-  fi
-
-}
-
-function printCustomizedEnabled {
-  if ((CUSTOMIZED_ENABLED == 1)); then
-    echo Customized enabled: 'ON (1)'
-  else
-    echo Customized enabled: 'OFF (0)'
-  fi
-}
-
-function printCustomizedId {
-  echo Customized id: "$CUSTOMIZED_ID"
-}
-
-function printCustomizedPassword {
-  echo Customized password : "$CUSTOMIZED_PASSWORD"
-}
-
-function printCustomizedServer {
-  echo Customized server: "$CUSTOMIZED_SERVER"
-}
-
-function printCustomizedInterval {
-  echo Customized interval: "$CUSTOMIZED_INTERVAL"
-}
-
-function printCustomizedPort {
-  echo Customized port: "$CUSTOMIZED_PORT"
-}
-
 function printCustomized {
-  case $1 in
-  CUSTOMIZED_ID)
-    printCustomizedId
-    ;;
-  CUSTOMIZED_PASSWORD)
-    printCustomizedPassword
-    ;;
-  CUSTOMIZED_SERVER)
-    printCustomizedServer
-    ;;
-  CUSTOMIZED_PORT)
-    printCustomizedPort
-    ;;
-  CUSTOMIZED_INTERVAL)
-    printCustomizedInterval
-    ;;
-  CUSTOMIZED_TYPE)
-    printCustomizedType
-    ;;
-  CUSTOMIZED_ENABLED)
-    printCustomizedEnabled
-    ;;
-  *)
-    printCustomizedId
-    printCustomizedPassword
-    printCustomizedServer
-    printCustomizedPort
-    printCustomizedInterval
-    printCustomizedType
-    printCustomizedEnabled
-    ;;
-  esac
+    echo -n Customized: id: "$CUSTOMIZED_ID "
+    echo -n password : "$CUSTOMIZED_PASSWORD "
+    echo -n server: "$CUSTOMIZED_SERVER "
+    echo -n port: "$CUSTOMIZED_PORT "
+    echo -n interval: "$CUSTOMIZED_INTERVAL "
+    if ((CUSTOMIZED_TYPE == 1)); then
+      echo -n "type: 1 (Wunderground) "
+    else
+      echo -n "type: 0 (Ecowitt) "
+    fi
 
+      if ((CUSTOMIZED_ENABLED == 1)); then
+      echo enabled: '1 (ON)'
+    else
+      echo enabled: '0 (OFF)'
+    fi
 }
 
 function checkEmptyString {
   [ -z "$1" ] && echo Warning: "$2" empty
 }
 
+function parsePacketLength
+{
+  local packet_cmd
+  local lsb
+  local msb
+
+  packet_cmd=0x${PACKET[2]}
+  case $packet_cmd in
+    "$CMD_BROADCAST")
+       lsb=${PACKET[4]}
+       msb=${PACKET[3]}
+       PACKET_LENGTH=$(( (0x$msb << 8) | 0x$lsb ))
+       ;;
+    *)
+       PACKET_LENGTH=${PACKET[3]}
+    ;;
+  esac
+}
+
 function parsePacket {
   local response_cmd
+
+  parsePacketLength
+
+  [ "$DEBUG" -eq 1 ] && echo "Parse packet ${PACKET[@]} length $PACKET_LENGTH"
+
   response_cmd=0x${PACKET[2]}
+
   case $response_cmd in
+  "$CMD_WRITE_CUSTOMIZED")
+    result "Write Customized"
+    ;;
   "$CMD_REBOOT")
     result "Reboot"
     ;;
   "$CMD_READ_MAC")
-    echo RX PACKET "${PACKET[@]}"
     printf "MAC %02X:%02X:%02X:%02X:%02X:%02X\n" 0x"${PACKET[4]}" 0x"${PACKET[5]}" 0x"${PACKET[6]}" 0x"${PACKET[7]}" 0x"${PACKET[8]}" 0x"${PACKET[9]}"
     ;;
   "$CMD_READ_VERSION")
@@ -250,12 +226,21 @@ function parsePacket {
     ;;
   "$CMD_BROADCAST")
 
-    MAC=$(printf "%02X:%02X:%02X:%02X:%02X:%02X\n" 0x"${PACKET[5]}" 0x"${PACKET[6]}" 0x"${PACKET[7]}" 0x"${PACKET[8]}" 0x"${PACKET[9]}" 0x"${PACKET[10]}")
-    IP=$(printf "%d.%d.%d.%d" 0x"${PACKET[11]}" 0x"${PACKET[12]}" 0x"${PACKET[13]}" 0x"${PACKET[14]}")
-    hexToString 17
-    SSID=$HEXTOSTRING
-    PORT=$(printf "%d" 0x"${PACKET[15]}""${PACKET[16]}")
-    echo "$MAC" "$IP":"$PORT" "$SSID"
+     if (( PACKET_LENGTH > 4 )); then
+     {
+          MAC=$(printf "%02X:%02X:%02X:%02X:%02X:%02X\n" 0x"${PACKET[5]}" 0x"${PACKET[6]}" 0x"${PACKET[7]}" 0x"${PACKET[8]}" 0x"${PACKET[9]}" 0x"${PACKET[10]}")
+          IP=$(printf "%d.%d.%d.%d" 0x"${PACKET[11]}" 0x"${PACKET[12]}" 0x"${PACKET[13]}" 0x"${PACKET[14]}")
+          hexToString 17
+          SSID=$HEXTOSTRING
+          PORT=$(printf "%d" 0x"${PACKET[15]}""${PACKET[16]}")
+          echo "$MAC" "$IP":"$PORT" "$SSID"  
+     }
+     else
+     {
+       [ "$DEBUG" -eq 1 ] && echo "Failed: unable to parse broadcast, too small length $PACKET_LENGTH"
+     }
+     fi
+    
     ;;
   *)
     echo Warning: unable to parse command "$response_cmd"
@@ -264,23 +249,16 @@ function parsePacket {
   esac
 }
 
-#including checksum byte
-function command {
-  local echo_cmd
+function newPacketTX
+{
   local packetLengthLSB
   local packetLengthMSB
-  local response_hexdump
+# Take care of 2 or 1 byte packet length
 
-  #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
-  if [ $# -eq 1 ]; then
-    initPacketCommand "$1"
-  fi
-
-  # Take care of 2 or 1 byte packet length
   case ${PACKET_BODY[0]} in
-  "$CMD_WRITE_SSID")
-    packetLengthLSB=$(((${#PACKET_BODY[@]} + 1) & 0xff))
-    packetLengthMSB=$((((${#PACKET_BODY[@]} + 1) & 0xff00) >> 8))
+  "$CMD_WRITE_SSID" | "$CMD_BROADCAST")
+    packetLengthLSB=$(( (  ${#PACKET_BODY[@]} + 1) & 0xff ))
+    packetLengthMSB=$(( ( (${#PACKET_BODY[@]} + 1) & 0xff00) >> 8 ))
     PACKET_BODY[1]=$(printf "0x%02x" $packetLengthMSB)
     PACKET_BODY[2]=$(printf "0x%02x" $packetLengthLSB)
     ;;
@@ -292,60 +270,97 @@ function command {
   checksum
   PACKET_TX=(0xff 0xff "${PACKET_BODY[@]}" "$CHECKSUM")
 
-  [ $DEBUG -eq 1 ] && echo PACKET_TX "${PACKET_TX[@]//0x/''}"
+  #[ "$DEBUG" -eq 1 ] && echo PACKET_TX "${PACKET_TX[@]//0x/''}"
 
   for ((n = 0; n < ${#PACKET_TX[@]}; n++)); do
-    echo_cmd+=${PACKET_TX[$n]}
+    PACKET_TX_ECHO+=${PACKET_TX[$n]}
   done
-  echo_cmd=${echo_cmd//0x/'\x'}
+  PACKET_TX_ECHO=${PACKET_TX_ECHO//0x/'\x'}
+
+}
+
+#including checksum byte
+function sendPacket {
+  
+  local response_hexdump
+
+  #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
+  if [ $# -eq 1 ]; then
+    newPacket "$1"
+  fi
+
+  newPacketTX
 
   # write command/read response
 
-  echo -ne "$echo_cmd" >$FILENAME_COMMAND
+  echo -ne "$PACKET_TX_ECHO" >$FILENAME_COMMAND
+  echo -ne "$PACKET_TX_ECHO" >&$FD_TCP
+ #echo -ne "$PACKET_TX_ECHO" | socat $SOCAT_DEBUG_OPTIONS -u  - fd:$FD_TCP
+  #[ "$DEBUG" -eq 1 ] && (
+  #  echo PACKET TX WRITE STATUS to FD $FD_TCP $?
+  #  hexdump -C $FILENAME_COMMAND
+  #  echo Compiled command: echo "-ne" "'$PACKET_TX_ECHO'"
+  #)
 
-  dd if=$FILENAME_COMMAND status=none >&$FD_TCP
+  #dd_status_option='status=none'
+  #[ "$DEBUG" -eq 1 ] && dd_status_option=""
+  #if ! dd bs=1024 count=1 $dd_status_option <&$FD_TCP >$FILENAME_RESPONSE; then
 
-  [ $DEBUG -eq 1 ] && (
-    echo PACKET TX WRITE STATUS to FD $FD_TCP $?
-    hexdump -C $FILENAME_COMMAND
-    echo Compiled command: echo "-ne" "'$echo_cmd'"
-  )
+timeout 0.1 cat <&$FD_TCP >$FILENAME_RESPONSE
+    
+#TEST NUL bytes echo -ne "\x00\x00\x00\x0a\x00\x0b\x00\x0c\x00" | cat | hexdump -C
 
-  if ! dd bs=1024 count=1 status=none <&$FD_TCP >$FILENAME_RESPONSE; then
-    echo Error: Failed to read response
-    return "$ERROR_READ_RESPONSE"
-  fi
+#  if ! socat $SOCAT_DEBUG_OPTIONS -u -T 0.1 fd:$FD_TCP CREATE:$FILENAME_RESPONSE; then
+#    echo Error: Failed to read response
+#    return "$ERROR_READ_RESPONSE"
+#  fi
 
-  [ $DEBUG -eq 1 ] && (
-    echo PACKET RX READ STATUS from FD $FD_TCP $?
-    echo -ne "$response_hexdump" | hexdump -C
-  )
-
+  #[ "$DEBUG" -eq 1 ] && (
+  #  echo PACKET RX READ STATUS from FD $FD_TCP $?
+  #  echo -ne "$response_hexdump" | hexdump -C
+  #)
+  
   #Copy response to byte array in hex ff ff .. .. ..
-  response_hexdump=$(hexdump -v -e '/1 "%02x "' $FILENAME_RESPONSE)
-  response_hexdump=${response_hexdump::-1} # Remove trailing space https://stackoverflow.com/questions/27658675/how-to-remove-last-n-characters-from-a-string-in-bash
+  response_hexdump=$(hexdump -v -e '/1 "%02x "' $FILENAME_RESPONSE) #a NUL termination is inserted for string, must be deleted
+  response_hexdump=${response_hexdump::-1} 
+  mapfile -d ' ' -t PACKET <<< "$response_hexdump"
 
-  mapfile -d ' ' -t PACKET <<<"$response_hexdump"
-
-  [ $DEBUG -eq 1 ] && hexdump -C $FILENAME_RESPONSE
+  [ "$DEBUG" -eq 1 ] && hexdump -C $FILENAME_RESPONSE
 
   parsePacket
 
 }
 
-function scan {
-  local GW_BROADCAST_PORT=59387
+function discovery {
+  local TIMEOUT_SCAN=2 #seconds
+  
   local rxscan
   local rxscan_sorted
   local response_hexdump
-  #PACKET_SCAN=()
-  #socat UDP-RECV:$GW_BROADCAST_PORT STDOUT | hexdump -v -e '/1 "%02x "'
-  [ $DEBUG -eq 1 ] && echo Listening for broadcast on UDP port $GW_BROADCAST_PORT for weather stations in "$SCAN_TIMEOUT" seconds...
-  #https://stackoverflow.com/questions/687948/timeout-a-command-in-bash-without-unnecessary-delay
-  rxscan=$( (timeout "$SCAN_TIMEOUT" socat UDP-RECV:$GW_BROADCAST_PORT STDOUT) | hexdump -v -e '/1 "%02x"')
+  local filename_udp_client
+  local filename_udp_server
+
+  filename_udp_server="$FILENAME_RXSOCAT"_UDP_"$PORT_UDP_DISCOVERY_SERVER"
+  filename_udp_client="$FILENAME_RXSOCAT"_UDP_"$PORT_UDP_DISCOVERY_CLIENT"
+  
+  [ "$DEBUG" -eq 1 ] && echo "UDP discovery on GW port "$PORT_UDP_DISCOVERY_CLIENT
+  [ "$DEBUG" -eq 1 ] && echo "UDP discovery on local port "$PORT_UDP_DISCOVERY_SERVER
+
+  socat $SOCAT_DEBUG_OPTIONS  -u UDP-RECV:"$PORT_UDP_DISCOVERY_SERVER" CREATE:$filename_udp_server &
+  #-R socat appends to file
+  newPacket $CMD_BROADCAST
+  newPacketTX 
+  (echo -ne "$PACKET_TX_ECHO"; sleep $TIMEOUT_SCAN) | socat $SOCAT_DEBUG_OPTIONS -R "$filename_udp_client" - udp-datagram:255.255.255.255:$PORT_UDP_DISCOVERY_CLIENT,broadcast 1>/dev/null #disable stdout echo of rx data, sleep timeout EOF on STDIN 
+  # $PACKET_TX_ECHO is also copied over to $filename_udp, strange behavior of socat?
+  #(echo -ne "\xff\xff\x12\x00\x04\x16"; sleep 3) | socat -d -d -x -R rxsocat  - udp-datagram:255.255.255.255:46000,broadcast
+  kill %1
+  cat $filename_udp_client $filename_udp_server >"$FILENAME_RXSOCAT" # Merge results from udp/tcp discovery
+  rxscan=$(hexdump -v -e '/1 "%02x"' "$FILENAME_RXSOCAT" )
+  rm "$FILENAME_RXSOCAT" "$filename_udp_client" "$filename_udp_server"
+  
   #result_sorted=$(echo -en ${result//"ff ff"/"\nff ff"} | sort -u)
   rxscan_sorted=$(echo -en "${rxscan//"ffff"/"\nffff"}" | sort -u)
-  [ $DEBUG -eq 1 ] && echo -n "$rxscan_sorted" >$FILENAME_RXSCAN_SORTED
+  [ "$DEBUG" -eq 1 ] && echo -n "$rxscan_sorted" >"$FILENAME_RXSOCAT_SORTED"
 
   while read -r line; do
     if [[ "{$line:0:4}" =~ ffff.* ]]; then
@@ -360,23 +375,30 @@ function scan {
       parsePacket
     fi
   done <<<"$rxscan_sorted"
+
   #echo "${PACKET_SCAN[@]}"
 }
 
-function initPacketCommand { #also add premliminary length, which is updated in command when sending
+function newPacket { #also add premliminary length, which is updated in command when sending
   PACKET_BODY=()
   PACKET_BODY+=("$1" "0x00")
-
-  [ -n "$1" ] && PACKET_BODY+=("0x00") # Append for two byte packet length
+  case "$1" in
+     "$CMD_BROADCAST") # WSVIEW sends 2 byte field for size
+          PACKET_BODY+=("0x00")
+           ;;
+  esac
+        
+ # [ -n "$1" ] &&  PACKET_BODY+=("0x00")  # Append for two byte packet length
 }
 
 function checksum {
   CHECKSUM=0
+  [ "$DEBUG" -eq 1 ] && echo CHECKSUM PACKET_BODY "${PACKET_BODY[@]}"
   for ((n = 0; n < ${#PACKET_BODY[@]}; n++)); do
     CHECKSUM=$((CHECKSUM + ${PACKET_BODY[$n]}))
   done
   CHECKSUM=$(printf "0x%x" $((CHECKSUM & 0xff)))
-  [ $DEBUG -eq 1 ] && echo CHECKSUM "$CHECKSUM"
+  [ "$DEBUG" -eq 1 ] && echo CHECKSUM "$CHECKSUM"
 }
 
 function writeString {
@@ -398,8 +420,8 @@ function writeUInt8 {
   PACKET_BODY+=("$(printf "0x%02x" "$1")")
 }
 
-function customizedPacket {
-  initPacketCommand $CMD_WRITE_CUSTOMIZED
+function newCustomizedPacket {
+  newPacket $CMD_WRITE_CUSTOMIZED
   writeString "$CUSTOMIZED_ID"
   writeString "$CUSTOMIZED_PASSWORD"
   writeString "$CUSTOMIZED_SERVER"
@@ -411,43 +433,71 @@ function customizedPacket {
 
 function updateCustomized {
   local needUpdate
+  local key_value
+  local value
+  local key
 
-  initPacketCommand $CMD_READ_CUSTOMIZED
-  COMMAND=customized # Allow parsing in command function
-  command
-  case $1 in
-  CUSTOMIZED_ID)
-    [ "$CUSTOMIZED_ID" != "$2" ] && CUSTOMIZED_ID=$2 && needUpdate=1
-    ;;
-  CUSTOMIZED_PASSWORD)
-    [ "$CUSTOMIZED_PASSWORD" != "$2" ] && CUSTOMIZED_PASSWORD=$2 && needUpdate=1
-    ;;
-  CUSTOMIZED_SERVER)
-    [ "$CUSTOMIZED_SERVER" != "$2" ] && CUSTOMIZED_SERVER=$2 && needUpdate=1
-    ;;
-  CUSTOMIZED_PORT)
-    [ $CUSTOMIZED_PORT != "$2" ] && CUSTOMIZED_PORT=$2 && needUpdate=1
-    ;;
-  CUSTOMIZED_TYPE)
-    [ $CUSTOMIZED_TYPE != "$2" ] && CUSTOMIZED_TYPE=$2 && needUpdate=1
-    ;;
-  CUSTOMIZED_ENABLED)
-    [ $CUSTOMIZED_ENABLED != "$2" ] && CUSTOMIZED_ENABLED=$2 && needUpdate=1
-    ;;
-  CUSTOMIZED_INTERVAL)
-    [ $CUSTOMIZED_INTERVAL != "$2" ] && CUSTOMIZED_INTERVAL=$2 && needUpdate=1
-    ;;
-  esac
+  newPacket $CMD_READ_CUSTOMIZED # read previous configuration
+  sendPacket
+
+#format enabled=1,port=8000,server=test.no
+  readarray -d ',' -t OPTION_CUSTOMIZED <<< "$1"
+
+  for ((n=0; n < ${#OPTION_CUSTOMIZED[@]}; n++ )); do
+    
+    readarray -d '='  -t key_value <<< "${OPTION_CUSTOMIZED[$n]}"
+
+    key=${key_value[0]}
+    value=${key_value[1]}
+    
+    case "$key" in
+
+    id)
+      [ "$DEBUG" -eq 1 ] && echo Update CUSTOMIZED_ID="$value"
+      [ "$CUSTOMIZED_ID" != "$value" ] && CUSTOMIZED_ID="$value" && needUpdate=1
+      ;;
+    password)
+      [ "$DEBUG" -eq 1 ] && echo Update CUSTOMIZED_PASSWORD="$value"
+      [ "$CUSTOMIZED_PASSWORD" != "$value" ] && CUSTOMIZED_PASSWORD=$value && needUpdate=1
+      ;;
+
+    server)
+      [ "$DEBUG" -eq 1 ] && echo Update CUSTOMIZED_SERVER="$value"
+      [ "$CUSTOMIZED_SERVER" != "$value" ] && CUSTOMIZED_SERVER=$value && needUpdate=1
+      ;;
+
+    port)
+          [ "$DEBUG" -eq 1 ] && echo Update CUSTOMIZED_PORT="$value"
+           [ "$CUSTOMIZED_TYPE" != "$value" ] && CUSTOMIZED_TYPE=$value && needUpdate=1
+       ;;
+
+    type)
+          [ "$DEBUG" -eq 1 ] && echo Update CUSTOMIZED_TYPE="$value"
+          [ "$CUSTOMIZED_TYPE" != "$value" ] && CUSTOMIZED_TYPE=$value && needUpdate=1
+     ;;
+
+    enabled)
+          [ "$DEBUG" -eq 1 ] && echo Update CUSTOMIZED_ENABLED="$value"
+          [ $CUSTOMIZED_ENABLED != "$value" ] && CUSTOMIZED_ENABLED=$value && needUpdate=1
+      ;;
+
+    interval)
+          [ "$DEBUG" -eq 1 ] && echo Update CUSTOMIZED_INTERVAL="$value"
+          [ "$CUSTOMIZED_INTERVAL" != "$value" ] && CUSTOMIZED_INTERVAL=$value && needUpdate=1
+          ;;
+    *)
+      echo updateCustomized: unknown key "$key" value: "$value"
+    esac
+    
+  done
 
   #https://stackoverflow.com/questions/18668556/how-can-i-compare-numbers-in-bash
   if ((needUpdate == 1)); then
-    customizedPacket
-    COMMAND=CMD_WRITE_CUSTOMIZED
-    command
-    result
-    printCustomized "$1"
+    newCustomizedPacket
+    sendPacket
+    printCustomized 
   else
-    echo No update needed for "$1"
+    echo No update needed
   fi
 }
 
@@ -459,12 +509,17 @@ while [[ $# -gt 0 ]]; do
   OPTION=""
 
   case $key in
+  -d | --debug)
+     DEBUG=1
+     SOCAT_DEBUG_OPTIONS='-d -d -x'
+     echo "Debug ON"
+     shift
+     ;;
   -h | --host)
     HOST="$2" # this arg must come first to open sockets
     #open file descriptors to UDP/TCP port on HOST
     connect "$2"
     CONNECT_STATUS=$?
-    echo CONNECT STATUS $CONNECT_STATUS [ $CONNECT_STATUS -eq 0 ]
     [ "$CONNECT_STATUS" -ne 0 ] && (
       echo "Failed to connect host $HOST, exiting"
       disconnect
@@ -475,19 +530,18 @@ while [[ $# -gt 0 ]]; do
     ;;
   -c | --command | -r | --read)
     COMMAND="$2"
-    shift # past argument
-    shift # past value
+    shift
+    shift
     ;;
   -s | --scan)
-
-    SCAN_TIMEOUT="$2"
-    scan
-    shift # past argumentS
-    shift # past value
+    discovery
+    shift
+    
     ;;
   -u | --update)
     COMMAND=$key
     OPTION="$2"
+    updateCustomized "$OPTION"
     shift
     shift
     ;;
@@ -503,20 +557,6 @@ while [[ $# -gt 0 ]]; do
       echo "${HTTP_RESPONSE[$n]}"
     done
     shift
-    shift
-    ;;
-  --wifi-scan)
-    sudo nmcli dev wifi rescan
-    sudo nmcli dev wifi list
-    shift
-    ;;
-    #Connect device, for example GW1000-WIFI????
-  --connect)
-    sudo nmcli dev wifi connect "$2"
-    shift
-    ;;
-  -a | --address)
-    sudo ip address
     shift
     ;;
     # Wunderground
@@ -542,78 +582,51 @@ while [[ $# -gt 0 ]]; do
 
   case $COMMAND in
   reboot)
-    command $CMD_REBOOT
+    sendPacket $CMD_REBOOT
     ;;
   mac)
-    command $CMD_READ_MAC
+    sendPacket $CMD_READ_MAC
     ;;
   version)
-    command $CMD_READ_VERSION
+    sendPacket $CMD_READ_VERSION
     ;;
   ecowitt)
-    command $CMD_READ_ECOWITT
+    sendPacket $CMD_READ_ECOWITT
     ;;
   wunderground)
-    command $CMD_READ_WUNDERGROUND
+    sendPacket $CMD_READ_WUNDERGROUND
     ;;
   customized)
-    command $CMD_READ_CUSTOMIZED
+    sendPacket $CMD_READ_CUSTOMIZED
     ;;
   path)
-    command $CMD_READ_PATH
+    sendPacket $CMD_READ_PATH
     ;;
 
   esac
 
+# -l enabled=1,port=8000,server=server.no
   case $OPTION in
   ssid)
-    initPacketCommand $CMD_WRITE_SSID
+    newPacket $CMD_WRITE_SSID
     #ssid packet has two byte length
     # TEST wsview android app, wireshark: ffff | 11 |001b| 08536b6f676c756e640d6c756775626572313934322d2e | a9
     #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/ConfigrouterFragment.java - SaveData
     writeString "$1"
     writeString "$2"
-    command
+    sendPacket
     shift
     shift
     ;;
   path)
-    initPacketCommand $CMD_WRITE_PATH
+    newPacket $CMD_WRITE_PATH
     writeString "$1"
     writeString "$2"
-    command
+    SOCAT_DEBUG_OPTIONS
     shift # remove ecowitt path
     shift # remove wu path
     ;;
-  cport)
-
-    updateCustomized CUSTOMIZED_PORT "$1"
-    shift # remove port
-    ;;
-  cserver)
-    updateCustomized CUSTOMIZED_SERVER "$1"
-    shift
-    ;;
-  cid)
-    updateCustomized CUSTOMIZED_ID "$1"
-    shift
-    ;;
-  cpassword)
-    updateCustomized CUSTOMIZED_PASSWORD "$1"
-    shift
-    ;;
-  cinterval)
-    updateCustomized CUSTOMIZED_INTERVAL "$1"
-    shift
-    ;;
-  ctype)
-    updateCustomized CUSTOMIZED_TYPE "$1"
-    shift
-    ;;
-  cenabled)
-    updateCustomized CUSTOMIZED_ENABLED "$1"
-    shift
-    ;;
+ 
   esac
 
 done
@@ -624,3 +637,6 @@ disconnect
 
 ##echo CMD_BROADCAST
 #command '\x12\x00\x04\x15' $FD_UDP
+#https://unix.stackexchange.com/questions/612193/socat-send-a-udp-broadcast-from-stdin-but-handling-responses-with-system
+#echo -ne "\xff\xff\x12\x00\x04\x16" | socat -d -d -x -t 1 - udp-datagram:255.255.255.255:46000,broadcast 
+
