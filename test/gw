@@ -61,7 +61,7 @@ function connect {
  # fi
 
   if exec {FD_TCP}<>/dev/tcp/"$1"/"$PORT_TCP_COMMAND_SERVER"; then
-    echo Connected "$1:$PORT_TCP_COMMAND_SERVER" "(TCP FD $FD_TCP)"
+    [ "$DEBUG" -eq 1 ] && echo Connected "$1:$PORT_TCP_COMMAND_SERVER" "(TCP FD $FD_TCP)"
   else
     return $ERROR_TCP_CONNECTION
   fi
@@ -96,10 +96,9 @@ function result {
 }
 
 function hexToString {
-  #not possible to return string in bash,using global HEXTOSTRING
   HEXTOSTRING=""
-  NEXT_LENGTH=$(($1 + 1 + $((16#${PACKET[$1]}))))
-
+  NEXT_LENGTH=$(( $1 + 1 + 0x${PACKET[$1]} ))
+ 
   for ((n = $(($1 + 1)); n < NEXT_LENGTH; n++)); do
     HEXTOSTRING+=$(echo -en "\x${PACKET[$n]}")
   done
@@ -172,15 +171,16 @@ function parsePacket {
     echo Version : "$VERSION"
     ;;
   "$CMD_READ_ECOWITT")
-    ECOWITT_INTERVAL=$((16#${PACKET[4]}))
+    ECOWITT_INTERVAL=$(( "${PACKET[4]}" ))
     echo Ecowitt upload interval: $ECOWITT_INTERVAL minutes
     ;;
   "$CMD_READ_WUNDERGROUND")
     hexToString 4
     WUNDERGROUND_STATION_ID=$HEXTOSTRING
+    
     checkEmptyString "$WUNDERGROUND_STATION_ID" "Wunderground station id"
     echo Wunderground station ID: "$WUNDERGROUND_STATION_ID"
-
+    
     hexToString $NEXT_LENGTH
     WUNDERGROUND_PASSWORD=$HEXTOSTRING
     checkEmptyString "$WUNDERGROUND_PASSWORD" "Wunderground password"
@@ -194,7 +194,7 @@ function parsePacket {
     hexToString $NEXT_LENGTH
     CUSTOMIZED_PASSWORD=$HEXTOSTRING
     checkEmptyString "$CUSTOMIZED_PASSWORD" "Customized password"
-
+    
     hexToString $NEXT_LENGTH
     CUSTOMIZED_SERVER=$HEXTOSTRING
     checkEmptyString "$CUSTOMIZED_SERVER" "Customized server"
@@ -212,11 +212,12 @@ function parsePacket {
     hexToString 4
     PATH_ECOWITT=$HEXTOSTRING
     checkEmptyString "$PATH_ECOWITT" "Path ecowitt"
+    echo Ecowitt "$PATH_ECOWITT"
+
     hexToString $NEXT_LENGTH
     PATH_WUNDERGROUND=$HEXTOSTRING
     checkEmptyString "$PATH_WUNDERGROUND" "Path wunderground"
-    echo Path ecowitt: "$PATH_ECOWITT"
-    echo Path wunderground: "$PATH_WUNDERGROUND"
+    echo Wunderground "$PATH_WUNDERGROUND"
     ;;
   "$CMD_WRITE_PATH")
     result "Update path"
@@ -259,11 +260,11 @@ function newPacketTX
   "$CMD_WRITE_SSID" | "$CMD_BROADCAST")
     packetLengthLSB=$(( (  ${#PACKET_BODY[@]} + 1) & 0xff ))
     packetLengthMSB=$(( ( (${#PACKET_BODY[@]} + 1) & 0xff00) >> 8 ))
-    PACKET_BODY[1]=$(printf "0x%02x" $packetLengthMSB)
-    PACKET_BODY[2]=$(printf "0x%02x" $packetLengthLSB)
+    PACKET_BODY[1]=$(decToHex $packetLengthMSB)
+    PACKET_BODY[2]=$(decToHex $packetLengthLSB)
     ;;
   *)
-    PACKET_BODY[1]=$(printf "0x%02x" $((${#PACKET_BODY[@]} + 1))) # set packet length including checksum byte
+    PACKET_BODY[1]=$(decToHex $((${#PACKET_BODY[@]} + 1))) # set packet length including checksum byte
     ;;
   esac
 
@@ -392,32 +393,34 @@ function newPacket { #also add premliminary length, which is updated in command 
 }
 
 function checksum {
+  #caller 0
   CHECKSUM=0
   [ "$DEBUG" -eq 1 ] && echo CHECKSUM PACKET_BODY "${PACKET_BODY[@]}"
   for ((n = 0; n < ${#PACKET_BODY[@]}; n++)); do
     CHECKSUM=$((CHECKSUM + ${PACKET_BODY[$n]}))
   done
-  CHECKSUM=$(printf "0x%x" $((CHECKSUM & 0xff)))
+  CHECKSUM=$(decToHex $((CHECKSUM & 0xff)))
   [ "$DEBUG" -eq 1 ] && echo CHECKSUM "$CHECKSUM"
 }
 
 function writeString {
-  PACKET_BODY+=("$(printf "0x%02x" ${#1})")
+  PACKET_BODY+=("$(decToHex ${#1})")
   for ((n = 0; n < ${#1}; n++)); do
-    PACKET_BODY+=("$(printf "0x%02x" "'${1:$n:1}")")
+    PACKET_BODY+=("$(decToHex "'${1:$n:1}")")
   done
 }
 
 function writeUInt16BE {
-  local MSB
-  MSB=$(printf "0x%02x" $((($1 & 0xff00) >> 8)))
-  local LSB
-  LSB=$(printf "0x%02x" $(($1 & 0x00ff)))
-  PACKET_BODY+=("$MSB" "$LSB")
+  PACKET_BODY+=( "$(decToHex $((($1 & 0xff00) >> 8)))" "$(decToHex $(($1 & 0x00ff)))" )
 }
 
 function writeUInt8 {
-  PACKET_BODY+=("$(printf "0x%02x" "$1")")
+  PACKET_BODY+=("$(decToHex "$1")")
+}
+
+function decToHex
+{
+  printf "0x%02x" "$1"
 }
 
 function newCustomizedPacket {
