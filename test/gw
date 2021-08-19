@@ -404,7 +404,7 @@ function discovery {
         response_hexdump+="${line:$n:2} " # insert space between each byte
       done
       #[ $DEBUG -eq 1 ] && echo "$response_hexdump"
-      mapfile -d ' ' -t PACKET <<<"$response_hexdump"
+      mapfile -d ' ' -t PACKET_RX <<<"$response_hexdump"
       #PACKET_SCAN+=( "$response_hexdump" )
       parsePacket
     fi
