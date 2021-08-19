@@ -52,16 +52,21 @@ FILENAME_RESPONSE='rxpacket'
 FILENAME_RXSOCAT='rxsocat'
 
 function connect {
-  
+
   #https://www.gnu.org/software/bash/manual/bash.html - 3.6 Redirections
- # if exec {FD_UDP}<>/dev/udp/"$1"/$GW_UDP_SERVER_PORT; then
- #   echo "Connected $1:$GW_UDP_SERVER_PORT (UDP FD $FD_UDP)"
- # else
- #   return $ERROR_UDP_CONNECTION
- # fi
+  # if exec {FD_UDP}<>/dev/udp/"$1"/$GW_UDP_SERVER_PORT; then
+  #   echo "Connected $1:$GW_UDP_SERVER_PORT (UDP FD $FD_UDP)"
+  # else
+  #   return $ERROR_UDP_CONNECTION
+  # fi
+
+  if [ -v FD_TCP ]; then
+    [ "$DEBUG" -eq 1 ] && echo "$HOST_PREV closing connection"
+    disconnect
+  fi
 
   if exec {FD_TCP}<>/dev/tcp/"$1"/"$PORT_TCP_COMMAND_SERVER"; then
-    [ "$DEBUG" -eq 1 ] && echo Connected "$1:$PORT_TCP_COMMAND_SERVER" "(TCP FD $FD_TCP)"
+    [ "$DEBUG" -eq 1 ] && echo "$1:$PORT_TCP_COMMAND_SERVER" Connected " (TCP FD $FD_TCP)"
   else
     return $ERROR_TCP_CONNECTION
   fi
@@ -75,10 +80,10 @@ function connect {
 function disconnect {
   #https://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
   #close sockets
- # if [ -n "${FD_UDP+x}" ]; then
+  # if [ -n "${FD_UDP+x}" ]; then
 
- #   if ! exec {FD_UDP}>&-; then echo Failed to close $FD_UDP; fi
- # fi
+  #   if ! exec {FD_UDP}>&-; then echo Failed to close $FD_UDP; fi
+  # fi
 
   if [ -n "${FD_TCP+x}" ]; then
 
@@ -86,105 +91,118 @@ function disconnect {
   fi
 }
 
-function result {
-  STATUS=${PACKET[4]}
-  if [ "$STATUS" == "00" ]; then
-    echo "$1" OK
+function parseResult {
+  local cmd="0x${PACKET_RX[2]}"
+  declare -A cmd_name # -A associative array
+  cmd_name[$CMD_REBOOT]="reboot"
+  cmd_name[$CMD_WRITE_PATH]="write path"
+  cmd_name[$CMD_WRITE_SSID]="write SSID"
+  cmd_name[$CMD_WRITE_CUSTOMIZED]="write customized"
+
+  STATUS=0x${PACKET_RX[4]}
+  echo -n "$HOST" "${cmd_name[$cmd]}" "$STATUS"
+  if ((STATUS == 0)); then
+    echo " OK"
+  elif ((STATUS == 1)); then
+    echo " FAIL"
   else
-    echo "$1" FAILED
+    echo -e '\n'
   fi
 }
 
 function hexToString {
   HEXTOSTRING=""
-  NEXT_LENGTH=$(( $1 + 1 + 0x${PACKET[$1]} ))
- 
+  NEXT_LENGTH=$(($1 + 1 + 0x${PACKET_RX[$1]}))
+  #HEXTOSTRING=""
+  HEXTOSTRING="HEXTOSTRING=$'"
   for ((n = $(($1 + 1)); n < NEXT_LENGTH; n++)); do
-    HEXTOSTRING+=$(echo -en "\x${PACKET[$n]}")
+  #https://www.linuxtopia.org/online_books/advanced_bash_scripting_guide/escapingsection.html
+  #https://www.gnu.org/software/bash/manual/html_node/ANSI_002dC-Quoting.html
+  #https://unix.stackexchange.com/questions/48106/what-does-it-mean-to-have-a-dollarsign-prefixed-string-in-a-script
+    HEXTOSTRING+="\x${PACKET_RX[$n]}"
+  # HEXTOSTRING+=$(echo -ne "\x${PACKET_RX[$n]}")
   done
+  HEXTOSTRING+="'"
+  eval $HEXTOSTRING
 }
 
 function printCustomized {
-    echo -n Customized: id: "$CUSTOMIZED_ID "
-    echo -n password : "$CUSTOMIZED_PASSWORD "
-    echo -n server: "$CUSTOMIZED_SERVER "
-    echo -n port: "$CUSTOMIZED_PORT "
-    echo -n interval: "$CUSTOMIZED_INTERVAL "
-    if ((CUSTOMIZED_TYPE == 1)); then
-      echo -n "type: 1 (Wunderground) "
-    else
-      echo -n "type: 0 (Ecowitt) "
-    fi
+  echo "$HOST" id "$CUSTOMIZED_ID "
+  echo "$HOST" password "$CUSTOMIZED_PASSWORD "
+  echo "$HOST" server "$CUSTOMIZED_SERVER "
+  echo "$HOST" port "$CUSTOMIZED_PORT "
+  echo "$HOST" interval "$CUSTOMIZED_INTERVAL "
 
-      if ((CUSTOMIZED_ENABLED == 1)); then
-      echo enabled: '1 (ON)'
-    else
-      echo enabled: '0 (OFF)'
-    fi
+  if ((CUSTOMIZED_TYPE == 1)); then
+    echo "$HOST" "type 1 Wunderground "
+  elif ((CUSTOMIZED_TYPE == 0)); then
+    echo "$HOST" "type 0 Ecowitt "
+  else
+    echo "$HOST" "type $CUSTOMIZED_TYPE" "UNKNOWN"
+  fi
+
+  if ((CUSTOMIZED_ENABLED == 1)); then
+    echo "$HOST" enabled '1 ON'
+  elif ((CUSTOMIZED_ENABLED == 0)); then
+    echo "$HOST" enabled '0 OFF'
+  else
+    echo "$HOST" enabled "$CUSTOMIZED_ENABLED" "UNKNOWN"
+  fi
 }
 
 function checkEmptyString {
-  [ -z "$1" ] && echo Warning: "$2" empty
-}
-
-function parsePacketLength
-{
-  local packet_cmd
-  local lsb
-  local msb
-
-  packet_cmd=0x${PACKET[2]}
-  case $packet_cmd in
-    "$CMD_BROADCAST")
-       lsb=${PACKET[4]}
-       msb=${PACKET[3]}
-       PACKET_LENGTH=$(( (0x$msb << 8) | 0x$lsb ))
-       ;;
-    *)
-       PACKET_LENGTH=${PACKET[3]}
-    ;;
-  esac
+  [ -z "$1" ] && echo Warning "$2" empty
 }
 
 function parsePacket {
-  local response_cmd
+  local cmd
 
-  parsePacketLength
+  cmd=0x${PACKET_RX[2]}
 
-  [ "$DEBUG" -eq 1 ] && echo "Parse packet ${PACKET[@]} length $PACKET_LENGTH"
+  #Packet length
+  case $cmd in
+  "$CMD_BROADCAST")
+    lsb=${PACKET_RX[4]}
+    msb=${PACKET_RX[3]}
+    PACKET_LENGTH=$(((0x$msb << 8) | 0x$lsb))
+    ;;
+  *)
+    PACKET_LENGTH=${PACKET_RX[3]}
+    ;;
+  esac
 
-  response_cmd=0x${PACKET[2]}
+  [ "$DEBUG" -eq 1 ] && echo "Parse packet ${PACKET_RX[*]} length $PACKET_LENGTH"
 
-  case $response_cmd in
+  case $cmd in
   "$CMD_WRITE_CUSTOMIZED")
-    result "Write Customized"
+    parseResult
     ;;
   "$CMD_REBOOT")
-    result "Reboot"
+    parseResult
     ;;
   "$CMD_READ_MAC")
-    printf "MAC %02X:%02X:%02X:%02X:%02X:%02X\n" 0x"${PACKET[4]}" 0x"${PACKET[5]}" 0x"${PACKET[6]}" 0x"${PACKET[7]}" 0x"${PACKET[8]}" 0x"${PACKET[9]}"
+    printf "%s MAC %02X:%02X:%02X:%02X:%02X:%02X\n" "$HOST" 0x"${PACKET_RX[4]}" 0x"${PACKET_RX[5]}" 0x"${PACKET_RX[6]}" 0x"${PACKET_RX[7]}" 0x"${PACKET_RX[8]}" 0x"${PACKET_RX[9]}"
     ;;
   "$CMD_READ_VERSION")
     hexToString 4
     VERSION=$HEXTOSTRING
-    echo Version : "$VERSION"
+    echo "$HOST" Version "$VERSION"
     ;;
   "$CMD_READ_ECOWITT")
-    ECOWITT_INTERVAL=$(( "${PACKET[4]}" ))
+    ECOWITT_INTERVAL=$(("${PACKET_RX[4]}"))
     echo Ecowitt upload interval: $ECOWITT_INTERVAL minutes
     ;;
   "$CMD_READ_WUNDERGROUND")
     hexToString 4
     WUNDERGROUND_STATION_ID=$HEXTOSTRING
-    
+
     checkEmptyString "$WUNDERGROUND_STATION_ID" "Wunderground station id"
-    echo Wunderground station ID: "$WUNDERGROUND_STATION_ID"
-    
+    echo id "$WUNDERGROUND_STATION_ID"
+
     hexToString $NEXT_LENGTH
     WUNDERGROUND_PASSWORD=$HEXTOSTRING
     checkEmptyString "$WUNDERGROUND_PASSWORD" "Wunderground password"
-    echo Wunderground password : "$WUNDERGROUND_PASSWORD"
+    echo password "$WUNDERGROUND_PASSWORD"
     ;;
   "$CMD_READ_CUSTOMIZED")
     hexToString 4
@@ -194,72 +212,70 @@ function parsePacket {
     hexToString $NEXT_LENGTH
     CUSTOMIZED_PASSWORD=$HEXTOSTRING
     checkEmptyString "$CUSTOMIZED_PASSWORD" "Customized password"
-    
+
     hexToString $NEXT_LENGTH
     CUSTOMIZED_SERVER=$HEXTOSTRING
     checkEmptyString "$CUSTOMIZED_SERVER" "Customized server"
     #http://mywiki.wooledge.org/ArithmeticExpression
 
-    CUSTOMIZED_PORT=$(((0x${PACKET[-7]} << 8) | 0x${PACKET[-6]}))
-    CUSTOMIZED_INTERVAL=$(((0x${PACKET[-5]} << 8) | 0x${PACKET[-4]}))
-    CUSTOMIZED_TYPE=$((0x${PACKET[-3]}))
-    CUSTOMIZED_ENABLED=$((0x${PACKET[-2]}))
+    CUSTOMIZED_PORT=$((     ( 0x${PACKET_RX[-7]} << 8) | 0x${PACKET_RX[-6]} ))
+    CUSTOMIZED_INTERVAL=$(( ( 0x${PACKET_RX[-5]} << 8) | 0x${PACKET_RX[-4]} ))
+    CUSTOMIZED_TYPE=$((       0x${PACKET_RX[-3]} ))
+    CUSTOMIZED_ENABLED=$((    0x${PACKET_RX[-2]} ))
 
     printCustomized
-
     ;;
   "$CMD_READ_PATH")
     hexToString 4
     PATH_ECOWITT=$HEXTOSTRING
     checkEmptyString "$PATH_ECOWITT" "Path ecowitt"
-    echo Ecowitt "$PATH_ECOWITT"
+    echo "$HOST" path "$PATH_ECOWITT" Ecowitt
 
     hexToString $NEXT_LENGTH
     PATH_WUNDERGROUND=$HEXTOSTRING
     checkEmptyString "$PATH_WUNDERGROUND" "Path wunderground"
-    echo Wunderground "$PATH_WUNDERGROUND"
+    echo "$HOST" path "$PATH_WUNDERGROUND" Wunderground
     ;;
   "$CMD_WRITE_PATH")
-    result "Update path"
+    parseResult
     ;;
   "$CMD_WRITE_SSID")
-    result "Update SSID"
+    parseResult
     ;;
   "$CMD_BROADCAST")
 
-     if (( PACKET_LENGTH > 4 )); then
-     {
-          MAC=$(printf "%02X:%02X:%02X:%02X:%02X:%02X\n" 0x"${PACKET[5]}" 0x"${PACKET[6]}" 0x"${PACKET[7]}" 0x"${PACKET[8]}" 0x"${PACKET[9]}" 0x"${PACKET[10]}")
-          IP=$(printf "%d.%d.%d.%d" 0x"${PACKET[11]}" 0x"${PACKET[12]}" 0x"${PACKET[13]}" 0x"${PACKET[14]}")
-          hexToString 17
-          SSID=$HEXTOSTRING
-          PORT=$(printf "%d" 0x"${PACKET[15]}""${PACKET[16]}")
-          echo "$MAC" "$IP":"$PORT" "$SSID"  
-     }
-     else
-     {
-       [ "$DEBUG" -eq 1 ] && echo "Failed: unable to parse broadcast, too small length $PACKET_LENGTH"
-     }
-     fi
-    
+    if ((PACKET_LENGTH > 4)); then
+      {
+        MAC=$(printf "%02X:%02X:%02X:%02X:%02X:%02X\n" 0x"${PACKET_RX[5]}" 0x"${PACKET_RX[6]}" 0x"${PACKET_RX[7]}" 0x"${PACKET_RX[8]}" 0x"${PACKET_RX[9]}" 0x"${PACKET_RX[10]}")
+        IP=$(printf "%d.%d.%d.%d" 0x"${PACKET_RX[11]}" 0x"${PACKET_RX[12]}" 0x"${PACKET_RX[13]}" 0x"${PACKET_RX[14]}")
+        hexToString 17
+        SSID=$HEXTOSTRING
+        PORT=$(printf "%d" 0x"${PACKET_RX[15]}""${PACKET_RX[16]}")
+        echo "$MAC" "$IP":"$PORT" "$SSID"
+      }
+    else
+      {
+        [ "$DEBUG" -eq 1 ] && echo "Failed: unable to parse broadcast, too small length $PACKET_LENGTH"
+      }
+    fi
+
     ;;
   *)
-    echo Warning: unable to parse command "$response_cmd"
+    echo Warning: unable to parse command "$cmd"
     ;;
 
   esac
 }
 
-function newPacketTX
-{
+function newPacketTX {
   local packetLengthLSB
   local packetLengthMSB
-# Take care of 2 or 1 byte packet length
+  # Take care of 2 or 1 byte packet length
 
   case ${PACKET_BODY[0]} in
   "$CMD_WRITE_SSID" | "$CMD_BROADCAST")
-    packetLengthLSB=$(( (  ${#PACKET_BODY[@]} + 1) & 0xff ))
-    packetLengthMSB=$(( ( (${#PACKET_BODY[@]} + 1) & 0xff00) >> 8 ))
+    packetLengthLSB=$(((${#PACKET_BODY[@]} + 1) & 0xff))
+    packetLengthMSB=$((((${#PACKET_BODY[@]} + 1) & 0xff00) >> 8))
     PACKET_BODY[1]=$(decToHex $packetLengthMSB)
     PACKET_BODY[2]=$(decToHex $packetLengthLSB)
     ;;
@@ -271,8 +287,9 @@ function newPacketTX
   checksum
   PACKET_TX=(0xff 0xff "${PACKET_BODY[@]}" "$CHECKSUM")
 
-  #[ "$DEBUG" -eq 1 ] && echo PACKET_TX "${PACKET_TX[@]//0x/''}"
+  [ "$DEBUG" -eq 1 ] && echo PACKET_TX "${PACKET_TX[@]//0x/''}"
 
+  PACKET_TX_ECHO=''
   for ((n = 0; n < ${#PACKET_TX[@]}; n++)); do
     PACKET_TX_ECHO+=${PACKET_TX[$n]}
   done
@@ -282,8 +299,13 @@ function newPacketTX
 
 #including checksum byte
 function sendPacket {
-  
+
   local response_hexdump
+
+  if [ ! -v FD_TCP ]; then
+    echo Error: TCP connection to host not available, missing -h to host?
+    exit $ERROR_TCP_CONNECTION
+  fi
 
   #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
   if [ $# -eq 1 ]; then
@@ -296,7 +318,7 @@ function sendPacket {
 
   echo -ne "$PACKET_TX_ECHO" >$FILENAME_COMMAND
   echo -ne "$PACKET_TX_ECHO" >&$FD_TCP
- #echo -ne "$PACKET_TX_ECHO" | socat $SOCAT_DEBUG_OPTIONS -u  - fd:$FD_TCP
+  #echo -ne "$PACKET_TX_ECHO" | socat $SOCAT_DEBUG_OPTIONS -u  - fd:$FD_TCP
   #[ "$DEBUG" -eq 1 ] && (
   #  echo PACKET TX WRITE STATUS to FD $FD_TCP $?
   #  hexdump -C $FILENAME_COMMAND
@@ -307,34 +329,41 @@ function sendPacket {
   #[ "$DEBUG" -eq 1 ] && dd_status_option=""
   #if ! dd bs=1024 count=1 $dd_status_option <&$FD_TCP >$FILENAME_RESPONSE; then
 
-timeout 0.1 cat <&$FD_TCP >$FILENAME_RESPONSE
-    
-#TEST NUL bytes echo -ne "\x00\x00\x00\x0a\x00\x0b\x00\x0c\x00" | cat | hexdump -C
+  timeout 0.1 cat <&$FD_TCP >$FILENAME_RESPONSE
 
-#  if ! socat $SOCAT_DEBUG_OPTIONS -u -T 0.1 fd:$FD_TCP CREATE:$FILENAME_RESPONSE; then
-#    echo Error: Failed to read response
-#    return "$ERROR_READ_RESPONSE"
-#  fi
+  #TEST NUL bytes echo -ne "\x00\x00\x00\x0a\x00\x0b\x00\x0c\x00" | cat | hexdump -C
+
+  #  if ! socat $SOCAT_DEBUG_OPTIONS -u -T 0.1 fd:$FD_TCP CREATE:$FILENAME_RESPONSE; then
+  #    echo Error: Failed to read response
+  #    return "$ERROR_READ_RESPONSE"
+  #  fi
 
   #[ "$DEBUG" -eq 1 ] && (
   #  echo PACKET RX READ STATUS from FD $FD_TCP $?
   #  echo -ne "$response_hexdump" | hexdump -C
   #)
-  
+
   #Copy response to byte array in hex ff ff .. .. ..
   response_hexdump=$(hexdump -v -e '/1 "%02x "' $FILENAME_RESPONSE) #a NUL termination is inserted for string, must be deleted
-  response_hexdump=${response_hexdump::-1} 
-  mapfile -d ' ' -t PACKET <<< "$response_hexdump"
 
-  [ "$DEBUG" -eq 1 ] && hexdump -C $FILENAME_RESPONSE
+  if (( ${#response_hexdump} == 0 )); then
+     echo Warning: no response received from host "$HOST"
+  else
+    {
+      response_hexdump=${response_hexdump::-1}
+      mapfile -d ' ' -t PACKET_RX <<<"$response_hexdump"
 
-  parsePacket
+      [ "$DEBUG" -eq 1 ] && echo PACKET RX && hexdump -C $FILENAME_RESPONSE
+
+       parsePacket
+    }
+  fi
 
 }
 
 function discovery {
   local TIMEOUT_SCAN=2 #seconds
-  
+
   local rxscan
   local rxscan_sorted
   local response_hexdump
@@ -343,22 +372,26 @@ function discovery {
 
   filename_udp_server="$FILENAME_RXSOCAT"_UDP_"$PORT_UDP_DISCOVERY_SERVER"
   filename_udp_client="$FILENAME_RXSOCAT"_UDP_"$PORT_UDP_DISCOVERY_CLIENT"
-  
+
   [ "$DEBUG" -eq 1 ] && echo "UDP discovery on GW port "$PORT_UDP_DISCOVERY_CLIENT
   [ "$DEBUG" -eq 1 ] && echo "UDP discovery on local port "$PORT_UDP_DISCOVERY_SERVER
-
-  socat $SOCAT_DEBUG_OPTIONS  -u UDP-RECV:"$PORT_UDP_DISCOVERY_SERVER" CREATE:$filename_udp_server &
+  # shellcheck disable=SC2086
+  socat $SOCAT_DEBUG_OPTIONS -u UDP-RECV:"$PORT_UDP_DISCOVERY_SERVER" CREATE:$filename_udp_server &
   #-R socat appends to file
   newPacket $CMD_BROADCAST
-  newPacketTX 
-  (echo -ne "$PACKET_TX_ECHO"; sleep $TIMEOUT_SCAN) | socat $SOCAT_DEBUG_OPTIONS -R "$filename_udp_client" - udp-datagram:255.255.255.255:$PORT_UDP_DISCOVERY_CLIENT,broadcast 1>/dev/null #disable stdout echo of rx data, sleep timeout EOF on STDIN 
+  newPacketTX
+  # shellcheck disable=SC2086
+  (
+    echo -ne "$PACKET_TX_ECHO"
+    sleep $TIMEOUT_SCAN
+  ) | socat $SOCAT_DEBUG_OPTIONS -R "$filename_udp_client" - udp-datagram:255.255.255.255:$PORT_UDP_DISCOVERY_CLIENT,broadcast 1>/dev/null #disable stdout echo of rx data, sleep timeout EOF on STDIN
   # $PACKET_TX_ECHO is also copied over to $filename_udp, strange behavior of socat?
   #(echo -ne "\xff\xff\x12\x00\x04\x16"; sleep 3) | socat -d -d -x -R rxsocat  - udp-datagram:255.255.255.255:46000,broadcast
   kill %1
   cat $filename_udp_client $filename_udp_server >"$FILENAME_RXSOCAT" # Merge results from udp/tcp discovery
-  rxscan=$(hexdump -v -e '/1 "%02x"' "$FILENAME_RXSOCAT" )
+  rxscan=$(hexdump -v -e '/1 "%02x"' "$FILENAME_RXSOCAT")
   rm "$FILENAME_RXSOCAT" "$filename_udp_client" "$filename_udp_server"
-  
+
   #result_sorted=$(echo -en ${result//"ff ff"/"\nff ff"} | sort -u)
   rxscan_sorted=$(echo -en "${rxscan//"ffff"/"\nffff"}" | sort -u)
   [ "$DEBUG" -eq 1 ] && echo -n "$rxscan_sorted" >"$FILENAME_RXSOCAT_SORTED"
@@ -375,7 +408,7 @@ function discovery {
       #PACKET_SCAN+=( "$response_hexdump" )
       parsePacket
     fi
-  done <<<"$rxscan_sorted"
+  done <<< "$rxscan_sorted"
 
   #echo "${PACKET_SCAN[@]}"
 }
@@ -384,12 +417,12 @@ function newPacket { #also add premliminary length, which is updated in command 
   PACKET_BODY=()
   PACKET_BODY+=("$1" "0x00")
   case "$1" in
-     "$CMD_BROADCAST") # WSVIEW sends 2 byte field for size
-          PACKET_BODY+=("0x00")
-           ;;
+  "$CMD_BROADCAST") # WSVIEW sends 2 byte field for size
+    PACKET_BODY+=("0x00")
+    ;;
   esac
-        
- # [ -n "$1" ] &&  PACKET_BODY+=("0x00")  # Append for two byte packet length
+
+  # [ -n "$1" ] &&  PACKET_BODY+=("0x00")  # Append for two byte packet length
 }
 
 function checksum {
@@ -411,27 +444,26 @@ function writeString {
 }
 
 function writeUInt16BE {
-  PACKET_BODY+=( "$(decToHex $((($1 & 0xff00) >> 8)))" "$(decToHex $(($1 & 0x00ff)))" )
+  PACKET_BODY+=("$(decToHex $((($1 & 0xff00) >> 8)))" "$(decToHex $(($1 & 0x00ff)))")
 }
 
 function writeUInt8 {
   PACKET_BODY+=("$(decToHex "$1")")
 }
 
-function decToHex
-{
+function decToHex {
   printf "0x%02x" "$1"
 }
 
 function newCustomizedPacket {
-  newPacket $CMD_WRITE_CUSTOMIZED
-  writeString "$CUSTOMIZED_ID"
-  writeString "$CUSTOMIZED_PASSWORD"
-  writeString "$CUSTOMIZED_SERVER"
+  newPacket    $CMD_WRITE_CUSTOMIZED
+  writeString  "$CUSTOMIZED_ID"
+  writeString  "$CUSTOMIZED_PASSWORD"
+  writeString  "$CUSTOMIZED_SERVER"
   writeUInt16BE $CUSTOMIZED_PORT
   writeUInt16BE $CUSTOMIZED_INTERVAL
-  writeUInt8 $CUSTOMIZED_TYPE
-  writeUInt8 $CUSTOMIZED_ENABLED
+  writeUInt8    $CUSTOMIZED_TYPE
+  writeUInt8    $CUSTOMIZED_ENABLED
 }
 
 function updateCustomized {
@@ -443,16 +475,16 @@ function updateCustomized {
   newPacket $CMD_READ_CUSTOMIZED # read previous configuration
   sendPacket
 
-#format enabled=1,port=8000,server=test.no
-  readarray -d ',' -t OPTION_CUSTOMIZED <<< "$1"
+  #format enabled=1,port=8000,server=test.no
+  readarray -d ',' -t OPTION_CUSTOMIZED <<<"$1"
 
-  for ((n=0; n < ${#OPTION_CUSTOMIZED[@]}; n++ )); do
-    
-    readarray -d '='  -t key_value <<< "${OPTION_CUSTOMIZED[$n]}"
+  for ((n = 0; n < ${#OPTION_CUSTOMIZED[@]}; n++)); do
+
+    readarray -d '=' -t key_value <<<"${OPTION_CUSTOMIZED[$n]}"
 
     key=${key_value[0]}
     value=${key_value[1]}
-    
+
     case "$key" in
 
     id)
@@ -470,35 +502,36 @@ function updateCustomized {
       ;;
 
     port)
-          [ "$DEBUG" -eq 1 ] && echo Update CUSTOMIZED_PORT="$value"
-           [ "$CUSTOMIZED_TYPE" != "$value" ] && CUSTOMIZED_TYPE=$value && needUpdate=1
-       ;;
+      [ "$DEBUG" -eq 1 ] && echo Update CUSTOMIZED_PORT="$value"
+      [ "$CUSTOMIZED_TYPE" != "$value" ] && CUSTOMIZED_TYPE=$value && needUpdate=1
+      ;;
 
     type)
-          [ "$DEBUG" -eq 1 ] && echo Update CUSTOMIZED_TYPE="$value"
-          [ "$CUSTOMIZED_TYPE" != "$value" ] && CUSTOMIZED_TYPE=$value && needUpdate=1
-     ;;
+      [ "$DEBUG" -eq 1 ] && echo Update CUSTOMIZED_TYPE="$value"
+      [ "$CUSTOMIZED_TYPE" != "$value" ] && CUSTOMIZED_TYPE=$value && needUpdate=1
+      ;;
 
     enabled)
-          [ "$DEBUG" -eq 1 ] && echo Update CUSTOMIZED_ENABLED="$value"
-          [ $CUSTOMIZED_ENABLED != "$value" ] && CUSTOMIZED_ENABLED=$value && needUpdate=1
+      [ "$DEBUG" -eq 1 ] && echo Update CUSTOMIZED_ENABLED="$value"
+      [ $CUSTOMIZED_ENABLED != "$value" ] && CUSTOMIZED_ENABLED=$value && needUpdate=1
       ;;
 
     interval)
-          [ "$DEBUG" -eq 1 ] && echo Update CUSTOMIZED_INTERVAL="$value"
-          [ "$CUSTOMIZED_INTERVAL" != "$value" ] && CUSTOMIZED_INTERVAL=$value && needUpdate=1
-          ;;
+      [ "$DEBUG" -eq 1 ] && echo Update CUSTOMIZED_INTERVAL="$value"
+      [ "$CUSTOMIZED_INTERVAL" != "$value" ] && CUSTOMIZED_INTERVAL=$value && needUpdate=1
+      ;;
     *)
       echo updateCustomized: unknown key "$key" value: "$value"
+      ;;
     esac
-    
+
   done
 
   #https://stackoverflow.com/questions/18668556/how-can-i-compare-numbers-in-bash
   if ((needUpdate == 1)); then
     newCustomizedPacket
     sendPacket
-    printCustomized 
+    printCustomized
   else
     echo No update needed
   fi
@@ -513,12 +546,13 @@ while [[ $# -gt 0 ]]; do
 
   case $key in
   -d | --debug)
-     DEBUG=1
-     SOCAT_DEBUG_OPTIONS='-d -d -x'
-     echo "Debug ON"
-     shift
-     ;;
+    DEBUG=1
+    SOCAT_DEBUG_OPTIONS='-d -d -x'
+    echo "Debug ON"
+    shift
+    ;;
   -h | --host)
+    HOST_PREV=$HOST
     HOST="$2" # this arg must come first to open sockets
     #open file descriptors to UDP/TCP port on HOST
     connect "$2"
@@ -539,7 +573,6 @@ while [[ $# -gt 0 ]]; do
   -s | --scan)
     discovery
     shift
-    
     ;;
   -u | --update)
     COMMAND=$key
@@ -608,7 +641,7 @@ while [[ $# -gt 0 ]]; do
 
   esac
 
-# -l enabled=1,port=8000,server=server.no
+  # -l enabled=1,port=8000,server=server.no
   case $OPTION in
   ssid)
     newPacket $CMD_WRITE_SSID
@@ -629,7 +662,7 @@ while [[ $# -gt 0 ]]; do
     shift # remove ecowitt path
     shift # remove wu path
     ;;
- 
+
   esac
 
 done
@@ -641,5 +674,4 @@ disconnect
 ##echo CMD_BROADCAST
 #command '\x12\x00\x04\x15' $FD_UDP
 #https://unix.stackexchange.com/questions/612193/socat-send-a-udp-broadcast-from-stdin-but-handling-responses-with-system
-#echo -ne "\xff\xff\x12\x00\x04\x16" | socat -d -d -x -t 1 - udp-datagram:255.255.255.255:46000,broadcast 
-
+#echo -ne "\xff\xff\x12\x00\x04\x16" | socat -d -d -x -t 1 - udp-datagram:255.255.255.255:46000,broadcast
