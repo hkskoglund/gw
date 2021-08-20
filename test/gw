@@ -51,6 +51,8 @@ FILENAME_COMMAND='txpacket'
 FILENAME_RESPONSE='rxpacket'
 FILENAME_RXSOCAT='rxsocat'
 
+declare -A CONFIGURATION
+
 function connect {
 
   #https://www.gnu.org/software/bash/manual/bash.html - 3.6 Redirections
@@ -128,35 +130,39 @@ function hexToString {
 }
 
 function printCustomized {
-  echo "$HOST" id "$CUSTOMIZED_ID "
-  echo "$HOST" password "$CUSTOMIZED_PASSWORD "
-  echo "$HOST" server "$CUSTOMIZED_SERVER "
-  echo "$HOST" port "$CUSTOMIZED_PORT "
-  echo "$HOST" interval "$CUSTOMIZED_INTERVAL "
+  echo "$HOST" id "${CONFIGURATION[customized_id]}"
+  echo "$HOST" password "${CONFIGURATION[customized_password]}"
+  echo "$HOST" server "${CONFIGURATION[customized_server]}"
+  echo "$HOST" port "${CONFIGURATION[customized_port]}"
+  echo "$HOST" interval "${CONFIGURATION[customized_interval]}"
 
-  if ((CUSTOMIZED_TYPE == 1)); then
+  if ((CONFIGURATION[customized_type] == 1)); then
     echo "$HOST" "type 1 Wunderground "
-  elif ((CUSTOMIZED_TYPE == 0)); then
+  elif ((CONFIGURATION[customized_type] == 0)); then
     echo "$HOST" "type 0 Ecowitt "
   else
-    echo "$HOST" "type $CUSTOMIZED_TYPE" "UNKNOWN"
+    echo "$HOST" "type ${CONFIGURATION[customized_type]}" "UNKNOWN"
   fi
 
-  if ((CUSTOMIZED_ENABLED == 1)); then
+  if ((CONFIGURATION[customized_enabled] == 1)); then
     echo "$HOST" enabled '1 ON'
-  elif ((CUSTOMIZED_ENABLED == 0)); then
+  elif ((CONFIGURATION[customized_enabled] == 0)); then
     echo "$HOST" enabled '0 OFF'
   else
-    echo "$HOST" enabled "$CUSTOMIZED_ENABLED" "UNKNOWN"
+    echo "$HOST" enabled "${CONFIGURATION[customized_enabled]}" "UNKNOWN"
   fi
 }
 
-function checkEmptyString {
-  [ -z "$1" ] && >&2 echo "$HOST" Warning "$2" empty
+function dumpConfiguration
+{
+  #echo "${!CONFIGURATION[@]}"
+  for K in "${!CONFIGURATION[@]}"; do echo "$K ${CONFIGURATION[$K]}"; done
 }
+
 
 function parsePacket {
   local cmd
+  local pos=4
 
   cmd=0x${PACKET_RX[2]}
 
@@ -182,60 +188,58 @@ function parsePacket {
     parseResult
     ;;
   "$CMD_READ_MAC")
-    printf "%s MAC %02X:%02X:%02X:%02X:%02X:%02X\n" "$HOST" 0x"${PACKET_RX[4]}" 0x"${PACKET_RX[5]}" 0x"${PACKET_RX[6]}" 0x"${PACKET_RX[7]}" 0x"${PACKET_RX[8]}" 0x"${PACKET_RX[9]}"
+    CONFIGURATION[mac]=$(printf "%02X:%02X:%02X:%02X:%02X:%02X"  0x"${PACKET_RX[4]}" 0x"${PACKET_RX[5]}" 0x"${PACKET_RX[6]}" 0x"${PACKET_RX[7]}" 0x"${PACKET_RX[8]}" 0x"${PACKET_RX[9]}")
+    echo "$HOST ${CONFIGURATION[mac]}"
     ;;
   "$CMD_READ_VERSION")
-    hexToString 4
-    VERSION=$HEXTOSTRING
-    echo "$HOST" Version "$VERSION"
+    hexToString $pos
+    CONFIGURATION[version]=$HEXTOSTRING
+    echo "$HOST" Version "${CONFIGURATION[version]}"
     ;;
   "$CMD_READ_ECOWITT")
-    ECOWITT_INTERVAL=$(("${PACKET_RX[4]}"))
-    echo Ecowitt upload interval: $ECOWITT_INTERVAL minutes
+    CONFIGURATION[ecowitt_interval]=$(( "${PACKET_RX[$pos]}" ))
+    echo "$HOST ecowitt interval ${CONFIGURATION[interval_ecowitt]} minutes"
     ;;
   "$CMD_READ_WUNDERGROUND")
-    hexToString 4
-    WUNDERGROUND_STATION_ID=$HEXTOSTRING
+    hexToString $pos
+    CONFIGURATION[wunderground_id]=$HEXTOSTRING
+    echo "$HOST id wunderground ${CONFIGURATION[wunderground_id]}"
 
-    checkEmptyString "$WUNDERGROUND_STATION_ID" "Wunderground station id"
-    echo id "$WUNDERGROUND_STATION_ID"
-
-    hexToString $NEXT_LENGTH
-    WUNDERGROUND_PASSWORD=$HEXTOSTRING
-    checkEmptyString "$WUNDERGROUND_PASSWORD" "Wunderground password"
-    echo password "$WUNDERGROUND_PASSWORD"
+    (( pos=pos+${#HEXTOSTRING}+1 ))
+    hexToString "$pos"
+    CONFIGURATION[wunderground_password]=$HEXTOSTRING
+    echo "$HOST password wunderground ${CONFIGURATION[wunderground_password]}"
     ;;
   "$CMD_READ_CUSTOMIZED")
-    hexToString 4
-    CUSTOMIZED_ID=$HEXTOSTRING
-    checkEmptyString "$CUSTOMIZED_ID" "Customized station id"
+    hexToString "$pos"
+    CONFIGURATION[customized_id]=$HEXTOSTRING
+  
+    (( pos=pos+${#HEXTOSTRING}+1 ))
+    hexToString  "$pos"
+    CONFIGURATION[customized_password]=$HEXTOSTRING
 
-    hexToString $NEXT_LENGTH
-    CUSTOMIZED_PASSWORD=$HEXTOSTRING
-    checkEmptyString "$CUSTOMIZED_PASSWORD" "Customized password"
-
-    hexToString $NEXT_LENGTH
-    CUSTOMIZED_SERVER=$HEXTOSTRING
-    checkEmptyString "$CUSTOMIZED_SERVER" "Customized server"
+    (( pos=pos+${#HEXTOSTRING}+1 ))
+    hexToString "$pos"
+    CONFIGURATION[customized_server]=$HEXTOSTRING
     #http://mywiki.wooledge.org/ArithmeticExpression
 
-    CUSTOMIZED_PORT=$((     ( 0x${PACKET_RX[-7]} << 8) | 0x${PACKET_RX[-6]} ))
-    CUSTOMIZED_INTERVAL=$(( ( 0x${PACKET_RX[-5]} << 8) | 0x${PACKET_RX[-4]} ))
-    CUSTOMIZED_TYPE=$((       0x${PACKET_RX[-3]} ))
-    CUSTOMIZED_ENABLED=$((    0x${PACKET_RX[-2]} ))
+    CONFIGURATION[customized_port]=$((     ( 0x${PACKET_RX[-7]} << 8) | 0x${PACKET_RX[-6]} ))
+    CONFIGURATION[customized_interval]=$(( ( 0x${PACKET_RX[-5]} << 8) | 0x${PACKET_RX[-4]} ))
+    CONFIGURATION[customized_type]=$((       0x${PACKET_RX[-3]} ))
+    CONFIGURATION[customized_enabled]=$((    0x${PACKET_RX[-2]} ))
 
     printCustomized
     ;;
   "$CMD_READ_PATH")
-    hexToString 4
-    PATH_ECOWITT=$HEXTOSTRING
-    checkEmptyString "$PATH_ECOWITT" "Path ecowitt"
-    echo "$HOST" path "$PATH_ECOWITT" Ecowitt
+    hexToString "$pos"
+    CONFIGURATION[ecowitt_path]=$HEXTOSTRING
+    echo "$HOST" path "${CONFIGURATION[ecowitt_path]}" Ecowitt
 
-    hexToString $NEXT_LENGTH
-    PATH_WUNDERGROUND=$HEXTOSTRING
-    checkEmptyString "$PATH_WUNDERGROUND" "Path wunderground"
-    echo "$HOST" path "$PATH_WUNDERGROUND" Wunderground
+    (( pos=pos+${#HEXTOSTRING}+1 ))
+    hexToString "$pos"
+    CONFIGURATION[wunderground_path]=$HEXTOSTRING
+    
+    echo "$HOST" path "${CONFIGURATION[wunderground_path]}" Wunderground
     ;;
   "$CMD_WRITE_PATH")
     parseResult
@@ -363,7 +367,7 @@ function sendPacket {
   else
     {
       response_hexdump=${response_hexdump::-1}
-      mapfile -d ' ' -t PACKET_RX <<<"$response_hexdump"
+      mapfile -d ' ' -t PACKET_RX <<< "$response_hexdump"
 
       [ "$DEBUG" -eq 1 ] && echo PACKET RX && hexdump -C $FILENAME_RESPONSE
 
@@ -426,9 +430,9 @@ function checksum {
   CHECKSUM=0
   [ "$DEBUG" -eq 1 ] && echo CHECKSUM PACKET_BODY "${PACKET_BODY[@]}"
   for ((n = 0; n < ${#PACKET_BODY[@]}; n++)); do
-    CHECKSUM=$((CHECKSUM + ${PACKET_BODY[$n]}))
+    CHECKSUM=$(( (CHECKSUM + ${PACKET_BODY[$n]}) & 0xff ))
   done
-  CHECKSUM=$(decToHex $((CHECKSUM & 0xff)))
+   CHECKSUM=$(decToHex $CHECKSUM)
   [ "$DEBUG" -eq 1 ] && echo CHECKSUM "$CHECKSUM"
 }
 
@@ -457,10 +461,10 @@ function newCustomizedPacket {
   writeString  "$CUSTOMIZED_ID"
   writeString  "$CUSTOMIZED_PASSWORD"
   writeString  "$CUSTOMIZED_SERVER"
-  writeUInt16BE $CUSTOMIZED_PORT
-  writeUInt16BE $CUSTOMIZED_INTERVAL
-  writeUInt8    $CUSTOMIZED_TYPE
-  writeUInt8    $CUSTOMIZED_ENABLED
+  writeUInt16BE "$CUSTOMIZED_PORT"
+  writeUInt16BE "$CUSTOMIZED_INTERVAL"
+  writeUInt8    "$CUSTOMIZED_TYPE"
+  writeUInt8    "$CUSTOMIZED_ENABLED"
 }
 
 function updateCustomized {
@@ -511,7 +515,7 @@ function updateCustomized {
 
     enabled)
       [ "$DEBUG" -eq 1 ] && echo Update CUSTOMIZED_ENABLED="$value"
-      [ $CUSTOMIZED_ENABLED != "$value" ] && CUSTOMIZED_ENABLED=$value && needUpdate=1
+      [ "$CUSTOMIZED_ENABLED" != "$value" ] && CUSTOMIZED_ENABLED=$value && needUpdate=1
       ;;
 
     interval)
@@ -543,6 +547,10 @@ while [[ $# -gt 0 ]]; do
   OPTION=""
 
   case $key in
+  -b | --backup)
+     dumpConfiguration
+     shift
+     ;;
   -d | --debug)
     DEBUG=1
     SOCAT_DEBUG_OPTIONS='-d -d -x'
@@ -673,5 +681,4 @@ disconnect
 #command '\x12\x00\x04\x15' $FD_UDP
 #https://unix.stackexchange.com/questions/612193/socat-send-a-udp-broadcast-from-stdin-but-handling-responses-with-system
 #echo -ne "\xff\xff\x12\x00\x04\x16" | socat -d -d -x -t 1 - udp-datagram:255.255.255.255:46000,broadcast
-
 
