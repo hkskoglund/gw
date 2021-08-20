@@ -38,12 +38,13 @@ CMD_WRITE_CUSTOMIZED=0x2b
 CMD_WRITE_SSID=0x11
 CMD_BROADCAST=0x12
 
+CMD_WRITE_RESET=0x41
+
 # PACKET BODY STARTING AT BYTE 2
 PACKET_BODY=()
 
 #CONNECT ERRORS
-ERROR_TCP_CONNECTION=1
-#ERROR_UDP_CONNECTION=2
+ERROR_CONNECTION=1
 #ERROR_READ_RESPONSE=3
 
 FILENAME_RXSOCAT_SORTED='rxsocat_sorted'
@@ -56,21 +57,21 @@ declare -A CONFIGURATION
 function connect {
 
   #https://www.gnu.org/software/bash/manual/bash.html - 3.6 Redirections
-  # if exec {FD_UDP}<>/dev/udp/"$1"/$GW_UDP_SERVER_PORT; then
-  #   echo "Connected $1:$GW_UDP_SERVER_PORT (UDP FD $FD_UDP)"
-  # else
-  #   return $ERROR_UDP_CONNECTION
-  # fi
+   if exec {FD_UDP}<>/dev/udp/"$1"/"$PORT_UDP_DISCOVERY_CLIENT"; then
+     [ "$DEBUG" -eq 1 ] && echo  >&2 "$1:$PORT_UDP_DISCOVERY_CLIENT Connected (UDP FD $FD_UDP)"
+   else
+     return $ERROR_CONNECTION
+   fi
 
   if [ -v FD_TCP ]; then
-    [ "$DEBUG" -eq 1 ] && echo "$HOST_PREV closing connection"
+    [ "$DEBUG" -eq 1 ] && >&2 echo "$HOST_PREV closing connection"
     disconnect
   fi
 
   if exec {FD_TCP}<>/dev/tcp/"$1"/"$PORT_TCP_COMMAND_SERVER"; then
-    [ "$DEBUG" -eq 1 ] && echo "$1:$PORT_TCP_COMMAND_SERVER" Connected " (TCP FD $FD_TCP)"
+    [ "$DEBUG" -eq 1 ] && >&2 echo "$1:$PORT_TCP_COMMAND_SERVER Connected (TCP FD $FD_TCP)"
   else
-    return $ERROR_TCP_CONNECTION
+    return $ERROR_CONNECTION
   fi
 
   #echo Current shell PID $$
@@ -82,14 +83,14 @@ function connect {
 function disconnect {
   #https://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
   #close sockets
-  # if [ -n "${FD_UDP+x}" ]; then
+   if [ -n "${FD_UDP+x}" ]; then
 
-  #   if ! exec {FD_UDP}>&-; then echo Failed to close $FD_UDP; fi
-  # fi
+     if ! exec {FD_UDP}>&-; then >&2 echo Failed to close $FD_UDP; fi
+   fi
 
   if [ -n "${FD_TCP+x}" ]; then
 
-    if ! exec {FD_TCP}>&-; then echo Failed to close $FD_TCP; fi
+    if ! exec {FD_TCP}>&-; then >&2 echo Failed to close $FD_TCP; fi
   fi
 }
 
@@ -100,6 +101,7 @@ function parseResult {
   cmd_name[$CMD_WRITE_PATH]="write path"
   cmd_name[$CMD_WRITE_SSID]="write SSID"
   cmd_name[$CMD_WRITE_CUSTOMIZED]="write customized"
+  cmd_name[$CMD_WRITE_RESET]="write reset"
 
   STATUS=0x${PACKET_RX[4]}
   echo -n "$HOST" "${cmd_name[$cmd]}" "$STATUS"
@@ -156,7 +158,12 @@ function printCustomized {
 function dumpConfiguration
 {
   #echo "${!CONFIGURATION[@]}"
-  for K in "${!CONFIGURATION[@]}"; do echo "$K ${CONFIGURATION[$K]}"; done
+  for K in "${!CONFIGURATION[@]}"; do printf "%-30s %s\n" "$K" "${CONFIGURATION[$K]}"; done
+}
+
+function echoBroadcastConfiguration
+{
+    echo "$HOST ${CONFIGURATION[broadcast_mac]} ${CONFIGURATION[broadcast_ip]}:${CONFIGURATION[broadcast_port]} ${CONFIGURATION[broadcast_ssid]} ${CONFIGURATION[broadcast_version]}"
 }
 
 
@@ -181,6 +188,9 @@ function parsePacket {
   [ "$DEBUG" -eq 1 ] && echo "Parse packet ${PACKET_RX[*]} length $PACKET_LENGTH"
 
   case $cmd in
+  "$CMD_WRITE_RESET")
+    parseResult
+    ;;
   "$CMD_WRITE_CUSTOMIZED")
     parseResult
     ;;
@@ -198,7 +208,7 @@ function parsePacket {
     ;;
   "$CMD_READ_ECOWITT")
     CONFIGURATION[ecowitt_interval]=$(( "${PACKET_RX[$pos]}" ))
-    echo "$HOST ecowitt interval ${CONFIGURATION[interval_ecowitt]} minutes"
+    echo "$HOST ecowitt interval ${CONFIGURATION[ecowitt_interval]} minutes"
     ;;
   "$CMD_READ_WUNDERGROUND")
     hexToString $pos
@@ -249,14 +259,21 @@ function parsePacket {
     ;;
   "$CMD_BROADCAST")
 
+
+
     if ((PACKET_LENGTH > 4)); then
       {
-        MAC=$(printf "%02X:%02X:%02X:%02X:%02X:%02X\n" 0x"${PACKET_RX[5]}" 0x"${PACKET_RX[6]}" 0x"${PACKET_RX[7]}" 0x"${PACKET_RX[8]}" 0x"${PACKET_RX[9]}" 0x"${PACKET_RX[10]}")
-        IP=$(printf "%d.%d.%d.%d" 0x"${PACKET_RX[11]}" 0x"${PACKET_RX[12]}" 0x"${PACKET_RX[13]}" 0x"${PACKET_RX[14]}")
+
+        CONFIGURATION[broadcast_mac]=$(printf "%02X:%02X:%02X:%02X:%02X:%02X\n" 0x"${PACKET_RX[5]}" 0x"${PACKET_RX[6]}" 0x"${PACKET_RX[7]}" 0x"${PACKET_RX[8]}" 0x"${PACKET_RX[9]}" 0x"${PACKET_RX[10]}")
+        CONFIGURATION[broadcast_ip]=$(printf "%d.%d.%d.%d" 0x"${PACKET_RX[11]}" 0x"${PACKET_RX[12]}" 0x"${PACKET_RX[13]}" 0x"${PACKET_RX[14]}")
         hexToString 17
-        SSID=$HEXTOSTRING
-        PORT=$(printf "%d" 0x"${PACKET_RX[15]}""${PACKET_RX[16]}")
-        echo "$MAC" "$IP":"$PORT" "$SSID"
+        local ssid
+        local version
+        read -r ssid version <<< "$HEXTOSTRING" # ssid appends space+version
+        CONFIGURATION[broadcast_ssid]=$ssid
+        CONFIGURATION[broadcast_version]=$version
+        CONFIGURATION[broadcast_port]=$(printf "%d" 0x"${PACKET_RX[15]}""${PACKET_RX[16]}")
+        echoBroadcastConfiguration
       }
     else
       {
@@ -318,21 +335,26 @@ function createPacketTX {
 function sendPacket {
 
   local response_hexdump
+  local timeoutCat=0.3 # 300ms
+  local FD=$FD_TCP # default TCP command port
 
-  if [ ! -v FD_TCP ]; then
-   >&2 echo Error TCP connection to host not available, missing -h to host? 
-    exit $ERROR_TCP_CONNECTION
+  [ -n "$2" ] && FD="$2" #may also use UDP for broadcast (ssid etc.)
+  if [ ! -v FD ]; then
+   >&2 echo Error connection to host not available, missing -h to host? 
+    exit $ERROR_CONNECTION
   fi
 
+  [ "$DEBUG" -eq 1 ] && echo >&2 "Using FD $FD for sending packet"
+
   #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
-  if [ $# -eq 1 ]; then
+  if [  $# -ge 1 ] ; then
     newPacketBody "$1"
   fi
 
   # write command/read response
 
   createPacketTX && echo -ne "$PACKET_TX_ECHO" >$FILENAME_COMMAND
-  echo -ne "$PACKET_TX_ECHO" >&$FD_TCP
+  echo -ne "$PACKET_TX_ECHO" >&"$FD"
   #echo -ne "$PACKET_TX_ECHO" | socat $SOCAT_DEBUG_OPTIONS -u  - fd:$FD_TCP
   #[ "$DEBUG" -eq 1 ] && (
   #  echo PACKET TX WRITE STATUS to FD $FD_TCP $?
@@ -344,7 +366,7 @@ function sendPacket {
   #[ "$DEBUG" -eq 1 ] && dd_status_option=""
   #if ! dd bs=1024 count=1 $dd_status_option <&$FD_TCP >$FILENAME_RESPONSE; then
 
-  timeout 0.1 cat <&$FD_TCP >$FILENAME_RESPONSE
+  timeout $timeoutCat cat <&"$FD" >$FILENAME_RESPONSE
 
   #TEST NUL bytes echo -ne "\x00\x00\x00\x0a\x00\x0b\x00\x0c\x00" | cat | hexdump -C
 
@@ -363,7 +385,7 @@ function sendPacket {
 
   if (( ${#response_hexdump} == 0 )); then
   
-     >&2 echo "$HOST Warning no response received from host" 
+     >&2 echo "$HOST Warning no response received from host, timeout $timeoutCat s too low for cat FD $FD_TCP ?" 
   else
     {
       response_hexdump=${response_hexdump::-1}
@@ -548,8 +570,14 @@ while [[ $# -gt 0 ]]; do
 
   case $key in
   -b | --backup)
-     dumpConfiguration
-     shift
+      sendPacket $CMD_READ_MAC
+      sendPacket $CMD_READ_VERSION
+      sendPacket $CMD_READ_ECOWITT
+      sendPacket $CMD_READ_WUNDERGROUND
+      sendPacket $CMD_READ_CUSTOMIZED
+      sendPacket $CMD_READ_PATH
+      dumpConfiguration
+      shift
      ;;
   -d | --debug)
     DEBUG=1
@@ -568,6 +596,7 @@ while [[ $# -gt 0 ]]; do
       disconnect
       exit $CONNECT_STATUS
     )
+    CONFIGURATION[host]=$HOST
     shift # past argument
     shift # past value
     ;;
@@ -623,6 +652,17 @@ while [[ $# -gt 0 ]]; do
   esac
 
   case $COMMAND in
+  reset)
+    sendPacket $CMD_BROADCAST $FD_UDP
+    read  -r -p "Are you sure to reset, maybe perform configuration backup first (Y/N)? "
+    case $REPLY in 
+      Y) sendPacket $CMD_WRITE_RESET
+      #BROADCAST annoncing GW1000A-WIFI4EC, but after reset GW1000-WIFI4EC is annonced (without A?)
+      echo Fedora sudo nmcli dev wifi rescan; sudo nmcli dev wifi list | grep "${CONFIGURATION[broadcast_ssid]:0:4}"
+      echo "Fedora sudo nmcli connect {ssid}"
+      ;;
+    esac
+    ;;
   reboot)
     sendPacket $CMD_REBOOT
     ;;
@@ -643,6 +683,9 @@ while [[ $# -gt 0 ]]; do
     ;;
   path)
     sendPacket $CMD_READ_PATH
+    ;;
+  broadcast)
+    sendPacket $CMD_BROADCAST $FD_UDP
     ;;
 
   esac
