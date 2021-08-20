@@ -43,8 +43,8 @@ PACKET_BODY=()
 
 #CONNECT ERRORS
 ERROR_TCP_CONNECTION=1
-ERROR_UDP_CONNECTION=2
-ERROR_READ_RESPONSE=3
+#ERROR_UDP_CONNECTION=2
+#ERROR_READ_RESPONSE=3
 
 FILENAME_RXSOCAT_SORTED='rxsocat_sorted'
 FILENAME_COMMAND='txpacket'
@@ -111,6 +111,7 @@ function parseResult {
 }
 
 function hexToString {
+  local n
   HEXTOSTRING=""
   NEXT_LENGTH=$(($1 + 1 + 0x${PACKET_RX[$1]}))
   #HEXTOSTRING=""
@@ -151,7 +152,7 @@ function printCustomized {
 }
 
 function checkEmptyString {
-  [ -z "$1" ] && echo Warning "$2" empty
+  [ -z "$1" ] && >&2 echo "$HOST" Warning "$2" empty
 }
 
 function parsePacket {
@@ -261,18 +262,29 @@ function parsePacket {
 
     ;;
   *)
-    echo Warning: unable to parse command "$cmd"
+    >&2 echo "$HOST" Warning unable to parse command "$cmd"
     ;;
 
   esac
 }
 
-function newPacketTX {
+function newPacketBody {
+  PACKET_BODY=()
+  PACKET_BODY+=("$1" "0x00")
+  case "$1" in
+  "$CMD_BROADCAST") # WSVIEW sends 2 byte field for size
+    PACKET_BODY+=("0x00")
+    ;;
+  esac
+
+  # [ -n "$1" ] &&  PACKET_BODY+=("0x00")  # Append for two byte packet length
+}
+function createPacketTX {
   local packetLengthLSB
   local packetLengthMSB
-  # Take care of 2 or 1 byte packet length
+  local n
 
-  case ${PACKET_BODY[0]} in
+  case ${PACKET_BODY[0]} in # Take care of 2 or 1 byte packet length
   "$CMD_WRITE_SSID" | "$CMD_BROADCAST")
     packetLengthLSB=$(((${#PACKET_BODY[@]} + 1) & 0xff))
     packetLengthMSB=$((((${#PACKET_BODY[@]} + 1) & 0xff00) >> 8))
@@ -285,6 +297,7 @@ function newPacketTX {
   esac
 
   checksum
+
   PACKET_TX=(0xff 0xff "${PACKET_BODY[@]}" "$CHECKSUM")
 
   [ "$DEBUG" -eq 1 ] && echo PACKET_TX "${PACKET_TX[@]//0x/''}"
@@ -303,20 +316,18 @@ function sendPacket {
   local response_hexdump
 
   if [ ! -v FD_TCP ]; then
-    echo Error: TCP connection to host not available, missing -h to host?
+   >&2 echo Error TCP connection to host not available, missing -h to host? 
     exit $ERROR_TCP_CONNECTION
   fi
 
   #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
   if [ $# -eq 1 ]; then
-    newPacket "$1"
+    newPacketBody "$1"
   fi
-
-  newPacketTX
 
   # write command/read response
 
-  echo -ne "$PACKET_TX_ECHO" >$FILENAME_COMMAND
+  createPacketTX && echo -ne "$PACKET_TX_ECHO" >$FILENAME_COMMAND
   echo -ne "$PACKET_TX_ECHO" >&$FD_TCP
   #echo -ne "$PACKET_TX_ECHO" | socat $SOCAT_DEBUG_OPTIONS -u  - fd:$FD_TCP
   #[ "$DEBUG" -eq 1 ] && (
@@ -347,7 +358,8 @@ function sendPacket {
   response_hexdump=$(hexdump -v -e '/1 "%02x "' $FILENAME_RESPONSE) #a NUL termination is inserted for string, must be deleted
 
   if (( ${#response_hexdump} == 0 )); then
-     echo Warning: no response received from host "$HOST"
+  
+     >&2 echo "$HOST Warning no response received from host" 
   else
     {
       response_hexdump=${response_hexdump::-1}
@@ -369,6 +381,7 @@ function discovery {
   local response_hexdump
   local filename_udp_client
   local filename_udp_server
+  local n
 
   filename_udp_server="$FILENAME_RXSOCAT"_UDP_"$PORT_UDP_DISCOVERY_SERVER"
   filename_udp_client="$FILENAME_RXSOCAT"_UDP_"$PORT_UDP_DISCOVERY_CLIENT"
@@ -378,8 +391,8 @@ function discovery {
   # shellcheck disable=SC2086
   socat $SOCAT_DEBUG_OPTIONS -u UDP-RECV:"$PORT_UDP_DISCOVERY_SERVER" CREATE:$filename_udp_server &
   #-R socat appends to file
-  newPacket $CMD_BROADCAST
-  newPacketTX
+  newPacketBody $CMD_BROADCAST
+  createPacketTX
   # shellcheck disable=SC2086
   (
     echo -ne "$PACKET_TX_ECHO"
@@ -398,34 +411,17 @@ function discovery {
 
   while read -r line; do
     if [[ "{$line:0:4}" =~ ffff.* ]]; then
-      #PACKET=
-      response_hexdump=
-      for ((n = 0; n < ${#line}; n = n + 2)); do
-        response_hexdump+="${line:$n:2} " # insert space between each byte
+      for ((n = 0, i=0; n < ${#line}; n = n + 2, i++)); do
+        PACKET_RX[$i]=${line:$n:2}
       done
-      #[ $DEBUG -eq 1 ] && echo "$response_hexdump"
-      mapfile -d ' ' -t PACKET_RX <<<"$response_hexdump"
-      #PACKET_SCAN+=( "$response_hexdump" )
       parsePacket
     fi
   done <<< "$rxscan_sorted"
-
-  #echo "${PACKET_SCAN[@]}"
-}
-
-function newPacket { #also add premliminary length, which is updated in command when sending
-  PACKET_BODY=()
-  PACKET_BODY+=("$1" "0x00")
-  case "$1" in
-  "$CMD_BROADCAST") # WSVIEW sends 2 byte field for size
-    PACKET_BODY+=("0x00")
-    ;;
-  esac
-
-  # [ -n "$1" ] &&  PACKET_BODY+=("0x00")  # Append for two byte packet length
+  
 }
 
 function checksum {
+  local n
   #caller 0
   CHECKSUM=0
   [ "$DEBUG" -eq 1 ] && echo CHECKSUM PACKET_BODY "${PACKET_BODY[@]}"
@@ -437,6 +433,7 @@ function checksum {
 }
 
 function writeString {
+  local n
   PACKET_BODY+=("$(decToHex ${#1})")
   for ((n = 0; n < ${#1}; n++)); do
     PACKET_BODY+=("$(decToHex "'${1:$n:1}")")
@@ -456,7 +453,7 @@ function decToHex {
 }
 
 function newCustomizedPacket {
-  newPacket    $CMD_WRITE_CUSTOMIZED
+  newPacketBody $CMD_WRITE_CUSTOMIZED
   writeString  "$CUSTOMIZED_ID"
   writeString  "$CUSTOMIZED_PASSWORD"
   writeString  "$CUSTOMIZED_SERVER"
@@ -471,12 +468,13 @@ function updateCustomized {
   local key_value
   local value
   local key
+  local n
 
-  newPacket $CMD_READ_CUSTOMIZED # read previous configuration
+  newPacketBody $CMD_READ_CUSTOMIZED # read previous configuration
   sendPacket
 
   #format enabled=1,port=8000,server=test.no
-  readarray -d ',' -t OPTION_CUSTOMIZED <<<"$1"
+  readarray -d ',' -t OPTION_CUSTOMIZED <<< "$1"
 
   for ((n = 0; n < ${#OPTION_CUSTOMIZED[@]}; n++)); do
 
@@ -558,7 +556,7 @@ while [[ $# -gt 0 ]]; do
     connect "$2"
     CONNECT_STATUS=$?
     [ "$CONNECT_STATUS" -ne 0 ] && (
-      echo "Failed to connect host $HOST, exiting"
+      >&2 echo "$HOST" "Error Failed to connect host, exiting"
       disconnect
       exit $CONNECT_STATUS
     )
@@ -587,7 +585,7 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
   -l | --listen)
-    echo Listening on port "$2"
+    >&2 echo  Listening on port "$2"
     mapfile HTTP_RESPONSE <<<"$(nc -l "$2")"
     for ((n = 0; n < ${#HTTP_RESPONSE[@]}; n++)); do
       echo "${HTTP_RESPONSE[$n]}"
@@ -644,7 +642,7 @@ while [[ $# -gt 0 ]]; do
   # -l enabled=1,port=8000,server=server.no
   case $OPTION in
   ssid)
-    newPacket $CMD_WRITE_SSID
+    newPacketBody $CMD_WRITE_SSID
     #ssid packet has two byte length
     # TEST wsview android app, wireshark: ffff | 11 |001b| 08536b6f676c756e640d6c756775626572313934322d2e | a9
     #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/ConfigrouterFragment.java - SaveData
@@ -655,7 +653,7 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
   path)
-    newPacket $CMD_WRITE_PATH
+    newPacketBody $CMD_WRITE_PATH
     writeString "$1"
     writeString "$2"
     SOCAT_DEBUG_OPTIONS
@@ -675,3 +673,5 @@ disconnect
 #command '\x12\x00\x04\x15' $FD_UDP
 #https://unix.stackexchange.com/questions/612193/socat-send-a-udp-broadcast-from-stdin-but-handling-responses-with-system
 #echo -ne "\xff\xff\x12\x00\x04\x16" | socat -d -d -x -t 1 - udp-datagram:255.255.255.255:46000,broadcast
+
+
