@@ -138,7 +138,7 @@ function parseResultPacket {
   local cmd="0x${PACKET_RX[2]}"
   
   STATUS=0x${PACKET_RX[4]}
-  echo -n >&2 "$HOST"  "$(getCommandName "$cmd")" "$STATUS"
+  echo -n >&2 "$(getCommandName "$cmd")" "$STATUS"
   if ((STATUS == 0)); then
     echo >&2 " OK"
   elif ((STATUS == 1)); then
@@ -226,7 +226,7 @@ function parsePacket {
   (( DEBUG )) && echo >&2 "Parse packet ${PACKET_RX[*]} length $PACKET_LENGTH"
 
   case $cmd in
-  "${CMD[write_reset]}" | "${CMD[write_customized]}" | "${CMD[reboot]}" | "${CMD[write_path]}" | "${CMD[write_ssid]}")
+  "${CMD[write_reset]}" | "${CMD[write_customized]}" | "${CMD[reboot]}" | "${CMD[write_path]}" | "${CMD[write_ssid]}" | "${CMD[write_raindata]}")
     parseResultPacket
     ;;
   "${CMD[read_mac]}")
@@ -500,12 +500,29 @@ function writeString {
   done
 }
 
+function writeUInt32BE {
+  writeUInt 32 "$1"
+}
 function writeUInt16BE {
-  PACKET_BODY+=("$(decToHex $((($1 & 0xff00) >> 8)))" "$(decToHex $(($1 & 0x00ff)))")
+  writeUInt 16 "$1"
 }
 
 function writeUInt8 {
-  PACKET_BODY+=("$(decToHex "$1")")
+ writeUInt 8 "$1"
+}
+
+function writeUInt {
+  local hex
+
+  case $1 in
+     8) hex=$(printf "%02x" "$2") ;;
+    16) hex=$(printf "%04x" "$2") ;;
+    32) hex=$(printf "%08x" "$2") ;;
+  esac
+
+  for ((n=0;n<${#hex};n=n+2)); do
+    PACKET_BODY+=( 0x"${hex:$n:2}" )
+  done;
 }
 
 function decToHex {
@@ -651,6 +668,20 @@ while [[ $# -gt 0 ]]; do
   key="$1"
   
   case $key in
+  -a | --rain)
+      newPacketBody ${CMD[write_raindata]}
+      (( DEBUG )) && >&2 echo rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
+      writeUInt32BE "$2" #rainday
+      writeUInt32BE "$3" #rainweek
+      writeUInt32BE "$4" #rainmonth
+      writeUInt32BE "$5" #rainmonth
+      sendPacket
+      shift
+      shift
+      shift
+      shift
+      shift
+      ;;
   -b | --backup)
       sendPacket ${CMD[read_mac]} >/dev/null
       sendPacket ${CMD[read_version]} >/dev/null
@@ -742,8 +773,9 @@ while [[ $# -gt 0 ]]; do
 
   case $COMMAND in
   reset)
+
     sendPacket ${CMD[broadcast]} $FD_UDP
-    read  -r -p "Are you sure to reset ${CONFIGURATION[broadcast_mac]} ${CONFIGURATION[broadcast ip]}, maybe perform configuration backup first (Y/N)? "
+    read  -r -p "Are you sure to reset ${CONFIGURATION[broadcast_mac]} ${CONFIGURATION[broadcast_ip]}, maybe perform configuration backup first (Y/N)? "
     case $REPLY in 
       Y) sendPacket ${CMD[write_reset]}
       #BROADCAST annoncing GW1000A-WIFI4EC, but after reset GW1000-WIFI4EC is annonced (without A?)
