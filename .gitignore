@@ -1,6 +1,5 @@
 node_modules/
 mockup/
 doc/
-test/rxpacket
-test/txpacket
-test/rxsocat_sorted
+test/man*
+
