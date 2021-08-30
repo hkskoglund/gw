@@ -13,8 +13,6 @@
 #echo PID "$$"
 #read -r -p "DEBUG - press key to continue"
 
-HTTP_UA_NAME="gw ShellScript"
-HTTP_FIRMWARE="http://download.ecowitt.net/down/filewave?v=FirwaveReadme.txt"
 
 declare -i DEBUG
 DEBUG=0
@@ -54,22 +52,10 @@ PACKET_BODY=()
 
 #CONNECT ERRORS
 ERROR_CONNECTION=1
+ERROR_RAINDATA_NOTSPECIFIED=2
 #ERROR_READ_RESPONSE=3
 
-declare -A FILENAME
-
-DIR=$HOME'/.config/gw'
-mkdir "$DIR" 2>/dev/null
-
-FILENAME[tx]=$DIR'/txpacket'
-FILENAME[rx]=$DIR'/rxpacket'
-FILENAME[discovery]=$DIR'/rxsocat'
-FILENAME[discovery_sorted]=$DIR/'rxsocat_sorted'
-FILENAME[udp_server]="${FILENAME[discovery]}"_UDP_"${PORT[udp_discovery_server]}"
-FILENAME[udp_client]="${FILENAME[discovery]}"_UDP_"${PORT[udp_discovery_client]}"
-
 declare -A CONFIGURATION
-
 
 function connect {
 
@@ -148,7 +134,13 @@ function parseResultPacket {
   fi
 }
 
+function printStack
+{
+ echo "${FUNCNAME[@]}"
+}
+
 function printCustomized {
+ 
   echo "customized_id ${CONFIGURATION[customized_id]}"
   echo "customized_password ${CONFIGURATION[customized_password]}"
   echo "customized_server ${CONFIGURATION[customized_server]}"
@@ -156,9 +148,9 @@ function printCustomized {
   echo "customized_interval ${CONFIGURATION[customized_interval]}"
 
   if ((CONFIGURATION[customized_type] == 1)); then
-    echo "customized_type 1 Wunderground"
+    echo "customized_type 1 wunderground"
   elif ((CONFIGURATION[customized_type] == 0)); then
-    echo "customized_type 0 Ecowitt "
+    echo "customized_type 0 ecowitt "
   else
     echo "customized_type ${CONFIGURATION[customized_type]}" "UNKNOWN"
   fi
@@ -172,7 +164,6 @@ function printCustomized {
   fi
 
   echo "customized_ecowitt_path ${CONFIGURATION[customized_ecowitt_path]}"
-   
   echo "customized_wunderground path ${CONFIGURATION[customized_wunderground_path]}"
 }
 
@@ -183,25 +174,30 @@ function dumpConfiguration
   for K in "${!CONFIGURATION[@]}"; do printf "%-30s %s\n" "$K" "${CONFIGURATION[$K]}"; done
 }
 
-function echoBroadcastConfiguration
-{
-    echo "${CONFIGURATION[broadcast_mac]} ${CONFIGURATION[broadcast_ip]}:${CONFIGURATION[broadcast_port]} ${CONFIGURATION[broadcast_ssid]} ${CONFIGURATION[broadcast_version]}"
-}
-
 function readUInt32BE
 {
 #  echo Parameter $1 "0x${PACKET_RX_HEX:$1:8}" 
   printf "%d" "0x${PACKET_RX_HEX:$1:8}"
 }
 
-
 function printRain
 {
+  local rr
+  local rd
+  local rw
+  local rm
+  local ry
+  rr=$(convertTomm "${CONFIGURATION[rainrate]}")
+  rd=$(convertTomm "${CONFIGURATION[rainday]}")
+  rw=$(convertTomm "${CONFIGURATION[rainweek]}")
+  rm=$(convertTomm "${CONFIGURATION[rainmonth]}")
+  ry=$(convertTomm "${CONFIGURATION[rainyear]}")
    echo -n rainrate "${CONFIGURATION[rainrate]} "
    echo -n rainday "${CONFIGURATION[rainday]} "
    echo -n rainweek "${CONFIGURATION[rainweek]} "
    echo -n rainmonth "${CONFIGURATION[rainmonth]} "
    echo  rainyear "${CONFIGURATION[rainyear]}"
+   echo "rainrate $rr rainday $rd rainweek $rw rainmonth $rm rainyear $ry"
    
 }
 
@@ -226,7 +222,7 @@ function parsePacket {
   (( DEBUG )) && echo >&2 "Parse packet ${PACKET_RX[*]} length $PACKET_LENGTH"
 
   case $cmd in
-  "${CMD[write_reset]}" | "${CMD[write_customized]}" | "${CMD[reboot]}" | "${CMD[write_path]}" | "${CMD[write_ssid]}" | "${CMD[write_raindata]}")
+  "${CMD[write_reset]}" | "${CMD[write_customized]}" | "${CMD[write_path]}" | "${CMD[reboot]}"  | "${CMD[write_ssid]}" | "${CMD[write_raindata]}")
     parseResultPacket
     ;;
   "${CMD[read_mac]}")
@@ -260,6 +256,7 @@ function parsePacket {
     CONFIGURATION[customized_enabled]=$((    0x${PACKET_RX[-2]} ))
 
     printCustomized
+
     ;;
   "${CMD[read_path]}")
    
@@ -278,21 +275,21 @@ function parsePacket {
         CONFIGURATION[broadcast_ssid]=$ssid
         CONFIGURATION[broadcast_version]=$version
         CONFIGURATION[broadcast_port]=$(printf "%d" 0x"${PACKET_RX[15]}""${PACKET_RX[16]}")
-        echoBroadcastConfiguration
+        echo "${CONFIGURATION[broadcast_mac]} ${CONFIGURATION[broadcast_ip]}:${CONFIGURATION[broadcast_port]} ${CONFIGURATION[broadcast_ssid]} ${CONFIGURATION[broadcast_version]}"
 
     ;;
 
     "${CMD[read_raindata]}")
-      CONFIGURATION[rainrate]=$(readUInt32BE 8)
-      CONFIGURATION[rainday]=$(readUInt32BE  8*2)
-      CONFIGURATION[rainweek]=$(readUInt32BE 8*3)
-      CONFIGURATION[rainmonth]=$(readUInt32BE 8*4)
-      CONFIGURATION[rainyear]=$(readUInt32BE 8*5)
+      CONFIGURATION[rainrate]=$( readUInt32BE 8   )
+      CONFIGURATION[rainday]=$(  readUInt32BE 8*2 )
+      CONFIGURATION[rainweek]=$( readUInt32BE 8*3 )
+      CONFIGURATION[rainmonth]=$(readUInt32BE 8*4 )
+      CONFIGURATION[rainyear]=$( readUInt32BE 8*5 )
       
       printRain
       ;;
   *)
-    >&2 echo Warning unable to parse command "$cmd"
+    >&2 echo "Warning unable to parse command $cmd"
     ;;
 
   esac
@@ -302,8 +299,9 @@ function newPacketBody {
   PACKET_BODY=()
   PACKET_BODY+=("$1" "0x00")
   case "$1" in
-  "${CMD[broadcast]}"|"${CMD[write_ssid]}") # WSVIEW sends 2 byte field for size
+  "${CMD[broadcast]}" | "${CMD[write_ssid]}") # WSVIEW sends 2 byte field for size
     PACKET_BODY+=("0x00")
+    (( DEBUG )) && echo >&2 2-byte packet length
     ;;
   esac
 
@@ -366,12 +364,21 @@ function readResponseDD
 
 }
 
+function readHexASCII
+{
+  unset PACKET_RX - # array of hex from hex string ff ff 12 -> (ff ff 12)
+  unset PACKET_RX_OD # two string array [0] = hex, [1] = ASCII
+
+  SHELLIFS=$IFS
+  IFS='>'; read -r -a PACKET_RX_OD  < <(od -A n -t x1z -v -w"$(stat -c %s "$1")" "$1")
+  (( DEBUG )) && >&2 echo OD HEX "${PACKET_RX_OD[0]}"
+  (( DEBUG )) && >&2 echo OD ASCII "${PACKET_RX_OD[1]}"
+  readarray -d ' ' -t PACKET_RX < <(echo -n "${PACKET_RX_OD[0]:1}") # :1 substring, removes space at the beginning
+ 
+}
+
 #including checksum byte
 function sendPacket {
-   local n
-   local i
-   local hex_od
-  #local response_hexdump
   
   local FD=$FD_TCP # default TCP command port
 
@@ -392,52 +399,26 @@ function sendPacket {
 
   createPacketTX
   echo -ne "$PACKET_TX_ECHO" >"${FILENAME[tx]}"
-  cat "${FILENAME[tx]}" >&"$FD" # echo -ne splits packet at 0x0a
-
-  #readResponseCat
-  unset PACKET_RX
-  unset PACKET_RX_HEX
-  unset PACKET_RX_OD
-  readResponseDD
+  cat "${FILENAME[tx]}" >&"$FD" # echo -ne splits packet at 0x0a if written directly to FD
   
+  readResponseDD #readResponseCat
 
-  #Copy response to byte array in hex ff ff .. .. ..
-  #response_hexdump=$(hexdump -v -e '/1 "%02x "' ${FILENAME[rx]}) #a NUL termination is inserted for string, must be deleted
-  #PACKET_RX_HEX=$(hexdump -v -e '/1 "%02x"' "${FILENAME[rx]}")
-  SHELLIFS=$IFS
-  IFS='>'; read -r -a PACKET_RX_OD  < <(od -A n -t x1z -v -w"$(stat -c %s "${FILENAME[rx]}")" "${FILENAME[rx]}")
-  (( DEBUG )) && >&2 echo OD 0 "${PACKET_RX_OD[0]}"
-  (( DEBUG )) && >&2 echo OD 1 "${PACKET_RX_OD[1]}"
-  hex_od=${PACKET_RX_OD[0]}
-  PACKET_RX_HEX=${hex_od// /} # remove all spaces
- 
-  if (( ${#PACKET_RX_HEX} == 0 )); then
-  
+  readHexASCII "${FILENAME[rx]}"
+
+  if (( ${#PACKET_RX[@]} == 0 )); then
      >&2 echo "$HOST Warning no response received from host" 
   else
-    {
-      #(( ! DEBUG)) && rm "${FILENAME[rx]}"
-      #response_hexdump=${response_hexdump::-1}
-      #mapfile -d ' ' -t PACKET_RX <<< "$response_hexdump"
-      for ((n=0,i=0;n<${#PACKET_RX_HEX}; n=n+2,i++)); do
-       PACKET_RX[$i]=${PACKET_RX_HEX:$n:2}
-      done
-
-      (( DEBUG )) && echo >&2 PACKET RX OD && od -t x1z -v "${FILENAME[rx]}"
-
        parsePacket
-    }
   fi
-
 }
 
 function discovery {
-  local TIMEOUT_SCAN=1 #seconds
-
+  local TIMEOUT_SCAN=2 #seconds
   local rxscan
   local rxscan_sorted
-  local n
   local socat_discovery_server_pid
+  local n
+  local hex_escape
 
   (( ! DEBUG)) && unset "DEBUG_OPTIONS[socat]"
 
@@ -458,19 +439,25 @@ function discovery {
   kill $socat_discovery_server_pid
 
   cat "${FILENAME[udp_client]}" "${FILENAME[udp_server]}" >"${FILENAME[discovery]}" # Merge results from udp/tcp discovery
-  rxscan=$(hexdump -v -e '/1 "%02x"' "${FILENAME[discovery]}")
+  #ff ff 12 00 27 48 3f da 54 14 ec c0 a8 03 50 af c8 17 47 57 31 30 30 30 41 2d 57 49 46 49 31 34 45 43 20 56 31 2e 36 2e 38 91
+  # .  .  .  .  '  H  ?  .  T  .  .  .  .  .  P  .  .  .  G  W  1  0  0  0  A  -  W  I  F  I  1  4  E  C     V  1  .  6  .  8  
+
+  rxscan=$(od -A n -t x1 -v -w"$(stat -c %s "${FILENAME[discovery]}")" "${FILENAME[discovery]}")
   (( DEBUG )) && echo Keeping files in "$PWD" "${FILENAME[discovery]}" "${FILENAME[udp_client]}" "${FILENAME[udp_server]}"
   (( ! DEBUG )) && rm "${FILENAME[discovery]}" "${FILENAME[discovery_sorted]}" "${FILENAME[udp_client]}" "${FILENAME[udp_server]}"
 
-  #result_sorted=$(echo -en ${result//"ff ff"/"\nff ff"} | sort -u)
-  rxscan_sorted=$(echo -en "${rxscan//"ffff"/"\nffff"}" | sort -u)
-  (( DEBUG )) && echo -n "$rxscan_sorted" >"${FILENAME[discovery_sorted]}"
+  rxscan_sorted=$(echo -en "${rxscan//" ff ff 12"/"\nff ff 12"}" | sort -u | tail -n +3) # Skips first few lines which is a newline followed by broadcast (0x12) command
 
-  while read -r line; do
-    if [[ "${line:0:4}" == ffff && ${line:0:12} != "ffff12000416" ]]; then # Skips first line which is a broadcast (0x12) command
-      for ((n = 0, i=0; n < ${#line}; n = n + 2, i++)); do
-        PACKET_RX[$i]=${line:$n:2}
+  echo -n "$rxscan_sorted" >"${FILENAME[discovery_sorted]}"
+
+  while read -r line; do # loop through all received broadcasts and parse them
+    if [[ "$line" =~ ^"ff ff 12"  ]]; then 
+      hex_escape=""
+      for ((n = 0; n < ${#line}; n = n + 3)); do
+        hex_escape="$hex_escape\x${line:$n:2}" # create \x escape codes for echo
       done
+      echo -ne "$hex_escape" > "${FILENAME[rx]}"
+      readHexASCII "${FILENAME[rx]}"
       parsePacket
     fi
   done <<< "$rxscan_sorted"
@@ -494,6 +481,7 @@ function checksum {
 function writeString {
   local n
 
+  (( DEBUG )) && echo >&2 "${FUNCNAME[0]} $1 len ${#1}"
   PACKET_BODY+=("$(decToHex ${#1})")
   for ((n = 0; n < ${#1}; n++)); do
     PACKET_BODY+=("$(decToHex "'${1:$n:1}")")
@@ -530,10 +518,10 @@ function decToHex {
 }
 
 function newCustomizedPacket {
-  newPacketBody ${CMD[write_customized]}
-  writeString "${CONFIGURATION[customized_id]}"
-  writeString "${CONFIGURATION[customized_password]}"
-  writeString  "${CONFIGURATION[customized_server]}"
+  newPacketBody  ${CMD[write_customized]}
+  writeString   "${CONFIGURATION[customized_id]}"
+  writeString   "${CONFIGURATION[customized_password]}"
+  writeString   "${CONFIGURATION[customized_server]}"
   writeUInt16BE "${CONFIGURATION[customized_port]}"
   writeUInt16BE "${CONFIGURATION[customized_interval]}"
   writeUInt8    "${CONFIGURATION[customized_type]}"
@@ -542,8 +530,8 @@ function newCustomizedPacket {
 
 function newPathPacket {
   newPacketBody ${CMD[write_path]}
-  writeString "${CONFIGURATION[customized_wunderground_path]}"
-  writeString "${CONFIGURATION[customized_ecowitt_path]}"
+  writeString  "${CONFIGURATION[customized_wunderground_path]}"
+  writeString  "${CONFIGURATION[customized_ecowitt_path]}"
 }
 
 function updateCustomized {
@@ -553,21 +541,27 @@ function updateCustomized {
   local key
   local n
 
-  newPacketBody ${CMD[read_customized]} # read previous configuration
-  sendPacket
-
   newPacketBody ${CMD[read_path]}
   sendPacket
 
+  newPacketBody ${CMD[read_customized]} # read previous configuration
+  sendPacket
+  
   #format enabled=1,port=8000,server=test.no
-  readarray -d ',' -t OPTION_CUSTOMIZED <<< "$1"
+  readarray -d ',' -t OPTION_CUSTOMIZED < <(echo -n "$1") # <<< HERE string appends 0x0a -> using process substitution
+
+  (( DEBUG )) && >&2 echo "${FUNCNAME[0]} OPTION_CUSTOMIZED" "${OPTION_CUSTOMIZED[@]}" "${#OPTION_CUSTOMIZED[@]}"
 
   for n in "${!OPTION_CUSTOMIZED[@]}"; do
 
-    readarray -d '=' -t key_value <<< "${OPTION_CUSTOMIZED[$n]}"
+   (( DEBUG )) && >&2 echo "${FUNCNAME[0]} OPTION_CUSTOMIZED LOOP " "${OPTION_CUSTOMIZED[$n]} n=$n"
+
+    readarray -d '=' -t key_value < <(echo -n "${OPTION_CUSTOMIZED[$n]}")
 
     key=${key_value[0]}
     value=${key_value[1]}
+
+    (( DEBUG )) && echo >&2 "${FUNCNAME[0]} KEY $key len ${#key} VALUE $value len ${#value}"
 
     case "$key" in
 
@@ -655,10 +649,50 @@ function updateCustomized {
 
     newPathPacket
     sendPacket
-    
+
     printCustomized
+    
+  else
+    echo >&2 Warning: no update needed for customized "$1"
   fi
+  
 }
+
+function convertTomm
+{
+  local int
+  local frac
+
+  if (( $1 < 10 )); then
+   echo "0.$1"
+  else
+   int=$(( $1 /10 ))
+   frac=$(( $1 - int *10 ))
+    printf "%d.%d" $int $frac
+ fi
+}
+
+function initConfigDir
+{
+
+  DIR=$HOME'/.config/gw'
+  (( DEBUG )) && >&2 echo Configuration directory "$DIR"
+  [ ! -d "$DIR" ] && mkdir -v "$DIR" 1>&2
+
+  FILENAME[tx]=$DIR'/txpacket'
+  FILENAME[rx]=$DIR'/rxpacket'
+  FILENAME[discovery]=$DIR'/rxsocat'
+  FILENAME[discovery_sorted]=$DIR/'rxsocat_sorted'
+  FILENAME[udp_server]="${FILENAME[discovery]}"_UDP_"${PORT[udp_discovery_server]}"
+  FILENAME[udp_client]="${FILENAME[discovery]}"_UDP_"${PORT[udp_discovery_client]}"
+
+  (( DEBUG )) && echo >&2 Filename "${FILENAME[@]}"
+
+}
+
+declare -A FILENAME # declare -A inside function -> local
+
+initConfigDir
 
 
 #https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
@@ -669,12 +703,18 @@ while [[ $# -gt 0 ]]; do
   
   case $key in
   -a | --rain)
+    # validate rain input
+    if [ -z "$2" ] || [ -z "$2" ] || [ -z "$4" ] || [ -z "$5" ];
+      then
+       echo >&2 "Error: rain day/week/month/year not specified, use $1 {rainday} {week} {month} {year}" 
+       exit "$ERROR_RAINDATA_NOTSPECIFIED"
+    fi
+      >&2 echo rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
       newPacketBody ${CMD[write_raindata]}
-      (( DEBUG )) && >&2 echo rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
       writeUInt32BE "$2" #rainday
       writeUInt32BE "$3" #rainweek
       writeUInt32BE "$4" #rainmonth
-      writeUInt32BE "$5" #rainmonth
+      writeUInt32BE "$5" #rainyear
       sendPacket
       shift
       shift
@@ -689,6 +729,7 @@ while [[ $# -gt 0 ]]; do
       sendPacket ${CMD[read_wunderground]} >/dev/null
       sendPacket ${CMD[read_customized]} >/dev/null
       sendPacket ${CMD[read_path]} >/dev/null
+      sendPacket ${CMD[read_raindata]} >/dev/null
       dumpConfiguration
       shift
      ;;
@@ -720,7 +761,8 @@ while [[ $# -gt 0 ]]; do
     discovery
     shift
     ;;
-  -u | --update)
+  -z | --customized)
+  
     updateCustomized "$2"
     shift
     shift
@@ -737,15 +779,18 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
   -f | --firmware)
+    HTTP_UA_NAME="gw BASH ${BASH_VERSION} $(uname -srv)"
+    HTTP_FIRMWARE="http://download.ecowitt.net/down/filewave?v=FirwaveReadme.txt"
+    (( DEBUG )) && >&2 printf "%s\n%s" "$HTTP_UA_NAME" "$HTTP_FIRMWARE" 
     curl --silent --show-error --user-agent "$HTTP_UA_NAME" "$HTTP_FIRMWARE"
     shift
     shift
     ;;
   -l | --listen)
-    >&2 echo  Listening on port "$2"
-    mapfile HTTP_RESPONSE <<<"$(nc -l "$2")"
-    for ((n = 0; n < ${#HTTP_RESPONSE[@]}; n++)); do
-      echo "${HTTP_RESPONSE[$n]}"
+    >&2 echo  Listening for http request on port "$2"
+    mapfile HTTP_REQUEST < <(nc -l "$2")
+    for ((n = 0; n < ${#HTTP_REQUEST[@]}; n++)); do
+      echo "${HTTP_REQUEST[$n]}"
     done
     shift
     shift
@@ -773,7 +818,6 @@ while [[ $# -gt 0 ]]; do
 
   case $COMMAND in
   reset)
-
     sendPacket ${CMD[broadcast]} $FD_UDP
     read  -r -p "Are you sure to reset ${CONFIGURATION[broadcast_mac]} ${CONFIGURATION[broadcast_ip]}, maybe perform configuration backup first (Y/N)? "
     case $REPLY in 
