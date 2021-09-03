@@ -13,6 +13,7 @@
 #echo PID "$$"
 #read -r -p "DEBUG - press key to continue"
 
+SHELLIFS=$IFS
 
 declare -i DEBUG
 DEBUG=0
@@ -32,17 +33,28 @@ declare -A CMD
 CMD[read_version]=0x50
 CMD[reboot]=0x40
 CMD[read_mac]=0x26
-CMD[read_wunderground]=0x20
-CMD[read_ecowitt]=0x1e
+CMD[write_ssid]=0x11
+CMD[broadcast]=0x12
+CMD[write_reset]=0x41
 
+#weather services
+CMD[read_ecowitt_interval]=0x1e
+CMD[write_ecowitt_interval]=0x1f
+
+CMD[read_wunderground]=0x20
+CMD[write_wunderground]=0x21
+
+CMD[read_wow]=0x22
+CMD[write_wow]=0x23
+
+CMD[read_weathercloud]=0x24
+CMD[write_weathercloud]=0x25
+
+#customized server for ecowitt/wunderground http requests
 CMD[read_customized]=0x2a
 CMD[write_customized]=0x2b
 CMD[read_path]=0x51
 CMD[write_path]=0x52
-
-CMD[write_ssid]=0x11
-CMD[broadcast]=0x12
-CMD[write_reset]=0x41
 
 CMD[read_raindata]=0x34
 CMD[write_raindata]=0x35
@@ -167,7 +179,7 @@ function printCustomized {
   echo "customized_wunderground path ${CONFIGURATION[customized_wunderground_path]}"
 }
 
-function dumpConfiguration
+function printConfiguration
 {
   #echo "${!CONFIGURATION[@]}"
   #https://www.artificialworlds.net/blog/2012/10/17/bash-associative-array-examples/
@@ -192,13 +204,13 @@ function printRain
   rw=$(convertTomm "${CONFIGURATION[rainweek]}")
   rm=$(convertTomm "${CONFIGURATION[rainmonth]}")
   ry=$(convertTomm "${CONFIGURATION[rainyear]}")
-   echo -n rainrate "${CONFIGURATION[rainrate]} "
-   echo -n rainday "${CONFIGURATION[rainday]} "
-   echo -n rainweek "${CONFIGURATION[rainweek]} "
-   echo -n rainmonth "${CONFIGURATION[rainmonth]} "
-   echo  rainyear "${CONFIGURATION[rainyear]}"
-   echo "rainrate $rr rainday $rd rainweek $rw rainmonth $rm rainyear $ry"
-   
+   #echo rainrate "${CONFIGURATION[rainrate]} "
+   #echo rainday "${CONFIGURATION[rainday]} "
+   #echo rainweek "${CONFIGURATION[rainweek]} "
+   #echo rainmonth "${CONFIGURATION[rainmonth]} "
+   #echo  rainyear "${CONFIGURATION[rainyear]}"
+   #echo "rainrate $rr rainday $rd rainweek $rw rainmonth $rm rainyear $ry"
+   printf "rainrate %s\nrainday %s\nrainweek %s\nrainmonth %s\nrainyear %s\n" "$rr" "$rd" "$rw" "$rm" "$ry"
 }
 
 function parsePacket {
@@ -222,7 +234,7 @@ function parsePacket {
   (( DEBUG )) && echo >&2 "Parse packet ${PACKET_RX[*]} length $PACKET_LENGTH"
 
   case $cmd in
-  "${CMD[write_reset]}" | "${CMD[write_customized]}" | "${CMD[write_path]}" | "${CMD[reboot]}"  | "${CMD[write_ssid]}" | "${CMD[write_raindata]}")
+  "${CMD[write_reset]}" | "${CMD[write_customized]}" | "${CMD[write_path]}" | "${CMD[reboot]}" | "${CMD[write_ssid]}" | "${CMD[write_raindata]}" | "${CMD[write_ecowitt_interval]}" | "${CMD[write_wunderground]}" | "${CMD[write_wow]}" | "${CMD[write_weathercloud]}")
     parseResultPacket
     ;;
   "${CMD[read_mac]}")
@@ -233,7 +245,7 @@ function parsePacket {
     CONFIGURATION[version]=${PACKET_RX_OD[1]:(( $pos + 1)):0x${PACKET_RX[$pos]}}
     echo "${CONFIGURATION[version]}"
     ;;
-  "${CMD[read_ecowitt]}")
+  "${CMD[read_ecowitt_interval]}")
     CONFIGURATION[ecowitt_interval]=$(( "${PACKET_RX[$pos]}" ))
     echo  "ecowitt_interval ${CONFIGURATION[ecowitt_interval]} minutes"
     ;;
@@ -243,6 +255,18 @@ function parsePacket {
     echo  "wunderground_id ${CONFIGURATION[wunderground_id]}"
     echo  "wunderground_password ${CONFIGURATION[wunderground_password]}"
     ;;
+  "${CMD[read_wow]}")
+     CONFIGURATION[wow_id]=${PACKET_RX_OD[1]:(( $pos + 1 )):0x${PACKET_RX[$pos]}};      (( pos=pos+${#CONFIGURATION[wow_id]}+1 ))
+     CONFIGURATION[wow_password]=${PACKET_RX_OD[1]:(( $pos + 1)):0x${PACKET_RX[$pos]}}; (( pos=pos+${#CONFIGURATION[wow_password]}+1 ))
+     echo "wow_id ${CONFIGURATION[wow_id]}"
+     echo "wow_password ${CONFIGURATION[wow_password]}"
+     ;;
+  "${CMD[read_weathercloud]}")
+     CONFIGURATION[weathercloud_id]=${PACKET_RX_OD[1]:(( $pos + 1 )):0x${PACKET_RX[$pos]}};      (( pos=pos+${#CONFIGURATION[weathercloud_id]}+1 ))
+     CONFIGURATION[weathercloud_password]=${PACKET_RX_OD[1]:(( $pos + 1)):0x${PACKET_RX[$pos]}}; (( pos=pos+${#CONFIGURATION[weathercloud_password]}+1 ))
+     echo "weathercloud_id ${CONFIGURATION[weathercloud_id]}"
+     echo "weathercloud_password ${CONFIGURATION[weathercloud_password]}"
+     ;;
   "${CMD[read_customized]}")
     
     CONFIGURATION[customized_id]=${PACKET_RX_OD[1]:(( $pos + 1 )):0x${PACKET_RX[$pos]}};      (( pos=pos+${#CONFIGURATION[customized_id]}+1 ))
@@ -265,7 +289,7 @@ function parsePacket {
      ;;
 
   "${CMD[broadcast]}")
-
+        #this is the station MAC/ip on local network, when device is reset its annoncing hotspot accesspoint/AP with first byte of MAC changed
         CONFIGURATION[broadcast_mac]=$(printf "%02X:%02X:%02X:%02X:%02X:%02X\n" 0x"${PACKET_RX[5]}" 0x"${PACKET_RX[6]}" 0x"${PACKET_RX[7]}" 0x"${PACKET_RX[8]}" 0x"${PACKET_RX[9]}" 0x"${PACKET_RX[10]}")
         CONFIGURATION[broadcast_ip]=$(printf "%d.%d.%d.%d" 0x"${PACKET_RX[11]}" 0x"${PACKET_RX[12]}" 0x"${PACKET_RX[13]}" 0x"${PACKET_RX[14]}")
         pos=17
@@ -356,11 +380,16 @@ function readResponseCat
 
 function readResponseDD
 {
+  local dd_result
   (( DEBUG )) && unset "DEBUG_OPTIONS[dd]"
     # shellcheck disable=SC2086
-  if ! dd bs=1024 count=1 ${DEBUG_OPTIONS[dd]} <&"$FD" >${FILENAME[rx]}; then
-    echo >&2 Error DD failed to read response from FD "$FD"
-  fi
+    timeout 0.5 dd bs=1024 count=1 ${DEBUG_OPTIONS[dd]} <&"$FD" >${FILENAME[rx]} # timeout request, for example EasyWeather doesnt respond to rain command
+    dd_result=$?
+    if [ $dd_result -ne 0 ] ; then
+      >&2 echo Error DD failed to read response from FD "$FD"
+    fi
+    (( DEBUG )) && >&2 echo dd_result $dd_result
+    return $dd_result
 
 }
 
@@ -368,18 +397,18 @@ function readHexASCII
 {
   unset PACKET_RX - # array of hex from hex string ff ff 12 -> (ff ff 12)
   unset PACKET_RX_OD # two string array [0] = hex, [1] = ASCII
-
-  SHELLIFS=$IFS
+  unset PACKET_RX_HEX # compact hex string without spaces ffff
   IFS='>'; read -r -a PACKET_RX_OD  < <(od -A n -t x1z -v -w"$(stat -c %s "$1")" "$1")
   (( DEBUG )) && >&2 echo OD HEX "${PACKET_RX_OD[0]}"
   (( DEBUG )) && >&2 echo OD ASCII "${PACKET_RX_OD[1]}"
-  readarray -d ' ' -t PACKET_RX < <(echo -n "${PACKET_RX_OD[0]:1}") # :1 substring, removes space at the beginning
+  readarray -d ' ' -t PACKET_RX < <(echo -n "${PACKET_RX_OD[0]:1:-2}") # :1 substring, removes space at the beginning, -2: removes two trailing spaces
+  PACKET_RX_HEX=${PACKET_RX_OD[0]// /} # strip off all spaces, just hex
  
 }
 
 #including checksum byte
 function sendPacket {
-  
+#takes two arguments $1 - command, $2 is udp broadcast request
   local FD=$FD_TCP # default TCP command port
 
   [ -n "$2" ] && FD="$2" #may also use UDP for broadcast (ssid etc.)
@@ -401,15 +430,18 @@ function sendPacket {
   echo -ne "$PACKET_TX_ECHO" >"${FILENAME[tx]}"
   cat "${FILENAME[tx]}" >&"$FD" # echo -ne splits packet at 0x0a if written directly to FD
   
-  readResponseDD #readResponseCat
+  if readResponseDD; then #readResponseCat
 
-  readHexASCII "${FILENAME[rx]}"
+    readHexASCII "${FILENAME[rx]}"
 
-  if (( ${#PACKET_RX[@]} == 0 )); then
-     >&2 echo "$HOST Warning no response received from host" 
-  else
-       parsePacket
+    if (( ${#PACKET_RX[@]} == 0 )); then
+      >&2 echo "$HOST Warning no response received from host" 
+    else
+        parsePacket
+    fi
   fi
+
+  
 }
 
 function discovery {
@@ -425,7 +457,7 @@ function discovery {
   (( DEBUG )) && echo >&2 "UDP discovery on GW port "${PORT[udp_discovery_client]}
   (( DEBUG )) && echo >&2 "UDP discovery on local port "${PORT[udp_discovery_server]}
   # shellcheck disable=SC2086
-  socat $SOCAT_DEBUG_OPTIONS -u UDP-RECV:"${PORT[udp_discovery_server]}" CREATE:${FILENAME[udp_server]} &
+  socat $SOCAT_DEBUG_OPTIONS -u UDP-RECV:"${PORT[udp_discovery_server]}" CREATE:${FILENAME[udp_server]} & # move in background
   socat_discovery_server_pid=$!
   (( DEBUG )) && echo  >&2 Socat discovery server PID = $socat_discovery_server_pid
 
@@ -434,7 +466,6 @@ function discovery {
    #-R socat appends to file
    # shellcheck disable=SC2086
    { echo -ne "$PACKET_TX_ECHO"; sleep $TIMEOUT_SCAN; } | socat $SOCAT_DEBUG_OPTIONS -R "${FILENAME[udp_client]}"  - udp-datagram:255.255.255.255:${PORT[udp_discovery_client]},broadcast >/dev/null #disable stdout echo of rx data, sleep timeout EOF on STDIN
-  # $PACKET_TX_ECHO is also copied over to $filename_udp, strange behavior of socat?
   #(echo -ne "\xff\xff\x12\x00\x04\x16"; sleep 3) | socat -d -d -x -R rxsocat  - udp-datagram:255.255.255.255:46000,broadcast
   kill $socat_discovery_server_pid
 
@@ -467,6 +498,7 @@ function discovery {
 function checksum {
   local n
   #caller 0
+  
   CHECKSUM=0
   (( DEBUG )) && echo >&2 CHECKSUM PACKET_BODY "${PACKET_BODY[@]}"
   #http://mywiki.wooledge.org/BashGuide/Arrays
@@ -532,6 +564,57 @@ function newPathPacket {
   newPacketBody ${CMD[write_path]}
   writeString  "${CONFIGURATION[customized_wunderground_path]}"
   writeString  "${CONFIGURATION[customized_ecowitt_path]}"
+}
+
+function sendRaindata
+{
+  newPacketBody ${CMD[write_raindata]}
+  writeUInt32BE "$1" #rainday
+  writeUInt32BE "$2" #rainweek
+  writeUInt32BE "$3" #rainmonth
+  writeUInt32BE "$4" #rainyear
+  (( DEBUG )) && >&2 echo "Sending raindata rd $1 rw $2 rm $3 ry $4"
+  sendPacket
+}
+
+function sendEcowittInterval
+{
+  newPacketBody ${CMD[write_ecowitt_interval]}
+  writeUInt8 "$1" #interval
+  (( DEBUG )) && >&2 echo Sending ecowitt interval "$1"
+  sendPacket
+}
+
+function sendWeatherservice
+{
+    newPacketBody "$1"
+    writeString "$2"
+    writeString "$3"
+    case "$1" in
+       "${CMD[write_wow]}")
+         writeUInt8 0 # stationnum size - unused
+         writeUInt8 1
+         ;;
+       "${CMD[write_weathercloud]}")
+          writeUInt8 1
+          ;;
+    esac
+    (( DEBUG )) && >&2 echo "Sending weather service $1 id $2 password $3"
+    sendPacket
+}
+
+function sendCustomized
+{
+  newCustomizedPacket
+  sendPacket
+
+  newPathPacket
+  sendPacket
+
+  if (( DEBUG )); then
+   >&2 echo "Sending customized settings"
+   printCustomized >&2
+  fi
 }
 
 function updateCustomized {
@@ -662,7 +745,7 @@ function convertTomm
 {
   local int
   local frac
-
+ 
   if (( $1 < 10 )); then
    echo "0.$1"
   else
@@ -690,10 +773,161 @@ function initConfigDir
 
 }
 
-declare -A FILENAME # declare -A inside function -> local
+function runRainNotification
+{
+  local rr
+  local rd
+  local infomsg
+
+  while true; do 
+    sendPacket ${CMD[read_raindata]} >/dev/null
+    if [ "${CONFIGURATION[rainrate]}" != "0" ]; then
+      rr=$(convertTomm "${CONFIGURATION[rainrate]}")
+      rd=$(convertTomm "${CONFIGURATION[rainday]}")
+      infomsg="Its raining $rr mm/h. Today $rd mm"
+      which notify-send >/dev/null && notify-send -t 3000 -i dialog-warning "gw script" "$infomsg"
+      echo "$(date)" "$infomsg" 
+     
+    fi
+    sleep "$1"
+  done
+}
+
+function processCommand
+{
+
+  case $COMMAND in
+  reset)
+    local lan_mac
+    local lan_mac_lc #lowercase
+    local ap_mac
+    local ap_ssid
+    local ap_info
+    local ap_all_scan
+    local ap_scan
+    local ap_scan_result
+    local connect_result
+    local connect_str
+    local connect_attempt
+    local connect_attempt_MAX
+    local connected
+    local timeout
+    local mac_pattern
+
+    sendPacket ${CMD[broadcast]} $FD_UDP
+    read  -r -p "Are you sure to reset ${CONFIGURATION[broadcast_mac]} ${CONFIGURATION[broadcast_ip]}, maybe perform configuration backup first (Y/N)? "
+    
+    case $REPLY in 
+      Y) sendPacket ${CMD[write_reset]} # 3 blinks in red LED
+        timeout=5
+        connected=1
+        connect_attempt=0
+        connect_attempt_MAX=15
+       
+      #useful for debugging: sudo nmcli device monitor and  sudo iw event -r
+
+      if which nmcli >/dev/null; then
+       sudo nmcli radio wifi on
+       >&2 echo Waiting $timeout s for device to bootup after reset 
+       sleep $timeout # wait for reset/bootup
+       
+       # Station mode/LAN: MAC 48:3F:DA:54:14:EC, ssid/version GW1000A-WIFI14EC, AP-mode: MAC 4A:3F:DA:54:14:EC, GW1000-WIFI4EC
+       # 48:3F:DA - EspressIf Inc. https://www.wireshark.org/tools/oui-lookup.html
+      #  nmcli dev wifi list : 4A:3F:DA:54:14:EC  GW1000-WIFI14EC  Infra  1     54 Mbit/s   77      ▂▄▆_  -- 
+      # observation/seldom : 4A:3F:DA:54:14:EC SSID  ESP_5414EC -> hotsport started before ssid rename in firmware v.1.6.8?
+       lan_mac=${CONFIGURATION[broadcast_mac]//:/}
+       lan_mac_lc=${CONFIGURATION[broadcast_mac],,}
+       mac_pattern=${lan_mac:9}
+      
+       while (( connected == 1 && connect_attempt < "$connect_attempt_MAX" )); do
+        (( connect_attempt++ )) 
+
+        >&2 echo Connect attempt "$connect_attempt"
+        if [ "$connect_attempt" == "1" ]; then
+             ap_all_scan=$(sudo nmcli dev wifi list --rescan yes)
+            #>&2 echo "$ap_all_scan"
+             ap_scan=$(grep -F "$mac_pattern" <<< "$ap_all_scan")
+              ap_scan_result=$?
+        else
+             ap_all_scan=$(sudo nmcli dev wifi list --rescan auto)
+             #>&2 echo "$ap_all_scan"
+             ap_scan=$(grep -F "$mac_pattern" <<< "$ap_all_scan")
+             ap_scan_result=$?
+        fi
+         >&2 echo AP scan "$ap_scan"
+
+         if [ "${ap_scan:0:1}" == "*" ]; then # * in-use-field output of nmcli -> already connected
+           connected=0
+            arp  -n | grep -F "${lan_mac_lc:9}" # :9 just 3 last bytes of MAC
+           break; # goodbye while
+         fi
+        
+        if (( ap_scan_result == 0 )) && [ -n "$ap_scan" ]; then
+            IFS=$SHELLIFS
+            # shellcheck disable=SC2034
+            read -r ap_mac ap_ssid ap_info <<< "$ap_scan" 
+
+            if [ "${ap_mac:9}" == "${CONFIGURATION[broadcast_mac]:9}" ]; then
+              >&2 echo Connecting to bssid "$ap_mac"
+              connect_str=$(sudo nmcli -w 5 dev wifi connect "$ap_mac")  #nmcli has a default timeout of 45 seconds, try just waiting 5 s
+              connect_result=$?
+              >&2 echo "$connect_str"
+              if (( connect_result == 0 )) && [[ $connect_str != Error* ]]; then
+                  # shellcheck disable=SC2034
+                  arp  -n | grep -F "${lan_mac_lc:9}"
+                  connected=0
+                  #ip -4 -o address
+              fi
+            else
+               >&2 echo Error: "$ap_mac is not equal to ${CONFIGURATION[broadcast_mac]:9}"
+            fi
+          fi
+
+         (( connected == 1 )) &&  sleep 5
+      done
+      fi
+      ;;
+    esac
+    ;;
+  reboot)
+    sendPacket "${CMD[reboot]}"
+    ;;
+  mac)
+    sendPacket "${CMD[read_mac]}"
+    ;;
+  version)
+    sendPacket ${CMD[read_version]}
+    ;;
+  ecowitt)
+    sendPacket ${CMD[read_ecowitt_interval]}
+    ;;
+  wunderground)
+    sendPacket ${CMD[read_wunderground]}
+    ;;
+  wow)
+    sendPacket ${CMD[read_wow]}
+    ;;
+  weathercloud)
+    sendPacket ${CMD[read_weathercloud]}
+    ;;
+  customized)
+    sendPacket ${CMD[read_path]}
+    sendPacket ${CMD[read_customized]}
+    ;;
+  broadcast)
+    sendPacket ${CMD[broadcast]} $FD_UDP
+    ;;
+  rain)
+    sendPacket ${CMD[read_raindata]}
+    ;;
+  esac
+
+  unset COMMAND
+}
+
+declare -A FILENAME # declare -A (if decl. inside function -> local only)
 
 initConfigDir
-
 
 #https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
 POSITIONAL=()
@@ -702,6 +936,7 @@ while [[ $# -gt 0 ]]; do
   key="$1"
   
   case $key in
+  
   -a | --rain)
     # validate rain input
     if [ -z "$2" ] || [ -z "$2" ] || [ -z "$4" ] || [ -z "$5" ];
@@ -710,34 +945,72 @@ while [[ $# -gt 0 ]]; do
        exit "$ERROR_RAINDATA_NOTSPECIFIED"
     fi
       >&2 echo rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
-      newPacketBody ${CMD[write_raindata]}
-      writeUInt32BE "$2" #rainday
-      writeUInt32BE "$3" #rainweek
-      writeUInt32BE "$4" #rainmonth
-      writeUInt32BE "$5" #rainyear
-      sendPacket
+      sendRaindata "$2" "$3" "$4" "$5"
       shift
       shift
       shift
       shift
       shift
       ;;
+  
   -b | --backup)
       sendPacket ${CMD[read_mac]} >/dev/null
       sendPacket ${CMD[read_version]} >/dev/null
-      sendPacket ${CMD[read_ecowitt]} >/dev/null
+      sendPacket ${CMD[broadcast]} $FD_UDP >/dev/null
+      sendPacket ${CMD[read_ecowitt_interval]} >/dev/null
       sendPacket ${CMD[read_wunderground]} >/dev/null
+      sendPacket ${CMD[read_wow]} >/dev/null
+      sendPacket ${CMD[read_weathercloud]} >/dev/null
       sendPacket ${CMD[read_customized]} >/dev/null
       sendPacket ${CMD[read_path]} >/dev/null
       sendPacket ${CMD[read_raindata]} >/dev/null
-      dumpConfiguration
+      printConfiguration
       shift
      ;;
+  -c | --command)
+    COMMAND="$2"
+    processCommand
+    shift
+    shift
+    ;;
   -d | --debug)
     DEBUG=1
     echo >&2 "${FILENAME[@]}"
     shift
     ;;
+  
+  -e | --ecowitt_interval)
+     sendEcowittInterval "$2"
+     shift
+     shift
+     ;;
+  
+  -f | --firmware)
+    HTTP_UA_NAME="gw script BASH ${BASH_VERSION} $(uname -srv)"
+    HTTP_FIRMWARE="http://download.ecowitt.net/down/filewave?v=FirwaveReadme.txt"
+    (( DEBUG )) && >&2 printf "%s\n%s" "$HTTP_UA_NAME" "$HTTP_FIRMWARE" 
+    curl --silent --show-error --user-agent "$HTTP_UA_NAME" "$HTTP_FIRMWARE"
+    shift
+    shift
+    ;;
+  -g | --wunderground)
+    sendWeatherservice "${CMD[write_wunderground]}" "$2" "$3"
+    shift
+    shift
+    shift
+  ;;
+  -i | --wow)
+      sendWeatherservice "${CMD[write_wow]}" "$2" "$3"
+      shift
+      shift
+      shift
+      ;;
+  -j | --weathercloud)
+      sendWeatherservice "${CMD[write_weathercloud]}" "$2" "$3"
+      shift
+      shift
+      shift
+      ;;
   -h | --host)
     HOST_PREV=$HOST
     HOST="$2" # this arg must come first to open socketsopen file descriptors to UDP/TCP port on HOST
@@ -751,42 +1024,7 @@ while [[ $# -gt 0 ]]; do
     shift
     shift 
     ;;
-  -c | --command)
-    COMMAND="$2"
-  
-    shift
-    shift
-    ;;
-  -s | --scan)
-    discovery
-    shift
-    ;;
-  -z | --customized)
-  
-    updateCustomized "$2"
-    shift
-    shift
-    ;;
-   -w | --wifi)
-    newPacketBody ${CMD[write_ssid]}
-    #ssid packet has two byte length
-    # TEST wsview android app, wireshark: ffff | 11 |001b| 08536b6f676c756e640d6c756775626572313934322d2e | a9
-    #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/ConfigrouterFragment.java - SaveData
-    writeString "$2" # ssid
-    writeString "$3" # password
-    sendPacket
-    shift
-    shift
-    ;;
-  -f | --firmware)
-    HTTP_UA_NAME="gw BASH ${BASH_VERSION} $(uname -srv)"
-    HTTP_FIRMWARE="http://download.ecowitt.net/down/filewave?v=FirwaveReadme.txt"
-    (( DEBUG )) && >&2 printf "%s\n%s" "$HTTP_UA_NAME" "$HTTP_FIRMWARE" 
-    curl --silent --show-error --user-agent "$HTTP_UA_NAME" "$HTTP_FIRMWARE"
-    shift
-    shift
-    ;;
-  -l | --listen)
+    -l | --listen)
     >&2 echo  Listening for http request on port "$2"
     mapfile HTTP_REQUEST < <(nc -l "$2")
     for ((n = 0; n < ${#HTTP_REQUEST[@]}; n++)); do
@@ -810,54 +1048,65 @@ while [[ $# -gt 0 ]]; do
     #
     #PASSKEY=976D09F15C41FD8DC6E9A9E8C4F39707&stationtype=GW1000A_V1.6.8&dateutc=2021-08-10+12:08:12&tempinf=74.1&humidityin=61&baromrelin=29.754&baromabsin=29.754&tempf=63.0&humidity=82&winddir=15&windspeedmph=3.80&windgustmph=4.47&maxdailygust=5.82&solarradiation=206.01&uv=2&rainratein=0.000&eventrainin=0.051&hourlyrainin=0.000&dailyrainin=0.020&weeklyrainin=0.051&monthlyrainin=0.311&yearlyrainin=4.811&totalrainin=4.811&temp1f=68.72&humidity1=67&temp2f=72.14&humidity2=63&temp3f=80.24&humidity3=48&soilmoisture1=16&wh65batt=0&batt1=0&batt2=0&batt3=0&soilbatt1=1.4&freq=868M&model=GW1000_Pro
     #
+    #A = 868 Mhz GW1000A, B= , C= 433
+  -r | --restore)
+    unset CONFIGURATION
+    declare -A CONFIGURATION
+    while read -r K V ; do 
+        CONFIGURATION["$K"]="$V"
+    done < "$2"
+    printConfiguration
+
+    sendEcowittInterval "${CONFIGURATION[ecowitt_interval]}"
+    sendWeatherservice "${CMD[write_wunderground]}" "${CONFIGURATION[wunderground_id]}" "${CONFIGURATION[wunderground_password]}"
+    sendWeatherservice "${CMD[write_wow]}"          "${CONFIGURATION[wow_id]}"          "${CONFIGURATION[wow_password]}"
+    sendWeatherservice "${CMD[write_weathercloud]}" "${CONFIGURATION[weathercloud_id]}" "${CONFIGURATION[weathercloud_password]}"
+    sendCustomized
+    sendRaindata "${CONFIGURATION[rainday]}" "${CONFIGURATION[rainweek]}" "${CONFIGURATION[rainmonth]}" "${CONFIGURATION[rainyear]}"
+    shift
+    shift
+  ;;
+  
+  -n | --notifyrain)
+      runRainNotification "$2" #tested on GNOME
+      shift
+      shift
+    ;;
+  
+  -s | --scan)
+    discovery
+    shift
+    ;;
+  -z | --customized)
+  
+    updateCustomized "$2"
+    shift
+    shift
+    ;;
+    
+   -w | --wifi)
+    newPacketBody ${CMD[write_ssid]}
+    #ssid packet has two byte length
+    # TEST wsview android app, wireshark: ffff | 11 |001b| 08536b6f676c756e640d6c756775626572313934322d2e | a9
+    #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/ConfigrouterFragment.java - SaveData
+    writeString "$2" # ssid
+    writeString "$3" # password
+    sendPacket
+    shift
+    shift
+    shift
+    ;;
+ 
+  
   *)                   # unknown option
     POSITIONAL+=("$1") # save it in an array for later
     shift              # past argument
     ;;
   esac
 
-  case $COMMAND in
-  reset)
-    sendPacket ${CMD[broadcast]} $FD_UDP
-    read  -r -p "Are you sure to reset ${CONFIGURATION[broadcast_mac]} ${CONFIGURATION[broadcast_ip]}, maybe perform configuration backup first (Y/N)? "
-    case $REPLY in 
-      Y) sendPacket ${CMD[write_reset]}
-      #BROADCAST annoncing GW1000A-WIFI4EC, but after reset GW1000-WIFI4EC is annonced (without A?)
-      echo 'Fedora sudo nmcli dev wifi rescan; sudo nmcli dev wifi list | grep '"${CONFIGURATION[broadcast_ssid]:0:4}"
-      echo "Fedora sudo nmcli connect {ssid}"
-      ;;
-    esac
-    ;;
-  reboot)
-    sendPacket "${CMD[reboot]}"
-    ;;
-  mac)
-    sendPacket "${CMD[read_mac]}"
-    ;;
-  version)
-    sendPacket ${CMD[read_version]}
-    ;;
-  ecowitt)
-    sendPacket ${CMD[read_ecowitt]}
-    ;;
-  wunderground)
-    sendPacket ${CMD[read_wunderground]}
-    ;;
-  customized)
-    sendPacket ${CMD[read_path]}
-    sendPacket ${CMD[read_customized]}
-    ;;
-  broadcast)
-    sendPacket ${CMD[broadcast]} $FD_UDP
-    ;;
-  rain)
-    sendPacket ${CMD[read_raindata]}
-    ;;
-  esac
-
-  unset COMMAND
-
 done
+
+((${#POSITIONAL[@]} )) && >&2 echo Failed to recognize options "${POSITIONAL[@]}"
 
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
