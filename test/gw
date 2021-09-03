@@ -801,8 +801,6 @@ function processCommand
     local lan_mac
     local lan_mac_lc #lowercase
     local ap_mac
-    local ap_ssid
-    local ap_info
     local ap_all_scan
     local ap_scan
     local ap_scan_result
@@ -812,7 +810,7 @@ function processCommand
     local connect_attempt_MAX
     local connected
     local timeout
-    local mac_pattern
+    local bssid_pattern
 
     sendPacket ${CMD[broadcast]} $FD_UDP
     read  -r -p "Are you sure to reset ${CONFIGURATION[broadcast_mac]} ${CONFIGURATION[broadcast_ip]}, maybe perform configuration backup first (Y/N)? "
@@ -837,51 +835,40 @@ function processCommand
       # observation/seldom : 4A:3F:DA:54:14:EC SSID  ESP_5414EC -> hotsport started before ssid rename in firmware v.1.6.8?
        lan_mac=${CONFIGURATION[broadcast_mac]//:/}
        lan_mac_lc=${CONFIGURATION[broadcast_mac],,}
-       mac_pattern=${lan_mac:9}
+       bssid_pattern=${lan_mac:9}
       
        while (( connected == 1 && connect_attempt < "$connect_attempt_MAX" )); do
         (( connect_attempt++ )) 
 
         >&2 echo Connect attempt "$connect_attempt"
         if [ "$connect_attempt" == "1" ]; then
-             ap_all_scan=$(sudo nmcli dev wifi list --rescan yes)
-            #>&2 echo "$ap_all_scan"
-             ap_scan=$(grep -F "$mac_pattern" <<< "$ap_all_scan")
-              ap_scan_result=$?
+             ap_all_scan=$(sudo nmcli -t -e no -f BSSID,SSID,IN-USE dev wifi list --rescan yes) #use terse mode for fixed format string
         else
-             ap_all_scan=$(sudo nmcli dev wifi list --rescan auto)
-             #>&2 echo "$ap_all_scan"
-             ap_scan=$(grep -F "$mac_pattern" <<< "$ap_all_scan")
-             ap_scan_result=$?
+             ap_all_scan=$(sudo nmcli -t -e no -f BSSID,SSID,IN-USE dev wifi list --rescan auto)
         fi
-         >&2 echo AP scan "$ap_scan"
+        ap_scan=$(grep -F "$bssid_pattern" <<< "$ap_all_scan")
+        ap_scan_result=$?
 
-         if [ "${ap_scan:0:1}" == "*" ]; then # * in-use-field output of nmcli -> already connected
-           connected=0
-            arp  -n | grep -F "${lan_mac_lc:9}" # :9 just 3 last bytes of MAC
-           break; # goodbye while
-         fi
-        
         if (( ap_scan_result == 0 )) && [ -n "$ap_scan" ]; then
-            IFS=$SHELLIFS
-            # shellcheck disable=SC2034
-            read -r ap_mac ap_ssid ap_info <<< "$ap_scan" 
-
-            if [ "${ap_mac:9}" == "${CONFIGURATION[broadcast_mac]:9}" ]; then
-              >&2 echo Connecting to bssid "$ap_mac"
-              connect_str=$(sudo nmcli -w 5 dev wifi connect "$ap_mac")  #nmcli has a default timeout of 45 seconds, try just waiting 5 s
-              connect_result=$?
-              >&2 echo "$connect_str"
-              if (( connect_result == 0 )) && [[ $connect_str != Error* ]]; then
-                  # shellcheck disable=SC2034
-                  arp  -n | grep -F "${lan_mac_lc:9}"
-                  connected=0
-                  #ip -4 -o address
-              fi
-            else
-               >&2 echo Error: "$ap_mac is not equal to ${CONFIGURATION[broadcast_mac]:9}"
+            >&2 echo AP scan "$ap_scan"
+            readarray -d':' nmcli_result < <(echo -n "$ap_scan")
+            in_use=${nmcli_result[7]}
+            ap_mac=${nmcli_result[0]}${nmcli_result[1]}${nmcli_result[2]}${nmcli_result[3]}${nmcli_result[4]}${nmcli_result[5]}; ap_mac=${ap_mac:0:-1}
+            
+            if [ "$in_use" != "*" ]; then
+                  >&2 echo Connecting to bssid "$ap_mac"
+                  connect_str=$(sudo nmcli -w 5 dev wifi connect "$ap_mac")  #nmcli has a default timeout of 45 seconds, try just waiting 5 s
+                  connect_result=$?
+                  >&2 echo "$connect_str"
             fi
-          fi
+
+            if (( connect_result == 0 )) && [[ $connect_str != Error* ]] || [ "$in_use" == "*" ]; then
+              arp  -n | grep -F "${lan_mac_lc:9}"
+              connected=0
+              #ip -4 -o address
+            fi
+             
+         fi
 
          (( connected == 1 )) &&  sleep 5
       done
