@@ -1,11 +1,10 @@
 #!/bin/bash
+# Utility for administration of GW-1000 configuration 
 # example ./gw -s 
 # scan for devices
 # example ./gw -h 10.42.0.180 -c mac
 # read mac
-# Info  from https://www.xmodulo.com/tcp-udp-socket-bash-shell.html
-# Writing CMD_BROADCAST 0x12 to HOST port 46000
-# https://brendanzagaeski.appspot.com/0006.html - hexdump examples
+
 #Protocol documentation : https://osswww.ecowitt.net/uploads/20210716/WN1900%20GW1000,1100%20WH2680,2650%20telenet%20v1.6.0%20.pdf (https://www.ecowitt.com/shop/forum/forumDetails/255)
 #https://devhints.io/bash
 
@@ -71,7 +70,7 @@ ERROR_NO_NMCLI=3
 declare -A CONFIGURATION
 
 function connect {
-
+# Info  from https://www.xmodulo.com/tcp-udp-socket-bash-shell.html
 local host="$1"
 
  if [ -v FD_TCP ] || [ -v FD_UDP ]; then # True if the shell variable varname is set (has been assigned a value). - man bash
@@ -124,12 +123,14 @@ function disconnect {
 
 function getCommandName
 {
+  #set -x # turn on debug
   for name in "${!CMD[@]}"; do # ${!array} iterate over keys
     if (( ${CMD[$name]} == $1 )); then
       echo $name
       #return 0
     fi
   done
+  #set +x # turn off debug
   return 1
 }
 
@@ -187,11 +188,30 @@ function printConfiguration
   for K in "${!CONFIGURATION[@]}"; do printf "%-30s %s\n" "$K" "${CONFIGURATION[$K]}"; done
 }
 
+function readUInt8
+{
+  printf  -v VALUE_UINT8 "%u" "0x${PACKET_RX_HEX:(( $RX_POS * 2 )):2}"
+  (( RX_POS=RX_POS + 1 ))
+}
+
+function readUInt16BE
+{
+   printf -v VALUE_UINT16BE "%u" "0x${PACKET_RX_HEX:(( $RX_POS * 2 )):4}" 
+  (( RX_POS=RX_POS + 2 ))
+}
+
 function readUInt32BE
 {
-#  echo Parameter $1 "0x${PACKET_RX_HEX:$1:8}" 
-  printf "%d" "0x${PACKET_RX_HEX:$1:8}"
+  printf -v VALUE_UINT32BE "%u" "0x${PACKET_RX_HEX:(( $RX_POS * 2 )):8}" 
+  (( RX_POS=RX_POS+4 ))
 }
+
+function readString
+{
+  local len=0x${PACKET_RX[$RX_POS]}
+  VALUE_STRING="${PACKET_RX_OD[1]:(( $RX_POS + 1 )):len}"
+  (( RX_POS=RX_POS+"$len"+1 ))
+} 
 
 function printRain
 {
@@ -200,11 +220,11 @@ function printRain
   local rw
   local rm
   local ry
-  rr=$(convertTomm "${CONFIGURATION[rainrate]}")
-  rd=$(convertTomm "${CONFIGURATION[rainday]}")
-  rw=$(convertTomm "${CONFIGURATION[rainweek]}")
-  rm=$(convertTomm "${CONFIGURATION[rainmonth]}")
-  ry=$(convertTomm "${CONFIGURATION[rainyear]}")
+  convertTomm "${CONFIGURATION[rainrate]}";  rr=$VALUE_TO_MM
+  convertTomm "${CONFIGURATION[rainday]}";   rd=$VALUE_TO_MM
+  convertTomm "${CONFIGURATION[rainweek]}";  rw=$VALUE_TO_MM
+  convertTomm "${CONFIGURATION[rainmonth]}"; rm=$VALUE_TO_MM 
+  convertTomm "${CONFIGURATION[rainyear]}";  ry=$VALUE_TO_MM
    #echo rainrate "${CONFIGURATION[rainrate]} "
    #echo rainday "${CONFIGURATION[rainday]} "
    #echo rainweek "${CONFIGURATION[rainweek]} "
@@ -216,7 +236,7 @@ function printRain
 
 function parsePacket {
   local cmd
-  local pos=4
+  RX_POS=4 # current read position for indexing PACKET_RX_OD[1] - ASCII string from od utility
 
   cmd=0x${PACKET_RX[2]}
 
@@ -235,84 +255,104 @@ function parsePacket {
   (( DEBUG )) && echo >&2 "Parse packet ${PACKET_RX[*]} length $PACKET_LENGTH"
 
   case $cmd in
+  
   "${CMD[write_reset]}" | "${CMD[write_customized]}" | "${CMD[write_path]}" | "${CMD[reboot]}" | "${CMD[write_ssid]}" | "${CMD[write_raindata]}" | "${CMD[write_ecowitt_interval]}" | "${CMD[write_wunderground]}" | "${CMD[write_wow]}" | "${CMD[write_weathercloud]}")
     parseResultPacket
     ;;
+  
   "${CMD[read_mac]}")
+   
     CONFIGURATION[mac]=$(printf "%02X:%02X:%02X:%02X:%02X:%02X"  0x"${PACKET_RX[4]}" 0x"${PACKET_RX[5]}" 0x"${PACKET_RX[6]}" 0x"${PACKET_RX[7]}" 0x"${PACKET_RX[8]}" 0x"${PACKET_RX[9]}")
     echo  "${CONFIGURATION[mac]}"
     ;;
+  
   "${CMD[read_version]}")
-    CONFIGURATION[version]=${PACKET_RX_OD[1]:(( $pos + 1)):0x${PACKET_RX[$pos]}}
+  
+    readString; CONFIGURATION[version]=$VALUE_STRING
     echo "${CONFIGURATION[version]}"
     ;;
+  
   "${CMD[read_ecowitt_interval]}")
-    CONFIGURATION[ecowitt_interval]=$(( "${PACKET_RX[$pos]}" ))
+    
+    readUInt8; CONFIGURATION[ecowitt_interval]=$VALUE_UINT8
     echo  "ecowitt_interval ${CONFIGURATION[ecowitt_interval]} minutes"
     ;;
+  
   "${CMD[read_wunderground]}")
-    CONFIGURATION[wunderground_id]=${PACKET_RX_OD[1]:(( $pos + 1 )):0x${PACKET_RX[$pos]}};      (( pos=pos+${#CONFIGURATION[wunderground_id]}+1 ))
-    CONFIGURATION[wunderground_password]=${PACKET_RX_OD[1]:(( $pos + 1)):0x${PACKET_RX[$pos]}}; (( pos=pos+${#CONFIGURATION[wunderground_password]}+1 ))
-    echo  "wunderground_id ${CONFIGURATION[wunderground_id]}"
-    echo  "wunderground_password ${CONFIGURATION[wunderground_password]}"
+    
+     readString; CONFIGURATION[wunderground_id]=$VALUE_STRING
+     readString; CONFIGURATION[wunderground_password]=$VALUE_STRING
+     
+     echo  "wunderground_id ${CONFIGURATION[wunderground_id]}"
+     echo  "wunderground_password ${CONFIGURATION[wunderground_password]}"
     ;;
+  
   "${CMD[read_wow]}")
-     CONFIGURATION[wow_id]=${PACKET_RX_OD[1]:(( $pos + 1 )):0x${PACKET_RX[$pos]}};      (( pos=pos+${#CONFIGURATION[wow_id]}+1 ))
-     CONFIGURATION[wow_password]=${PACKET_RX_OD[1]:(( $pos + 1)):0x${PACKET_RX[$pos]}}; (( pos=pos+${#CONFIGURATION[wow_password]}+1 ))
+    
+     readString; CONFIGURATION[wow_id]=$VALUE_STRING
+     readString; CONFIGURATION[wow_password]=$VALUE_STRING
+     
      echo "wow_id ${CONFIGURATION[wow_id]}"
      echo "wow_password ${CONFIGURATION[wow_password]}"
      ;;
+  
   "${CMD[read_weathercloud]}")
-     CONFIGURATION[weathercloud_id]=${PACKET_RX_OD[1]:(( $pos + 1 )):0x${PACKET_RX[$pos]}};      (( pos=pos+${#CONFIGURATION[weathercloud_id]}+1 ))
-     CONFIGURATION[weathercloud_password]=${PACKET_RX_OD[1]:(( $pos + 1)):0x${PACKET_RX[$pos]}}; (( pos=pos+${#CONFIGURATION[weathercloud_password]}+1 ))
+    
+     readString; CONFIGURATION[weathercloud_id]=$VALUE_STRING
+     readString; CONFIGURATION[weathercloud_password]=$VALUE_STRING
+
      echo "weathercloud_id ${CONFIGURATION[weathercloud_id]}"
      echo "weathercloud_password ${CONFIGURATION[weathercloud_password]}"
      ;;
+  
   "${CMD[read_customized]}")
-    
-    CONFIGURATION[customized_id]=${PACKET_RX_OD[1]:(( $pos + 1 )):0x${PACKET_RX[$pos]}};      (( pos=pos+${#CONFIGURATION[customized_id]}+1 ))
-    CONFIGURATION[customized_password]=${PACKET_RX_OD[1]:(( $pos + 1)):0x${PACKET_RX[$pos]}}; (( pos=pos+${#CONFIGURATION[customized_password]}+1 ))
-    CONFIGURATION[customized_server]=${PACKET_RX_OD[1]:(( $pos + 1)):0x${PACKET_RX[$pos]}};   (( pos=pos+${#CONFIGURATION[customized_server]}+1 ))
-    #http://mywiki.wooledge.org/ArithmeticExpression
-
-    CONFIGURATION[customized_port]=$((     ( 0x${PACKET_RX[-7]} << 8) | 0x${PACKET_RX[-6]} ))
-    CONFIGURATION[customized_interval]=$(( ( 0x${PACKET_RX[-5]} << 8) | 0x${PACKET_RX[-4]} ))
-    CONFIGURATION[customized_type]=$((       0x${PACKET_RX[-3]} ))
-    CONFIGURATION[customized_enabled]=$((    0x${PACKET_RX[-2]} ))
+    readString;   CONFIGURATION[customized_id]=$VALUE_STRING
+    readString;   CONFIGURATION[customized_password]=$VALUE_STRING
+    readString;   CONFIGURATION[customized_server]=$VALUE_STRING
+    readUInt16BE; CONFIGURATION[customized_port]=$VALUE_UINT16BE
+    readUInt16BE; CONFIGURATION[customized_interval]=$VALUE_UINT16BE
+    readUInt8;    CONFIGURATION[customized_type]=$VALUE_UINT8
+    readUInt8;    CONFIGURATION[customized_enabled]=$VALUE_UINT8
 
     printCustomized
-
     ;;
+  
   "${CMD[read_path]}")
    
-    CONFIGURATION[customized_ecowitt_path]=${PACKET_RX_OD[1]:(( $pos + 1)):0x${PACKET_RX[$pos]}}; (( pos=pos+${#CONFIGURATION[customized_ecowitt_path]}+1 ))
-    CONFIGURATION[customized_wunderground_path]=${PACKET_RX_OD[1]:(( $pos + 1)):0x${PACKET_RX[$pos]}}; (( pos=pos+${#CONFIGURATION[customized_wunderground_path]}+1 ))
+    readString; CONFIGURATION[customized_ecowitt_path]=$VALUE_STRING
+    readString; CONFIGURATION[customized_wunderground_path]=$VALUE_STRING
      ;;
 
   "${CMD[broadcast]}")
+  
         #this is the station MAC/ip on local network, when device is reset its annoncing hotspot accesspoint/AP with first byte of MAC changed
-        CONFIGURATION[broadcast_mac]=$(printf "%02X:%02X:%02X:%02X:%02X:%02X\n" 0x"${PACKET_RX[5]}" 0x"${PACKET_RX[6]}" 0x"${PACKET_RX[7]}" 0x"${PACKET_RX[8]}" 0x"${PACKET_RX[9]}" 0x"${PACKET_RX[10]}")
-        CONFIGURATION[broadcast_ip]=$(printf "%d.%d.%d.%d" 0x"${PACKET_RX[11]}" 0x"${PACKET_RX[12]}" 0x"${PACKET_RX[13]}" 0x"${PACKET_RX[14]}")
-        pos=17
+        printf -v CONFIGURATION[broadcast_mac] "%02X:%02X:%02X:%02X:%02X:%02X" 0x"${PACKET_RX[5]}" 0x"${PACKET_RX[6]}" 0x"${PACKET_RX[7]}" 0x"${PACKET_RX[8]}" 0x"${PACKET_RX[9]}" 0x"${PACKET_RX[10]}"
+        printf -v CONFIGURATION[broadcast_ip] "%u.%u.%u.%u" 0x"${PACKET_RX[11]}" 0x"${PACKET_RX[12]}" 0x"${PACKET_RX[13]}" 0x"${PACKET_RX[14]}"
+        RX_POS=17
         local ssid
         local version
-        IFS=' '; read -r ssid version <<< "${PACKET_RX_OD[1]:(( $pos + 1)):0x${PACKET_RX[$pos]}}" # ssid appends space+version
+#        IFS=' '; read -r ssid version <<< "${PACKET_RX_OD[1]:(( $pos + 1)):0x${PACKET_RX[$pos]}}" # ssid appends space+version
+         readString; IFS=' '; read -r ssid version <<< "$VALUE_STRING" # ssid appends space+version
+
         CONFIGURATION[broadcast_ssid]=$ssid
         CONFIGURATION[broadcast_version]=$version
-        CONFIGURATION[broadcast_port]=$(printf "%d" 0x"${PACKET_RX[15]}""${PACKET_RX[16]}")
+        printf -v CONFIGURATION[broadcast_port] "%u" 0x"${PACKET_RX[15]}""${PACKET_RX[16]}"
         echo "${CONFIGURATION[broadcast_mac]} ${CONFIGURATION[broadcast_ip]}:${CONFIGURATION[broadcast_port]} ${CONFIGURATION[broadcast_ssid]} ${CONFIGURATION[broadcast_version]}"
 
     ;;
 
     "${CMD[read_raindata]}")
-      CONFIGURATION[rainrate]=$( readUInt32BE 8   )
-      CONFIGURATION[rainday]=$(  readUInt32BE 8*2 )
-      CONFIGURATION[rainweek]=$( readUInt32BE 8*3 )
-      CONFIGURATION[rainmonth]=$(readUInt32BE 8*4 )
-      CONFIGURATION[rainyear]=$( readUInt32BE 8*5 )
+     
+     # echo "${PACKET_RX_HEX}" "$RX_POS_HEX"
+      readUInt32BE; CONFIGURATION[rainrate]=$VALUE_UINT32BE
+      readUInt32BE; CONFIGURATION[rainday]=$VALUE_UINT32BE
+      readUInt32BE; CONFIGURATION[rainweek]=$VALUE_UINT32BE
+      readUInt32BE; CONFIGURATION[rainmonth]=$VALUE_UINT32BE
+      readUInt32BE; CONFIGURATION[rainyear]=$VALUE_UINT32BE
       
       printRain
       ;;
+  
   *)
     >&2 echo "Warning unable to parse command $cmd"
     ;;
@@ -342,11 +382,12 @@ function createPacketTX {
   "${CMD[write_ssid]}" | "${CMD[broadcast]}")
     packetLengthLSB=$(((${#PACKET_BODY[@]} + 1) & 0xff))
     packetLengthMSB=$((((${#PACKET_BODY[@]} + 1) & 0xff00) >> 8))
-    PACKET_BODY[1]=$(decToHex $packetLengthMSB)
-    PACKET_BODY[2]=$(decToHex $packetLengthLSB)
+    decToHex $packetLengthMSB; PACKET_BODY[1]=$VALUE_HEX
+    decToHex $packetLengthLSB; PACKET_BODY[2]=$VALUE_HEX
     ;;
   *)
-    PACKET_BODY[1]=$(decToHex $((${#PACKET_BODY[@]} + 1))) # set packet length including checksum byte
+   decToHex $((${#PACKET_BODY[@]} + 1))
+   PACKET_BODY[1]=$VALUE_HEX # set packet length including checksum byte
     ;;
   esac
 
@@ -387,7 +428,7 @@ function readResponseDD
     timeout 0.5 dd bs=1024 count=1 ${DEBUG_OPTIONS[dd]} <&"$FD" >${FILENAME[rx]} # timeout request, for example EasyWeather doesnt respond to rain command
     dd_result=$?
     if [ $dd_result -ne 0 ] ; then
-      >&2 echo Error DD failed to read response from FD "$FD"
+      >&2 echo Error DD failed to read response from FD "$FD", status "$dd_result"
     fi
     (( DEBUG )) && >&2 echo dd_result $dd_result
     return $dd_result
@@ -441,7 +482,6 @@ function sendPacket {
         parsePacket
     fi
   fi
-
   
 }
 
@@ -507,7 +547,8 @@ function checksum {
    for n in  "${!PACKET_BODY[@]}"; do
     CHECKSUM=$(( (CHECKSUM + ${PACKET_BODY[$n]}) & 0xff ))
   done
-   CHECKSUM=$(decToHex $CHECKSUM)
+  decToHex $CHECKSUM;
+  CHECKSUM=$VALUE_HEX
   (( DEBUG )) && echo >&2 CHECKSUM "$CHECKSUM"
 }
 
@@ -515,9 +556,11 @@ function writeString {
   local n
 
   (( DEBUG )) && echo >&2 "${FUNCNAME[0]} $1 len ${#1}"
-  PACKET_BODY+=("$(decToHex ${#1})")
+  decToHex ${#1};
+  PACKET_BODY+=( "$VALUE_HEX" )
   for ((n = 0; n < ${#1}; n++)); do
-    PACKET_BODY+=("$(decToHex "'${1:$n:1}")")
+    decToHex "'${1:$n:1}"
+    PACKET_BODY+=( "$VALUE_HEX" )
   done
 }
 
@@ -536,9 +579,9 @@ function writeUInt {
   local hex
 
   case $1 in
-     8) hex=$(printf "%02x" "$2") ;;
-    16) hex=$(printf "%04x" "$2") ;;
-    32) hex=$(printf "%08x" "$2") ;;
+     8) printf -v hex "%02x" "$2" ;;
+    16) printf -v hex "%04x" "$2" ;;
+    32) printf -v hex "%08x" "$2" ;;
   esac
 
   for ((n=0;n<${#hex};n=n+2)); do
@@ -547,7 +590,8 @@ function writeUInt {
 }
 
 function decToHex {
-  printf "0x%02x" "$1"
+  (( DEBUG )) && >&2 echo $BASHPID "$1"
+  printf -v VALUE_HEX "0x%02x" "$1"
 }
 
 function newCustomizedPacket {
@@ -746,14 +790,14 @@ function convertTomm
 {
   local int
   local frac
- 
+  
   if (( $1 < 10 )); then
-   echo "0.$1"
+   printf -v VALUE_TO_MM "%s" "0.$1"
   else
    int=$(( $1 /10 ))
    frac=$(( $1 - int *10 ))
-    printf "%d.%d" $int $frac
- fi
+     printf  -v VALUE_TO_MM "%u.%u" $int $frac
+  fi
 }
 
 function initConfigDir
@@ -774,22 +818,60 @@ function initConfigDir
 
 }
 
+
+function showRainInfoMessage
+{
+   which notify-send >/dev/null && notify-send -t 3000 -i dialog-warning "gw script" "$1" &
+  #https://www.shell-tips.com/linux/how-to-format-date-and-time-in-linux-macos-and-bash/
+   echo -e "$(date)" "\a$1"
+   if [ -n "$2" ]; then
+    which espeak >/dev/null &&  espeak -p10 "$2" &
+   fi
+}
+
 function runRainNotification
+# $1 - number of seconds between each rain probe
+# $2 - show start/stop messages only (1 on, 0 off)
 {
   local rr
   local rd
-  local infomsg
+  local rainInterval # raining continously for "$1" seconds
+  local rainDuration # minutes raining
+  local simulation
+  local showStartStopEventOnly=$2
+  local rainTimeout=$1
+  rainTimeout=$1
+  showStartStopEventOnly=$2
 
+  simulation=1 # 1 = on for testing
+  (( simulation )) && { rainTimeout=5; showStartStopEventOnly=1; CONFIGURATION[rainrate]=0; CONFIGURATION[rainday]=10; } # { list ; } run in current shell
+
+  (( DEBUG )) && echo >&2 "Rain event interval $rainTimeout s. Show start/stop events only $showStartStopEventOnly"
+  
+  rainInterval=0
   while true; do 
-    sendPacket ${CMD[read_raindata]} >/dev/null
-    if [ "${CONFIGURATION[rainrate]}" != "0" ]; then
-      rr=$(convertTomm "${CONFIGURATION[rainrate]}")
-      rd=$(convertTomm "${CONFIGURATION[rainday]}")
-      infomsg="Its raining $rr mm/h. Today $rd mm"
-      which notify-send >/dev/null && notify-send -t 3000 -i dialog-warning "gw script" "$infomsg"
-      echo "$(date)" "$infomsg" 
+    (( simulation == 0 )) && sendPacket ${CMD[read_raindata]} >/dev/null
+    (( simulation )) && (( CONFIGURATION[rainrate]=CONFIGURATION[rainrate] + 10 )) && (( CONFIGURATION[rainrate] == 50 )) && CONFIGURATION[rainrate]=0;
+    convertTomm "${CONFIGURATION[rainrate]}"
+    rr=$VALUE_TO_MM
+    convertTomm "${CONFIGURATION[rainday]}"
+    rd=$VALUE_TO_MM
+    if (( CONFIGURATION[rainrate] != 0 )); then
+        (( rainInterval++ ))
+        if (( rainInterval == 1)); then
+           showRainInfoMessage "☂ Its raining! $rr mm/h.Today $rd mm" "Its raining! $rr millimeter per hour. Today $rd millimeter"
+         else
+           if [ "$showStartStopEventOnly" != "1"  ]; then
+             showRainInfoMessage "☂ Raining $rr mm/h. Today $rd mm"
+           fi
+         fi
     fi
-    sleep "$1"
+    if (( rainInterval && CONFIGURATION[rainrate] == 0 )); then
+        rainDuration=$(( rainInterval * rainTimeout / 60 )) # integer only in bash
+        showRainInfoMessage "Raining stopped! Today $rd mm. Rained for $rainDuration minutes." "Raining stopped! Today $rd millimeter. It rained for $rainDuration minutes."
+        rainInterval=0
+    fi
+    sleep "$rainTimeout"
   done
 }
 
@@ -923,6 +1005,8 @@ function processCommand
 
     rain)
       sendPacket ${CMD[read_raindata]}
+      ;;
+     *) echo >&2 Error Unkown command "$COMMAND"
       ;;
   esac
 
@@ -1072,7 +1156,8 @@ while [[ $# -gt 0 ]]; do
   ;;
   
   -n | --notifyrain)
-      runRainNotification "$2" #tested on GNOME
+      runRainNotification "$2" "$3" #tested on GNOME
+      shift
       shift
       shift
     ;;
