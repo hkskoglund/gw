@@ -18,7 +18,6 @@ declare -i DEBUG
 DEBUG=0
 
 declare -A DEBUG_OPTIONS
-DEBUG_OPTIONS[socat]='-d -d -x'
 DEBUG_OPTIONS[dd]='status=none'
 
 declare -A PORT
@@ -60,265 +59,47 @@ CMD[write_raindata]=0x35
 
 CMD[livedata]=0x27
 
-#From technical documentation serial FOS-ENG-022-A
-#declare -A FIELDTYPE_VS_BYTESIZE
-#FIELDTYPE_VS_BYTESIZE[0x01]=(2 1)
+declare -a LIVEDATA
 
-declare -a LIVEDATA_FIELDS_DISCOVERED
+declare -a LDFIELD
+LDFIELD[0x01]="INTEMP:indoor temperature:℃:2:1"
+LDFIELD[0x02]="OUTTEMP:outdoor temperature:℃:2:1"
+LDFIELD[0x06]="INHUMI:indoor humidity:%:1:0"
+LDFIELD[0x07]="OUTHUMI:outdoor humidity:%:1:0"
+LDFIELD[0x08]="ABSBARO:absolute pressure:hpa:2:1"
+LDFIELD[0x09]="RELBARO:relative pressure:hpa:2:1"
+LDFIELD[0x0A]="WINDDIRECTION:wind direction:°:2:0"
+LDFIELD[0x0B]="WINDSPEED:wind speed:m/s:2:1"
+LDFIELD[0x19]="WINDGUSTDAILYMAX:wind gust daily max:m/s:2:1"
+LDFIELD[0x0C]="WINDGUST:wind gust:m/s:2:1"
+LDFIELD[0x0D]="RAINEVENT:rain event:mm:2:1"
+LDFIELD[0x0E]="RAINRATE:rain rate:mm/h:2:1"
+LDFIELD[0x0F]="RAINHOUR:rain hour:mm:2:1"
+LDFIELD[0x10]="RAINDAILY:rain daily:mm:2:1"
+LDFIELD[0x11]="RAINWEEK:rain week:mm:2:1"
+LDFIELD[0x12]="RAINMONTH:rain month:mm:4:1"
+LDFIELD[0x13]="RAINYEAR:rain year:mm:4:1"
+LDFIELD[0x15]="LIGHT:light:lx:4:1" # lux=lumen/m2]
+LDFIELD[0x16]="UV:UV radiation:µW/m2:2:1"
+LDFIELD[0x17]="UVI:UV index (0-15)::1:0"
+for ((LDFT=0x2A, LDFT2=0x4D, CH=1;CH<=4; CH++, LDFT++,LDFT2++ )); do
+  if (( CH == 2 )); then LDFT=$((0x51)); fi
+   LDFIELD[$LDFT]="PM25_CH$CH:PM2.5 air quality sensor CH$CH:μg/m3:2:1"
+   LDFIELD[$LDFT2]="PM25_24HAVG_CH$CH:PM2.5 air quality sensor 24 h average CH$CH:μg/m3:2:1"
+done
+for ((LDFT=0x2B, CH=1;CH<=16; CH++, LDFT=LDFT+2 )); do
+   LDFIELD[$LDFT]="SOILTEMP_CH$CH:soil temperature CH$CH:℃:2:1"
+   LDFIELD[(( LDFT + 1 ))]="SOILHUMI_CH$CH:soil humidity CH$CH:%:1:0"
+done
+for ((LDFT=0x1A, LDFT2=0x22, CH=1;CH<=8; CH++, LDFT++,LDFT2++ )); do
+   LDFIELD[$LDFT]="TEMP_CH$CH:temperature CH$CH:℃:2:1"
+   LDFIELD[$LDFT2]="HUMI_CH$CH:humidity CH$CH:%:1:0"
+done
+for ((LDFT=0x58, CH=1;CH<=4; CH++, LDFT++ )); do
+   LDFIELD[$LDFT]="LEAK_CH$CH:leak CH$CH::1:0"
+done
 
-declare -A ITEM_INTEMP
-ITEM_INTEMP=([0]=0x01 [1]="INTEMP" [2]="indoor temperature" [3]="℃" [4]=2)
-
-declare -A ITEM_OUTTEMP
-ITEM_OUTTEMP=([0]=0x02 [1]="OUTTEMP" [2]="outdoor temperature" [3]="℃" [4]=2)
-
-declare -A ITEM_INHUMI
-ITEM_INHUMI=([0]=0x06 [1]="INHUMI" [2]="indoor humidity" [3]="%" [4]=1)
-
-declare -A ITEM_OUTHUMI
-ITEM_OUTHUMI=([0]=0x07 [1]="OUTHUMI" [2]="outdoor humidity" [3]="%" [4]=1)
-
-declare -A ITEM_ABSBARO
-ITEM_ABSBARO=([0]=0x08 [1]="ABSBARO" [2]="absolute pressure" [3]="hpa" [4]=2)
-
-declare -A ITEM_RELBARO
-ITEM_RELBARO=([0]=0x09 [1]="RELBARO" [2]="relative pressure" [3]="hpa" [4]=2)
-
-declare -A ITEM_WINDDIRECTION
-ITEM_WINDDIRECTION=([0]=0x0A [1]="WINDDIRECTION" [2]="wind direction" [3]="°" [4]=2)
-
-declare -A ITEM_WINDSPEED
-ITEM_WINDSPEED=([0]=0x0B [1]="WINDDIRECTION" [2]="wind speed" [3]="m/s" [4]=2)
-
-declare -A ITEM_WINDGUSTDAILYMAX
-ITEM_WINDGUSTDAILYMAX=([0]=0x19 [1]="WINDGUSTDAILYMAX" [2]="wind gust daily max" [3]="m/s" [4]=2)
-
-declare -A ITEM_WINDGUST
-ITEM_WINDGUST=([0]=0x0C [1]="WINDGUST" [2]="wind gust" [3]="m/s" [4]=2)
-
-declare -A ITEM_RAINEVENT
-ITEM_RAINEVENT=([0]=0x0D [1]="RAINEVENT" [2]="rain event" [3]="mm" [4]=2)
-
-declare -A ITEM_RAINRATE
-ITEM_RAINRATE=([0]=0x0E [1]="RAINRATE" [2]="rain rate" [3]="mm/h" [4]=2)
-
-declare -A ITEM_RAINHOUR
-ITEM_RAINHOUR=([0]=0x0F [1]="RAINRATE" [2]="rain hour" [3]="mm" [4]=2)
-
-declare -A ITEM_RAINDAY
-ITEM_RAINDAY=([0]=0x10 [1]="RAINDAY" [2]="rain day" [3]="mm" [4]=2)
-
-declare -A ITEM_RAINWEEK
-ITEM_RAINWEEK=([0]=0x11 [1]="RAINWEEK" [2]="rain week" [3]="mm" [4]=2)
-
-declare -A ITEM_RAINMONTH
-ITEM_RAINMONTH=([0]=0x12 [1]="RAINMONTH" [2]="rain month" [3]="mm" [4]=4)
-
-declare -A ITEM_RAINYEAR
-ITEM_RAINYEAR=([0]=0x13 [1]="RAINYEAR" [2]="rain year" [3]="mm" [4]=4)
-
-
-declare -A ITEM_LIGHT
-ITEM_LIGHT=([0]=0x15 [1]="LIGHT" [2]="light" [3]="lx" [4]=4) # lux=lumen/m2
-
-declare -A ITEM_UV
-ITEM_UV=([0]=0x16 [1]="UV" [2]="UV" [3]="µW/m^2" [4]=2) 
-
-declare -A ITEM_UVI
-ITEM_UVI=([0]=0x17 [1]="UVI" [2]="UV index (0-15)" [3]="" [4]=1) 
-
-declare -A ITEM_PM25_CH1
-ITEM_PM25_CH1=([0]=0x2A [1]="PM25_CH1" [2]="PM2.5 air quality sensor CH1" [3]="μg/m^3" [4]=2) 
-
-declare -A ITEM_PM25_CH1_24HAVG
-ITEM_PM25_CH1_24HAVG=([0]=0x4D [1]="PM25_24HAVG_CH1" [2]="PM2.5 air quality sensor 24 h average CH1" [3]="μg/m^3" [4]=2) 
-
-declare -A ITEM_PM25_CH2
-ITEM_PM25_CH2=([0]=0x51 [1]="PM25_CH2" [2]="PM2.5 air quality sensor CH2" [3]="μg/m^3" [4]=2) 
-
-declare -A ITEM_PM25_CH1_24HAVG
-ITEM_PM25_CH2_24HAVG=([0]=0x4E [1]="PM25_24HAVG_CH2" [2]="PM2.5 air quality sensor 24 h average CH2" [3]="μg/m^3" [4]=2) 
-
-declare -A ITEM_PM25_CH3
-ITEM_PM25_CH3=([0]=0x52 [1]="PM25_CH2" [2]="PM2.5 air quality sensor CH3" [3]="μg/m^3" [4]=2) 
-
-declare -A ITEM_PM25_CH3_24HAVG
-ITEM_PM25_CH3_24HAVG=([0]=0x4F [1]="PM25_24HAVG_CH2" [2]="PM2.5 air quality sensor 24 h average CH3" [3]="μg/m^3" [4]=2) 
-
-declare -A ITEM_PM25_CH4
-ITEM_PM25_CH4=([0]=0x53 [1]="PM25_CH2" [2]="PM2.5 air quality sensor CH4" [3]="μg/m^3" [4]=2) 
-
-declare -A ITEM_PM25_CH3_24HAVG
-ITEM_PM25_CH4_24HAVG=([0]=0x50 [1]="PM25_24HAVG_CH2" [2]="PM2.5 air quality sensor 24 h average CH4" [3]="μg/m^3" [4]=2) 
-
-declare -A ITEM_SOILMOISTURE_CH1
-ITEM_SOILMOISTURE_CH1=([0]=0x2C [1]="SOILMOISTURE_CH1" [2]="soilmoisture CH1" [3]="%" [4]=1) 
-
-declare -A ITEM_TEMP_CH1
-ITEM_TEMP_CH1=([0]=0x1A [1]="TEMP_CH1" [2]="temperature CH1" [3]="℃" [4]=2) 
-
-declare -A ITEM_TEMP_CH2
-ITEM_TEMP_CH2=([0]=0x1B [1]="TEMP_CH2" [2]="temperature CH2" [3]="℃" [4]=2) 
-
-declare -A ITEM_TEMP_CH3
-ITEM_TEMP_CH3=([0]=0x1C [1]="TEMP_CH3" [2]="temperature CH3" [3]="℃" [4]=2) 
-
-declare -A ITEM_TEMP_CH4
-ITEM_TEMP_CH4=([0]=0x1D [1]="TEMP_CH4" [2]="temperature CH4" [3]="℃" [4]=2) 
-
-declare -A ITEM_TEMP_CH5
-ITEM_TEMP_CH5=([0]=0x1E [1]="TEMP_CH5" [2]="temperature CH5" [3]="℃" [4]=2) 
-
-declare -A ITEM_TEMP_CH6
-ITEM_TEMP_CH6=([0]=0x1F [1]="TEMP_CH6" [2]="temperature CH6" [3]="℃" [4]=2) 
-
-declare -A ITEM_TEMP_CH7
-ITEM_TEMP_CH7=([0]=0x20 [1]="TEMP_CH7" [2]="temperature CH7" [3]="℃" [4]=2) 
-
-declare -A ITEM_TEMP_CH8
-ITEM_TEMP_CH8=([0]=0x21 [1]="TEMP_CH8" [2]="temperature CH8" [3]="℃" [4]=2) 
-
-declare -A ITEM_HUMI_CH1
-ITEM_HUMI_CH1=([0]=0x22 [1]="HUMI_CH1" [2]="humidity CH1" [3]="%" [4]=1) 
-
-declare -A ITEM_HUMI_CH2
-ITEM_HUMI_CH2=([0]=0x23 [1]="HUMI_CH2" [2]="humidity CH2" [3]="%" [4]=1) 
-
-declare -A ITEM_HUMI_CH3
-ITEM_HUMI_CH3=([0]=0x24 [1]="HUMI_CH3" [2]="humidity CH3" [3]="%" [4]=1) 
-
-declare -A ITEM_HUMI_CH3
-ITEM_HUMI_CH4=([0]=0x25 [1]="HUMI_CH4" [2]="humidity CH14" [3]="%" [4]=1) 
-
-declare -A ITEM_HUMI_CH5
-ITEM_HUMI_CH5=([0]=0x26 [1]="HUMI_CH5" [2]="humidity CH5" [3]="%" [4]=1) 
-
-declare -A ITEM_HUMI_CH6
-ITEM_HUMI_CH6=([0]=0x27 [1]="HUMI_CH6" [2]="humidity CH6" [3]="%" [4]=1) 
-
-declare -A ITEM_HUMI_CH7
-ITEM_HUMI_CH7=([0]=0x28 [1]="HUMI_CH7" [2]="humidity CH7" [3]="%" [4]=1) 
-
-declare -A ITEM_HUMI_CH8
-ITEM_HUMI_CH8=([0]=0x29 [1]="HUMI_CH8" [2]="humidity CH8" [3]="%" [4]=1) 
-
-#define ITEM_LEAK_CH1 0x58//for Leak_ch1 1
-
-declare -A ITEM_LEAK_CH1
-ITEM_LEAK_CH1=([0]=0x58 [1]="LEAK_CH1" [2]="water leak CH1" [3]="" [4]=1) 
-
-declare -A ITEM_LEAK_CH2
-ITEM_LEAK_CH2=([0]=0x59 [1]="LEAK_CH2" [2]="water leak CH2" [3]="" [4]=1) 
-
-declare -A ITEM_LEAK_CH3
-ITEM_LEAK_CH3=([0]=0x5A [1]="LEAK_CH3" [2]="water leak CH3" [3]="" [4]=1) 
-
-declare -A ITEM_LEAK_CH4
-ITEM_LEAK_CH4=([0]=0x5B [1]="LEAK_CH4" [2]="water leak CH4" [3]="" [4]=1) 
-
-
-#d
-#define ITEM_INHUMI 0x06//Indoor Humidity (%) 1
-
-#define ITEM_INTEMP 0x01//Indoor Temperature (℃) 2
-#define ITEM_OUTTEMP 0x02//Outdoor Temperature (℃) 2
-#define ITEM_DEWPOINT 0x03//Dew point (℃) 2
-#define ITEM_WINDCHILL 0x04//Wind chill (℃) 2
-#define ITEM_HEATINDEX 0x05//Heat index (℃) 2
-#define ITEM_INHUMI 0x06//Indoor Humidity (%) 1
-#define ITEM_OUTHUMI 0x07//Outdoor Humidity (%) 1
-#define ITEM_ABSBARO 0x08//Absolutely Barometric (hpa) 2
-#define ITEM_RELBARO 0x09//Relative Barometric (hpa) 2
-#define ITEM_WINDDIRECTION 0x0A//Wind Direction (360°) 2
-#define ITEM_WINDSPEED 0x0B//Wind Speed (m/s) 2
-#define ITEM_GUSTSPEED 0x0C//Gust Speed (m/s) 2
-#define ITEM_RAINEVENT 0x0D//Rain Event (mm) 2
-#define ITEM_RAINRATE 0x0E//Rain Rate (mm/h) 2
-#define ITEM_RAINHOUR 0x0F//Rain hour (mm) 2
-#define ITEM_RAINDAY 0x10//Rain Day (mm) 2
-#define ITEM_RAINWEEK 0x11//Rain Week (mm) 2
-#define ITEM_RAINMONTH 0x12//Rain Month (mm) 4
-#define ITEM_RAINYEAR 0x13//Rain Year (mm) 4
-#define ITEM_RAINTOTALS 0x14//Rain Totals (mm) 4
-#define ITEM_LIGHT 0x15//Light (lux) 4
-#define ITEM_UV 0x16//UV (uW/m2) 2
-#define ITEM_UVI 0x17//UVI (0-15 index) 1
-#define ITEM_TIME 0x18//Date and time 6
-#define ITEM_DAYLWINDMAX 0X19//Day max wind(m/s) 2
-#define ITEM_TEMP1 0x1A//Temperature 1(℃) 2
-#define ITEM_TEMP2 0x1B//Temperature 2(℃) 2
-#define ITEM_TEMP3 0x1C//Temperature 3(℃) 2
-#define ITEM_TEMP4 0x1D//Temperature 4(℃) 2
-#define ITEM_TEMP5 0x1E//Temperature 5(℃) 2
-#define ITEM_TEMP6 0x1F//Temperature 6(℃) 2
-#define ITEM_TEMP7 0x20//Temperature 7(℃) 2
-#define ITEM_TEMP8 0x21//Temperature 8(℃) 2
-#define ITEM_HUMI1 0x22//Humidity 1, 0-100% 1
-#define ITEM_HUMI2 0x23//Humidity 2, 0-100% 1
-#define ITEM_HUMI3 0x24//Humidity 3, 0-100% 1
-#define ITEM_HUMI4 0x25//Humidity 4, 0-100% 1
-#define ITEM_HUMI5 0x26//Humidity 5, 0-100% 1
-#define ITEM_HUMI6 0x27//Humidity 6, 0-100% 1
-#define ITEM_HUMI7 0x28//Humidity 7, 0-100% 1
-#define ITEM_HUMI8 0x29//Humidity 8, 0-100% 1
-#define ITEM_PM25_CH1 0x2A//PM2.5 Air Quality Sensor(μg/m3) 2
-#define ITEM_SOILTEMP1 0x2B//Soil Temperature(℃) 2
-#define ITEM_SOILMOISTURE1 0x2C//Soil Moisture(%) 1
-#define ITEM_SOILTEMP2 0x2D//Soil Temperature(℃) 2
-#define ITEM_SOILMOISTURE2 0x2E//Soil Moisture(%) 1
-#define ITEM_SOILTEMP3 0x2F//Soil Temperature(℃) 2
-#define ITEM_SOILMOISTURE3 0x30//Soil Moisture(%) 1
-#define ITEM_SOILTEMP4 0x31//Soil Temperature(℃) 2
-#define ITEM_SOILMOISTURE4 0x32//Soil Moisture(%) 1
-#define ITEM_SOILTEMP5 0x33//Soil Temperature(℃) 2
-#define ITEM_SOILMOISTURE5 0x34//Soil Moisture(%) 1
-#define ITEM_SOILTEMP6 0x35//Soil Temperature(℃) 2
-#define ITEM_SOILMOISTURE6 0x36//Soil Moisture(%) 1
-#define ITEM_SOILTEMP7 0x37//Soil Temperature(℃) 2
-#define ITEM_SOILMOISTURE7 0x38//Soil Moisture(%) 1
-#define ITEM_SOILTEMP8 0x39//Soil Temperature(℃) 2
-#define ITEM_SOILMOISTURE8 0x3A//Soil Moisture(%) 1
-#define ITEM_SOILTEMP9 0x3B//Soil Temperature(℃) 2
-#define ITEM_SOILMOISTURE9 0x3C//Soil Moisture(%) 1
-#define ITEM_SOILTEMP10 0x3D//Soil Temperature(℃) 2
-#define ITEM_SOILMOISTURE10 0x3E//Soil Moisture(%) 1
-#define ITEM_SOILTEMP11 0x3F//Soil Temperature(℃) 2
-#define ITEM_SOILMOISTURE11 0x40//Soil Moisture(%) 1
-#define ITEM_SOILTEMP12 0x41//Soil Temperature(℃) 2
-#define ITEM_SOILMOISTURE12 0x42//Soil Moisture(%) 1
-#define ITEM_SOILTEMP13 0x43//Soil Temperature(℃) 2
-#define ITEM_SOILMOISTURE13 0x44//Soil Moisture(%) 1
-#define ITEM_SOILTEMP14 0x45//Soil Temperature(℃) 2
-#define ITEM_SOILMOISTURE14 0x46//Soil Moisture(%) 1
-#define ITEM_SOILTEMP15 0x47//Soil Temperature(℃) 2
-#define ITEM_SOILMOISTURE15 0x48//Soil Moisture(%) 1
-#define ITEM_SOILTEMP16 0x49//Soil Temperature(℃) 2
-#define ITEM_SOILMOISTURE16 0x4A//Soil Moisture(%) 1
-#define ITEM_LOWBATT 0x4C//All sensor lowbatt 16 char 16
-#define ITEM_PM25_24HAVG1 0x4D//for pm25_ch1 2
-#define ITEM_PM25_24HAVG2 0x4E//for pm25_ch2 2
-#define ITEM_PM25_24HAVG3 0x4F//for pm25_ch3 2
-#define ITEM_PM25_24HAVG4 0x50//for pm25_ch4 2
-#define ITEM_PM25_CH2 0x51//PM2.5 Air Quality Sensor(μg/m3) 2
-#define ITEM_PM25_CH3 0x52//PM2.5 Air Quality Sensor(μg/m3) 2
-#define ITEM_PM25_CH4 0x53//PM2.5 Air Quality Sensor(μg/m3) 2
-#define ITEM_LEAK_CH1 0x58//for Leak_ch1 1
-#define ITEM_LEAK_CH2 0x59//for Leak_ch2 1
-#define ITEM_LEAK_CH3 0x5A//for Leak_ch3 1
-#define ITEM_LEAK_CH4 0x5B//for Leak_ch4 1
-#define ITEM_LIGHTNING 0x60 // lightning distance （1~40KM） 1
-#define ITEM_LIGHTNING_TIME 0x61// lightning happened time(UTC) 4
-#define ITEM_LIGHTNING_POWER 0x62// lightning counter for the ay 4
-#define ITEM_TF_USR1 0x63//Temperature(℃) 4
-#define ITEM_TF_USR2 0x64//Temperature(℃) 4
-#define ITEM_TF_USR3 0x65//Temperature(℃) 4
-#define ITEM_TF_USR4 0x66//Temperature(℃) 4
-#define ITEM_TF_USR5 0x67//Temperature(℃) 4
-#define ITEM_TF_USR6 0x68//Temperature(℃) 4
-#define ITEM_TF_USR7 0x69//Temperature(℃) 4
-#define ITEM_TF_USR8 0x6A//Temperature(℃) 4
-
-# PACKET BODY STARTING AT BYTE 2 (from 0)
+# PACKET BODY STARTING AT BYTE 2 (from 0 index, first 0xff 0xff)
 PACKET_BODY=()
 
 #CONNECT ERRORS
@@ -329,6 +110,37 @@ ERROR_NO_SOCAT=4
 #ERROR_READ_RESPONSE=3
 
 declare -A CONFIGURATION
+
+declare -a LDFNAMEDESC
+declare -a LDFACTIVE # found fields in livedata from host
+
+function newLivedataFieldNameDesc
+{
+  IFS=':'
+  #echo Keys "${!LDFIELD[@]}"
+  for k in "${!LDFIELD[@]}"; do
+    read -r FNAME FDESC FREST <<< "${LDFIELD[$k]}"
+     LDFNAMEDESC[$k]="$FNAME $FDESC"
+  done
+}
+
+function listLivedataFieldsAndDescription
+# $1 - if non-zero list only active fields found during parsing of livedata, else list all known fields
+{
+  local fn
+  local fd
+  local fk
+  
+  IFS=' '
+
+  fk="${!LDFIELD[*]}"
+  [ -n "$1" ] && fk="${LDFACTIVE[*]}"
+  
+  for k in $fk; do
+    read -r fn fd <<< "${LDFNAMEDESC[$k]}"  
+    printf "%-16s %s\n" "$fn" "$fd"
+  done
+}
 
 function connect {
   # Info  from https://www.xmodulo.com/tcp-udp-socket-bash-shell.html
@@ -383,6 +195,7 @@ function disconnect {
 }
 
 function getCommandName {
+#$1 - command hex to get name to
   #set -x # turn on debug
   for name in "${!CMD[@]}"; do # ${!array} iterate over keys
     if ((${CMD[$name]} == $1)); then
@@ -534,361 +347,75 @@ function convertToDirectionName
 }
 
 function parseLivedata
-#ff ff 27 00 59 01 00 d6 06 35 08 27 3e 09 27 3e 02 00 5f 07 60 0a 00 a8 0b 00 08 0c 00 0a 15 00 00 6b 26 16 00 17 17 00 2a 00 1e 4d 00 29 2c 10 1a 00 b0 22 3e 1b 00 ce 23 31 1c 00 e7 24 31 58 00 19 00 1a 0e 00 24 10 00 1f 11 00 3b 12 00 00 01 a6 13 00 00 0a 91 0d 00 3b 9a 
+# $1 -pattern to match
 {
   local fieldTypeHex
   local fieldTypeHexSub
-  local fieldDiscovered
+  local match
 
   RX_POS=5
-  unset LIVEDATA_FIELDS_DISCOVERED
-  LIVEDATA_FIELDS_DISCOVERED=()
   
+  if [ "$1" == "*" ]; then
+    LDPATTERN='.*'
+  fi
+  LDPATTERN=${LDPATTERN,,} # to lowercase
+
+ ((DEBUG )) && >&2 echo parseLivedata "LDPATTERN" "$LDPATTERN"
+
+  IFS=':'
+  LDFACTIVE=()
+
+
   while (( "$RX_POS" < (${#PACKET_RX[@]} - 1) )); do
-    
 
     (( DEBUG ))&& >&2 echo PACKET_RX_HEX "${PACKET_RX_HEX:(( $RX_POS * 2 ))}" RX_POS "$RX_POS" PACKET_RX_LENGTH "${#PACKET_RX[@]}"
 
-    fieldDiscovered=1
     readUInt8
     fieldTypeHex=$VALUE_HEX
 
     fieldTypeHexSub=${fieldTypeHex:2}
     fieldTypeHexSub=0x${fieldTypeHexSub^^} #^^ all characters to uppercase -> 0x0a -> 0x0A
+    LDFACTIVE+=( "$fieldTypeHexSub" ) # keep track of discovered fields
+
+    read -r LDFNAME LDFDESC LDFUNIT LDFBYTES LDFSCALE <<< "${LDFIELD[$fieldTypeHexSub]}"
+   
+    case "$LDFBYTES" in 
+
+       1) readUInt8
+          LIVEDATA[$fieldTypeHexSub]=$VALUE_UINT8
+          ;;
+
+       2) readUInt16BE
+          LIVEDATA[$fieldTypeHexSub]=$VALUE_UINT16BE
+          ;;
+           
+       4) readUInt32BE
+          LIVEDATA[$fieldTypeHexSub]=$VALUE_UINT32BE
+          ;;
+     
+     esac
+
+     if (( LDFSCALE )); then
+        convertScale10ToFloat "${LIVEDATA[$fieldTypeHexSub]}"
+        LIVEDATA[$fieldTypeHexSub]=$VALUE_SCALE10_FLOAT
+     fi
+
+#|  
+      if [[ ${LDFNAME,,} =~ ^${LDPATTERN} ]] || [[ ${LDFDESC,,} =~ ${LDPATTERN} ]] ; then  # ^ line starts with, ,,=to lowercase
+      match=1
+        printf "%8s %s %s\n" "${LIVEDATA[$fieldTypeHexSub]}" "$LDFUNIT" "$LDFDESC"
+      fi
+
+  done
+
+  (( DEBUG )) && >&2 echo active fields "${LDFACTIVE[@]}"
+
+  if (( match == 0)); then
+  >&2 echo "Error Failed to match '$LDPATTERN' in current livedata fields"
+     listLivedataFieldsAndDescription 1
     
-    case ${fieldTypeHexSub} in 
-      
-      "${ITEM_INTEMP[0]}")
-          
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-          ITEM_INTEMP[5]=$VALUE_SCALE10_FLOAT
-          printf "%+4s %4s %-30s\n" "${ITEM_INTEMP[5]}" "${ITEM_INTEMP[3]}" " ${ITEM_INTEMP[2]}"
-          ;;
-
-        "${ITEM_OUTTEMP[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-          ITEM_OUTTEMP[5]=$VALUE_SCALE10_FLOAT
-          echo "${ITEM_OUTTEMP[5]} ${ITEM_OUTTEMP[3]}" " ${ITEM_OUTTEMP[2]}"
-          ;;
-
-        "${ITEM_INHUMI[0]}")
-
-          readUInt8
-          ITEM_INHUMI[5]=$VALUE_UINT8
-          echo "${ITEM_INHUMI[5]} ${ITEM_INHUMI[3]} ${ITEM_INHUMI[2]}"
-          ;;
-
-        "${ITEM_OUTHUMI[0]}")
-
-          readUInt8
-          ITEM_OUTHUMI[5]=$VALUE_UINT8
-          echo "${ITEM_OUTHUMI[5]} ${ITEM_OUTHUMI[3]} ${ITEM_OUTHUMI[2]}"
-          ;;
-
-        "${ITEM_ABSBARO[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-          ITEM_ABSBARO[5]=$VALUE_SCALE10_FLOAT
-          echo "${ITEM_ABSBARO[5]} ${ITEM_ABSBARO[3]} ${ITEM_ABSBARO[2]}"
-          ;;
-
-        "${ITEM_RELBARO[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-          ITEM_RELBARO[5]=$VALUE_SCALE10_FLOAT
-          echo "${ITEM_RELBARO[5]} ${ITEM_RELBARO[3]} ${ITEM_RELBARO[2]}"
-          ;;
-
-        "${ITEM_WINDDIRECTION[0]}")
-
-          readUInt16BE
-           ITEM_WINDDIRECTION[5]="$VALUE_UINT16BE"
-           convertToDirectionName "${ITEM_WINDDIRECTION[5]}"
-
-          echo "${ITEM_WINDDIRECTION[5]} ${ITEM_WINDDIRECTION[3]} $VALUE_DIRECTION_NAME ${ITEM_WINDDIRECTION[2]}"
-          ;;
-
-          "${ITEM_WINDSPEED[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_WINDSPEED[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_WINDSPEED[5]} ${ITEM_WINDSPEED[3]} ${ITEM_WINDSPEED[2]}"
-          ;;
-
-        "${ITEM_WINDGUST[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_WINDGUST[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_WINDGUST[5]} ${ITEM_WINDGUST[3]} ${ITEM_WINDGUST[2]}"  
-          ;;
-
-           "${ITEM_WINDGUSTDAILYMAX[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_WINDGUSTDAILYMAX[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_WINDGUSTDAILYMAX[5]} ${ITEM_WINDGUSTDAILYMAX[3]} ${ITEM_WINDGUSTDAILYMAX[2]}"
-          ;;
-
-        "${ITEM_RAINEVENT[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_RAINEVENT[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_RAINEVENT[5]} ${ITEM_RAINEVENT[3]} ${ITEM_RAINEVENT[2]}"
-          ;;
-
-          "${ITEM_RAINRATE[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_RAINRATE[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_RAINRATE[5]} ${ITEM_RAINRATE[3]} ${ITEM_RAINRATE[2]}"
-          ;;
-
-             "${ITEM_RAINHOUR[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_RAINHOUR[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_RAINHOUR[5]} ${ITEM_RAINHOUR[3]} ${ITEM_RAINHOUR[2]}"
-          ;;
-
-            "${ITEM_RAINDAY[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_RAINDAY[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_RAINDAY[5]} ${ITEM_RAINDAY[3]} ${ITEM_RAINDAY[2]}"
-          ;;
-
-            "${ITEM_RAINWEEK[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_RAINWEEK[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_RAINWEEK[5]} ${ITEM_RAINWEEK[3]} ${ITEM_RAINWEEK[2]}"
-          ;;
-
-           "${ITEM_RAINMONTH[0]}")
-
-          readUInt32BE
-          convertScale10ToFloat "$VALUE_UINT32BE"
-           ITEM_RAINMONTH[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_RAINMONTH[5]} ${ITEM_RAINMONTH[3]} ${ITEM_RAINMONTH[2]}"
-          ;;
-
-           "${ITEM_RAINYEAR[0]}")
-
-          readUInt32BE
-          convertScale10ToFloat "$VALUE_UINT32BE"
-           ITEM_RAINYEAR[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_RAINYEAR[5]} ${ITEM_RAINYEAR[3]} ${ITEM_RAINYEAR[2]}"
-          ;;
-
-          "${ITEM_LIGHT[0]}")
-
-          readUInt32BE
-          convertScale10ToFloat "$VALUE_UINT32BE"
-           ITEM_LIGHT[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_LIGHT[5]} ${ITEM_LIGHT[3]} ${ITEM_LIGHT[2]}"
-          ;;
-
-          "${ITEM_UV[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_UV[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_UV[5]} ${ITEM_UV[3]} ${ITEM_UV[2]}"
-          ;;
-
-          "${ITEM_UVI[0]}")
-
-          readUInt8
-           ITEM_UVI[5]="$VALUE_UINT8"
-          echo "${ITEM_UVI[5]} ${ITEM_UVI[3]} ${ITEM_UVI[2]}"
-          ;;
-
-          "${ITEM_PM25_CH1[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_PM25_CH1[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_PM25_CH1[5]} ${ITEM_PM25_CH1[3]} ${ITEM_PM25_CH1[2]}"
-          ;;
-
-          "${ITEM_PM25_CH1_24HAVG[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_PM25_CH1_24HAVG[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_PM25_CH1_24HAVG[5]} ${ITEM_PM25_CH1_24HAVG[3]} ${ITEM_PM25_CH1_24HAVG[2]}"
-          ;;
-
-           "${ITEM_PM25_CH2[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_PM25_CH2[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_PM25_CH2[5]} ${ITEM_PM25_CH2[3]} ${ITEM_PM25_CH2[2]}"
-          ;;
-
-          "${ITEM_PM25_CH2_24HAVG[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_PM25_CH2_24HAVG[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_PM25_CH2_24HAVG[5]} ${ITEM_PM25_CH2_24HAVG[3]} ${ITEM_PM25_CH2_24HAVG[2]}"
-          ;;
-
-          "${ITEM_PM25_CH3[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_PM25_CH3[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_PM25_CH3[5]} ${ITEM_PM25_CH3[3]} ${ITEM_PM25_CH3[2]}"
-          ;;
-
-          "${ITEM_PM25_CH3_24HAVG[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_PM25_CH3_24HAVG[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_PM25_CH3_24HAVG[5]} ${ITEM_PM25_CH3_24HAVG[3]} ${ITEM_PM25_CH3_24HAVG[2]}"
-          ;;
-
-       "${ITEM_PM25_CH4[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_PM25_CH4[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_PM25_CH4[5]} ${ITEM_PM25_CH4[3]} ${ITEM_PM25_CH4[2]}"
-          ;;
-
-          "${ITEM_PM25_CH4_24HAVG[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_PM25_CH4_24HAVG[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_PM25_CH4_24HAVG[5]} ${ITEM_PM25_CH4_24HAVG[3]} ${ITEM_PM25_CH4_24HAVG[2]}"
-          ;;
-
-         "${ITEM_SOILMOISTURE_CH1[0]}")
-
-          readUInt8
-           ITEM_SOILMOISTURE_CH1[5]="$VALUE_UINT8"
-          echo "${ITEM_SOILMOISTURE_CH1[5]} ${ITEM_SOILMOISTURE_CH1[3]} ${ITEM_SOILMOISTURE_CH1[2]}"
-          ;;
-
-           "${ITEM_TEMP_CH1[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_TEMP_CH1[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_TEMP_CH1[5]} ${ITEM_TEMP_CH1[3]} ${ITEM_TEMP_CH1[2]}"
-          ;;
-
-           "${ITEM_TEMP_CH2[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_TEMP_CH2[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_TEMP_CH2[5]} ${ITEM_TEMP_CH2[3]} ${ITEM_TEMP_CH2[2]}"
-          ;;
-
-          "${ITEM_TEMP_CH3[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_TEMP_CH3[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_TEMP_CH3[5]} ${ITEM_TEMP_CH3[3]} ${ITEM_TEMP_CH3[2]}"
-          ;;
-
-          "${ITEM_TEMP_CH3[0]}")
-
-          readUInt16BE
-          convertScale10ToFloat "$VALUE_UINT16BE"
-           ITEM_TEMP_CH3[5]="$VALUE_SCALE10_FLOAT"
-          echo "${ITEM_TEMP_CH3[5]} ${ITEM_TEMP_CH3[3]} ${ITEM_TEMP_CH3[2]}"
-          ;;
-          
-          "${ITEM_HUMI_CH1[0]}")
-
-          readUInt8
-           ITEM_HUMI_CH1[5]="$VALUE_UINT8"
-          echo "${ITEM_HUMI_CH1[5]} ${ITEM_HUMI_CH1[3]} ${ITEM_HUMI_CH1[2]}"
-          ;;
-
-          "${ITEM_HUMI_CH2[0]}")
-
-          readUInt8
-           ITEM_HUMI_CH2[5]="$VALUE_UINT8"
-          echo "${ITEM_HUMI_CH2[5]} ${ITEM_HUMI_CH2[3]} ${ITEM_HUMI_CH2[2]}"
-          ;;
-
-           "${ITEM_HUMI_CH2[0]}")
-
-          readUInt8
-           ITEM_HUMI_CH2[5]="$VALUE_UINT8"
-          echo "${ITEM_HUMI_CH2[5]} ${ITEM_HUMI_CH2[3]} ${ITEM_HUMI_CH2[2]}"
-          ;;
-
-           "${ITEM_HUMI_CH3[0]}")
-
-          readUInt8
-           ITEM_HUMI_CH3[5]="$VALUE_UINT8"
-          echo "${ITEM_HUMI_CH3[5]} ${ITEM_HUMI_CH3[3]} ${ITEM_HUMI_CH3[2]}"
-          ;;
-
-           "${ITEM_LEAK_CH1[0]}")
-
-          readUInt8
-           ITEM_LEAK_CH1[5]="$VALUE_UINT8"
-          echo "${ITEM_LEAK_CH1[5]} ${ITEM_LEAK_CH1[3]} ${ITEM_LEAK_CH1[2]}"
-          ;;
-
-           "${ITEM_LEAK_CH2[0]}")
-
-          readUInt8
-           ITEM_LEAK_CH2[5]="$VALUE_UINT8"
-          echo "${ITEM_LEAK_CH2[5]} ${ITEM_LEAK_CH2[3]} ${ITEM_LEAK_CH2[2]}"
-          ;;
-
-           "${ITEM_LEAK_CH3[0]}")
-
-          readUInt8
-           ITEM_LEAK_CH3[5]="$VALUE_UINT8"
-          echo "${ITEM_LEAK_CH3[5]} ${ITEM_LEAK_CH3[3]} ${ITEM_LEAK_CH3[2]}"
-          ;;
-
-           "${ITEM_LEAK_CH4[0]}")
-
-          readUInt8
-           ITEM_LEAK_CH4[5]="$VALUE_UINT8"
-          echo "${ITEM_LEAK_CH4[5]} ${ITEM_LEAK_CH4[3]} ${ITEM_LEAK_CH4[2]}"
-          ;;
-
-
-        *)
-          fieldDiscovered=0
-          >&2 echo "Error Unknown field type $fieldTypeHexSub"
-          ;;
-    esac
-
-    (( fieldDiscovered )) && LIVEDATA_FIELDS_DISCOVERED+=( "$fieldTypeHexSub" )
-
-   done
-
- echo Field discovered "${LIVEDATA_FIELDS_DISCOVERED[@]}"
- echo "$PACKET_TIMESTAMP" "${ITEM_INTEMP[5]}" "${ITEM_OUTTEMP[5]}" "${ITEM_WINDSPEED[5]}" "${ITEM_WINDGUST[5]}" "${ITEM_WINDDIRECTION[5]}" 
-}    
+  fi
+}
 
 function parsePacket {
   local cmd
@@ -1041,7 +568,7 @@ function parsePacket {
 
   "${CMD[livedata]}")
 
-    parseLivedata
+    parseLivedata "$LDPATTERN"
 
     ;;
 
@@ -1140,8 +667,61 @@ function readHexASCII {
 
 }
 
+function sendPacket
+{
+  sendPacketnc "$@"
+  #sendPacketdd "$@"
+}
+
+function sendPacketnc
+{
+  local ncUDPOpt
+  local port
+
+  port=${PORT[tcp_command_server]}
+
+  #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
+  if [ $# -ge 1 ]; then
+    newPacketBody "$1"
+    case "$1" in
+      "${CMD[broadcast]}")
+            ncUDPOpt='-u'
+            port=${PORT[udp_discovery_client]}
+    esac
+ fi
+   
+  createPacketTX
+  echo -ne "$PACKET_TX_ECHO" >"${FILENAME[tx]}"
+ 
+  if nc ${DEBUG_OPTIONS[nc]} $ncUDPOpt -w 500ms -x "${FILENAME[nc-hex]}" -4 "$HOST" "$port" < <(cat "${FILENAME[tx]}"; sleep 0.1)  >"${FILENAME[rx]}"; then # wait 0.1s to disable READ KILL of nc on stdin
+
+        IFS='>'
+
+        if read -r -a PACKET_RX_OD < <(od -A n -t x1z -v -w"$(stat -c %s "${FILENAME[rx]}")"  "${FILENAME[rx]}" ); then
+           (( DEBUG )) && {
+            cat "${FILENAME[nc-hex]}"
+            echo >&2 OD HEX "${PACKET_RX_OD[0]}" length "${#PACKET_RX_OD[0]}"
+            echo >&2 OD ASCII "${PACKET_RX_OD[1]}" length "${#PACKET_RX_OD[1]}"
+           }
+            readarray -d ' ' -t PACKET_RX < <(echo -n "${PACKET_RX_OD[0]:1:-2}") # :1 substring, removes space at the beginning, -2: removes two trailing spaces
+            PACKET_RX_HEX=${PACKET_RX_OD[0]// /}                                 # strip off all spaces, just hex
+            if ((${#PACKET_RX[@]} == 0)); then
+                echo >&2 "$HOST Warning no response received from host"
+              else
+                (( DEBUG  )) && echo >&2 PACKET_RX_HEX "$PACKET_RX_HEX" length "${#PACKET_RX_HEX}"
+                parsePacket
+              fi
+        else
+          echo >&2 Error failed to receive packet, error code $?
+        fi
+  else
+     echo >&2 Error failed to send packet "$(getCommandName "$1")", error code $?
+  fi
+  
+}
+
 #including checksum byte
-function sendPacket {
+function sendPacketdd {
   #takes two arguments $1 - command, $2 is udp broadcast request
   local FD=$FD_TCP # default TCP command port
 
@@ -1509,6 +1089,7 @@ function initConfigDir {
   FILENAME[discovery_sorted]=$DIR/'rxsocat_sorted'
   FILENAME[udp_server]="${FILENAME[discovery]}"_UDP_"${PORT[udp_discovery_server]}"
   FILENAME[udp_client]="${FILENAME[discovery]}"_UDP_"${PORT[udp_discovery_client]}"
+  FILENAME[nc-hex]=$DIR/'nc-hex.txt'
 
   ((DEBUG)) && echo >&2 Filename "${FILENAME[@]}"
 
@@ -1558,7 +1139,7 @@ function runRainNotification {
     if ((CONFIGURATION[rainrate] != 0)); then
       ((rainInterval++))
       if ((rainInterval == 1)); then
-        showRainInfoMessage "☂ Its raining! $rr mm/h.Today $rd mm" "Its raining! $rr millimeter per hour. Today $rd millimeter"
+        showRainInfoMessage "☂ Raining $rr mm/h.Today $rd mm" "Its raining! $rr millimeter per hour. Today $rd millimeter"
       else
         if [ "$showStartStopEventOnly" != "1" ]; then
           showRainInfoMessage "☂ Raining $rr mm/h. Today $rd mm"
@@ -1651,7 +1232,7 @@ function connnectAP {
 }
 
 function processCommand {
-  local command_unknown
+#$1 - field pattern for livedata
 
   case $COMMAND in
 
@@ -1708,23 +1289,31 @@ function processCommand {
     ;;
 
   livedata)
+     LDPATTERN=$1
      sendPacket ${CMD[livedata]}
-     ;;
+          ;;
   *)
     echo >&2 Error Unkown command "$COMMAND"
-    command_unknown=1
+    return 1
     ;;
   esac
 
-  unset COMMAND
-
-  ((command_unknown == 0)) && return 0 || return 1
-
+  return 0
 }
+
+read -r -u 0 -t 0.5 STDIN
+
+if [ -n "$STDIN" ]; then
+#  echo STDIN "$STDIN"
+   :
+  #maybe parse packet if gw used as filter echo hex dump | gw
+
+fi
 
 declare -A FILENAME # declare -A (if decl. inside function -> local only)
 
 initConfigDir
+newLivedataFieldNameDesc
 
 #https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
 POSITIONAL=()
@@ -1760,15 +1349,24 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
   -c | --command)
-    COMMAND="$2"
-    if processCommand; then
-      shift 2
+    COMMAND="${2,,}"
+    
+    if processCommand "${3,,}"; then # $3 pass field pattern to livedata
+    
+     if [[ $COMMAND == "livedata" ]]; then
+        shift 3
+      else
+        shift 2
+      fi
     else
       shift 1
     fi
+    unset COMMAND
     ;;
   -d | --debug)
     DEBUG=1
+    DEBUG_OPTIONS[socat]='-d -d -x'
+    DEBUG_OPTIONS[nc]='-v -v -v'
     echo >&2 "${FILENAME[@]}"
     shift
     ;;
@@ -1801,11 +1399,11 @@ while [[ $# -gt 0 ]]; do
     HOST_PREV=$HOST
     HOST="$2" # this arg must come first to open socketsopen file descriptors to UDP/TCP port on HOST
 
-    if ! connect "$2"; then
-      echo >&2 "$HOST" "Error Failed to connect host $2, exiting"
-      disconnect
-      exit $ERROR_CONNECTION
-    fi
+    #if ! connect "$2"; then
+    #  echo >&2 "$HOST" "Error Failed to connect host $2, exiting"
+    #  disconnect
+    #  exit $ERROR_CONNECTION
+    #fi
     CONFIGURATION[host]=$HOST
     shift 2
     ;;
