@@ -3,3 +3,6 @@ doc/
 test/man*
 test/backup.txt
 test/livedata_fields.txt
+test/sensor_id_new.txt
+test/sensor_id.txt
+test/itsraining.wav

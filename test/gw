@@ -59,6 +59,11 @@ CMD[write_raindata]=0x35
 
 CMD[livedata]=0x27
 
+#sensors
+CMD[read_sensor_id]=0x3a
+CMD[write_sensor_id]=0x3b
+CMD[read_sensor_id_new]=0x3c # for new sensors
+
 declare -a LIVEDATA
 
 declare -a LDFIELD
@@ -84,8 +89,8 @@ LDFIELD[0x16]="UV:UV radiation:µW/m2:2:1"
 LDFIELD[0x17]="UVI:UV index (0-15)::1:0"
 for ((LDFT=0x2A, LDFT2=0x4D, CH=1;CH<=4; CH++, LDFT++,LDFT2++ )); do
   if (( CH == 2 )); then LDFT=$((0x51)); fi
-   LDFIELD[$LDFT]="PM25_CH$CH:PM2.5 air quality sensor CH$CH:μg/m3:2:1"
-   LDFIELD[$LDFT2]="PM25_24HAVG_CH$CH:PM2.5 air quality sensor 24 h average CH$CH:μg/m3:2:1"
+   LDFIELD[$LDFT]="PM25_CH$CH:PM2.5 air quality CH$CH:μg/m3:2:1"
+   LDFIELD[$LDFT2]="PM25_24HAVG_CH$CH:PM2.5 air quality 24h average CH$CH:μg/m3:2:1"
 done
 for ((LDFT=0x2B, CH=1;CH<=16; CH++, LDFT=LDFT+2 )); do
    LDFIELD[$LDFT]="SOILTEMP_CH$CH:soil temperature CH$CH:℃:2:1"
@@ -99,8 +104,115 @@ for ((LDFT=0x58, CH=1;CH<=4; CH++, LDFT++ )); do
    LDFIELD[$LDFT]="LEAK_CH$CH:leak CH$CH::1:0"
 done
 
-# PACKET BODY STARTING AT BYTE 2 (from 0 index, first 0xff 0xff)
-PACKET_BODY=()
+SENSORFIELD="sensor_"
+
+#sensors
+#typedef enum
+#{
+# //eWH24_SENSOR = 0x00,
+# eWH65_SENSOR = 0x00,
+# //eWH69_SENSOR,
+# eWH68_SENSOR,
+# eWH80_SENSOR, //80H（
+# eWH40_SENSOR,
+# eWH25_SENSOR,
+# eWH26_SENSOR,
+# eWH31_SENSORCH1, // 6
+# eWH31_SENSORCH2,
+# eWH31_SENSORCH3,
+# eWH31_SENSORCH4,
+# eWH31_SENSORCH5,
+# eWH31_SENSORCH6,
+# eWH31_SENSORCH7,
+# eWH31_SENSORCH8,
+# eWH51_SENSORCH1, // 14 - 0x0e
+# eWH51_SENSORCH2,
+# eWH51_SENSORCH3,
+# eWH51_SENSORCH4,
+# eWH51_SENSORCH5,
+# eWH51_SENSORCH6,
+# eWH51_SENSORCH7, 
+# eWH51_SENSORCH8, // 22
+# eWH41_SENSORCH1, // 23 - 0x17
+#eWH41_SENSORCH2,
+# eWH41_SENSORCH3,
+# eWH41_SENSORCH4,
+# //-------------
+# eWH57_SENSOR,    // 26? - 0x1a - lightning detector
+# eWH55_SENSORCH1, // 27  - 0x1b - water leak ch1
+# eWH55_SENSORCH2,
+# eWH55_SENSORCH3,
+#eWH55_SENSORCH4,
+# eWH34_SENSORCH1 = 31,
+# eWH34_SENSORCH2 = 32,
+# eWH34_SENSORCH3 = 33,
+# eWH34_SENSORCH4 = 34,
+# eWH34_SENSORCH5 = 35,
+# eWH34_SENSORCH6 = 36,
+# eWH34_SENSORCH7 = 37,
+#eWH34_SENSORCH8 = 38,
+#eWH45_SENSOR = 39,
+#// GW1000 Firmware V1.5.6 之后加入的
+#eWH35_SENSORCH1 = 40,
+#eWH35_SENSORCH2 = 41,
+#eWH35_SENSORCH3 = 42,
+#eWH35_SENSORCH4 = 43,
+#eWH35_SENSORCH5 = 44,
+#eWH35_SENSORCH6 = 45,
+#eWH35_SENSORCH7 = 46,
+#eWH35_SENSORCH8 = 47,
+# // the SENSOR_TYPE sequence can not be altered!!
+#//-------------
+# eMAX_SENSOR
+#}SENSOR_IDT
+
+SENSOR_SEARCH=0xffffffff
+SENSOR_DISABLE=0xfffffffe
+
+declare -A WH65 # 7-in-1 weather SENSOR_TYPE
+WH65[type]=0x00
+
+declare -A WH68 # anemometer
+WH68[type]=0x01
+
+declare -A WH31 # temp./humidify
+WH31[type]=0x06
+WH31[max_ch]=8
+
+declare -A WH51 # soil moisture
+WH51[type]=0x0e
+WH51[max_ch]=8
+
+#Probably: cmd sensor_id up to 0x1e sensors type, and sensor_id_new from 0x1f (31)
+declare -A WH55 # water leak
+WH55[type]=0x1b
+WH55[max_ch]=4
+
+declare -A WH43 # PM 2.5 indoor
+WH43[type]=0x16
+WH43[max_ch]=4
+
+declare -a SENSOR_TYPE
+#type:description:reportinginterval(s):max reportinterval:detection interval
+SENSOR_TYPE[WH65[type]]="WH65:Outdoor Solar Powered 7-in-1 Weather Sensor:16.0:"
+SENSOR_TYPE[WH68[type]]="WH68:Solar Powered Anemometer with Light and UV Sensor:16.5:"
+
+#SENSOR_TYPE[0x??]="WH80:Wind Speed and Direction, Solar Radiation and Light, Temp and Humidity 6-in-1 Sensor:4.75:"
+#SENSOR_TYPE[0x??]="WH40:Self-Emptying Rain Collector Rainfall Sensor:49"
+#sensors with max 8 channels
+for (( CH=1; CH <= WH31[max_ch] ; CH++)); do 
+   SENSOR_TYPE[WH31[type] + $CH - 1]="WH31:Temperature and humidity CH$CH:61.0:"
+   SENSOR_TYPE[WH51[type] + $CH - 1]="WH51:Soil Moisture CH$CH:70.0:"
+   if ((CH <= WH55[max_ch] )); then
+      SENSOR_TYPE[WH43[type] + $CH - 1]="WH43:PM2.5 Air Quality Indoor CH$CH:60.0:600.0"
+      SENSOR_TYPE[WH55[type] + $CH - 1]="WH55:Water Leak CH$CH:60.0::3"
+   fi
+done
+
+#SENSOR_TYPE[0x??]="WH41:PM2.5 Air Quality Sensor Monitor Outdoor:60:600"
+#SENSOR_TYPE[0x??]="WH57:Lightning Detection Sensor:79:"
+#SENSOR_TYPE[0x??]="WH34S:Soil Temperature Sensor:77"
+#SENSOR_TYPE[0x??]="WH35:Leaf Wetness Sensor for Garden and Farm:79.5"
 
 #CONNECT ERRORS
 ERROR_CONNECTION=1
@@ -266,12 +378,14 @@ function readUInt8 {
 }
 
 function readUInt16BE {
-  printf -v VALUE_UINT16BE "%u" "0x${PACKET_RX_HEX:(($RX_POS * 2)):4}"
+  VALUE_UINT16BE_HEX="0x${PACKET_RX_HEX:(($RX_POS * 2)):4}"
+  printf -v VALUE_UINT16BE "%u" "$VALUE_UINT16BE_HEX"
   ((RX_POS = RX_POS + 2))
 }
 
 function readUInt32BE {
-  printf -v VALUE_UINT32BE "%u" "0x${PACKET_RX_HEX:(($RX_POS * 2)):8}"
+  VALUE_UINT32BE_HEX="0x${PACKET_RX_HEX:(($RX_POS * 2)):8}"
+  printf -v VALUE_UINT32BE "%u" "$VALUE_UINT32BE_HEX"
   ((RX_POS = RX_POS + 4))
 }
 
@@ -306,46 +420,74 @@ function printRain {
   printf "rainrate %s\nrainday %s\nrainweek %s\nrainmonth %s\nrainyear %s\n" "$rr" "$rd" "$rw" "$rm" "$ry"
 }
 
-function convertToDirectionName
+function convertWindDirectionToCompassDirection
 #$1 - direction in degrees
 #http://snowfence.umn.edu/Components/winddirectionanddegrees.htm
 {
-  VALUE_DIRECTION_NAME=""
+  VALUE_COMPASS_DIRECTION_NAME=""
   if   (( $1 <= 11 ||  $1 > 349)); then
-    VALUE_DIRECTION_NAME="N"
+    VALUE_COMPASS_DIRECTION_NAME="N"
   elif (( $1 > 11 && $1 < 34)); then
-    VALUE_DIRECTION_NAME="NNE"
+    VALUE_COMPASS_DIRECTION_NAME="NNE"
   elif (( $1 >=34 && $1 <= 56 )); then
-    VALUE_DIRECTION_NAME="NE";
+    VALUE_COMPASS_DIRECTION_NAME="NE";
   elif (( $1 > 56 && $1 <= 79 )); then
-    VALUE_DIRECTION_NAME="ENE";
+    VALUE_COMPASS_DIRECTION_NAME="ENE";
   elif (( $1 > 79 && $1 <= 101 )); then
-    VALUE_DIRECTION_NAME="E"
+    VALUE_COMPASS_DIRECTION_NAME="E"
   elif (( $1 > 101 && $1 <= 124 )); then
-    VALUE_DIRECTION_NAME="ESE"
+    VALUE_COMPASS_DIRECTION_NAME="ESE"
   elif (( $1 > 124 && $1 <= 146 )); then
-    VALUE_DIRECTION_NAME="SE"
+    VALUE_COMPASS_DIRECTION_NAME="SE"
   elif (( $1 > 146 && $1 <= 169 )); then
-    VALUE_DIRECTION_NAME="SSE"
+    VALUE_COMPASS_DIRECTION_NAME="SSE"
   elif (( $1 > 169 && $1 <= 191 )); then
-    VALUE_DIRECTION_NAME="S"
+    VALUE_COMPASS_DIRECTION_NAME="S"
   elif (( $1 > 191 && $1 <= 214 )); then
-    VALUE_DIRECTION_NAME="SSW"
+    VALUE_COMPASS_DIRECTION_NAME="SSW"
   elif (( $1 > 214 && $1 <= 236 )); then
-    VALUE_DIRECTION_NAME="SW"
+    VALUE_COMPASS_DIRECTION_NAME="SW"
   elif (( $1 > 236 && $1 <= 259 )); then
-     VALUE_DIRECTION_NAME="WSW"
+     VALUE_COMPASS_DIRECTION_NAME="WSW"
   elif (( $1 > 259 && $1 <= 281 )); then
-     VALUE_DIRECTION_NAME="W"
+     VALUE_COMPASS_DIRECTION_NAME="W"
   elif (( $1 > 281 && $1 <= 304 )); then
-     VALUE_DIRECTION_NAME="WNW"
+     VALUE_COMPASS_DIRECTION_NAME="WNW"
   elif (( $1 > 304 && $1 <= 326 )); then
-     VALUE_DIRECTION_NAME="NW"
+     VALUE_COMPASS_DIRECTION_NAME="NW"
   elif (( $1 > 326 && $1 <= 349 )); then
-     VALUE_DIRECTION_NAME="NNW"
+     VALUE_COMPASS_DIRECTION_NAME="NNW"
   fi
 }
 
+function getBatteryLevelState
+# $1 - battery level 0-6, 6 = dc, <=1 low
+{
+  unset SBATTERY_STATE
+    #set -- 0     #debug  set $1 to 0 
+    if (( $1 == 6 )); then
+      SBATTERY_STATE="dc"; # for example PM 2.5 indoor
+    else
+      SBATTERY_STATE=""
+      local l
+      for (( l=1; l <= $1; l++)); do
+          SBATTERY_STATE+="+";
+      done
+      if (( $1 <= 1)); then
+        SBATTERY_STATE+=" low"
+      fi
+    fi
+}
+
+function getBatteryState
+{
+  unset SBATTERY_STATE
+  if (( $1 == 0 )); then
+      SBATTERY_STATE="normal" #ok
+  elif ((  $1 == 1 )); then
+    SBATTERY_STATE="low"
+  fi
+}
 function parseLivedata
 # $1 -pattern to match
 {
@@ -353,18 +495,15 @@ function parseLivedata
   local fieldTypeHexSub
   local match
 
-  RX_POS=5
-  
-  if [ "$1" == "*" ]; then
-    LDPATTERN='.*'
-  fi
-  LDPATTERN=${LDPATTERN,,} # to lowercase
+  #if [ "$1" == "*" ]; then
+  #  SPATTERN='.*'
+  #fi
+  #SPATTERN=${SPATTERN,,} # to lowercase
 
- ((DEBUG )) && >&2 echo parseLivedata "LDPATTERN" "$LDPATTERN"
+ ((DEBUG )) && >&2 echo parseLivedata "SPATTERN" "$SPATTERN"
 
   IFS=':'
   LDFACTIVE=()
-
 
   while (( "$RX_POS" < (${#PACKET_RX[@]} - 1) )); do
 
@@ -374,7 +513,8 @@ function parseLivedata
     fieldTypeHex=$VALUE_HEX
 
     fieldTypeHexSub=${fieldTypeHex:2}
-    fieldTypeHexSub=0x${fieldTypeHexSub^^} #^^ all characters to uppercase -> 0x0a -> 0x0A
+    fieldTypeHexSub=0x${fieldTypeHexSub^^} #^^ all characters to uppercase ( 0x0a -> 0x0A )
+
     LDFACTIVE+=( "$fieldTypeHexSub" ) # keep track of discovered fields
 
     read -r LDFNAME LDFDESC LDFUNIT LDFBYTES LDFSCALE <<< "${LDFIELD[$fieldTypeHexSub]}"
@@ -400,10 +540,18 @@ function parseLivedata
         LIVEDATA[$fieldTypeHexSub]=$VALUE_SCALE10_FLOAT
      fi
 
-#|  
-      if [[ ${LDFNAME,,} =~ ^${LDPATTERN} ]] || [[ ${LDFDESC,,} =~ ${LDPATTERN} ]] ; then  # ^ line starts with, ,,=to lowercase
+     if [[ ${LDFNAME,,} =~ ^${SPATTERN} || ${LDFDESC,,} =~ ${SPATTERN} ]] ; then  # ^ line starts with, ,,=to lowercase
       match=1
         printf "%8s %s %s\n" "${LIVEDATA[$fieldTypeHexSub]}" "$LDFUNIT" "$LDFDESC"
+
+        case $LDFNAME in
+           WINDDIRECTION)
+                convertWindDirectionToCompassDirection "${LIVEDATA[$fieldTypeHexSub]}"
+                #LIVEDATA_EXTRA[$fieldTypeHexSub]=$VALUE_COMPASS_DIRECTION_NAME
+                 printf "%8s %s %s\n" "$VALUE_COMPASS_DIRECTION_NAME" " " "wind compass direction"
+                ;;
+        esac
+
       fi
 
   done
@@ -411,23 +559,166 @@ function parseLivedata
   (( DEBUG )) && >&2 echo active fields "${LDFACTIVE[@]}"
 
   if (( match == 0)); then
-  >&2 echo "Error Failed to match '$LDPATTERN' in current livedata fields"
+  >&2 echo "Error Failed to match '$SPATTERN' in current livedata fields"
      listLivedataFieldsAndDescription 1
     
   fi
 }
 
+function parseSensor
+ # echo "$PACKET_RX_HEX"
+   # for s in "${!SENSOR_TYPE[@]}"; do # ! - keys in SENSOR_TYPE
+   #   echo "$s" "${SENSOR_TYPE[$s]}"
+   # done
+
+#   29) Read Sensors ID parameter:
+#typedef enum
+# {
+# //eWH24_SENSOR = 0x00,
+# eWH65_SENSOR = 0x00,// 1: BATT low, 0: normal
+# //eWH69_SENSOR,
+# eWH68_SENSOR,// voltage=val*0.02V if <=1.2V BAT is low
+# eWH80_SENSOR,// 0.02V * val(received val) = wh80;
+# eWH40_SENSOR,// 1: BATT low, 0: normal
+# eWH25_SENSOR,// 1: BATT low, 0: normal
+# eWH26_SENSOR,// 1: BATT low, 0: normal
+# eWH31_SENSORCH1,// 1: BATT low, 0: normal
+# eWH31_SENSORCH2,// 1: BATT low, 0: normal
+# eWH31_SENSORCH3,// 1: BATT low, 0: normal
+# eWH31_SENSORCH4,// 1: BATT low, 0: normal
+# eWH31_SENSORCH5,// 1: BATT low, 0: normal
+# eWH31_SENSORCH6,// 1: BATT low, 0: normal
+# eWH31_SENSORCH7,// 1: BATT low, 0: normal
+# eWH31_SENSORCH8,// 1: BATT low, 0: normal
+# eWH51_SENSORCH1,// 1: BATT low, 0: normal
+# eWH51_SENSORCH2,// 1: BATT low, 0: normal
+# eWH51_SENSORCH3,// 1: BATT low, 0: normal
+# eWH51_SENSORCH4,// 1: BATT low, 0: normal
+# eWH51_SENSORCH5,// 1: BATT low, 0: normal
+## eWH51_SENSORCH6,// 1: BATT low, 0: normal
+#eWH51_SENSORCH7,// 1: BATT low, 0: normal
+#eWH51_SENSORCH8,// 1: BATT low, 0: normal
+#eWH41_SENSORCH1,// level0~5，<=1 for BATT low
+#eWH41_SENSORCH2,// level0~5，<=1 for BATT low
+#eWH41_SENSORCH3,// level0~5，<=1 for BATT low
+#eWH41_SENSORCH4,// level0~5，<=1 for BATT low
+# //-------------
+# eWH57_SENSOR, // level0~5，<=1 for BATT low
+# eWH55_SENSORCH1,// level0~5，<=1 for BATT low
+# eWH55_SENSORCH2,// level0~5，<=1 for BATT low
+# eWH55_SENSORCH3,// level0~5，<=1 for BATT low
+# eWH55_SENSORCH4,// level0~5，<=1 for BATT low
+# eWH34_SENSORCH1 = 31,// v=val*0.02V if v<=1.2V BATT low
+# eWH34_SENSORCH2 = 32,// v=val*0.02V if v<=1.2V BATT low
+# eWH34_SENSORCH3 = 33,// v=val*0.02V if v<=1.2V BATT low
+# eWH34_SENSORCH4 = 34,// v=val*0.02V if v<=1.2V BATT low
+# eWH34_SENSORCH5 = 35,// v=val*0.02V if v<=1.2V BATT low
+# eWH34_SENSORCH6 = 36,// v=val*0.02V if v<=1.2V BATT low
+# eWH34_SENSORCH7 = 37,// v=val*0.02V if v<=1.2V BATT low
+# eWH34_SENSORCH8 = 38,// v=val*0.02V if v<=1.2V BATT low
+# eWH45_SENSOR = 39,// 0~5
+# eWH35_SENSORCH1 = 40,//电压=val*0.02V 当<=1.2V 时显示低电压
+# eWH35_SENSORCH2 = 41,//电压=val*0.02V 当<=1.2V 时显示低电压
+# eWH35_SENSORCH3 = 42,//电压=val*0.02V 当<=1.2V 时显示低电压
+# eWH35_SENSORCH4 = 43,//电压=val*0.02V 当<=1.2V 时显示低电压
+# eWH35_SENSORCH5 = 44,//电压=val*0.02V 当<=1.2V 时显示低电压
+# eWH35_SENSORCH6 = 45,//电压=val*0.02V 当<=1.2V 时显示低电压
+# eWH35_SENSORCH7 = 46,//电压=val*0.02V 当<=1.2V 时显示低电压
+# eWH35_SENSORCH8 = 47,//电压=val*0.02V 当<=1.2V 时显示低电压
+{
+  (( DEBUG )) && >&2 echo parse SENSOR_TYPE new "SPATTERN" "$SPATTERN"
+
+     IFS=':'
+     unset SENSOR
+     SENSOR=()
+     
+
+       while (( "$RX_POS" < (${#PACKET_RX[@]} - 1) )); do
+            
+            local RX_START_POS=$RX_POS # for listing entire record as hex
+          (( "$RX_START_POS" == 5 )) && printf "%5s %5s %8s %10s %7s %13s %6s %12s %s\n" type name id id_state battery battery_state signal interval_min description
+
+              readUInt8
+              STYPE="$VALUE_UINT8"
+
+              read -r SNAME SDESC SINTERVAL_MIN SREST <<< "${SENSOR_TYPE["$STYPE"]}"
+              [ -z "$SNAME" ] && (( DEBUG )) && echo >&2 "Unknown SENSOR_TYPE $STYPE"
+
+              readUInt32BE
+              SID="$VALUE_UINT32BE"
+              SID_HEX="$VALUE_UINT32BE_HEX"
+
+              SENSOR[$STYPE]=$SID
+              CONFIGURATION[$SENSORFIELD$STYPE]=$SID_HEX #update configuration
+
+              case $SID_HEX in
+                
+                "$SENSOR_SEARCH")
+                  SID_STATE="searching"
+                  ;;
+                  "$SENSOR_DISABLE")
+                    SID_STATE="disabled"
+                    ;;
+                  *)
+                    SID_STATE='enabled'
+                    ;;
+              esac
+
+              readUInt8
+              SBATTERY="$VALUE_UINT8"
+              
+              unset SBATTERY_STATE
+              
+              SENABLED=$(( SID != SENSOR_SEARCH && SID != SENSOR_DISABLE ))
+
+              if (( SENABLED )); then # intepret battery levels
+
+                  if (( (STYPE >= WH43[type] && STYPE < WH43[type] + WH43[max_ch]) || 
+                        (STYPE >= WH55[type] && STYPE < WH55[type] + WH55[max_ch]) )); then  #WH43 - PM2.5 indoor, WH41? same ID?
+                  #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/CurdataGwFragment.java l 4575
+                    getBatteryLevelState "$SBATTERY"
+                  fi
+
+                  if (( STYPE == WH65[type] || ( STYPE >= WH31[type] && STYPE < WH31[type]+WH31[max_ch] ) )); then # WH65, WH31 CH1-8 
+                    getBatteryState "$SBATTERY"
+                  fi
+              fi
+
+              readUInt8
+              SSIGNAL="$VALUE_UINT8"
+              (( DEBUG )) && >&2 echo "${PACKET_RX_HEX:(($RX_START_POS * 2)):14}"
+
+              if [[ ${SNAME,,} =~ ^${SPATTERN} || ${SDESC,,} =~ ${SPATTERN} || ${SID_STATE,,} =~  ${SPATTERN} || ${SID_HEX,,} =~  ${SPATTERN} ]] ; then  # ^ line starts with, ,,=to lowercase
+                      
+                      printf -v "STYPE_FMT"          "%2d"  "$STYPE"
+                      printf -v "SNAME_FMT"          "%5s"   "$SNAME"
+                      printf -v "SID_FMT"            "%8x"  "$SID"
+                      printf -v "SID_STATE_FMT"      "%10s" "$SID_STATE"
+                      printf -v "SBATTERY_FMT"       "%3d"   "$SBATTERY"
+                      printf -v "SBATTERY_STATE_FMT" "%13s"  "$SBATTERY_STATE"
+                      printf -v "SSIGNAL_FMT"        "%6s"   "$SSIGNAL"
+                      printf -v "SINTERVAL_MIN_FMT"  "%12s"  "$SINTERVAL_MIN"
+                      
+                      printf "%5s %5s %8s %10s %7s %13s %6s %12s %s\n" "$STYPE_FMT" "$SNAME_FMT" "$SID_FMT" "$SID_STATE_FMT" "$SBATTERY_FMT" "$SBATTERY_STATE_FMT" "$SSIGNAL_FMT" "$SINTERVAL_MIN_FMT" "$SDESC"
+                      #signal %3d interval %6s desc. %s
+                      #"$SBATTERY_STATE" "$SSIGNAL" "$SINTERVAL" "$SDESC" 
+              fi
+
+       done
+}
+
 function parsePacket {
   local cmd
-  RX_POS=4 # current read position for indexing PACKET_RX_OD[1] - ASCII string from od utility
+  RX_POS=4 # current read position/after packet length byte for indexing PACKET_RX_OD[1] - ASCII string from od utility
 
   cmd=0x${PACKET_RX[2]}
 
   #Packet length
   case $cmd in
 
-    "${CMD[broadcast]}" | "${CMD[livedata]}" )
-    
+    "${CMD[broadcast]}" | "${CMD[livedata]}" | "${CMD[read_sensor_id_new]}")
+
+      RX_POS=5    
       printf -v PACKET_RX_LENGTH "%u" "0x${PACKET_RX[3]}${PACKET_RX[4]}"
       ;;
     
@@ -441,7 +732,7 @@ function parsePacket {
 
   case $cmd in
 
-  "${CMD[write_reset]}" | "${CMD[write_customized]}" | "${CMD[write_path]}" | "${CMD[reboot]}" | "${CMD[write_ssid]}" | "${CMD[write_raindata]}" | "${CMD[write_ecowitt_interval]}" | "${CMD[write_wunderground]}" | "${CMD[write_wow]}" | "${CMD[write_weathercloud]}")
+  "${CMD[write_reset]}" | "${CMD[write_customized]}" | "${CMD[write_path]}" | "${CMD[reboot]}" | "${CMD[write_ssid]}" | "${CMD[write_raindata]}" | "${CMD[write_ecowitt_interval]}" | "${CMD[write_wunderground]}" | "${CMD[write_wow]}" | "${CMD[write_weathercloud]}" | "${CMD[write_sensor_id]}")
     parseResultPacket
     ;;
 
@@ -568,22 +859,39 @@ function parsePacket {
 
   "${CMD[livedata]}")
 
-    parseLivedata "$LDPATTERN"
+    parseLivedata "$SPATTERN"
 
     ;;
 
+  "${CMD[read_sensor_id_new]}" | "${CMD[read_sensor_id]}")
+  
+    parseSensor 1
+     
+  ;;
+
   *)
-    echo >&2 "Warning unable to parse command $cmd"
+    echo >&2 "Warning unable to parse response for command $cmd $PACKET_RX_HEX"
     ;;
 
   esac
 }
 
 function newPacketBody {
+  # PACKET BODY STARTING AT BYTE 2 (from 0 index, first 0xff 0xff)
+
+  if [ -z "$1" ]; then
+      >&2 echo Error no command given to newPacketBody
+      return 1
+  fi
+  
   PACKET_BODY=()
   PACKET_BODY+=("$1" "0x00")
+  (( DEBUG )) && >&2 echo "${PACKET_BODY[@]}"
+  
   case "$1" in
+
   "${CMD[broadcast]}" | "${CMD[write_ssid]}") # WSVIEW sends 2 byte field for size
+  
     PACKET_BODY+=("0x00")
     ((DEBUG)) && echo >&2 2-byte packet length
     ;;
@@ -598,18 +906,22 @@ function createPacketTX {
 
   #Update packet length, either 1 or 2 bytes
   case ${PACKET_BODY[0]} in
-  "${CMD[write_ssid]}" | "${CMD[broadcast]}")
-    packetLengthLSB=$(((${#PACKET_BODY[@]} + 1) & 0xff))
-    packetLengthMSB=$((((${#PACKET_BODY[@]} + 1) & 0xff00) >> 8))
-    decToHex $packetLengthMSB
-    PACKET_BODY[1]=$VALUE_HEX
-    decToHex $packetLengthLSB
-    PACKET_BODY[2]=$VALUE_HEX
-    ;;
-  *)
-    decToHex $((${#PACKET_BODY[@]} + 1))
-    PACKET_BODY[1]=$VALUE_HEX # set packet length including checksum byte
-    ;;
+  
+        "${CMD[write_ssid]}" | "${CMD[broadcast]}")
+
+          packetLengthLSB=$(((${#PACKET_BODY[@]} + 1) & 0xff))
+          packetLengthMSB=$((((${#PACKET_BODY[@]} + 1) & 0xff00) >> 8))
+          decToHex $packetLengthMSB
+          PACKET_BODY[1]=$VALUE_HEX
+          decToHex $packetLengthLSB
+          PACKET_BODY[2]=$VALUE_HEX
+          ;;
+        
+        *)
+        
+          decToHex $((${#PACKET_BODY[@]} + 1))
+          PACKET_BODY[1]=$VALUE_HEX # set packet length including checksum byte
+          ;;
   esac
 
   checksum
@@ -619,9 +931,11 @@ function createPacketTX {
   ((DEBUG)) && echo >&2 PACKET_TX "${PACKET_TX[@]//0x/''}"
 
   PACKET_TX_ECHO=''
+  
   for n in "${!PACKET_TX[@]}"; do
     PACKET_TX_ECHO+=${PACKET_TX[$n]}
   done
+  
   PACKET_TX_ECHO=${PACKET_TX_ECHO//0x/'\x'}
 
   ((DEBUG)) && echo >&2 PACKET_TX_ECHO "$PACKET_TX_ECHO"
@@ -662,7 +976,9 @@ function readHexASCII {
   read -r -a PACKET_RX_OD < <(od -A n -t x1z -v -w"$(stat -c %s "$1")" "$1")
   ((DEBUG)) && echo >&2 OD HEX "${PACKET_RX_OD[0]}"
   ((DEBUG)) && echo >&2 OD ASCII "${PACKET_RX_OD[1]}"
-  readarray -d ' ' -t PACKET_RX < <(echo -n "${PACKET_RX_OD[0]:1:-2}") # :1 substring, removes space at the beginning, -2: removes two trailing spaces
+  IFS=' '
+  read -r -a PACKET_RX <<< "${PACKET_RX_OD[0]:1:-2}"
+  #readarray -d ' ' -t PACKET_RX < <(echo -n "${PACKET_RX_OD[0]:1:-2}") # :1 substring, removes space at the beginning, -2: removes two trailing spaces
   PACKET_RX_HEX=${PACKET_RX_OD[0]// /}                                 # strip off all spaces, just hex
 
 }
@@ -682,7 +998,9 @@ function sendPacketnc
 
   #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
   if [ $# -ge 1 ]; then
+    
     newPacketBody "$1"
+    
     case "$1" in
       "${CMD[broadcast]}")
             ncUDPOpt='-u'
@@ -691,9 +1009,10 @@ function sendPacketnc
  fi
    
   createPacketTX
+
   echo -ne "$PACKET_TX_ECHO" >"${FILENAME[tx]}"
- 
-  if nc ${DEBUG_OPTIONS[nc]} $ncUDPOpt -w 500ms -x "${FILENAME[nc-hex]}" -4 "$HOST" "$port" < <(cat "${FILENAME[tx]}"; sleep 0.1)  >"${FILENAME[rx]}"; then # wait 0.1s to disable READ KILL of nc on stdin
+  
+  if nc $ncUDPOpt -w 500ms -x "${FILENAME[nc-hex]}" -4 "$HOST" "$port" < <(cat "${FILENAME[tx]}"; sleep 0.1)  >"${FILENAME[rx]}"; then # wait 0.1s to disable READ KILL of nc on stdin
 
         IFS='>'
 
@@ -703,7 +1022,9 @@ function sendPacketnc
             echo >&2 OD HEX "${PACKET_RX_OD[0]}" length "${#PACKET_RX_OD[0]}"
             echo >&2 OD ASCII "${PACKET_RX_OD[1]}" length "${#PACKET_RX_OD[1]}"
            }
-            readarray -d ' ' -t PACKET_RX < <(echo -n "${PACKET_RX_OD[0]:1:-2}") # :1 substring, removes space at the beginning, -2: removes two trailing spaces
+           IFS=' '
+           read -r -a PACKET_RX <<< "${PACKET_RX_OD[0]:1:-2}"
+          #  readarray -d ' ' -t PACKET_RX < <(echo -n "${PACKET_RX_OD[0]:1:-2}") # :1 substring, removes space at the beginning, -2: removes two trailing spaces
             PACKET_RX_HEX=${PACKET_RX_OD[0]// /}                                 # strip off all spaces, just hex
             if ((${#PACKET_RX[@]} == 0)); then
                 echo >&2 "$HOST Warning no response received from host"
@@ -861,12 +1182,21 @@ function writeUInt {
   local hex
 
   case $1 in
-  8) printf -v hex "%02x" "$2" ;;
-  16) printf -v hex "%04x" "$2" ;;
-  32) printf -v hex "%08x" "$2" ;;
+      
+       8) printf -v hex "%02x" "$2"
+           VALUE_HEX=$hex
+            ;;
+      
+      16) printf -v hex "%04x" "$2"
+          VALUE_UINT16BE_HEX=$hex
+           ;;
+      
+      32) printf -v hex "%08x" "$2"
+          VALUE_UINT32BE_HEX=$hex
+          ;;
   esac
 
-  for ((n = 0; n < ${#hex}; n = n + 2)); do
+  for ((n = 0; n < ${#hex}; n = n + 2)); do # Convert to byte array
     PACKET_BODY+=(0x"${hex:$n:2}")
   done
 }
@@ -940,6 +1270,28 @@ function sendCustomized {
   fi
 }
 
+function sendSensor
+{
+  local stypeField
+  
+  newPacketBody ${CMD[write_sensor_id]}
+  
+  IFS=' '
+
+  for stypeField in "${!CONFIGURATION[@]}"; do
+
+    if [[ "$stypeField" =~ ^"$SENSORFIELD" ]]; then
+      STYPE=${stypeField:${#SENSORFIELD}}
+      writeUInt8     "$STYPE"
+      writeUInt32BE "${CONFIGURATION[$stypeField]}"
+      (( DEBUG )) && >&2 printf "%s %3d %8x\n" sendSensor "$STYPE" "${CONFIGURATION[$stypeField]}"
+    fi
+  
+  done
+
+  sendPacket
+}
+
 function updateCustomized {
   local needUpdate
   local key_value
@@ -954,7 +1306,9 @@ function updateCustomized {
   sendPacket
 
   #format enabled=1,port=8000,server=test.no
-  readarray -d ',' -t OPTION_CUSTOMIZED < <(echo -n "$1") # <<< HERE string appends 0x0a -> using process substitution
+  IFS=","
+  read -r -a OPTION_CUSTOMIZED <<< "$1"
+  #readarray -d ',' -t OPTION_CUSTOMIZED < <(echo -n "$1") # <<< HERE string appends 0x0a -> using process substitution
 
   ((DEBUG)) && echo >&2 "${FUNCNAME[0]} OPTION_CUSTOMIZED" "${OPTION_CUSTOMIZED[@]}" "${#OPTION_CUSTOMIZED[@]}"
 
@@ -962,7 +1316,9 @@ function updateCustomized {
 
     ((DEBUG)) && echo >&2 "${FUNCNAME[0]} OPTION_CUSTOMIZED LOOP " "${OPTION_CUSTOMIZED[$n]} n=$n"
 
-    readarray -d '=' -t key_value < <(echo -n "${OPTION_CUSTOMIZED[$n]}")
+    IFS='='
+    read -r -a key_value <<< "${OPTION_CUSTOMIZED[$n]}"
+    #readarray -d '=' -t key_value < <(echo -n "${OPTION_CUSTOMIZED[$n]}")
 
     key=${key_value[0]}
     value=${key_value[1]}
@@ -1155,6 +1511,25 @@ function runRainNotification {
   done
 }
 
+function updateSensorId
+{
+  local type
+  #debug : WSVIEW sensor overview is updated periodically to reflect current state
+
+  newPacketBody ${CMD[write_sensor_id]}
+
+  for type in "${!SENSOR[@]}"; do
+  
+     writeUInt8 "$type"                  # 1 byte packet length? (255-3)/5 bytes pr field = 50 sensor types max
+     writeUInt32BE "${SENSOR[$type]}"
+
+     (( DEBUG )) && >&2 printf "Update sensor type %3d id %8x\n" "$type" "${SENSOR[$type]}"
+  done
+
+  sendPacket
+
+}
+
 function connnectAP {
   local lan_mac
   local lan_mac_lc #lowercase
@@ -1231,71 +1606,97 @@ function connnectAP {
 
 }
 
+function initSearchPatternForCommand
+{
+     SPATTERN=$1
+     if [[ -z "$SPATTERN" || "$SPATTERN" == "*" ]]; then
+        SPATTERN='.*' #add default search for any pattern
+     fi
+     SPATTERN=${SPATTERN,,} # to lowercase
+}
+
 function processCommand {
-#$1 - field pattern for livedata
+#$1 - field pattern for livedata/sensor id
 
   case $COMMAND in
 
-  reset)
-    sendPacket ${CMD[broadcast]} $FD_UDP >/dev/null
-    read -r -p "Reset ${CONFIGURATION[broadcast_mac]} ${CONFIGURATION[broadcast_ssid]} (Y/N)? "
-    case $REPLY in
-    Y)
-      sendPacket ${CMD[write_reset]} # 3 blink in red LED
-      connnectAP                     # assume user wants to reconnect for setting up new WIFI
-      ;;
-    esac
-    ;;
-
-  reboot)
-    sendPacket "${CMD[reboot]}"
-    ;;
-
-  mac)
-    sendPacket "${CMD[read_mac]}"
-    ;;
-
-  version)
-    sendPacket ${CMD[read_version]}
-    ;;
-
-  ecowitt)
-    sendPacket ${CMD[read_ecowitt_interval]}
-    ;;
-
-  wunderground)
-    sendPacket ${CMD[read_wunderground]}
-    ;;
-
-  wow)
-    sendPacket ${CMD[read_wow]}
-    ;;
-
-  weathercloud)
-    sendPacket ${CMD[read_weathercloud]}
-    ;;
-
-  customized)
-    sendPacket ${CMD[read_path]}
-    sendPacket ${CMD[read_customized]}
-    ;;
-
-  broadcast)
-    sendPacket ${CMD[broadcast]} $FD_UDP
-    ;;
-
-  rain)
-    sendPacket ${CMD[read_raindata]}
-    ;;
-
-  livedata)
-     LDPATTERN=$1
-     sendPacket ${CMD[livedata]}
+        reset)
+          sendPacket ${CMD[broadcast]} $FD_UDP >/dev/null
+          read -r -p "Reset ${CONFIGURATION[broadcast_mac]} ${CONFIGURATION[broadcast_ssid]} (Y/N)? "
+          case $REPLY in
+          Y)
+            sendPacket ${CMD[write_reset]} # 3 blink in red LED
+            connnectAP                     # assume user wants to reconnect for setting up new WIFI
+            ;;
+          esac
           ;;
-  *)
-    echo >&2 Error Unkown command "$COMMAND"
-    return 1
-    ;;
+
+        reboot)
+          sendPacket "${CMD[reboot]}"
+          ;;
+
+        mac)
+          sendPacket "${CMD[read_mac]}"
+          ;;
+
+        version)
+          sendPacket ${CMD[read_version]}
+          ;;
+
+        ecowitt)
+          sendPacket ${CMD[read_ecowitt_interval]}
+          ;;
+
+        wunderground)
+          sendPacket ${CMD[read_wunderground]}
+          ;;
+
+        wow)
+          sendPacket ${CMD[read_wow]}
+          ;;
+
+        weathercloud)
+          sendPacket ${CMD[read_weathercloud]}
+          ;;
+
+        customized)
+          sendPacket ${CMD[read_path]}
+          sendPacket ${CMD[read_customized]}
+          ;;
+
+        broadcast)
+          sendPacket ${CMD[broadcast]} $FD_UDP
+          ;;
+
+        rain)
+          sendPacket ${CMD[read_raindata]}
+          ;;
+
+        livedata)
+          initSearchPatternForCommand "$1"
+          sendPacket ${CMD[livedata]}
+                ;;
+
+        sensor_id)
+          initSearchPatternForCommand "$1"
+          sendPacket ${CMD[read_sensor_id]}
+          ;;
+
+        sensor_id_new) # for new SENSOR_TYPE types
+        
+        if [[ "$1" =~ ^"-" ]]; then # probably new option - or --
+          initSearchPatternForCommand
+        else
+          initSearchPatternForCommand "$1"
+        fi
+        
+          sendPacket ${CMD[read_sensor_id_new]}
+          ;;
+
+        *)
+          echo >&2 Error Unkown command "$COMMAND"
+          return 1
+          ;;
   esac
 
   return 0
@@ -1345,28 +1746,34 @@ while [[ $# -gt 0 ]]; do
     sendPacket ${CMD[read_customized]} >/dev/null
     sendPacket ${CMD[read_path]} >/dev/null
     sendPacket ${CMD[read_raindata]} >/dev/null
+    sendPacket ${CMD[read_sensor_id_new]} >/dev/null
+    # some data probably saved to device EEPROM
+    # calibration data?
     printConfiguration
     shift
     ;;
+  
   -c | --command)
     COMMAND="${2,,}"
     
-    if processCommand "${3,,}"; then # $3 pass field pattern to livedata
+    if processCommand "${3,,}"; then # $3 pass field pattern to livedata/sensor_id_new
     
-     if [[ $COMMAND == "livedata" ]]; then
-        shift 3
-      else
-        shift 2
-      fi
+        if [[ ($COMMAND == "livedata" || $COMMAND == "sensor_id_new"  || $COMMAND == "sensor_id" ) && -n "$3" && ! "$3" =~ ^"-" ]]; then # ^"-" don't shift 3 for following new options
+            shift 3
+          else
+            shift 2
+        fi
     else
       shift 1
     fi
+
     unset COMMAND
     ;;
+
   -d | --debug)
     DEBUG=1
     DEBUG_OPTIONS[socat]='-d -d -x'
-    DEBUG_OPTIONS[nc]='-v -v -v'
+    DEBUG_OPTIONS[nc]="-v -v -v"
     echo >&2 "${FILENAME[@]}"
     shift
     ;;
@@ -1383,18 +1790,22 @@ while [[ $# -gt 0 ]]; do
     curl --silent --show-error --user-agent "$HTTP_UA_NAME" "$HTTP_FIRMWARE"
     shift 2
     ;;
+
   -g | --wunderground)
     sendWeatherservice "${CMD[write_wunderground]}" "$2" "$3"
     shift 3
     ;;
+
   -i | --wow)
     sendWeatherservice "${CMD[write_wow]}" "$2" "$3"
     shift 3
     ;;
+ 
   -j | --weathercloud)
     sendWeatherservice "${CMD[write_weathercloud]}" "$2" "$3"
     shift 3
     ;;
+ 
   -h | --host)
     HOST_PREV=$HOST
     HOST="$2" # this arg must come first to open socketsopen file descriptors to UDP/TCP port on HOST
@@ -1407,6 +1818,7 @@ while [[ $# -gt 0 ]]; do
     CONFIGURATION[host]=$HOST
     shift 2
     ;;
+ 
   -l | --listen)
     echo >&2 Listening for http request on port "$2"
     mapfile HTTP_REQUEST < <(nc -l "$2")
@@ -1432,11 +1844,14 @@ while [[ $# -gt 0 ]]; do
     #
     #A = 868 Mhz GW1000A, B= , C= 433
   -r | --restore)
+
     unset CONFIGURATION
     declare -A CONFIGURATION
+    IFS=' '
     while read -r K V; do
       CONFIGURATION["$K"]="$V"
     done <"$2"
+
     printConfiguration
 
     sendEcowittInterval "${CONFIGURATION[ecowitt_interval]}"
@@ -1445,8 +1860,58 @@ while [[ $# -gt 0 ]]; do
     sendWeatherservice "${CMD[write_weathercloud]}" "${CONFIGURATION[weathercloud_id]}" "${CONFIGURATION[weathercloud_password]}"
     sendCustomized
     sendRaindata "${CONFIGURATION[rainday]}" "${CONFIGURATION[rainweek]}" "${CONFIGURATION[rainmonth]}" "${CONFIGURATION[rainyear]}"
+    sendSensor
+
     shift 2
+
     ;;
+
+  -m | --sensor)
+
+     sendPacket "${CMD[read_sensor_id_new]}" >/dev/null
+     #sensortype=search|disable,...
+     IFS=","
+     read -r -a SENSOR_MANAGEMENT  <<< "$2"
+     
+     s_disable="disable"
+     s_search="search"
+     
+     for ((n=0;n < ${#SENSOR_MANAGEMENT[@]}; n++)) ; do
+
+            IFS='='
+            read -r STYPE SID <<< "${SENSOR_MANAGEMENT[$n]}"
+            
+            IFS='-'
+            read -r STYPE_MIN STYPE_MAX <<< "$STYPE" # allow specifying range, for example 1-10=search
+            
+            #https://stackoverflow.com/questions/806906/how-do-i-test-if-a-variable-is-a-number-in-bash/806923
+            ! [[ $STYPE_MIN =~ ^[0-9]+$ ]] && >&2 echo "$STYPE_MIN is not a sensor type/number"  && continue;
+            [[ -n $STYPE_MAX ]] && ! [[ $STYPE_MAX =~ ^[0-9]+$ ]] && >&2 echo "$STYPE_MAX is not a sensor type/number"  && continue;
+            
+            [[ -z $STYPE_MAX ]] && STYPE_MAX=$STYPE_MIN
+            if [[ "${SID,,}" =~ ^${s_disable:0:${#SID}} ]]; then # 0:length of SID, matched substring, for example d for disable, s for search
+              for (( r=STYPE_MIN; r<= STYPE_MAX; r++ )); do 
+                  >&2 echo "Setting sensor type $r to disable $SENSOR_DISABLE" 
+                    SENSOR[$r]=$SENSOR_DISABLE
+              done
+            elif [[ "${SID,,}" =~ ^${s_search:0:${#SID}} ]] ; then
+              for (( r=STYPE_MIN; r<= STYPE_MAX; r++ )); do 
+                  >&2 echo "Setting sensor type $r to search $SENSOR_SEARCH" 
+                    SENSOR[$r]=$SENSOR_SEARCH
+              done
+            else
+               >&2 echo "Error unkown sensor id $SID, use disable or search"
+        
+            fi
+
+      done
+
+      updateSensorId
+
+     shift 2
+
+     ;;
+
 
   -n | --notifyrain)
     runRainNotification "$2" "$3" #tested on GNOME
