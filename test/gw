@@ -64,6 +64,21 @@ CMD[read_sensor_id]=0x3a
 CMD[write_sensor_id]=0x3b
 CMD[read_sensor_id_new]=0x3c # for new sensors
 
+CMD[read_system]=0x30
+CMD[write_system]=0x31
+
+declare -A SYSTEM_FREQUENCY
+SYSTEM_FREQUENCY[RFM433M]=0 # 433MHz
+SYSTEM_FREQUENCY[RFM868M]=1 # 868Mhz
+SYSTEM_FREQUENCY[RFM915M]=2 # 915MHz
+SYSTEM_FREQUENCY[RFM920M]=4 # 920Mhz
+
+declare -A SYSTEM_SENSOR_TYPE
+SYSTEM_SENSOR_TYPE[WH24]=0
+SYSTEM_SENSOR_TYPE[WH65]=1
+
+declare -a SYSTEM_TIMEZONE #initTimezones
+
 declare -a LIVEDATA
 
 declare -a LDFIELD
@@ -90,21 +105,21 @@ LDFIELD[0x17]="UVI:UV index (0-15)::1:0"
 for ((LDFT=0x2A, LDFT2=0x4D, CH=1;CH<=4; CH++, LDFT++,LDFT2++ )); do
   if (( CH == 2 )); then LDFT=$((0x51)); fi
    LDFIELD[$LDFT]="PM25_CH$CH:PM2.5 air quality CH$CH:μg/m3:2:1"
-   LDFIELD[$LDFT2]="PM25_24HAVG_CH$CH:PM2.5 air quality 24h average CH$CH:μg/m3:2:1"
+   LDFIELD[$LDFT2]="PM25_24HAVG_CH$CH:PM2.5 24h average CH$CH:μg/m3:2:1"
 done
 for ((LDFT=0x2B, CH=1;CH<=16; CH++, LDFT=LDFT+2 )); do
    LDFIELD[$LDFT]="SOILTEMP_CH$CH:soil temperature CH$CH:℃:2:1"
    LDFIELD[(( LDFT + 1 ))]="SOILHUMI_CH$CH:soil humidity CH$CH:%:1:0"
 done
 for ((LDFT=0x1A, LDFT2=0x22, CH=1;CH<=8; CH++, LDFT++,LDFT2++ )); do
-   LDFIELD[$LDFT]="TEMP_CH$CH:temperature CH$CH:℃:2:1"
+   LDFIELD[$LDFT]="TEMP_CH$CH:temperature CH$CH::2:1"
    LDFIELD[$LDFT2]="HUMI_CH$CH:humidity CH$CH:%:1:0"
 done
 for ((LDFT=0x58, CH=1;CH<=4; CH++, LDFT++ )); do
    LDFIELD[$LDFT]="LEAK_CH$CH:leak CH$CH::1:0"
 done
 
-SENSORFIELD="sensor_"
+CONFIGURATION_SENSORFIELD="sensor_"
 
 #sensors
 #typedef enum
@@ -165,15 +180,24 @@ SENSORFIELD="sensor_"
 #//-------------
 # eMAX_SENSOR
 #}SENSOR_IDT
-
+#https://www.wxforum.net/index.php?topic=40730.0
 SENSOR_SEARCH=0xffffffff
 SENSOR_DISABLE=0xfffffffe
+
+declare -A WH24
+WH24[type]=0x00
 
 declare -A WH65 # 7-in-1 weather SENSOR_TYPE
 WH65[type]=0x00
 
 declare -A WH68 # anemometer
 WH68[type]=0x01
+
+declare -A WH80 # anemometer
+WH80[type]=0x02
+
+declare -A WH40 #rain sensor
+WH40[type]=0x03
 
 declare -A WH31 # temp./humidify
 WH31[type]=0x06
@@ -196,9 +220,8 @@ declare -a SENSOR_TYPE
 #type:description:reportinginterval(s):max reportinterval:detection interval
 SENSOR_TYPE[WH65[type]]="WH65:Outdoor Solar Powered 7-in-1 Weather Sensor:16.0:"
 SENSOR_TYPE[WH68[type]]="WH68:Solar Powered Anemometer with Light and UV Sensor:16.5:"
-
-#SENSOR_TYPE[0x??]="WH80:Wind Speed and Direction, Solar Radiation and Light, Temp and Humidity 6-in-1 Sensor:4.75:"
-#SENSOR_TYPE[0x??]="WH40:Self-Emptying Rain Collector Rainfall Sensor:49"
+SENSOR_TYPE[WH80[type]]="WH80:Wind Speed/Direction, Solar Radiation/Light, Temp/Humidity:4.75:"
+SENSOR_TYPE[WH40[type]]="WH40:Self-Emptying Rain Collector Rainfall Sensor:49"
 #sensors with max 8 channels
 for (( CH=1; CH <= WH31[max_ch] ; CH++)); do 
    SENSOR_TYPE[WH31[type] + $CH - 1]="WH31:Temperature and humidity CH$CH:61.0:"
@@ -213,6 +236,9 @@ done
 #SENSOR_TYPE[0x??]="WH57:Lightning Detection Sensor:79:"
 #SENSOR_TYPE[0x??]="WH34S:Soil Temperature Sensor:77"
 #SENSOR_TYPE[0x??]="WH35:Leaf Wetness Sensor for Garden and Farm:79.5"
+
+#mapping from livedata field type/decimal to name
+declare -A LIVEDATA_NAME
 
 #CONNECT ERRORS
 ERROR_CONNECTION=1
@@ -245,12 +271,12 @@ function listLivedataFieldsAndDescription
   
   IFS=' '
 
-  fk="${!LDFIELD[*]}"
+  fk="${!LDFIELD[*]}" # !  all keys
   [ -n "$1" ] && fk="${LDFACTIVE[*]}"
   
   for k in $fk; do
     read -r fn fd <<< "${LDFNAMEDESC[$k]}"  
-    printf "%-16s %s\n" "$fn" "$fd"
+    printf "%3d %-16s %s\n" "$k" "$fn" "$fd"
   done
 }
 
@@ -417,7 +443,8 @@ function printRain {
   #echo rainmonth "${CONFIGURATION[rainmonth]} "
   #echo  rainyear "${CONFIGURATION[rainyear]}"
   #echo "rainrate $rr rainday $rd rainweek $rw rainmonth $rm rainyear $ry"
-  printf "rainrate %s\nrainday %s\nrainweek %s\nrainmonth %s\nrainyear %s\n" "$rr" "$rd" "$rw" "$rm" "$ry"
+  printf "%9s %9s %9s %9s %9s\n" rainrate rainday rainweek rainmonth rainyear
+  printf "%9s %9s %9s %9s %9s\n" "$rr" "$rd" "$rw" "$rm" "$ry"
 }
 
 function convertWindDirectionToCompassDirection
@@ -514,10 +541,16 @@ function parseLivedata
 
     fieldTypeHexSub=${fieldTypeHex:2}
     fieldTypeHexSub=0x${fieldTypeHexSub^^} #^^ all characters to uppercase ( 0x0a -> 0x0A )
+    fieldTypeHexSubDec=$(( fieldTypeHexSub ))
 
     LDFACTIVE+=( "$fieldTypeHexSub" ) # keep track of discovered fields
 
     read -r LDFNAME LDFDESC LDFUNIT LDFBYTES LDFSCALE <<< "${LDFIELD[$fieldTypeHexSub]}"
+    
+    unset LDFDESC_RENAME
+    if [ -n "${LIVEDATA_NAME[$fieldTypeHexSubDec]}" ]; then #rename sensor description
+       LDFDESC_RENAME=${LIVEDATA_NAME[$fieldTypeHexSubDec]}
+    fi
    
     case "$LDFBYTES" in 
 
@@ -540,15 +573,31 @@ function parseLivedata
         LIVEDATA[$fieldTypeHexSub]=$VALUE_SCALE10_FLOAT
      fi
 
-     if [[ ${LDFNAME,,} =~ ^${SPATTERN} || ${LDFDESC,,} =~ ${SPATTERN} ]] ; then  # ^ line starts with, ,,=to lowercase
+     if [[ ${LDFNAME,,} =~ ^${SPATTERN} || ${LDFDESC,,} =~ ${SPATTERN} || ${LDFDESC_RENAME,,} =~ ${SPATTERN} ]] ; then  # ^ line starts with, ,,=to lowercase
       match=1
-        printf "%8s %s %s\n" "${LIVEDATA[$fieldTypeHexSub]}" "$LDFUNIT" "$LDFDESC"
 
+        if [ -n "${LDFDESC_RENAME}" ]; then
+           LDFDESC=$LDFDESC_RENAME
+        fi
+
+        if [[ "$LDFUNIT" == *"℃"*  ]]; then #multibyte character/unicode requires 1 larger width and a space padding for description
+            printf "%8s %6s %s\n" "${LIVEDATA[$fieldTypeHexSub]}" "$LDFUNIT" " $LDFDESC"
+        elif [[ "$LDFUNIT" == *"°"* ]]; then
+               printf "%8s %6s %s\n" "${LIVEDATA[$fieldTypeHexSub]}" "$LDFUNIT" "$LDFDESC"
+        else
+            printf "%8s %5s %s\n" "${LIVEDATA[$fieldTypeHexSub]}" "$LDFUNIT" "$LDFDESC"
+        fi
+           
         case $LDFNAME in
            WINDDIRECTION)
                 convertWindDirectionToCompassDirection "${LIVEDATA[$fieldTypeHexSub]}"
                 #LIVEDATA_EXTRA[$fieldTypeHexSub]=$VALUE_COMPASS_DIRECTION_NAME
-                 printf "%8s %s %s\n" "$VALUE_COMPASS_DIRECTION_NAME" " " "wind compass direction"
+                if [ -n "${LIVEDATA_NAME[compass_direction]}" ]; then
+                    LDFDESC=${LIVEDATA_NAME[compass_direction]}
+                else
+                  LDFDESC="wind compass direction"
+                fi
+                 printf "%8s %5s %s\n" "$VALUE_COMPASS_DIRECTION_NAME" "" "$LDFDESC"
                 ;;
         esac
 
@@ -625,13 +674,13 @@ function parseSensor
 # eWH35_SENSORCH6 = 45,//电压=val*0.02V 当<=1.2V 时显示低电压
 # eWH35_SENSORCH7 = 46,//电压=val*0.02V 当<=1.2V 时显示低电压
 # eWH35_SENSORCH8 = 47,//电压=val*0.02V 当<=1.2V 时显示低电压
+  
 {
   (( DEBUG )) && >&2 echo parse SENSOR_TYPE new "SPATTERN" "$SPATTERN"
 
      IFS=':'
      unset SENSOR
      SENSOR=()
-     
 
        while (( "$RX_POS" < (${#PACKET_RX[@]} - 1) )); do
             
@@ -639,53 +688,67 @@ function parseSensor
           (( "$RX_START_POS" == 5 )) && printf "%5s %5s %8s %10s %7s %13s %6s %12s %s\n" type name id id_state battery battery_state signal interval_min description
 
               readUInt8
-              STYPE="$VALUE_UINT8"
+                STYPE="$VALUE_UINT8"
 
               read -r SNAME SDESC SINTERVAL_MIN SREST <<< "${SENSOR_TYPE["$STYPE"]}"
               [ -z "$SNAME" ] && (( DEBUG )) && echo >&2 "Unknown SENSOR_TYPE $STYPE"
 
               readUInt32BE
-              SID="$VALUE_UINT32BE"
-              SID_HEX="$VALUE_UINT32BE_HEX"
+                SID="$VALUE_UINT32BE"
+                SID_HEX="$VALUE_UINT32BE_HEX"
 
-              SENSOR[$STYPE]=$SID
-              CONFIGURATION[$SENSORFIELD$STYPE]=$SID_HEX #update configuration
+                SENSOR[$STYPE]=$SID
+                CONFIGURATION[$CONFIGURATION_SENSORFIELD$STYPE]=$SID_HEX #update configuration
 
-              case $SID_HEX in
+                case $SID_HEX in
+                  
+                  "$SENSOR_SEARCH")
+                    SID_STATE="searching"
+                    ;;
+
+                    "$SENSOR_DISABLE")
+                      SID_STATE="disabled"
+                      ;;
+                    
+                    *)
+                      SID_STATE='enabled'
+                      ;;
+                esac
+
+              readUInt8
+              
+                SBATTERY="$VALUE_UINT8"
                 
-                "$SENSOR_SEARCH")
-                  SID_STATE="searching"
-                  ;;
-                  "$SENSOR_DISABLE")
-                    SID_STATE="disabled"
-                    ;;
-                  *)
-                    SID_STATE='enabled'
-                    ;;
-              esac
+                unset SBATTERY_STATE
+                
+                SENABLED=$(( SID != SENSOR_SEARCH && SID != SENSOR_DISABLE ))
+
+                if (( SENABLED )); then # intepret battery levels
+
+                    if (( (STYPE >= WH43[type] && STYPE < WH43[type] + WH43[max_ch]) ||
+                          (STYPE >= WH55[type] && STYPE < WH55[type] + WH55[max_ch]) )); then  #WH43 - PM2.5 indoor, WH41? same ID?
+                    #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/CurdataGwFragment.java l 4575
+                      getBatteryLevelState "$SBATTERY"
+                    fi
+
+                    #Voltage value seems to be scaled * 10 for soil moisture
+                    if (( (STYPE >= WH51[type] && STYPE < WH51[type] + WH51[max_ch]) )); then #WH51 - soil moisture
+                       convertScale10ToFloat "$SBATTERY"
+                       SBATTERY_STATE=$VALUE_SCALE10_FLOAT"V"
+                       if (( "$SBATTERY" <= 12 )); then
+                         SBATTERY_STATE+=" low"
+                       fi
+                    fi
+
+                    if (( STYPE == WH65[type] || ( STYPE >= WH31[type] && STYPE < WH31[type]+WH31[max_ch] ) )); then # WH65, WH31 CH1-8 
+                      getBatteryState "$SBATTERY"
+                    fi
+                fi
 
               readUInt8
-              SBATTERY="$VALUE_UINT8"
               
-              unset SBATTERY_STATE
+                SSIGNAL="$VALUE_UINT8"
               
-              SENABLED=$(( SID != SENSOR_SEARCH && SID != SENSOR_DISABLE ))
-
-              if (( SENABLED )); then # intepret battery levels
-
-                  if (( (STYPE >= WH43[type] && STYPE < WH43[type] + WH43[max_ch]) || 
-                        (STYPE >= WH55[type] && STYPE < WH55[type] + WH55[max_ch]) )); then  #WH43 - PM2.5 indoor, WH41? same ID?
-                  #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/CurdataGwFragment.java l 4575
-                    getBatteryLevelState "$SBATTERY"
-                  fi
-
-                  if (( STYPE == WH65[type] || ( STYPE >= WH31[type] && STYPE < WH31[type]+WH31[max_ch] ) )); then # WH65, WH31 CH1-8 
-                    getBatteryState "$SBATTERY"
-                  fi
-              fi
-
-              readUInt8
-              SSIGNAL="$VALUE_UINT8"
               (( DEBUG )) && >&2 echo "${PACKET_RX_HEX:(($RX_START_POS * 2)):14}"
 
               if [[ ${SNAME,,} =~ ^${SPATTERN} || ${SDESC,,} =~ ${SPATTERN} || ${SID_STATE,,} =~  ${SPATTERN} || ${SID_HEX,,} =~  ${SPATTERN} ]] ; then  # ^ line starts with, ,,=to lowercase
@@ -705,6 +768,134 @@ function parseSensor
               fi
 
        done
+}
+
+function initTimezones
+{
+  #echo "(UTC-12:00)International Date Line West", "(UTC-11:00)Samoa", "(UTC-11:00)Coordinated Universal Time-11", "(UTC-10:00)Aleutian Islands", "(UTC-10:00)Hawaii", "(UTC-09:30)Marquesas Islands", "(UTC-09:00)Alaska", "(UTC-09:00)Coordinated Universal Time-9", "(UTC-08:00)Pacific Time (US & Canada)", "(UTC-08:00)Baja California", "(UTC-08:00)Coordinated Universal Time-8", "(UTC-07:00)Chihuahua,La Paz,Mazatlan", "(UTC-07:00)Mountain Time (US & Canada)", "(UTC-07:00)Arizona", "(UTC-06:00)Guadalajara,Mexico City,Monterrey", "(UTC-06:00)Saskatchewan", "(UTC-06:00)Central Time (US & Canada)", "(UTC-06:00)Central America", "(UTC-05:00)Bogota,Lima,Quito", "(UTC-05:00)Eastern Time (US & Canada)", "(UTC-05:00)Havana", "(UTC-05:00)Hayti", "(UTC-05:00)Chetumal", "(UTC-05:00)Indiana (East)", "(UTC-04:30)Caracas", "(UTC-04:00)Atlantic Time (Canada)", "(UTC-04:00)Cuiaba", "(UTC-04:00)Georgetown,La Paz,Manaus,San Juan", "(UTC-04:00)Santiago", "(UTC-04:00)Asuncion", "(UTC-03:30)Newfoundland", "(UTC-03:00)Brasilia", "(UTC-03:00)Buenos Aires", "(UTC-03:00)Greenland", "(UTC-03:00)Cayenne,Fortaleza", "(UTC-03:00)Montevideo", "(UTC-02:00)Coordinated Universal Time-02", "(UTC-01:00)Cape Verde Is.", "(UTC-01:00)Azores", "(UTC)Dublin,Edinburgh,Lisbon,London", "(UTC)Casablanca", "(UTC)Monrovia,Reykjavik", "(UTC)Coordinated Universal Time", "(UTC+01:00)Amsterdam,Berlin,Bern,Rome,Stockholm,Vienna", "(UTC+01:00)Belgrade,Bratislava,Budapest,Ljubljana,Prague", "(UTC+01:00)Brussels,Copenhagen,Madrid,Paris", "(UTC+01:00)Sarajevo,Skopje,Warsaw,Zagreb", "(UTC+01:00)Windhoek", "(UTC+01:00)West Central Africa", "(UTC+02:00)Amman", "(UTC+02:00)Beirut", "(UTC+02:00)Damascus", "(UTC+02:00)Harare,Pretoria", "(UTC+02:00)Helsinki,Kyiv,Riga,Sofia,Talinn,Vilnius", "(UTC+02:00)Cairo", "(UTC+02:00)Athens,Bucharest,Istanbul", "(UTC+02:00)Jerusalem", "(UTC+03:00)Baghdad", "(UTC+03:00)Kuwait,Riyadh", "(UTC+03:00)Minsk", "(UTC+03:00)Moscow,St.Petersburg,Volgograd", "(UTC+03:00)Nairobi", "(UTC+03:30)Tehran", "(UTC+04:00)Abu Dhabi,Muscat", "(UTC+04:00)Yerevan", "(UTC+04:00)Baku", "(UTC+04:00)Tbilisi", "(UTC+04:00)Port Louis", "(UTC+04:30)Kabul", "(UTC+05:00)Tashkent", "(UTC+05:00)Ekaterinburg", "(UTC+05:00)Islamabad,Karachi", "(UTC+05:30)Chennai,Kolkata,Mumbai,New Delhi", "(UTC+05:30)Sri Jayawardenepura", "(UTC+05:45)Kathmandu", "(UTC+06:00)Astana", "(UTC+06:00)Dhaka", "(UTC+06:00)Novosibirsk", "(UTC+06:30)Yangon (Rangoon)", "(UTC+07:00)Kobdo", "(UTC+07:00)Krasnoyarsk", "(UTC+07:00)Bangkok,Hanoi,Jakarta", "(UTC+08:00)Beijing,Chongqing,Hong Kong,Urumqi", "(UTC+08:00)Kuala Lumpur,Singapore", "(UTC+08:00)Perth", "(UTC+08:00)Taipei", "(UTC+08:00)Ulaanbaatar", "(UTC+08:00)Irkutsk", "(UTC+09:00)Pyongyang", "(UTC+09:00)Osaka,Sapporo,Tokyo", "(UTC+09:00)Seoul", "(UTC+09:00)Yakutsk", "(UTC+09:30)Adelaide", "(UTC+09:30)Darwin", "(UTC+10:00)Brisbane", "(UTC+10:00)Vladivostok", "(UTC+10:00)Guam,Port Moresby", "(UTC+10:00)Hobart", "(UTC+10:00)Canberra,Melbourne,Sydney", "(UTC+10:30)Lord Howe Island", "(UTC+11:00)Magadan", "(UTC+11:00)Solomon Is.,New Caledonia", "(UTC+12:00)Auckland,Wellington", "(UTC+12:00)Fiji", "(UTC+12:00)Coordinated Universal Time+12", "(UTC+12:45)Chatham Islands", "(UTC+13:00)Nuku'alofa", "(UTC+14:00)Christmas Island" | cut -d ',' -f 1- --output-delimiter=$'\n'
+#Based on decompiled /WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/SystemFragment.java
+readarray -t SYSTEM_TIMEZONE <<EOF
+(UTC-12:00) International Date Line West
+(UTC-11:00) Samoa
+(UTC-11:00) Coordinated Universal Time-11
+(UTC-10:00) Aleutian Islands
+(UTC-10:00) Hawaii
+(UTC-09:30) Marquesas Islands
+(UTC-09:00) Alaska
+(UTC-09:00) Coordinated Universal Time-9
+(UTC-08:00) Pacific Time (US & Canada)
+(UTC-08:00) Baja California
+(UTC-08:00) Coordinated Universal Time-8
+(UTC-07:00) Chihuahua, La Paz, Mazatlan
+(UTC-07:00) Mountain Time (US & Canada)
+(UTC-07:00) Arizona
+(UTC-06:00) Guadalajara, Mexico City,Monterrey
+(UTC-06:00) Saskatchewan
+(UTC-06:00) Central Time (US & Canada)
+(UTC-06:00) Central America
+(UTC-05:00) Bogota, Lima, Quito
+(UTC-05:00) Eastern Time (US & Canada)
+(UTC-05:00) Havana
+(UTC-05:00) Hayti
+(UTC-05:00) Chetumal
+(UTC-05:00) Indiana (East)
+(UTC-04:30) Caracas
+(UTC-04:00) Atlantic Time (Canada)
+(UTC-04:00) Cuiaba
+(UTC-04:00) Georgetown, La Paz, Manaus, San Juan
+(UTC-04:00) Santiago
+(UTC-04:00) Asuncion
+(UTC-03:30) Newfoundland
+(UTC-03:00) Brasilia
+(UTC-03:00) Buenos Aires
+(UTC-03:00) Greenland
+(UTC-03:00) Cayenne, Fortaleza
+(UTC-03:00) Montevideo
+(UTC-02:00) Coordinated Universal Time-02
+(UTC-01:00) Cape Verde Is.
+(UTC-01:00) Azores
+(UTC) Dublin, Edinburgh, Lisbon, London
+(UTC) Casablanca
+(UTC) Monrovia, Reykjavik
+(UTC) Coordinated Universal Time
+(UTC+01:00) Amsterdam, Berlin, Bern, Rome, Stockholm, Vienna
+(UTC+01:00) Belgrade, Bratislava, Budapest, Ljubljana, Prague
+(UTC+01:00) Brussels, Copenhagen, Madrid, Paris
+(UTC+01:00) Sarajevo, Skopje, Warsaw, Zagreb
+(UTC+01:00) Windhoek
+(UTC+01:00) West Central Africa
+(UTC+02:00) Amman
+(UTC+02:00) Beirut
+(UTC+02:00) Damascus
+(UTC+02:00) Harare, Pretoria
+(UTC+02:00) Helsinki, Kyiv, Riga, Sofia, Talinn, Vilnius
+(UTC+02:00) Cairo
+(UTC+02:00) Athens, Bucharest, Istanbul
+(UTC+02:00) Jerusalem
+(UTC+03:00) Baghdad
+(UTC+03:00) Kuwait, Riyadh
+(UTC+03:00) Minsk
+(UTC+03:00) Moscow, St.Petersburg, Volgograd
+(UTC+03:00) Nairobi
+(UTC+03:30) Tehran
+(UTC+04:00) Abu Dhabi, Muscat
+(UTC+04:00) Yerevan
+(UTC+04:00) Baku
+(UTC+04:00) Tbilisi
+(UTC+04:00) Port Louis
+(UTC+04:30) Kabul
+(UTC+05:00) Tashkent
+(UTC+05:00) Ekaterinburg
+(UTC+05:00) Islamabad, Karachi
+(UTC+05:30) Chennai, Kolkata, Mumbai, New Delhi
+(UTC+05:30) Sri Jayawardenepura
+(UTC+05:45) Kathmandu
+(UTC+06:00) Astana
+(UTC+06:00) Dhaka
+(UTC+06:00) Novosibirsk
+(UTC+06:30) Yangon (Rangoon)
+(UTC+07:00) Kobdo
+(UTC+07:00) Krasnoyarsk
+(UTC+07:00) Bangkok, Hanoi, Jakarta
+(UTC+08:00) Beijing, Chongqing, Hong Kong, Urumqi
+(UTC+08:00) Kuala Lumpur, Singapore
+(UTC+08:00) Perth
+(UTC+08:00) Taipei
+(UTC+08:00) Ulaanbaatar
+(UTC+08:00) Irkutsk
+(UTC+09:00) Pyongyang
+(UTC+09:00) Osaka, Sapporo, Tokyo
+(UTC+09:00) Seoul
+(UTC+09:00) Yakutsk
+(UTC+09:30) Adelaide
+(UTC+09:30) Darwin
+(UTC+10:00) Brisbane
+(UTC+10:00) Vladivostok
+(UTC+10:00) GuamPort Moresby
+(UTC+10:00) Hobart
+(UTC+10:00) Canberra, Melbourne, Sydney
+(UTC+10:30) Lord Howe Island
+(UTC+11:00) Magadan
+(UTC+11:00) Solomon Is., New Caledonia
+(UTC+12:00) Auckland, Wellington
+(UTC+12:00) Fiji
+(UTC+12:00) Coordinated Universal Time+12
+(UTC+12:45) Chatham Islands
+(UTC+13:00) Nuku'alofa
+(UTC+14:00) Christmas Island
+EOF
+
+}
+
+function printTimezones
+{
+  local n
+  n=0
+  printf "%3s %s\n" "tzi" "timezone" #tzi timezone index
+  for tz in "${SYSTEM_TIMEZONE[@]}"; do
+    printf "%3d %s\n" $n "$tz"
+    (( n++ ))
+  done
 }
 
 function parsePacket {
@@ -732,7 +923,7 @@ function parsePacket {
 
   case $cmd in
 
-  "${CMD[write_reset]}" | "${CMD[write_customized]}" | "${CMD[write_path]}" | "${CMD[reboot]}" | "${CMD[write_ssid]}" | "${CMD[write_raindata]}" | "${CMD[write_ecowitt_interval]}" | "${CMD[write_wunderground]}" | "${CMD[write_wow]}" | "${CMD[write_weathercloud]}" | "${CMD[write_sensor_id]}")
+  "${CMD[write_reset]}" | "${CMD[write_customized]}" | "${CMD[write_path]}" | "${CMD[reboot]}" | "${CMD[write_ssid]}" | "${CMD[write_raindata]}" | "${CMD[write_ecowitt_interval]}" | "${CMD[write_wunderground]}" | "${CMD[write_wow]}" | "${CMD[write_weathercloud]}" | "${CMD[write_sensor_id]}" | "${CMD[write_system]}")
     parseResultPacket
     ;;
 
@@ -748,6 +939,65 @@ function parsePacket {
     CONFIGURATION[version]=$VALUE_STRING
     echo "${CONFIGURATION[version]}"
     ;;
+
+  "${CMD[read_system]}")
+
+     readUInt8
+     CONFIGURATION[system_frequency]=$VALUE_UINT8
+     if ((  CONFIGURATION[system_frequency]  == SYSTEM_FREQUENCY[RFM433M] )); then
+       CONFIGURATION[system_frequency_state]="433MHz"
+     elif ((  CONFIGURATION[system_frequency]  == SYSTEM_FREQUENCY[RFM868M] )); then
+       CONFIGURATION[system_frequency_state]="868MHz"
+     elif ((  CONFIGURATION[system_frequency]  == SYSTEM_FREQUENCY[RFM915M] )); then
+       CONFIGURATION[system_frequency_state]="915MHz"
+     elif ((  CONFIGURATION[system_frequency]  == SYSTEM_FREQUENCY[RFM920M] )); then
+       CONFIGURATION[system_frequency_state]="920MHz"
+     fi
+     echo System Frequency "${CONFIGURATION[system_frequency]}" "${CONFIGURATION[system_frequency_state]}"
+
+
+     readUInt8
+     CONFIGURATION[system_sensor_type]=$VALUE_UINT8 # 0=WH24, 1=WH65
+
+     if (( CONFIGURATION[system_sensor_type] == SYSTEM_SENSOR_TYPE[WH24] )); then
+       CONFIGURATION[system_sensor_type_state]="WH24"
+     elif (( CONFIGURATION[system_sensor_type] == SYSTEM_SENSOR_TYPE[WH65] )); then
+       CONFIGURATION[system_sensor_type_state]="WH65"
+      
+     fi
+     echo System type "${CONFIGURATION[system_sensor_type]}" "${CONFIGURATION[system_sensor_type_state]}"
+
+     readUInt32BE
+     CONFIGURATION[system_utc]=$VALUE_UINT32BE # UTC time (seconds)
+     CONFIGURATION[system_utc_state]=$(date -u -d @"$VALUE_UINT32BE" +'%F %T')
+     echo "${CONFIGURATION[system_utc_state]}" System utc "$VALUE_UINT32BE" 
+     #while true; do time ./gw  -h 192.168.3.80 -c system | grep utc; date -u; sleep 0.6; done #see time difference between machine time and device time
+
+     readUInt8
+     CONFIGURATION[system_timezone_index]=$VALUE_UINT8 # 39 = UTC
+     initTimezones
+     CONFIGURATION[system_timezone_index_state]=${SYSTEM_TIMEZONE[CONFIGURATION[system_timezone_index]]}
+     printTimezones
+     echo System timezone index "${CONFIGURATION[system_timezone_index]}" "${CONFIGURATION[system_timezone_index_state]}" 
+
+     
+     readUInt8
+     CONFIGURATION[system_dst_status]=$VALUE_UINT8
+      CONFIGURATION[system_dst_status_bit]=$(( "${CONFIGURATION[system_dst_status]}" & 0x1 ))
+     if (( CONFIGURATION[system_dst_status_bit] == 1 )); then
+        CONFIGURATION[system_dst_status_state]="on";
+      elif (( CONFIGURATION[system_dst_status_bit] == 0 )); then
+        CONFIGURATION[system_dst_status_state]="off"
+     fi  
+     CONFIGURATION[system_timezone_auto_bit]=$(( ( "${CONFIGURATION[system_dst_status]}" & 0x2 ) >> 1 )) # bit 2 1= off, 0=on ?
+     if (( CONFIGURATION[system_timezone_auto_bit] == 0 )); then
+        CONFIGURATION[system_timezone_auto_state]="on";
+      elif (( CONFIGURATION[system_timezone_auto_bit] == 1 )); then
+        CONFIGURATION[system_timezone_auto_state]="off"
+     fi
+     echo System DST status "$VALUE_UINT8" dst "${CONFIGURATION[system_dst_status_state]}" auto timezone "${CONFIGURATION[system_timezone_auto_state]}"
+
+  ;;
 
   "${CMD[read_ecowitt_interval]}")
 
@@ -927,6 +1177,7 @@ function createPacketTX {
   checksum
 
   PACKET_TX=(0xff 0xff "${PACKET_BODY[@]}" "$CHECKSUM")
+  PACKET_TX_COMMAND=${PACKET_TX[2]}
 
   ((DEBUG)) && echo >&2 PACKET_TX "${PACKET_TX[@]//0x/''}"
 
@@ -992,28 +1243,40 @@ function sendPacket
 function sendPacketnc
 {
   local ncUDPOpt
+  local ncIdle
   local port
+  local ncStatus
 
   port=${PORT[tcp_command_server]}
 
   #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
   if [ $# -ge 1 ]; then
-    
     newPacketBody "$1"
-    
-    case "$1" in
+  fi
+
+  createPacketTX
+
+  case "$PACKET_TX_COMMAND" in
+
       "${CMD[broadcast]}")
             ncUDPOpt='-u'
             port=${PORT[udp_discovery_client]}
+            ;;
+
+      "${CMD[write_reset]}" | "${CMD[write_ssid]}")
+         (( DEBUG )) && >&2 echo "$(getCommandName "$PACKET_TX_COMMAND")" Setting device idle timeout for nc
+         ncIdle='-i 100ms'
+         ;;
     esac
- fi
-   
-  createPacketTX
 
   echo -ne "$PACKET_TX_ECHO" >"${FILENAME[tx]}"
-  
-  if nc $ncUDPOpt -w 500ms -x "${FILENAME[nc-hex]}" -4 "$HOST" "$port" < <(cat "${FILENAME[tx]}"; sleep 0.1)  >"${FILENAME[rx]}"; then # wait 0.1s to disable READ KILL of nc on stdin
+  rm "${FILENAME[rx]}"
 
+  # shellcheck disable=SC2086
+ { cat "${FILENAME[tx]}"; sleep 0.1; } |  nc  $ncUDPOpt $ncIdle -w 500ms -x "${FILENAME[nc-hex]}" -4 "$HOST" "$port"  >"${FILENAME[rx]}" # wait 0.1s to disable READ KILL of nc on stdin
+  ncStatus=$?
+  
+  if [ -s "${FILENAME[rx]}" ] ; then # -s file exists and not empty
         IFS='>'
 
         if read -r -a PACKET_RX_OD < <(od -A n -t x1z -v -w"$(stat -c %s "${FILENAME[rx]}")"  "${FILENAME[rx]}" ); then
@@ -1028,15 +1291,16 @@ function sendPacketnc
             PACKET_RX_HEX=${PACKET_RX_OD[0]// /}                                 # strip off all spaces, just hex
             if ((${#PACKET_RX[@]} == 0)); then
                 echo >&2 "$HOST Warning no response received from host"
-              else
+            else
                 (( DEBUG  )) && echo >&2 PACKET_RX_HEX "$PACKET_RX_HEX" length "${#PACKET_RX_HEX}"
                 parsePacket
-              fi
+            fi
         else
-          echo >&2 Error failed to receive packet, error code $?
+          echo >&2 Error failed to create od hex/ASCII decoding for packet, error code $?
         fi
+
   else
-     echo >&2 Error failed to send packet "$(getCommandName "$1")", error code $?
+   >&2 echo  "$(date)" Error failed to receive response for packet "$(getCommandName "$PACKET_TX_COMMAND")", error code $ncStatus
   fi
   
 }
@@ -1183,7 +1447,7 @@ function writeUInt {
 
   case $1 in
       
-       8) printf -v hex "%02x" "$2"
+       8)  printf -v hex "%02x" "$2"
            VALUE_HEX=$hex
             ;;
       
@@ -1224,6 +1488,13 @@ function newPathPacket {
 }
 
 function sendRaindata {
+  if ! [[ "$1" =~ ^[0-9]+$ ]] || ! [[ "$2" =~ ^[0-9]+$ ]] || ! [[ "$3" =~ ^[0-9]+$ ]] || ! [[ "$4" =~ ^[0-9]+$ ]]; then
+    echo Raindata has "element(s)" which is not a number
+    return
+  fi 
+
+  (( DEBUG )) && >&2 echo  rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
+  
   newPacketBody ${CMD[write_raindata]}
   writeUInt32BE "$1" #rainday
   writeUInt32BE "$2" #rainweek
@@ -1234,13 +1505,21 @@ function sendRaindata {
 }
 
 function sendEcowittInterval {
-  newPacketBody ${CMD[write_ecowitt_interval]}
-  writeUInt8 "$1" #interval
-  ((DEBUG)) && echo >&2 Sending ecowitt interval "$1"
-  sendPacket
+# observation: GW1000 red-wifi led blinks slowly if not sending data to ecowitt when 0=off
+  case "$1" in
+    0|1|2|3|4|5)
+      newPacketBody ${CMD[write_ecowitt_interval]}
+      writeUInt8 "$1" #interval
+      ((DEBUG)) && echo >&2 Sending ecowitt interval "$1"
+      sendPacket
+      ;;
+    *) >&2 echo Error Not a valid ecowitt interval, range 0-5 minutes
+      ;;
+   esac
 }
 
 function sendWeatherservice {
+
   newPacketBody "$1"
   writeString "$2"
   writeString "$3"
@@ -1280,8 +1559,8 @@ function sendSensor
 
   for stypeField in "${!CONFIGURATION[@]}"; do
 
-    if [[ "$stypeField" =~ ^"$SENSORFIELD" ]]; then
-      STYPE=${stypeField:${#SENSORFIELD}}
+    if [[ "$stypeField" =~ ^"$CONFIGURATION_SENSORFIELD" ]]; then
+      STYPE=${stypeField:${#CONFIGURATION_SENSORFIELD}}
       writeUInt8     "$STYPE"
       writeUInt32BE "${CONFIGURATION[$stypeField]}"
       (( DEBUG )) && >&2 printf "%s %3d %8x\n" sendSensor "$STYPE" "${CONFIGURATION[$stypeField]}"
@@ -1446,10 +1725,33 @@ function initConfigDir {
   FILENAME[udp_server]="${FILENAME[discovery]}"_UDP_"${PORT[udp_discovery_server]}"
   FILENAME[udp_client]="${FILENAME[discovery]}"_UDP_"${PORT[udp_discovery_client]}"
   FILENAME[nc-hex]=$DIR/'nc-hex.txt'
+  FILENAME[livedata_names]=$DIR/'livedata-names.txt'
 
   ((DEBUG)) && echo >&2 Filename "${FILENAME[@]}"
 
 }
+
+function initLivedataNames
+{
+  if [ ! -s "${FILENAME[livedata_names]}" ]; then
+     >&2 echo Warning File is empty or does not exists "${FILENAME[livedata_names]}"
+     return 1
+  fi
+
+  #mapping from livedata field in decimal to names
+  #26=bedroom,  #27=livingroom
+  
+  IFS='='
+  while read -r LDFTYPE LDNAME; do
+    if [[ $LDFTYPE =~ ^"#" ]]; then #skip comments
+      continue;
+    fi
+     LIVEDATA_NAME[$LDFTYPE]=$LDNAME
+     (( DEBUG )) && >&2 echo Livedata field type to name "$LDFTYPE=$LDNAME"
+  done < "${FILENAME[livedata_names]}"
+
+}
+
 
 function showRainInfoMessage {
   which notify-send >/dev/null && notify-send -t 3000 -i dialog-warning "gw script" "$1" &
@@ -1556,7 +1858,7 @@ function connnectAP {
     return "$ERROR_NO_NMCLI"
   fi
   sudo nmcli radio wifi on
-  ((DEBUG)) && echo >&2 Waiting $timeout s for device to bootup after reset
+  echo >&2 Attempting to reconnect to device, waiting $timeout s for device to bootup after reset
   sleep $timeout # wait for reset/bootup
 
   # Station mode/LAN: MAC 48:3F:DA:54:14:EC, ssid/version GW1000A-WIFI14EC, AP-mode: MAC 4A:3F:DA:54:14:EC, GW1000-WIFI4EC
@@ -1604,6 +1906,8 @@ function connnectAP {
     ((connected == 1)) && sleep 5
   done
 
+  ip address
+
 }
 
 function initSearchPatternForCommand
@@ -1621,63 +1925,84 @@ function processCommand {
   case $COMMAND in
 
         reset)
+          
           sendPacket ${CMD[broadcast]} $FD_UDP >/dev/null
+          
           read -r -p "Reset ${CONFIGURATION[broadcast_mac]} ${CONFIGURATION[broadcast_ssid]} (Y/N)? "
+          
           case $REPLY in
           Y)
             sendPacket ${CMD[write_reset]} # 3 blink in red LED
             connnectAP                     # assume user wants to reconnect for setting up new WIFI
             ;;
           esac
+          
           ;;
 
         reboot)
+          
           sendPacket "${CMD[reboot]}"
           ;;
 
         mac)
+          
           sendPacket "${CMD[read_mac]}"
           ;;
 
         version)
+          
           sendPacket ${CMD[read_version]}
           ;;
 
+        system)
+
+          sendPacket ${CMD[read_system]}
+          ;;
+
         ecowitt)
+          
           sendPacket ${CMD[read_ecowitt_interval]}
           ;;
 
         wunderground)
+          
           sendPacket ${CMD[read_wunderground]}
           ;;
 
         wow)
+          
           sendPacket ${CMD[read_wow]}
           ;;
 
         weathercloud)
+          
           sendPacket ${CMD[read_weathercloud]}
           ;;
 
         customized)
+          
           sendPacket ${CMD[read_path]}
           sendPacket ${CMD[read_customized]}
           ;;
 
         broadcast)
+          
           sendPacket ${CMD[broadcast]} $FD_UDP
           ;;
 
         rain)
+          
           sendPacket ${CMD[read_raindata]}
           ;;
 
         livedata)
+          
           initSearchPatternForCommand "$1"
           sendPacket ${CMD[livedata]}
                 ;;
 
         sensor_id)
+          
           initSearchPatternForCommand "$1"
           sendPacket ${CMD[read_sensor_id]}
           ;;
@@ -1694,6 +2019,7 @@ function processCommand {
           ;;
 
         *)
+          
           echo >&2 Error Unkown command "$COMMAND"
           return 1
           ;;
@@ -1714,6 +2040,7 @@ fi
 declare -A FILENAME # declare -A (if decl. inside function -> local only)
 
 initConfigDir
+initLivedataNames
 newLivedataFieldNameDesc
 
 #https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
@@ -1730,7 +2057,7 @@ while [[ $# -gt 0 ]]; do
       echo >&2 "Error: rain day/week/month/year not specified, use $1 {rainday} {week} {month} {year}"
       exit "$ERROR_RAINDATA_NOTSPECIFIED"
     fi
-    echo >&2 rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
+    
     sendRaindata "$2" "$3" "$4" "$5"
     shift 5
     ;;
@@ -1816,6 +2143,18 @@ while [[ $# -gt 0 ]]; do
     #  exit $ERROR_CONNECTION
     #fi
     CONFIGURATION[host]=$HOST
+
+    #sendPacket "${CMD[read_mac]}" >/dev/null
+    sendPacket "${CMD[read_version]}" >/dev/null
+
+    sendPacket "${CMD[read_system]}" &>/dev/null # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
+    
+    if (( CONFIGURATION[system_sensor_type] == SYSTEM_SENSOR_TYPE[WH24] )); then
+      SENSOR_TYPE[WH24[type]]="WH24:Outdoor Weather Sensor:16.0:"
+    fi
+
+    >&2  printf "%s %s\n\n" "${CONFIGURATION[version]}" "${CONFIGURATION[system_utc_state]}" 
+
     shift 2
     ;;
  
@@ -1847,20 +2186,25 @@ while [[ $# -gt 0 ]]; do
 
     unset CONFIGURATION
     declare -A CONFIGURATION
-    IFS=' '
-    while read -r K V; do
-      CONFIGURATION["$K"]="$V"
-    done <"$2"
 
-    printConfiguration
+    if [ -s "$2" ]; then 
+      IFS=' '
+      while read -r K V; do
+        CONFIGURATION["$K"]="$V"
+      done <"$2"
 
-    sendEcowittInterval "${CONFIGURATION[ecowitt_interval]}"
-    sendWeatherservice "${CMD[write_wunderground]}" "${CONFIGURATION[wunderground_id]}" "${CONFIGURATION[wunderground_password]}"
-    sendWeatherservice "${CMD[write_wow]}" "${CONFIGURATION[wow_id]}" "${CONFIGURATION[wow_password]}"
-    sendWeatherservice "${CMD[write_weathercloud]}" "${CONFIGURATION[weathercloud_id]}" "${CONFIGURATION[weathercloud_password]}"
-    sendCustomized
-    sendRaindata "${CONFIGURATION[rainday]}" "${CONFIGURATION[rainweek]}" "${CONFIGURATION[rainmonth]}" "${CONFIGURATION[rainyear]}"
-    sendSensor
+      printConfiguration
+
+      sendEcowittInterval "${CONFIGURATION[ecowitt_interval]}"
+      sendWeatherservice "${CMD[write_wunderground]}" "${CONFIGURATION[wunderground_id]}" "${CONFIGURATION[wunderground_password]}"
+      sendWeatherservice "${CMD[write_wow]}"          "${CONFIGURATION[wow_id]}"          "${CONFIGURATION[wow_password]}"
+      sendWeatherservice "${CMD[write_weathercloud]}" "${CONFIGURATION[weathercloud_id]}" "${CONFIGURATION[weathercloud_password]}"
+      sendCustomized
+      sendRaindata "${CONFIGURATION[rainday]}" "${CONFIGURATION[rainweek]}" "${CONFIGURATION[rainmonth]}" "${CONFIGURATION[rainyear]}"
+      sendSensor
+    else
+      >&2 echo Error File "$2 does not exists or is not empty";
+    fi
 
     shift 2
 
@@ -1934,6 +2278,7 @@ while [[ $# -gt 0 ]]; do
     ;;
 
   -w | --wifi)
+    
     newPacketBody ${CMD[write_ssid]}
     #ssid packet has two byte length
     # TEST wsview android app, wireshark: ffff | 11 |001b| 08536b6f676c756e640d6c756775626572313934322d2e | a9
@@ -1941,6 +2286,7 @@ while [[ $# -gt 0 ]]; do
     writeString "$2" # ssid
     writeString "$3" # password
     sendPacket
+
     shift 3
     ;;
 
