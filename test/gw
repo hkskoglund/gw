@@ -14,74 +14,111 @@
 
 SHELLIFS=$IFS
 
-declare -i DEBUG
+#https://stackoverflow.com/questions/29968096/get-android-os-version-of-device-connected-via-adb
+#testing purpose
+if which getprop 2>/dev/null ; then
+   ANDROID_BUILD_VERSION=$(getprop ro.build.version.release)
+   printenv
+fi
+
+typeset -i DEBUG
 DEBUG=0
 
-declare -A DEBUG_OPTIONS
+typeset -A DEBUG_OPTIONS
 DEBUG_OPTIONS[dd]='status=none'
 
-declare -A PORT
+PORT_tcp_command_server=45000
+PORT_udp_discovery_server=59387
+PORT_udp_discovery_client=46000
 
-PORT[tcp_command_server]=45000
-PORT[udp_discovery_server]=59387
-PORT[udp_discovery_client]=46000
+typeset -a CMD_NAME
 
-declare -A CMD
-
-CMD[read_version]=0x50
-CMD[reboot]=0x40
-CMD[read_mac]=0x26
-CMD[write_ssid]=0x11
-CMD[broadcast]=0x12
-CMD[write_reset]=0x41
+typeset -i CMD_read_version=0x50; 
+typeset -i CMD_reboot=0x40; 
+typeset -i CMD_read_mac=0x26; 
+typeset -i CMD_write_ssid=0x11; 
+typeset -i CMD_broadcast=0x12; 
+typeset -i CMD_write_reset=0x41; 
 
 #weather services
-CMD[read_ecowitt_interval]=0x1e
-CMD[write_ecowitt_interval]=0x1f
+typeset -i CMD_read_ecowitt_interval=0x1e; 
+typeset -i CMD_write_ecowitt_interval=0x1f; 
 
-CMD[read_wunderground]=0x20
-CMD[write_wunderground]=0x21
+typeset -i CMD_read_wunderground=0x20; 
+typeset -i CMD_write_wunderground=0x21; 
 
-CMD[read_wow]=0x22
-CMD[write_wow]=0x23
+typeset -i CMD_read_wow=0x22; 
+typeset -i CMD_write_wow=0x23; 
 
-CMD[read_weathercloud]=0x24
-CMD[write_weathercloud]=0x25
+typeset -i CMD_read_weathercloud=0x24; 
+typeset -i CMD_write_weathercloud=0x25; 
 
 #customized server for ecowitt/wunderground http requests
-CMD[read_customized]=0x2a
-CMD[write_customized]=0x2b
-CMD[read_path]=0x51
-CMD[write_path]=0x52
+typeset -i CMD_read_customized=0x2a; 
+typeset -i CMD_write_customized=0x2b; 
+typeset -i CMD_read_path=0x51; 
+typeset -i CMD_write_path=0x52; 
 
-CMD[read_raindata]=0x34
-CMD[write_raindata]=0x35
+typeset -i CMD_read_raindata=0x34; 
+typeset -i CMD_write_raindata=0x35; 
 
-CMD[livedata]=0x27
+typeset -i CMD_livedata=0x27; 
 
 #sensors
-CMD[read_sensor_id]=0x3a
-CMD[write_sensor_id]=0x3b
-CMD[read_sensor_id_new]=0x3c # for new sensors
+typeset -i CMD_read_sensor_id=0x3a; 
+typeset -i CMD_write_sensor_id=0x3b; 
+typeset -i CMD_read_sensor_id_new=0x3c;  # for new sensors
 
-CMD[read_system]=0x30
-CMD[write_system]=0x31
+typeset -i CMD_read_system=0x30; 
+typeset -i CMD_write_system=0x31; 
 
-declare -A SYSTEM_FREQUENCY
-SYSTEM_FREQUENCY[RFM433M]=0 # 433MHz
-SYSTEM_FREQUENCY[RFM868M]=1 # 868Mhz
-SYSTEM_FREQUENCY[RFM915M]=2 # 915MHz
-SYSTEM_FREQUENCY[RFM920M]=4 # 920Mhz
+#mapping to name
+CMD_NAME[$CMD_read_version]="read version"
+CMD_NAME[$CMD_reboot]="reboot"
+CMD_NAME[$CMD_read_mac]="read mac"
+CMD_NAME[$CMD_write_ssid]="write ssid"
+CMD_NAME[$CMD_broadcast]="broadcast"
+CMD_NAME[$CMD_write_reset]="reset"
 
-declare -A SYSTEM_SENSOR_TYPE
-SYSTEM_SENSOR_TYPE[WH24]=0
-SYSTEM_SENSOR_TYPE[WH65]=1
+CMD_NAME[$CMD_read_ecowitt_interval]="read ecowitt intervall"
+CMD_NAME[$CMD_write_ecowitt_interval]="write ecowitt intreval"
+CMD_NAME[$CMD_read_wunderground]="read wunderground"
+CMD_NAME[$CMD_write_wunderground]="write wunderground"
+CMD_NAME[$CMD_read_wow]="read wow"
+CMD_NAME[$CMD_write_wow]="write wow"
+CMD_NAME[$CMD_read_weathercloud]="read weathercloud"
+CMD_NAME[$CMD_write_weathercloud]="write weathercloud"
 
-declare -a SYSTEM_TIMEZONE #initTimezones
+CMD_NAME[$CMD_read_customized]="read customized"
+CMD_NAME[$CMD_write_customized]="write customized"
+CMD_NAME[$CMD_read_path]="read path"
+CMD_NAME[$CMD_write_path]="write path"
 
-declare -a LIVEDATA
+CMD_NAME[$CMD_read_raindata]="read raindata"
+CMD_NAME[$CMD_write_raindata]="write raindata"
 
-declare -a LDFIELD
+CMD_NAME[$CMD_livedata]="livedata"
+
+CMD_NAME[$CMD_read_sensor_id]="read sensor id"
+CMD_NAME[$CMD_write_sensor_id]="write sensor id"
+CMD_NAME[$CMD_read_sensor_id_new]="read sensor id new"
+
+CMD_NAME[$CMD_read_system]="read system"
+CMD_NAME[$CMD_write_system]="write system"
+
+typeset -i SYSTEM_FREQUENCY_RFM433M=0 # 433MHz
+typeset -i SYSTEM_FREQUENCY_RFM868M=1 # 868Mhz
+typeset -i SYSTEM_FREQUENCY_RFM915M=2 # 915MHz
+typeset -i SYSTEM_FREQUENCY_RFM920M=4 # 920Mhz
+
+typeset -i SYSTEM_SENSOR_TYPE_WH24=0
+typeset -i SYSTEM_SENSOR_TYPE_WH65=1
+
+typeset -a SYSTEM_TIMEZONE #initTimezones
+
+typeset -a LIVEDATA
+
+typeset -a LDFIELD
 LDFIELD[0x01]="INTEMP:indoor temperature:℃:2:1"
 LDFIELD[0x02]="OUTTEMP:outdoor temperature:℃:2:1"
 LDFIELD[0x06]="INHUMI:indoor humidity:%:1:0"
@@ -112,14 +149,14 @@ for ((LDFT=0x2B, CH=1;CH<=16; CH++, LDFT=LDFT+2 )); do
    LDFIELD[(( LDFT + 1 ))]="SOILHUMI_CH$CH:soil humidity CH$CH:%:1:0"
 done
 for ((LDFT=0x1A, LDFT2=0x22, CH=1;CH<=8; CH++, LDFT++,LDFT2++ )); do
-   LDFIELD[$LDFT]="TEMP_CH$CH:temperature CH$CH::2:1"
+   LDFIELD[$LDFT]="TEMP_CH$CH:temperature CH$CH:℃:2:1"
    LDFIELD[$LDFT2]="HUMI_CH$CH:humidity CH$CH:%:1:0"
 done
 for ((LDFT=0x58, CH=1;CH<=4; CH++, LDFT++ )); do
    LDFIELD[$LDFT]="LEAK_CH$CH:leak CH$CH::1:0"
 done
 
-CONFIGURATION_SENSORFIELD="sensor_"
+CONFIGURATION_SENSORFIELD="sensortype_"
 
 #sensors
 #typedef enum
@@ -184,51 +221,38 @@ CONFIGURATION_SENSORFIELD="sensor_"
 SENSOR_SEARCH=0xffffffff
 SENSOR_DISABLE=0xfffffffe
 
-declare -A WH24
-WH24[type]=0x00
+typeset -i WH24_type=0x00
+typeset -i WH65_type=0x00
+typeset -i WH68_type=0x01
+typeset -i WH80_type=0x02
+typeset -i WH40_type=0x03
 
-declare -A WH65 # 7-in-1 weather SENSOR_TYPE
-WH65[type]=0x00
+typeset -i WH31_type=0x06
+typeset -i WH31_max_ch=8
 
-declare -A WH68 # anemometer
-WH68[type]=0x01
-
-declare -A WH80 # anemometer
-WH80[type]=0x02
-
-declare -A WH40 #rain sensor
-WH40[type]=0x03
-
-declare -A WH31 # temp./humidify
-WH31[type]=0x06
-WH31[max_ch]=8
-
-declare -A WH51 # soil moisture
-WH51[type]=0x0e
-WH51[max_ch]=8
+typeset -i WH51_type=0x0e
+typeset -i WH51_max_ch=8
 
 #Probably: cmd sensor_id up to 0x1e sensors type, and sensor_id_new from 0x1f (31)
-declare -A WH55 # water leak
-WH55[type]=0x1b
-WH55[max_ch]=4
+typeset -i WH55_type=0x1b
+typeset -i WH55_max_ch=4
 
-declare -A WH43 # PM 2.5 indoor
-WH43[type]=0x16
-WH43[max_ch]=4
+typeset -i WH43_type=0x16
+typeset -i WH43_max_ch=4
 
-declare -a SENSOR_TYPE
+typeset -a SENSOR_TYPE
 #type:description:reportinginterval(s):max reportinterval:detection interval
-SENSOR_TYPE[WH65[type]]="WH65:Outdoor Solar Powered 7-in-1 Weather Sensor:16.0:"
-SENSOR_TYPE[WH68[type]]="WH68:Solar Powered Anemometer with Light and UV Sensor:16.5:"
-SENSOR_TYPE[WH80[type]]="WH80:Wind Speed/Direction, Solar Radiation/Light, Temp/Humidity:4.75:"
-SENSOR_TYPE[WH40[type]]="WH40:Self-Emptying Rain Collector Rainfall Sensor:49"
+SENSOR_TYPE[WH65_type]="WH65:Outdoor Solar Powered 7-in-1 Weather Sensor:16.0:"
+SENSOR_TYPE[WH68_type]="WH68:Solar Powered Anemometer with Light and UV Sensor:16.5:"
+SENSOR_TYPE[WH80_type]="WH80:Wind Speed/Direction, Solar Radiation/Light, Temp/Humidity:4.75:"
+SENSOR_TYPE[WH40_type]="WH40:Self-Emptying Rain Collector Rainfall Sensor:49"
 #sensors with max 8 channels
-for (( CH=1; CH <= WH31[max_ch] ; CH++)); do 
-   SENSOR_TYPE[WH31[type] + $CH - 1]="WH31:Temperature and humidity CH$CH:61.0:"
-   SENSOR_TYPE[WH51[type] + $CH - 1]="WH51:Soil Moisture CH$CH:70.0:"
-   if ((CH <= WH55[max_ch] )); then
-      SENSOR_TYPE[WH43[type] + $CH - 1]="WH43:PM2.5 Air Quality Indoor CH$CH:60.0:600.0"
-      SENSOR_TYPE[WH55[type] + $CH - 1]="WH55:Water Leak CH$CH:60.0::3"
+for (( CH=1; CH <= WH31_max_ch ; CH++)); do 
+   SENSOR_TYPE[WH31_type + $CH - 1]="WH31:Temperature and humidity CH$CH:61.0:"
+   SENSOR_TYPE[WH51_type + $CH - 1]="WH51:Soil Moisture CH$CH:70.0:"
+   if ((CH <= WH55_max_ch )); then
+      SENSOR_TYPE[WH43_type + $CH - 1]="WH43:PM2.5 Air Quality Indoor CH$CH:60.0:600.0"
+      SENSOR_TYPE[WH55_type + $CH - 1]="WH55:Water Leak CH$CH:60.0::3"
    fi
 done
 
@@ -238,7 +262,7 @@ done
 #SENSOR_TYPE[0x??]="WH35:Leaf Wetness Sensor for Garden and Farm:79.5"
 
 #mapping from livedata field type/decimal to name
-declare -A LIVEDATA_NAME
+typeset -A LIVEDATA_NAME
 
 #CONNECT ERRORS
 ERROR_CONNECTION=1
@@ -247,10 +271,65 @@ ERROR_NO_NMCLI=3
 ERROR_NO_SOCAT=4
 #ERROR_READ_RESPONSE=3
 
-declare -A CONFIGURATION
+typeset -a CONFIGURATION
 
-declare -a LDFNAMEDESC
-declare -a LDFACTIVE # found fields in livedata from host
+#CONF_$CONFIGURATION_SENSORFIELD$STYPE]
+typeset -i CONF_broadcast_ip=0
+typeset -i CONF_broadcast_mac=1
+typeset -i CONF_broadcast_port=3
+typeset -i CONF_broadcast_ssid=4
+typeset -i CONF_broadcast_version=5
+typeset -i CONF_customized_ecowitt_path=6
+typeset -i CONF_customized_enabled=7
+typeset -i CONF_customized_id=8
+typeset -i CONF_customized_interval=9
+typeset -i CONF_customized_password=10
+typeset -i CONF_customized_port=11
+typeset -i CONF_customized_server=12
+typeset -i CONF_customized_type=13
+typeset -i CONF_customized_wunderground_path=14
+typeset -i CONF_ecowitt_interval=15
+typeset -i CONF_host=16
+typeset -i CONF_mac=17
+typeset -i CONF_rainday=18
+typeset -i CONF_rainmonth=19
+typeset -i CONF_rainrate=20
+typeset -i CONF_rainrate=21
+typeset -i CONF_rainweek=22
+typeset -i CONF_rainyear=23
+typeset -i CONF_system_dst_status=24
+typeset -i CONF_system_dst_status_bit=25
+typeset -i CONF_system_dst_status_state=26
+typeset -i CONF_system_frequency=27
+typeset -i CONF_system_frequency_state=28
+typeset -i CONF_system_sensor_type=29
+typeset -i CONF_system_sensor_type_state=30
+typeset -i CONF_system_timezone_auto_bit=31
+typeset -i CONF_system_timezone_auto_state=32
+typeset -i CONF_system_timezone_index=33
+typeset -i CONF_system_timezone_index_state=34
+typeset -i CONF_system_utc=35
+typeset -i CONF_system_utc_state=36
+typeset -i CONF_version=37
+typeset -i CONF_weathercloud_id=38
+typeset -i CONF_weathercloud_password=39
+typeset -i CONF_wow_id=40
+typeset -i CONF_wow_password=41
+typeset -i CONF_wunderground_id=42
+typeset -i CONF_wunderground_password=43
+
+typeset -i CONF_sensortype_startindex=256 # start index of sensortype configuration (search/disable/id)
+typeset -i CONF_sensortype_endindex=$(( CONF_sensortype_startindex + 256 ))
+
+
+typeset -a CONF_DESCRIPTION 
+CONF_DESCRIPTION[$CONF_broadcast_ip]="broadcast_ip"
+
+
+typeset -a LDFNAMEDESC
+typeset -a LDFACTIVE # found fields in livedata from host
+
+typeset -A FILENAME # typeset -A (if decl. inside function -> local only)
 
 function newLivedataFieldNameDesc
 {
@@ -290,14 +369,14 @@ function connect {
   fi
 
   #https://www.gnu.org/software/bash/manual/bash.html - 3.6 Redirections
-  if exec {FD_UDP}<>/dev/udp/"$host"/"${PORT[udp_discovery_client]}"; then
-    ((DEBUG)) && echo >&2 "$host:${PORT[udp_discovery_client]} Connected (UDP FD $FD_UDP)"
+  if exec {FD_UDP}<>/dev/udp/"$host"/"$PORT_udp_discovery_client"; then
+    ((DEBUG)) && echo >&2 "$host:$PORT_udp_discovery_client Connected (UDP FD $FD_UDP)"
   else
     return $ERROR_CONNECTION
   fi
 
-  if exec {FD_TCP}<>/dev/tcp/"$host"/"${PORT[tcp_command_server]}"; then
-    ((DEBUG)) && echo >&2 "$host:${PORT[tcp_command_server]} Connected (TCP FD $FD_TCP)"
+  if exec {FD_TCP}<>/dev/tcp/"$host"/"$PORT_tcp_command_server"; then
+    ((DEBUG)) && echo >&2 "$host:$PORT_tcp_command_server Connected (TCP FD $FD_TCP)"
   else
     return $ERROR_CONNECTION
   fi
@@ -332,24 +411,11 @@ function disconnect {
   fi
 }
 
-function getCommandName {
-#$1 - command hex to get name to
-  #set -x # turn on debug
-  for name in "${!CMD[@]}"; do # ${!array} iterate over keys
-    if ((${CMD[$name]} == $1)); then
-      echo $name
-      #return 0
-    fi
-  done
-  #set +x # turn off debug
-  return 1
-}
-
 function parseResultPacket {
   local cmd="0x${PACKET_RX[2]}"
 
   STATUS=0x${PACKET_RX[4]}
-  echo -n "$(getCommandName "$cmd")" "$STATUS" >&2
+  echo -n "${CMD_NAME["$cmd"]}" "$STATUS" >&2
   if ((STATUS == 0)); then
     echo >&2 " OK"
   elif ((STATUS == 1)); then
@@ -365,34 +431,34 @@ function printStack {
 
 function printCustomized {
 
-  echo "customized_id ${CONFIGURATION[customized_id]}"
-  echo "customized_password ${CONFIGURATION[customized_password]}"
-  echo "customized_server ${CONFIGURATION[customized_server]}"
-  echo "customized_port ${CONFIGURATION[customized_port]}"
-  echo "customized_interval ${CONFIGURATION[customized_interval]}"
+  echo "customized_id ${CONFIGURATION[$CONF_customized_id]}"
+  echo "customized_password ${CONFIGURATION[$CONF_customized_password]}"
+  echo "customized_server ${CONFIGURATION[$CONF_customized_server]}"
+  echo "customized_port ${CONFIGURATION[$CONF_customized_port]}"
+  echo "customized_interval ${CONFIGURATION[$CONF_customized_interval]}"
 
-  if ((CONFIGURATION[customized_type] == 1)); then
+  if ((CONFIGURATION[CONF_customized_type] == 1)); then
     echo "customized_type 1 wunderground"
-  elif ((CONFIGURATION[customized_type] == 0)); then
+  elif ((CONFIGURATION[CONF_customized_type] == 0)); then
     echo "customized_type 0 ecowitt "
   else
-    echo "customized_type ${CONFIGURATION[customized_type]}" "UNKNOWN"
+    echo "customized_type ${CONFIGURATION[$CONF_customized_type]}" "UNKNOWN"
   fi
 
-  if ((CONFIGURATION[customized_enabled] == 1)); then
+  if ((CONFIGURATION[CONF_customized_enabled] == 1)); then
     echo "customized_enabled 1 ON"
-  elif ((CONFIGURATION[customized_enabled] == 0)); then
+  elif ((CONFIGURATION[CONF_customized_enabled] == 0)); then
     echo "customized_enabled 0 OFF"
   else
-    echo "customized_enabled ${CONFIGURATION[customized_enabled]} UNKNOWN"
+    echo "customized_enabled ${CONFIGURATION[$CONF_customized_enabled]} UNKNOWN"
   fi
 
-  echo "customized_ecowitt_path ${CONFIGURATION[customized_ecowitt_path]}"
-  echo "customized_wunderground path ${CONFIGURATION[customized_wunderground_path]}"
+  echo "customized_ecowitt_path ${CONFIGURATION[$CONF_customized_ecowitt_path]}"
+  echo "customized_wunderground path ${CONFIGURATION[$CONF_customized_wunderground_path]}"
 }
 
 function printConfiguration {
-  #echo "${!CONFIGURATION[@]}"
+  #echo "${!CONFIGURATION[$CONF_@]}"
   #https://www.artificialworlds.net/blog/2012/10/17/bash-associative-array-examples/
   for K in "${!CONFIGURATION[@]}"; do printf "%-30s %s\n" "$K" "${CONFIGURATION[$K]}"; done
 }
@@ -427,21 +493,21 @@ function printRain {
   local rw
   local rm
   local ry
-  convertScale10ToFloat "${CONFIGURATION[rainrate]}"
+  convertScale10ToFloat "${CONFIGURATION[$CONF_rainrate]}"
   rr=$VALUE_SCALE10_FLOAT
-  convertScale10ToFloat "${CONFIGURATION[rainday]}"
+  convertScale10ToFloat "${CONFIGURATION[$CONF_rainday]}"
   rd=$VALUE_SCALE10_FLOAT
-  convertScale10ToFloat "${CONFIGURATION[rainweek]}"
+  convertScale10ToFloat "${CONFIGURATION[$CONF_rainweek]}"
   rw=$VALUE_SCALE10_FLOAT
-  convertScale10ToFloat "${CONFIGURATION[rainmonth]}"
+  convertScale10ToFloat "${CONFIGURATION[$CONF_rainmonth]}"
   rm=$VALUE_SCALE10_FLOAT
-  convertScale10ToFloat "${CONFIGURATION[rainyear]}"
+  convertScale10ToFloat "${CONFIGURATION[$CONF_rainyear]}"
   ry=$VALUE_SCALE10_FLOAT
-  #echo rainrate "${CONFIGURATION[rainrate]} "
-  #echo rainday "${CONFIGURATION[rainday]} "
-  #echo rainweek "${CONFIGURATION[rainweek]} "
-  #echo rainmonth "${CONFIGURATION[rainmonth]} "
-  #echo  rainyear "${CONFIGURATION[rainyear]}"
+  #echo rainrate "${CONFIGURATION[$CONF_rainrate]} "
+  #echo rainday "${CONFIGURATION[$CONF_rainday]} "
+  #echo rainweek "${CONFIGURATION[$CONF_rainweek]} "
+  #echo rainmonth "${CONFIGURATION[$CONF_rainmonth]} "
+  #echo  rainyear "${CONFIGURATION[$CONF_rainyear]}"
   #echo "rainrate $rr rainday $rd rainweek $rw rainmonth $rm rainyear $ry"
   printf "%9s %9s %9s %9s %9s\n" rainrate rainday rainweek rainmonth rainyear
   printf "%9s %9s %9s %9s %9s\n" "$rr" "$rd" "$rw" "$rm" "$ry"
@@ -698,7 +764,7 @@ function parseSensor
                 SID_HEX="$VALUE_UINT32BE_HEX"
 
                 SENSOR[$STYPE]=$SID
-                CONFIGURATION[$CONFIGURATION_SENSORFIELD$STYPE]=$SID_HEX #update configuration
+                CONFIGURATION[$CONF_sensortype_startindex + $STYPE]=$SID_HEX #update configuration
 
                 case $SID_HEX in
                   
@@ -725,14 +791,14 @@ function parseSensor
 
                 if (( SENABLED )); then # intepret battery levels
 
-                    if (( (STYPE >= WH43[type] && STYPE < WH43[type] + WH43[max_ch]) ||
-                          (STYPE >= WH55[type] && STYPE < WH55[type] + WH55[max_ch]) )); then  #WH43 - PM2.5 indoor, WH41? same ID?
+                    if (( (STYPE >= WH43_type && STYPE < WH43_type + WH43_max_ch) ||
+                          (STYPE >= WH55_type && STYPE < WH55_type + WH55_max_ch) )); then  #WH43 - PM2.5 indoor, WH41? same ID?
                     #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/CurdataGwFragment.java l 4575
                       getBatteryLevelState "$SBATTERY"
                     fi
 
-                    #Voltage value seems to be scaled * 10 for soil moisture
-                    if (( (STYPE >= WH51[type] && STYPE < WH51[type] + WH51[max_ch]) )); then #WH51 - soil moisture
+                    #Voltage value seems to be scaled * 10 for soil moisture/rainfall sensor
+                    if (( (STYPE >= WH51_type && STYPE < WH51_type + WH51_max_ch) || STYPE == WH40_type)); then 
                        convertScale10ToFloat "$SBATTERY"
                        SBATTERY_STATE=$VALUE_SCALE10_FLOAT"V"
                        if (( "$SBATTERY" <= 12 )); then
@@ -740,7 +806,7 @@ function parseSensor
                        fi
                     fi
 
-                    if (( STYPE == WH65[type] || ( STYPE >= WH31[type] && STYPE < WH31[type]+WH31[max_ch] ) )); then # WH65, WH31 CH1-8 
+                    if (( STYPE == WH65_type || ( STYPE >= WH31_type && STYPE < WH31_type+WH31_max_ch ) )); then # WH65, WH31 CH1-8 
                       getBatteryState "$SBATTERY"
                     fi
                 fi
@@ -884,7 +950,6 @@ readarray -t SYSTEM_TIMEZONE <<EOF
 (UTC+13:00) Nuku'alofa
 (UTC+14:00) Christmas Island
 EOF
-
 }
 
 function printTimezones
@@ -905,175 +970,166 @@ function parsePacket {
   cmd=0x${PACKET_RX[2]}
 
   #Packet length
-  case $cmd in
-
-    "${CMD[broadcast]}" | "${CMD[livedata]}" | "${CMD[read_sensor_id_new]}")
+  if (( cmd == CMD_broadcast || cmd == CMD_livedata || cmd == CMD_read_sensor_id_new )); then
 
       RX_POS=5    
       printf -v PACKET_RX_LENGTH "%u" "0x${PACKET_RX[3]}${PACKET_RX[4]}"
-      ;;
-    
-    *)
+   else  
        PACKET_RX_LENGTH=0x${PACKET_RX[3]}
-      ;;
-    
-  esac
+  fi
 
   ((DEBUG)) && echo >&2 "Parse packet ${PACKET_RX[*]} length $PACKET_RX_LENGTH"
 
-  case $cmd in
-
-  "${CMD[write_reset]}" | "${CMD[write_customized]}" | "${CMD[write_path]}" | "${CMD[reboot]}" | "${CMD[write_ssid]}" | "${CMD[write_raindata]}" | "${CMD[write_ecowitt_interval]}" | "${CMD[write_wunderground]}" | "${CMD[write_wow]}" | "${CMD[write_weathercloud]}" | "${CMD[write_sensor_id]}" | "${CMD[write_system]}")
+  if (( cmd == CMD_write_reset || cmd == CMD_write_customized || cmd == CMD_write_path || cmd == CMD_reboot || cmd == CMD_write_ssid || cmd == CMD_write_raindata  || cmd == CMD_write_ecowitt_interval || cmd == CMD_write_wunderground || cmd == CMD_write_wow  || cmd == CMD_write_weathercloud || cmd == CMD_write_sensor_id || cmd == CMD_write_system )); then 
     parseResultPacket
-    ;;
 
-  "${CMD[read_mac]}")
+  elif (( cmd == CMD_read_mac )); then
 
-    CONFIGURATION[mac]=$(printf "%02X:%02X:%02X:%02X:%02X:%02X" 0x"${PACKET_RX[4]}" 0x"${PACKET_RX[5]}" 0x"${PACKET_RX[6]}" 0x"${PACKET_RX[7]}" 0x"${PACKET_RX[8]}" 0x"${PACKET_RX[9]}")
-    echo "${CONFIGURATION[mac]}"
-    ;;
+    CONFIGURATION[$CONF_mac]=$(printf "%02X:%02X:%02X:%02X:%02X:%02X" 0x"${PACKET_RX[4]}" 0x"${PACKET_RX[5]}" 0x"${PACKET_RX[6]}" 0x"${PACKET_RX[7]}" 0x"${PACKET_RX[8]}" 0x"${PACKET_RX[9]}")
+    echo "${CONFIGURATION[$CONF_mac]}"
 
-  "${CMD[read_version]}")
+  elif (( cmd == CMD_read_version )); then
 
     readString
-    CONFIGURATION[version]=$VALUE_STRING
-    echo "${CONFIGURATION[version]}"
-    ;;
+    CONFIGURATION[$CONF_version]=$VALUE_STRING
+    echo "${CONFIGURATION[$CONF_version]}"
 
-  "${CMD[read_system]}")
-
+  elif (( cmd == CMD_read_system )); then
+  
      readUInt8
-     CONFIGURATION[system_frequency]=$VALUE_UINT8
-     if ((  CONFIGURATION[system_frequency]  == SYSTEM_FREQUENCY[RFM433M] )); then
-       CONFIGURATION[system_frequency_state]="433MHz"
-     elif ((  CONFIGURATION[system_frequency]  == SYSTEM_FREQUENCY[RFM868M] )); then
-       CONFIGURATION[system_frequency_state]="868MHz"
-     elif ((  CONFIGURATION[system_frequency]  == SYSTEM_FREQUENCY[RFM915M] )); then
-       CONFIGURATION[system_frequency_state]="915MHz"
-     elif ((  CONFIGURATION[system_frequency]  == SYSTEM_FREQUENCY[RFM920M] )); then
-       CONFIGURATION[system_frequency_state]="920MHz"
+     CONFIGURATION[$CONF_system_frequency]=$VALUE_UINT8
+     if ((  CONFIGURATION[CONF_system_frequency]  == SYSTEM_FREQUENCY_RFM433M )); then
+       CONFIGURATION[$CONF_system_frequency_state]="433MHz"
+     elif ((  CONFIGURATION[CONF_system_frequency]  == SYSTEM_FREQUENCY_RFM868M )); then
+       CONFIGURATION[$CONF_system_frequency_state]="868MHz"
+     elif ((  CONFIGURATION[CONF_system_frequency]  == SYSTEM_FREQUENCY_RFM915M )); then
+       CONFIGURATION[$CONF_system_frequency_state]="915MHz"
+     elif ((  CONFIGURATION[CONF_system_frequency]  == SYSTEM_FREQUENCY_RFM920M )); then
+       CONFIGURATION[$CONF_system_frequency_state]="920MHz"
      fi
-     echo System Frequency "${CONFIGURATION[system_frequency]}" "${CONFIGURATION[system_frequency_state]}"
-
+     echo System Frequency "${CONFIGURATION[$CONF_system_frequency]}" "${CONFIGURATION[$CONF_system_frequency_state]}"
 
      readUInt8
-     CONFIGURATION[system_sensor_type]=$VALUE_UINT8 # 0=WH24, 1=WH65
+     CONFIGURATION[$CONF_system_sensor_type]=$VALUE_UINT8 # 0=WH24, 1=WH65
 
-     if (( CONFIGURATION[system_sensor_type] == SYSTEM_SENSOR_TYPE[WH24] )); then
-       CONFIGURATION[system_sensor_type_state]="WH24"
-     elif (( CONFIGURATION[system_sensor_type] == SYSTEM_SENSOR_TYPE[WH65] )); then
-       CONFIGURATION[system_sensor_type_state]="WH65"
+     if (( CONFIGURATION[CONF_system_sensor_type] == SYSTEM_SENSOR_TYPE_WH24 )); then
+       CONFIGURATION[$CONF_system_sensor_type_state]="WH24"
+     elif (( CONFIGURATION[CONF_system_sensor_type] == SYSTEM_SENSOR_TYPE_WH65 )); then
+       CONFIGURATION[$CONF_system_sensor_type_state]="WH65"
       
      fi
-     echo System type "${CONFIGURATION[system_sensor_type]}" "${CONFIGURATION[system_sensor_type_state]}"
+     echo System type "${CONFIGURATION[$CONF_system_sensor_type]}" "${CONFIGURATION[$CONF_system_sensor_type_state]}"
 
      readUInt32BE
-     CONFIGURATION[system_utc]=$VALUE_UINT32BE # UTC time (seconds)
-     CONFIGURATION[system_utc_state]=$(date -u -d @"$VALUE_UINT32BE" +'%F %T')
-     echo "${CONFIGURATION[system_utc_state]}" System utc "$VALUE_UINT32BE" 
+     CONFIGURATION[$CONF_system_utc]=$VALUE_UINT32BE # UTC time (seconds)
+     CONFIGURATION[$CONF_system_utc_state]=$(date -u -d @"$VALUE_UINT32BE" +'%F %T')
+     echo "${CONFIGURATION[$CONF_system_utc_state]}" System utc "$VALUE_UINT32BE" 
      #while true; do time ./gw  -h 192.168.3.80 -c system | grep utc; date -u; sleep 0.6; done #see time difference between machine time and device time
 
      readUInt8
-     CONFIGURATION[system_timezone_index]=$VALUE_UINT8 # 39 = UTC
+     CONFIGURATION[$CONF_system_timezone_index]=$VALUE_UINT8 # 39 = UTC
      initTimezones
-     CONFIGURATION[system_timezone_index_state]=${SYSTEM_TIMEZONE[CONFIGURATION[system_timezone_index]]}
+     CONFIGURATION[$CONF_system_timezone_index_state]=${SYSTEM_TIMEZONE[CONFIGURATION[$CONF_system_timezone_index]]}
      printTimezones
-     echo System timezone index "${CONFIGURATION[system_timezone_index]}" "${CONFIGURATION[system_timezone_index_state]}" 
+     echo System timezone index "${CONFIGURATION[$CONF_system_timezone_index]}" "${CONFIGURATION[$CONF_system_timezone_index_state]}" 
 
      
      readUInt8
-     CONFIGURATION[system_dst_status]=$VALUE_UINT8
-      CONFIGURATION[system_dst_status_bit]=$(( "${CONFIGURATION[system_dst_status]}" & 0x1 ))
-     if (( CONFIGURATION[system_dst_status_bit] == 1 )); then
-        CONFIGURATION[system_dst_status_state]="on";
-      elif (( CONFIGURATION[system_dst_status_bit] == 0 )); then
-        CONFIGURATION[system_dst_status_state]="off"
+     CONFIGURATION[$CONF_system_dst_status]=$VALUE_UINT8
+      CONFIGURATION[$CONF_system_dst_status_bit]=$(( "${CONFIGURATION[$CONF_system_dst_status]}" & 0x1 ))
+     if (( CONFIGURATION[CONF_system_dst_status_bit] == 1 )); then
+        CONFIGURATION[$CONF_system_dst_status_state]="on";
+      elif (( CONFIGURATION[CONF_system_dst_status_bit] == 0 )); then
+        CONFIGURATION[$CONF_system_dst_status_state]="off"
      fi  
-     CONFIGURATION[system_timezone_auto_bit]=$(( ( "${CONFIGURATION[system_dst_status]}" & 0x2 ) >> 1 )) # bit 2 1= off, 0=on ?
-     if (( CONFIGURATION[system_timezone_auto_bit] == 0 )); then
-        CONFIGURATION[system_timezone_auto_state]="on";
-      elif (( CONFIGURATION[system_timezone_auto_bit] == 1 )); then
-        CONFIGURATION[system_timezone_auto_state]="off"
+     CONFIGURATION[$CONF_system_timezone_auto_bit]=$(( ( "${CONFIGURATION[$CONF_system_dst_status]}" & 0x2 ) >> 1 )) # bit 2 1= off, 0=on ?
+     if (( CONFIGURATION[CONF_system_timezone_auto_bit] == 0 )); then
+        CONFIGURATION[$CONF_system_timezone_auto_state]="on";
+      elif (( CONFIGURATION[CONF_system_timezone_auto_bit] == 1 )); then
+        CONFIGURATION[$CONF_system_timezone_auto_state]="off"
      fi
-     echo System DST status "$VALUE_UINT8" dst "${CONFIGURATION[system_dst_status_state]}" auto timezone "${CONFIGURATION[system_timezone_auto_state]}"
+     echo System DST status "$VALUE_UINT8" dst "${CONFIGURATION[$CONF_system_dst_status_state]}" auto timezone "${CONFIGURATION[$CONF_system_timezone_auto_state]}"
 
-  ;;
-
-  "${CMD[read_ecowitt_interval]}")
+  elif (( cmd == CMD_read_ecowitt_interval )); then
 
     readUInt8
-    CONFIGURATION[ecowitt_interval]=$VALUE_UINT8
-    echo "ecowitt_interval ${CONFIGURATION[ecowitt_interval]} minutes"
-    ;;
+    CONFIGURATION[$CONF_ecowitt_interval]=$VALUE_UINT8
+    echo "ecowitt_interval ${CONFIGURATION[$CONF_ecowitt_interval]} minutes"
 
-  "${CMD[read_wunderground]}")
-
-    readString
-    CONFIGURATION[wunderground_id]=$VALUE_STRING
-    readString
-    CONFIGURATION[wunderground_password]=$VALUE_STRING
-
-    echo "wunderground_id ${CONFIGURATION[wunderground_id]}"
-    echo "wunderground_password ${CONFIGURATION[wunderground_password]}"
-    ;;
-
-  "${CMD[read_wow]}")
+  elif (( cmd == CMD_read_wunderground )); then
 
     readString
-    CONFIGURATION[wow_id]=$VALUE_STRING
+    CONFIGURATION[$CONF_wunderground_id]=$VALUE_STRING
+    
     readString
-    CONFIGURATION[wow_password]=$VALUE_STRING
+    CONFIGURATION[$CONF_wunderground_password]=$VALUE_STRING
 
-    echo "wow_id ${CONFIGURATION[wow_id]}"
-    echo "wow_password ${CONFIGURATION[wow_password]}"
-    ;;
-
-  "${CMD[read_weathercloud]}")
-
-    readString
-    CONFIGURATION[weathercloud_id]=$VALUE_STRING
-    readString
-    CONFIGURATION[weathercloud_password]=$VALUE_STRING
-
-    echo "weathercloud_id ${CONFIGURATION[weathercloud_id]}"
-    echo "weathercloud_password ${CONFIGURATION[weathercloud_password]}"
-    ;;
-
-  "${CMD[read_customized]}")
+    echo "wunderground_id ${CONFIGURATION[$CONF_wunderground_id]}"
+    echo "wunderground_password ${CONFIGURATION[$CONF_wunderground_password]}"
+  
+  elif (( cmd == CMD_read_wow )); then
 
     readString
-    CONFIGURATION[customized_id]=$VALUE_STRING
+    CONFIGURATION[$CONF_wow_id]=$VALUE_STRING
+
     readString
-    CONFIGURATION[customized_password]=$VALUE_STRING
+    CONFIGURATION[$CONF_wow_password]=$VALUE_STRING
+
+    echo "wow_id ${CONFIGURATION[$CONF_wow_id]}"
+    echo "wow_password ${CONFIGURATION[$CONF_wow_password]}"
+
+
+  elif (( cmd == CMD_read_weathercloud )); then
+
     readString
-    CONFIGURATION[customized_server]=$VALUE_STRING
+    CONFIGURATION[$CONF_weathercloud_id]=$VALUE_STRING
+    
+    readString
+    CONFIGURATION[$CONF_weathercloud_password]=$VALUE_STRING
+
+    echo "weathercloud_id ${CONFIGURATION[$CONF_weathercloud_id]}"
+    echo "weathercloud_password ${CONFIGURATION[$CONF_weathercloud_password]}"
+  
+  elif (( cmd == CMD_read_customized )); then
+
+    readString
+    CONFIGURATION[$CONF_customized_id]=$VALUE_STRING
+
+    readString
+    CONFIGURATION[$CONF_customized_password]=$VALUE_STRING
+
+    readString
+    CONFIGURATION[$CONF_customized_server]=$VALUE_STRING
+
     readUInt16BE
-    CONFIGURATION[customized_port]=$VALUE_UINT16BE
+    CONFIGURATION[$CONF_customized_port]=$VALUE_UINT16BE
+
     readUInt16BE
-    CONFIGURATION[customized_interval]=$VALUE_UINT16BE
+    CONFIGURATION[$CONF_customized_interval]=$VALUE_UINT16BE
+
     readUInt8
-    CONFIGURATION[customized_type]=$VALUE_UINT8
+    CONFIGURATION[$CONF_customized_type]=$VALUE_UINT8
+    
     readUInt8
-    CONFIGURATION[customized_enabled]=$VALUE_UINT8
+    CONFIGURATION[$CONF_customized_enabled]=$VALUE_UINT8
 
     printCustomized
-    ;;
 
-  "${CMD[read_path]}")
+  elif (( cmd == CMD_read_path )); then
 
     readString
-    CONFIGURATION[customized_ecowitt_path]=$VALUE_STRING
+    CONFIGURATION[$CONF_customized_ecowitt_path]=$VALUE_STRING
     readString
-    CONFIGURATION[customized_wunderground_path]=$VALUE_STRING
-    ;;
-
-  "${CMD[broadcast]}")
+    CONFIGURATION[$CONF_customized_wunderground_path]=$VALUE_STRING
+  
+  elif (( cmd == CMD_broadcast )); then
 
     #this is the station MAC/ip on local network, when device is reset its annoncing hotspot accesspoint/AP with first byte of MAC changed
     # shellcheck disable=SC2102
-    printf -v CONFIGURATION[broadcast_mac] "%02X:%02X:%02X:%02X:%02X:%02X" 0x"${PACKET_RX[5]}" 0x"${PACKET_RX[6]}" 0x"${PACKET_RX[7]}" 0x"${PACKET_RX[8]}" 0x"${PACKET_RX[9]}" 0x"${PACKET_RX[10]}"
+    echo PACKET RX "${PACKET_RX[@]}" "${!PACKET_RX[@]}"
+    printf -v CONFIGURATION[$CONF_broadcast_mac] "%02X:%02X:%02X:%02X:%02X:%02X" 0x"${PACKET_RX[5]}" 0x"${PACKET_RX[6]}" 0x"${PACKET_RX[7]}" 0x"${PACKET_RX[8]}" 0x"${PACKET_RX[9]}" 0x"${PACKET_RX[10]}"
     # shellcheck disable=SC2102
-    printf -v CONFIGURATION[broadcast_ip] "%u.%u.%u.%u" 0x"${PACKET_RX[11]}" 0x"${PACKET_RX[12]}" 0x"${PACKET_RX[13]}" 0x"${PACKET_RX[14]}"
+    printf -v CONFIGURATION[$CONF_broadcast_ip] "%u.%u.%u.%u" 0x"${PACKET_RX[11]}" 0x"${PACKET_RX[12]}" 0x"${PACKET_RX[13]}" 0x"${PACKET_RX[14]}"
     RX_POS=17
     local ssid
     local version
@@ -1082,48 +1138,40 @@ function parsePacket {
     IFS=' '
     read -r ssid version <<<"$VALUE_STRING" # ssid appends space+version
 
-    CONFIGURATION[broadcast_ssid]=$ssid
-    CONFIGURATION[broadcast_version]=$version
+    CONFIGURATION[$CONF_broadcast_ssid]=$ssid
+    CONFIGURATION[$CONF_broadcast_version]=$version
     # shellcheck disable=SC2102
-    printf -v CONFIGURATION[broadcast_port] "%u" 0x"${PACKET_RX[15]}""${PACKET_RX[16]}"
-    echo "${CONFIGURATION[broadcast_mac]} ${CONFIGURATION[broadcast_ip]}:${CONFIGURATION[broadcast_port]} ${CONFIGURATION[broadcast_ssid]} ${CONFIGURATION[broadcast_version]}"
+    printf -v CONFIGURATION[$CONF_broadcast_port] "%u" 0x"${PACKET_RX[15]}""${PACKET_RX[16]}"
+    echo "${CONFIGURATION[$CONF_broadcast_mac]} ${CONFIGURATION[$CONF_broadcast_ip]}:${CONFIGURATION[$CONF_broadcast_port]} ${CONFIGURATION[$CONF_broadcast_ssid]} ${CONFIGURATION[$CONF_broadcast_version]}"
 
-    ;;
-
-  "${CMD[read_raindata]}")
+  elif (( cmd == CMD_read_raindata )); then
 
     # echo "${PACKET_RX_HEX}" "$RX_POS_HEX"
     readUInt32BE
-    CONFIGURATION[rainrate]=$VALUE_UINT32BE
+    CONFIGURATION[$CONF_rainrate]=$VALUE_UINT32BE
     readUInt32BE
-    CONFIGURATION[rainday]=$VALUE_UINT32BE
+    CONFIGURATION[$CONF_rainday]=$VALUE_UINT32BE
     readUInt32BE
-    CONFIGURATION[rainweek]=$VALUE_UINT32BE
+    CONFIGURATION[$CONF_rainweek]=$VALUE_UINT32BE
     readUInt32BE
-    CONFIGURATION[rainmonth]=$VALUE_UINT32BE
+    CONFIGURATION[$CONF_rainmonth]=$VALUE_UINT32BE
     readUInt32BE
-    CONFIGURATION[rainyear]=$VALUE_UINT32BE
+    CONFIGURATION[$CONF_rainyear]=$VALUE_UINT32BE
 
     printRain
-    ;;
 
-  "${CMD[livedata]}")
+  elif (( cmd == CMD_livedata )); then
 
     parseLivedata "$SPATTERN"
 
-    ;;
+  elif (( cmd == CMD_read_sensor_id_new || cmd == CMD_read_sensor_id )); then
 
-  "${CMD[read_sensor_id_new]}" | "${CMD[read_sensor_id]}")
-  
     parseSensor 1
      
-  ;;
+  else
 
-  *)
     echo >&2 "Warning unable to parse response for command $cmd $PACKET_RX_HEX"
-    ;;
-
-  esac
+  fi
 }
 
 function newPacketBody {
@@ -1135,12 +1183,13 @@ function newPacketBody {
   fi
   
   PACKET_BODY=()
-  PACKET_BODY+=("$1" "0x00")
+  decToHex "$1"
+  PACKET_BODY+=("$VALUE_HEX" "0x00")
   (( DEBUG )) && >&2 echo "${PACKET_BODY[@]}"
   
   case "$1" in
 
-  "${CMD[broadcast]}" | "${CMD[write_ssid]}") # WSVIEW sends 2 byte field for size
+  "$CMD_broadcast" | "$CMD_write_ssid") # WSVIEW sends 2 byte field for size
   
     PACKET_BODY+=("0x00")
     ((DEBUG)) && echo >&2 2-byte packet length
@@ -1157,7 +1206,7 @@ function createPacketTX {
   #Update packet length, either 1 or 2 bytes
   case ${PACKET_BODY[0]} in
   
-        "${CMD[write_ssid]}" | "${CMD[broadcast]}")
+        "$CMD_write_ssid" | "$CMD_broadcast")
 
           packetLengthLSB=$(((${#PACKET_BODY[@]} + 1) & 0xff))
           packetLengthMSB=$((((${#PACKET_BODY[@]} + 1) & 0xff00) >> 8))
@@ -1247,7 +1296,7 @@ function sendPacketnc
   local port
   local ncStatus
 
-  port=${PORT[tcp_command_server]}
+  port=$PORT_tcp_command_server
 
   #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
   if [ $# -ge 1 ]; then
@@ -1258,30 +1307,32 @@ function sendPacketnc
 
   case "$PACKET_TX_COMMAND" in
 
-      "${CMD[broadcast]}")
+      "$CMD_broadcast")
             ncUDPOpt='-u'
-            port=${PORT[udp_discovery_client]}
+            port=$PORT_udp_discovery_client
             ;;
 
-      "${CMD[write_reset]}" | "${CMD[write_ssid]}")
+      "$CMD_write_reset" | "$CMD_write_ssid") # some commands needs idle timeout
          (( DEBUG )) && >&2 echo "$(getCommandName "$PACKET_TX_COMMAND")" Setting device idle timeout for nc
          ncIdle='-i 100ms'
          ;;
     esac
 
+  #  ncIdle='-i 25ms'
+
   echo -ne "$PACKET_TX_ECHO" >"${FILENAME[tx]}"
   rm "${FILENAME[rx]}"
 
   # shellcheck disable=SC2086
- { cat "${FILENAME[tx]}"; sleep 0.1; } |  nc  $ncUDPOpt $ncIdle -w 500ms -x "${FILENAME[nc-hex]}" -4 "$HOST" "$port"  >"${FILENAME[rx]}" # wait 0.1s to disable READ KILL of nc on stdin
+ { cat "${FILENAME[tx]}"; sleep 0.1; } |  nc  $ncUDPOpt $ncIdle -w 500ms -x "${FILENAME[nc_hex]}" -4 "$HOST" "$port"  >"${FILENAME[rx]}" # wait 0.1s to disable READ KILL of nc on stdin
   ncStatus=$?
   
   if [ -s "${FILENAME[rx]}" ] ; then # -s file exists and not empty
         IFS='>'
 
-        if read -r -a PACKET_RX_OD < <(od -A n -t x1z -v -w"$(stat -c %s "${FILENAME[rx]}")"  "${FILENAME[rx]}" ); then
+        if read -r -a PACKET_RX_OD < <(od -A n -t x1z -v -w"$(stat -c %s "${FILENAME[rx]}")"  "${FILENAME[rx]}" ); then #-z after -t x1 adds "printable characters" to line after >
            (( DEBUG )) && {
-            cat "${FILENAME[nc-hex]}"
+            cat "${FILENAME[nc_hex]}"
             echo >&2 OD HEX "${PACKET_RX_OD[0]}" length "${#PACKET_RX_OD[0]}"
             echo >&2 OD ASCII "${PACKET_RX_OD[1]}" length "${#PACKET_RX_OD[1]}"
            }
@@ -1293,6 +1344,7 @@ function sendPacketnc
                 echo >&2 "$HOST Warning no response received from host"
             else
                 (( DEBUG  )) && echo >&2 PACKET_RX_HEX "$PACKET_RX_HEX" length "${#PACKET_RX_HEX}"
+                echo PACKET RX "${PACKET_RX[@]}"
                 parsePacket
             fi
         else
@@ -1300,7 +1352,7 @@ function sendPacketnc
         fi
 
   else
-   >&2 echo  "$(date)" Error failed to receive response for packet "$(getCommandName "$PACKET_TX_COMMAND")", error code $ncStatus
+   >&2 echo  "$(date)" Error failed to receive response for packet "${CMD_NAME["$PACKET_TX_COMMAND"]}", error code $ncStatus
   fi
   
 }
@@ -1359,21 +1411,21 @@ function discovery {
 
   ((!DEBUG)) && unset "DEBUG_OPTIONS[socat]"
 
-  ((DEBUG)) && echo >&2 "UDP discovery on GW port "${PORT[udp_discovery_client]}
-  ((DEBUG)) && echo >&2 "UDP discovery on local port "${PORT[udp_discovery_server]}
+  ((DEBUG)) && echo >&2 "UDP discovery on GW port $PORT_udp_discovery_client"
+  ((DEBUG)) && echo >&2 "UDP discovery on local port $PORT_udp_discovery_server"
   # shellcheck disable=SC2086
-  socat $SOCAT_DEBUG_OPTIONS -u UDP-RECV:"${PORT[udp_discovery_server]}" CREATE:${FILENAME[udp_server]} & # move in background
+  socat $SOCAT_DEBUG_OPTIONS -u UDP-RECV:"$PORT_udp_discovery_server" CREATE:${FILENAME[udp_server]} & # move in background
   socat_discovery_server_pid=$!
   ((DEBUG)) && echo >&2 Socat discovery server PID = $socat_discovery_server_pid
 
-  newPacketBody ${CMD[broadcast]}
+  newPacketBody $CMD_broadcast
   createPacketTX
   #-R socat appends to file
   # shellcheck disable=SC2086
   {
     echo -ne "$PACKET_TX_ECHO"
     sleep $TIMEOUT_SCAN
-  } | socat $SOCAT_DEBUG_OPTIONS -R "${FILENAME[udp_client]}" - udp-datagram:255.255.255.255:${PORT[udp_discovery_client]},broadcast >/dev/null #disable stdout echo of rx data, sleep timeout EOF on STDIN
+  } | socat $SOCAT_DEBUG_OPTIONS -R "${FILENAME[udp_client]}" - udp-datagram:255.255.255.255:$PORT_udp_discovery_client,broadcast >/dev/null #disable stdout echo of rx data, sleep timeout EOF on STDIN
   #(echo -ne "\xff\xff\x12\x00\x04\x16"; sleep 3) | socat -d -d -x -R rxsocat  - udp-datagram:255.255.255.255:46000,broadcast
   kill $socat_discovery_server_pid
 
@@ -1471,20 +1523,20 @@ function decToHex {
 }
 
 function newCustomizedPacket {
-  newPacketBody ${CMD[write_customized]}
-  writeString "${CONFIGURATION[customized_id]}"
-  writeString "${CONFIGURATION[customized_password]}"
-  writeString "${CONFIGURATION[customized_server]}"
-  writeUInt16BE "${CONFIGURATION[customized_port]}"
-  writeUInt16BE "${CONFIGURATION[customized_interval]}"
-  writeUInt8 "${CONFIGURATION[customized_type]}"
-  writeUInt8 "${CONFIGURATION[customized_enabled]}"
+  newPacketBody $CMD_write_customized
+  writeString "${CONFIGURATION[$CONF_customized_id]}"
+  writeString "${CONFIGURATION[$CONF_customized_password]}"
+  writeString "${CONFIGURATION[$CONF_customized_server]}"
+  writeUInt16BE "${CONFIGURATION[$CONF_customized_port]}"
+  writeUInt16BE "${CONFIGURATION[$CONF_customized_interval]}"
+  writeUInt8 "${CONFIGURATION[$CONF_customized_type]}"
+  writeUInt8 "${CONFIGURATION[$CONF_customized_enabled]}"
 }
 
 function newPathPacket {
-  newPacketBody ${CMD[write_path]}
-  writeString "${CONFIGURATION[customized_wunderground_path]}"
-  writeString "${CONFIGURATION[customized_ecowitt_path]}"
+  newPacketBody $CMD_write_path
+  writeString "${CONFIGURATION[$CONF_customized_wunderground_path]}"
+  writeString "${CONFIGURATION[$CONF_customized_ecowitt_path]}"
 }
 
 function sendRaindata {
@@ -1495,7 +1547,7 @@ function sendRaindata {
 
   (( DEBUG )) && >&2 echo  rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
   
-  newPacketBody ${CMD[write_raindata]}
+  newPacketBody $CMD_write_raindata
   writeUInt32BE "$1" #rainday
   writeUInt32BE "$2" #rainweek
   writeUInt32BE "$3" #rainmonth
@@ -1508,7 +1560,7 @@ function sendEcowittInterval {
 # observation: GW1000 red-wifi led blinks slowly if not sending data to ecowitt when 0=off
   case "$1" in
     0|1|2|3|4|5)
-      newPacketBody ${CMD[write_ecowitt_interval]}
+      newPacketBody $CMD_write_ecowitt_interval
       writeUInt8 "$1" #interval
       ((DEBUG)) && echo >&2 Sending ecowitt interval "$1"
       sendPacket
@@ -1523,14 +1575,16 @@ function sendWeatherservice {
   newPacketBody "$1"
   writeString "$2"
   writeString "$3"
+  
   case "$1" in
-  "${CMD[write_wow]}")
-    writeUInt8 0 # stationnum size - unused
-    writeUInt8 1
-    ;;
-  "${CMD[write_weathercloud]}")
-    writeUInt8 1
-    ;;
+      "$CMD_write_wow")
+        writeUInt8 0 # stationnum size - unused
+        writeUInt8 1
+        ;;
+        
+      "$CMD_write_weathercloud")
+        writeUInt8 1
+        ;;
   esac
   ((DEBUG)) && echo >&2 "Sending weather service $1 id $2 password $3"
   sendPacket
@@ -1552,21 +1606,32 @@ function sendCustomized {
 function sendSensor
 {
   local stypeField
+  local stype
+  local stypeIndex
   
-  newPacketBody ${CMD[write_sensor_id]}
+  newPacketBody $CMD_write_sensor_id
   
   IFS=' '
 
-  for stypeField in "${!CONFIGURATION[@]}"; do
-
-    if [[ "$stypeField" =~ ^"$CONFIGURATION_SENSORFIELD" ]]; then
-      STYPE=${stypeField:${#CONFIGURATION_SENSORFIELD}}
-      writeUInt8     "$STYPE"
-      writeUInt32BE "${CONFIGURATION[$stypeField]}"
-      (( DEBUG )) && >&2 printf "%s %3d %8x\n" sendSensor "$STYPE" "${CONFIGURATION[$stypeField]}"
+  for (( stypeIndex= CONF_sensortype_startindex; stypeIndex < CONF_sensortype_endindex; stypeIndex++ )); do
+    if [ -n  "${CONFIGURATION[stypeIndex]}" ]; then
+    stype=$((stypeIndex - CONF_sensortype_startindex  )) 
+    (( DEBUG )) && >&2 echo SensorType "$stype" "${CONFIGURATION[stypeIndex]}"
+     writeUInt8 "$stype"
+     writeUInt32BE "${CONFIGURATION[stypeIndex]}" 
     fi
-  
   done
+
+ # for stypeField in "${!CONFIGURATION[$CONF_@]}"; do
+
+ #   if [[ "$stypeField" =~ ^"$CONFIGURATION_SENSORFIELD" ]]; then
+ #     STYPE=${stypeField:${#CONFIGURATION_SENSORFIELD}}
+ #     writeUInt8     "$STYPE"
+ #     writeUInt32BE "${CONFIGURATION[$CONF_$stypeField]}"
+ #     (( DEBUG )) && >&2 printf "%s %3d %8x\n" sendSensor "$STYPE" "${CONFIGURATION[$CONF_$stypeField]}"
+ #   fi
+  
+ # done
 
   sendPacket
 }
@@ -1578,10 +1643,10 @@ function updateCustomized {
   local key
   local n
 
-  newPacketBody ${CMD[read_path]}
+  newPacketBody $CMD_read_path
   sendPacket
 
-  newPacketBody ${CMD[read_customized]} # read previous configuration
+  newPacketBody $CMD_read_customized # read previous configuration
   sendPacket
 
   #format enabled=1,port=8000,server=test.no
@@ -1607,71 +1672,71 @@ function updateCustomized {
     case "$key" in
 
     id)
-      if [ "${CONFIGURATION[customized_id]}" != "$value" ]; then
-        ((DEBUG)) && echo >&2 Update customized_id from "${CONFIGURATION[customized_id]} to $value"
-        CONFIGURATION[customized_id]=$value
+      if [ "${CONFIGURATION[$CONF_customized_id]}" != "$value" ]; then
+        ((DEBUG)) && echo >&2 Update customized_id from "${CONFIGURATION[$CONF_customized_id]} to $value"
+        CONFIGURATION[$CONF_customized_id]=$value
         needUpdate=1
       fi
       ;;
     password)
-      if [ "${CONFIGURATION[customized_password]}" != "$value" ]; then
-        ((DEBUG)) && echo >&2 Update customized_password from "${CONFIGURATION[customized_password]} to $value"
-        CONFIGURATION[customized_password]=$value
+      if [ "${CONFIGURATION[$CONF_customized_password]}" != "$value" ]; then
+        ((DEBUG)) && echo >&2 Update customized_password from "${CONFIGURATION[$CONF_customized_password]} to $value"
+        CONFIGURATION[$CONF_customized_password]=$value
         needUpdate=1
       fi
       ;;
 
     server)
-      if [ "${CONFIGURATION[customized_server]}" != "$value" ]; then
-        ((DEBUG)) && echo >&2 Update customized_server from "${CONFIGURATION[customized_server]} to $value"
-        CONFIGURATION[customized_server]=$value
+      if [ "${CONFIGURATION[$CONF_customized_server]}" != "$value" ]; then
+        ((DEBUG)) && echo >&2 Update customized_server from "${CONFIGURATION[$CONF_customized_server]} to $value"
+        CONFIGURATION[$CONF_customized_server]=$value
         needUpdate=1
       fi
       ;;
 
     port)
 
-      if [ "${CONFIGURATION[customized_port]}" != "$value" ]; then
-        ((DEBUG)) && echo >&2 Update customized_type from "${CONFIGURATION[customized_port]} to $value"
-        CONFIGURATION[customized_port]=$value
+      if [ "${CONFIGURATION[$CONF_customized_port]}" != "$value" ]; then
+        ((DEBUG)) && echo >&2 Update customized_type from "${CONFIGURATION[$CONF_customized_port]} to $value"
+        CONFIGURATION[$CONF_customized_port]=$value
         needUpdate=1
       fi
       ;;
 
     type)
-      if [ "${CONFIGURATION[customized_type]}" != "$value" ]; then
-        ((DEBUG)) && echo >&2 Update customized_type from "${CONFIGURATION[customized_type]} to $value"
-        CONFIGURATION[customized_type]=$value
+      if [ "${CONFIGURATION[$CONF_customized_type]}" != "$value" ]; then
+        ((DEBUG)) && echo >&2 Update customized_type from "${CONFIGURATION[$CONF_customized_type]} to $value"
+        CONFIGURATION[$CONF_customized_type]=$value
         needUpdate=1
       fi
       ;;
 
     enabled)
-      if [ "${CONFIGURATION[customized_enabled]}" != "$value" ]; then
-        ((DEBUG)) && echo >&2 Update customized_enabled from "${CONFIGURATION[customized_enabled]} to $value"
-        CONFIGURATION[customized_enabled]=$value
+      if [ "${CONFIGURATION[$CONF_customized_enabled]}" != "$value" ]; then
+        ((DEBUG)) && echo >&2 Update customized_enabled from "${CONFIGURATION[$CONF_customized_enabled]} to $value"
+        CONFIGURATION[$CONF_customized_enabled]=$value
         needUpdate=1
       fi
       ;;
 
     interval)
-      if [ "${CONFIGURATION[customized_interval]}" != "$value" ]; then
-        ((DEBUG)) && echo >&2 Update customized_interval from "${CONFIGURATION[customized_interval]} to $value"
-        CONFIGURATION[customized_interval]=$value
+      if [ "${CONFIGURATION[$CONF_customized_interval]}" != "$value" ]; then
+        ((DEBUG)) && echo >&2 Update customized_interval from "${CONFIGURATION[$CONF_customized_interval]} to $value"
+        CONFIGURATION[$CONF_customized_interval]=$value
         needUpdate=1
       fi
       ;;
     wunderground_path)
-      if [ "${CONFIGURATION[customized_wunderground_path]}" != "$value" ]; then
-        ((DEBUG)) && echo >&2 Update customized_wunderground_path from "${CONFIGURATION[customized_wunderground_path]} to $value"
-        CONFIGURATION[customized_wunderground_path]=$value
+      if [ "${CONFIGURATION[$CONF_customized_wunderground_path]}" != "$value" ]; then
+        ((DEBUG)) && echo >&2 Update customized_wunderground_path from "${CONFIGURATION[$CONF_customized_wunderground_path]} to $value"
+        CONFIGURATION[$CONF_customized_wunderground_path]=$value
         needUpdate=1
       fi
       ;;
     ecowitt_path)
-      if [ "${CONFIGURATION[customized_ecowitt_path]}" != "$value" ]; then
-        ((DEBUG)) && echo >&2 Update customized_ecowitt_path from "${CONFIGURATION[customized_ecowitt_path]} to $value"
-        CONFIGURATION[customized_ecowitt_path]=$value
+      if [ "${CONFIGURATION[$CONF_customized_ecowitt_path]}" != "$value" ]; then
+        ((DEBUG)) && echo >&2 Update customized_ecowitt_path from "${CONFIGURATION[$CONF_customized_ecowitt_path]} to $value"
+        CONFIGURATION[$CONF_customized_ecowitt_path]=$value
         needUpdate=1
       fi
       ;;
@@ -1722,10 +1787,10 @@ function initConfigDir {
   FILENAME[rx]=$DIR'/rxpacket'
   FILENAME[discovery]=$DIR'/rxsocat'
   FILENAME[discovery_sorted]=$DIR/'rxsocat_sorted'
-  FILENAME[udp_server]="${FILENAME[discovery]}"_UDP_"${PORT[udp_discovery_server]}"
-  FILENAME[udp_client]="${FILENAME[discovery]}"_UDP_"${PORT[udp_discovery_client]}"
-  FILENAME[nc-hex]=$DIR/'nc-hex.txt'
-  FILENAME[livedata_names]=$DIR/'livedata-names.txt'
+  FILENAME[udp_server]="${FILENAME[discovery]}"_UDP_"$PORT_udp_discovery_server"
+  FILENAME[udp_client]="${FILENAME[discovery]}"_UDP_"$PORT_udp_discovery_client"
+  FILENAME[nc_hex]=$DIR/'nc_hex.txt'
+  FILENAME[livedata_description]=$DIR/'livedata-description.txt'
 
   ((DEBUG)) && echo >&2 Filename "${FILENAME[@]}"
 
@@ -1733,8 +1798,8 @@ function initConfigDir {
 
 function initLivedataNames
 {
-  if [ ! -s "${FILENAME[livedata_names]}" ]; then
-     >&2 echo Warning File is empty or does not exists "${FILENAME[livedata_names]}"
+  if [ ! -s "${FILENAME[livedata_description]}" ]; then
+     >&2 echo Warning File is empty or does not exists "${FILENAME[livedata_description]}"
      return 1
   fi
 
@@ -1743,12 +1808,12 @@ function initLivedataNames
   
   IFS='='
   while read -r LDFTYPE LDNAME; do
-    if [[ $LDFTYPE =~ ^"#" ]]; then #skip comments
+    if [[ $LDFTYPE =~ ^"#" || -z $LDFTYPE ]]; then #skip comments
       continue;
     fi
      LIVEDATA_NAME[$LDFTYPE]=$LDNAME
      (( DEBUG )) && >&2 echo Livedata field type to name "$LDFTYPE=$LDNAME"
-  done < "${FILENAME[livedata_names]}"
+  done < "${FILENAME[livedata_description]}"
 
 }
 
@@ -1780,21 +1845,21 @@ function runRainNotification {
   ((simulation)) && {
     rainTimeout=5
     showStartStopEventOnly=1
-    CONFIGURATION[rainrate]=0
-    CONFIGURATION[rainday]=10
+    CONFIGURATION[$CONF_rainrate]=0
+    CONFIGURATION[$CONF_rainday]=10
   } # { list ; } run in current shell
 
   ((DEBUG)) && echo >&2 "Rain event interval $rainTimeout s. Show start/stop events only $showStartStopEventOnly"
 
   rainInterval=0
   while true; do
-    ((simulation == 0)) && sendPacket ${CMD[read_raindata]} >/dev/null
-    ((simulation)) && ((CONFIGURATION[rainrate] = CONFIGURATION[rainrate] + 10)) && ((CONFIGURATION[rainrate] == 50)) && CONFIGURATION[rainrate]=0
-    convertScale10ToFloat "${CONFIGURATION[rainrate]}"
+    ((simulation == 0)) && sendPacket $CMD_read_raindata >/dev/null
+    ((simulation)) && ((CONFIGURATION[CONF_rainrate] = CONFIGURATION[CONF_rainrate] + 10)) && ((CONFIGURATION[CONF_rainrate] == 50)) && CONFIGURATION[CONF_rainrate]=0
+    convertScale10ToFloat "${CONFIGURATION[$CONF_rainrate]}"
     rr=$VALUE_SCALE10_FLOAT
-    convertScale10ToFloat "${CONFIGURATION[rainday]}"
+    convertScale10ToFloat "${CONFIGURATION[$CONF_rainday]}"
     rd=$VALUE_SCALE10_FLOAT
-    if ((CONFIGURATION[rainrate] != 0)); then
+    if ((CONFIGURATION[CONF_rainrate] != 0)); then
       ((rainInterval++))
       if ((rainInterval == 1)); then
         showRainInfoMessage "☂ Raining $rr mm/h.Today $rd mm" "Its raining! $rr millimeter per hour. Today $rd millimeter"
@@ -1804,7 +1869,7 @@ function runRainNotification {
         fi
       fi
     fi
-    if ((rainInterval && CONFIGURATION[rainrate] == 0)); then
+    if ((rainInterval && CONFIGURATION[CONF_rainrate] == 0)); then
       rainDuration=$((rainInterval * rainTimeout / 60)) # integer only in bash
       showRainInfoMessage "Raining stopped! Today $rd mm. Rained for $rainDuration minutes." "Raining stopped! Today $rd millimeter. It rained for $rainDuration minutes."
       rainInterval=0
@@ -1818,7 +1883,7 @@ function updateSensorId
   local type
   #debug : WSVIEW sensor overview is updated periodically to reflect current state
 
-  newPacketBody ${CMD[write_sensor_id]}
+  newPacketBody $CMD_write_sensor_id
 
   for type in "${!SENSOR[@]}"; do
   
@@ -1865,8 +1930,8 @@ function connnectAP {
   # 48:3F:DA - EspressIf Inc. https://www.wireshark.org/tools/oui-lookup.html
   #  nmcli dev wifi list : 4A:3F:DA:54:14:EC  GW1000-WIFI14EC  Infra  1     54 Mbit/s   77      ▂▄▆_  --
   # observation/seldom : 4A:3F:DA:54:14:EC SSID  ESP_5414EC -> hotsport started before ssid rename in firmware v.1.6.8?
-  lan_mac=${CONFIGURATION[broadcast_mac]//:/}
-  lan_mac_lc=${CONFIGURATION[broadcast_mac],,}
+  lan_mac=${CONFIGURATION[$CONF_broadcast_mac]//:/}
+  lan_mac_lc=${CONFIGURATION[$CONF_broadcast_mac],,}
   bssid_pattern=${lan_mac:9}
 
   while ((connected == 1 && connect_attempt < "$connect_attempt_MAX")); do
@@ -1926,13 +1991,13 @@ function processCommand {
 
         reset)
           
-          sendPacket ${CMD[broadcast]} $FD_UDP >/dev/null
+          sendPacket $CMD_broadcast $FD_UDP >/dev/null
           
-          read -r -p "Reset ${CONFIGURATION[broadcast_mac]} ${CONFIGURATION[broadcast_ssid]} (Y/N)? "
+          read -r -p "Reset ${CONFIGURATION[$CONF_broadcast_mac]} ${CONFIGURATION[$CONF_broadcast_ssid]} (Y/N)? "
           
           case $REPLY in
           Y)
-            sendPacket ${CMD[write_reset]} # 3 blink in red LED
+            sendPacket $CMD_write_reset # 3 blink in red LED
             connnectAP                     # assume user wants to reconnect for setting up new WIFI
             ;;
           esac
@@ -1941,70 +2006,110 @@ function processCommand {
 
         reboot)
           
-          sendPacket "${CMD[reboot]}"
+          sendPacket "$CMD_reboot"
           ;;
 
         mac)
           
-          sendPacket "${CMD[read_mac]}"
+          sendPacket "$CMD_read_mac"
           ;;
 
         version)
           
-          sendPacket ${CMD[read_version]}
+          sendPacket $CMD_read_version
           ;;
 
         system)
 
-          sendPacket ${CMD[read_system]}
+          sendPacket $CMD_read_system
           ;;
 
         ecowitt)
-          
-          sendPacket ${CMD[read_ecowitt_interval]}
+ 
+          if [[ -z "$1" || "$1" =~ ^"-" ]]; then
+            sendPacket $CMD_read_ecowitt_interval
+          else
+           sendEcowittInterval "$1"
+          fi
           ;;
 
         wunderground)
-          
-          sendPacket ${CMD[read_wunderground]}
+
+            if [[ -z "$1" || "$1" =~ ^"-" ]]; then
+              sendPacket $CMD_read_wunderground;
+            else
+              if (( $# < 2 )); then
+                 echo >&2 "Error {id} {password} must be specified"
+              else
+                  sendWeatherservice "$CMD_write_wunderground" "$1" "$2"
+              fi
+            fi 
+
           ;;
 
         wow)
           
-          sendPacket ${CMD[read_wow]}
+          if [[ -z "$1" || "$1" =~ ^"-" ]]; then
+            sendPacket $CMD_read_wow
+          else
+            if (( $# < 2 )); then
+                 echo >&2 "Error {id} {password} must be specified"
+              else
+                  sendWeatherservice "$CMD_write_wow" "$1" "$2"
+              fi
+          fi
           ;;
 
         weathercloud)
-          
-          sendPacket ${CMD[read_weathercloud]}
+
+          if [[ -z "$1" || "$1" =~ ^"-" ]]; then
+            sendPacket $CMD_read_weathercloud
+          else
+                if (( $# < 2 )); then
+                  echo >&2 "Error {id} {key} must be specified"
+                else
+                    sendWeatherservice "$CMD_write_weathercloud" "$1" "$2"
+                fi
+          fi
           ;;
 
         customized)
           
-          sendPacket ${CMD[read_path]}
-          sendPacket ${CMD[read_customized]}
+          sendPacket $CMD_read_path
+          sendPacket $CMD_read_customized
           ;;
 
         broadcast)
           
-          sendPacket ${CMD[broadcast]} $FD_UDP
+          sendPacket $CMD_broadcast $FD_UDP
           ;;
 
         rain)
+
+          if [[ -z "$1" || "$1" =~ ^"-" ]]; then
+            sendPacket $CMD_read_raindata
+          else
+
+            if (( $# < 4 )); then # validate rain input
+              echo >&2 "Error: {rainday} {week} {month} {year} parameters not specified"
+            else
+               sendRaindata "$1" "$2" "$3" "$4"
+            fi
           
-          sendPacket ${CMD[read_raindata]}
+          fi
+            
           ;;
 
         livedata)
           
           initSearchPatternForCommand "$1"
-          sendPacket ${CMD[livedata]}
+          sendPacket $CMD_livedata
                 ;;
 
         sensor_id)
           
           initSearchPatternForCommand "$1"
-          sendPacket ${CMD[read_sensor_id]}
+          sendPacket $CMD_read_sensor_id
           ;;
 
         sensor_id_new) # for new SENSOR_TYPE types
@@ -2015,7 +2120,7 @@ function processCommand {
           initSearchPatternForCommand "$1"
         fi
         
-          sendPacket ${CMD[read_sensor_id_new]}
+          sendPacket $CMD_read_sensor_id_new
           ;;
 
         *)
@@ -2037,7 +2142,6 @@ if [ -n "$STDIN" ]; then
 
 fi
 
-declare -A FILENAME # declare -A (if decl. inside function -> local only)
 
 initConfigDir
 initLivedataNames
@@ -2051,29 +2155,18 @@ while [[ $# -gt 0 ]]; do
 
   case $key in
 
-  -a | --rain)
-    # validate rain input
-    if [ -z "$2" ] || [ -z "$2" ] || [ -z "$4" ] || [ -z "$5" ]; then
-      echo >&2 "Error: rain day/week/month/year not specified, use $1 {rainday} {week} {month} {year}"
-      exit "$ERROR_RAINDATA_NOTSPECIFIED"
-    fi
-    
-    sendRaindata "$2" "$3" "$4" "$5"
-    shift 5
-    ;;
-
   -b | --backup)
-    sendPacket ${CMD[read_mac]} >/dev/null
-    sendPacket ${CMD[read_version]} >/dev/null
-    sendPacket ${CMD[broadcast]} $FD_UDP >/dev/null
-    sendPacket ${CMD[read_ecowitt_interval]} >/dev/null
-    sendPacket ${CMD[read_wunderground]} >/dev/null
-    sendPacket ${CMD[read_wow]} >/dev/null
-    sendPacket ${CMD[read_weathercloud]} >/dev/null
-    sendPacket ${CMD[read_customized]} >/dev/null
-    sendPacket ${CMD[read_path]} >/dev/null
-    sendPacket ${CMD[read_raindata]} >/dev/null
-    sendPacket ${CMD[read_sensor_id_new]} >/dev/null
+    sendPacket $CMD_read_mac >/dev/null
+    sendPacket $CMD_read_version >/dev/null
+    sendPacket $CMD_broadcast $FD_UDP >/dev/null
+    sendPacket $CMD_read_ecowitt_interval >/dev/null
+    sendPacket $CMD_read_wunderground >/dev/null
+    sendPacket $CMD_read_wow >/dev/null
+    sendPacket $CMD_read_weathercloud >/dev/null
+    sendPacket $CMD_read_customized >/dev/null
+    sendPacket $CMD_read_path >/dev/null
+    sendPacket $CMD_read_raindata >/dev/null
+    sendPacket $CMD_read_sensor_id_new >/dev/null
     # some data probably saved to device EEPROM
     # calibration data?
     printConfiguration
@@ -2082,16 +2175,27 @@ while [[ $# -gt 0 ]]; do
   
   -c | --command)
     COMMAND="${2,,}"
+    shift 2 # remove -c {commmand}
     
-    if processCommand "${3,,}"; then # $3 pass field pattern to livedata/sensor_id_new
-    
-        if [[ ($COMMAND == "livedata" || $COMMAND == "sensor_id_new"  || $COMMAND == "sensor_id" ) && -n "$3" && ! "$3" =~ ^"-" ]]; then # ^"-" don't shift 3 for following new options
-            shift 3
-          else
-            shift 2
-        fi
-    else
-      shift 1
+    if processCommand "$@"; then # $3 pass field pattern to livedata/sensor_id_new
+
+     for param in "$@"; do #remove param which is not an option 
+       if [[ "${param:0:1}" != "-" ]]; then
+         (( DEBUG)) && >&2 echo Shift param "$@" "$param"
+         shift
+        else
+          break
+       fi
+
+     done
+ #     echo AFTER "$@"
+        #if [[ ($COMMAND == "livedata" || $COMMAND == "sensor_id_new"  || $COMMAND == "sensor_id" ) && -n "$3" && ! "$3" =~ ^"-" ]]; then # ^"-" don't shift 3 for following new options
+        #    shift 3
+        #  else
+        #    shift 2
+        #fi
+    #else
+    #  shift 1
     fi
 
     unset COMMAND
@@ -2105,11 +2209,6 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
 
-  -e | --ecowitt_interval)
-    sendEcowittInterval "$2"
-    shift 2
-    ;;
-
   -f | --firmware)
     HTTP_UA_NAME="gw script BASH ${BASH_VERSION} $(uname -srv)"
     HTTP_FIRMWARE="http://download.ecowitt.net/down/filewave?v=FirwaveReadme.txt"
@@ -2118,21 +2217,6 @@ while [[ $# -gt 0 ]]; do
     shift 2
     ;;
 
-  -g | --wunderground)
-    sendWeatherservice "${CMD[write_wunderground]}" "$2" "$3"
-    shift 3
-    ;;
-
-  -i | --wow)
-    sendWeatherservice "${CMD[write_wow]}" "$2" "$3"
-    shift 3
-    ;;
- 
-  -j | --weathercloud)
-    sendWeatherservice "${CMD[write_weathercloud]}" "$2" "$3"
-    shift 3
-    ;;
- 
   -h | --host)
     HOST_PREV=$HOST
     HOST="$2" # this arg must come first to open socketsopen file descriptors to UDP/TCP port on HOST
@@ -2142,18 +2226,18 @@ while [[ $# -gt 0 ]]; do
     #  disconnect
     #  exit $ERROR_CONNECTION
     #fi
-    CONFIGURATION[host]=$HOST
+    CONFIGURATION[$CONF_host]=$HOST
 
-    #sendPacket "${CMD[read_mac]}" >/dev/null
-    sendPacket "${CMD[read_version]}" >/dev/null
+    #sendPacket "$CMD_read_mac" >/dev/null
+    sendPacket "$CMD_read_version" >/dev/null
 
-    sendPacket "${CMD[read_system]}" &>/dev/null # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
+    sendPacket "$CMD_read_system" &>/dev/null # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
     
-    if (( CONFIGURATION[system_sensor_type] == SYSTEM_SENSOR_TYPE[WH24] )); then
-      SENSOR_TYPE[WH24[type]]="WH24:Outdoor Weather Sensor:16.0:"
+    if (( CONFIGURATION[CONF_system_sensor_type] == SYSTEM_SENSOR_TYPE_WH24 )); then
+      SENSOR_TYPE[WH24_type]="WH24:Outdoor Weather Sensor:16.0:"
     fi
 
-    >&2  printf "%s %s\n\n" "${CONFIGURATION[version]}" "${CONFIGURATION[system_utc_state]}" 
+    >&2  printf "%s %s\n\n" "${CONFIGURATION[$CONF_version]}" "${CONFIGURATION[$CONF_system_utc_state]}" 
 
     shift 2
     ;;
@@ -2185,7 +2269,7 @@ while [[ $# -gt 0 ]]; do
   -r | --restore)
 
     unset CONFIGURATION
-    declare -A CONFIGURATION
+    typeset -a CONFIGURATION
 
     if [ -s "$2" ]; then 
       IFS=' '
@@ -2195,12 +2279,12 @@ while [[ $# -gt 0 ]]; do
 
       printConfiguration
 
-      sendEcowittInterval "${CONFIGURATION[ecowitt_interval]}"
-      sendWeatherservice "${CMD[write_wunderground]}" "${CONFIGURATION[wunderground_id]}" "${CONFIGURATION[wunderground_password]}"
-      sendWeatherservice "${CMD[write_wow]}"          "${CONFIGURATION[wow_id]}"          "${CONFIGURATION[wow_password]}"
-      sendWeatherservice "${CMD[write_weathercloud]}" "${CONFIGURATION[weathercloud_id]}" "${CONFIGURATION[weathercloud_password]}"
+      sendEcowittInterval "${CONFIGURATION[$CONF_ecowitt_interval]}"
+      sendWeatherservice "$CMD_write_wunderground" "${CONFIGURATION[$CONF_wunderground_id]}" "${CONFIGURATION[$CONF_wunderground_password]}"
+      sendWeatherservice "$CMD_write_wow"          "${CONFIGURATION[$CONF_wow_id]}"          "${CONFIGURATION[$CONF_wow_password]}"
+      sendWeatherservice "$CMD_write_weathercloud" "${CONFIGURATION[$CONF_weathercloud_id]}" "${CONFIGURATION[$CONF_weathercloud_password]}"
       sendCustomized
-      sendRaindata "${CONFIGURATION[rainday]}" "${CONFIGURATION[rainweek]}" "${CONFIGURATION[rainmonth]}" "${CONFIGURATION[rainyear]}"
+      sendRaindata "${CONFIGURATION[$CONF_rainday]}" "${CONFIGURATION[$CONF_rainweek]}" "${CONFIGURATION[$CONF_rainmonth]}" "${CONFIGURATION[$CONF_rainyear]}"
       sendSensor
     else
       >&2 echo Error File "$2 does not exists or is not empty";
@@ -2212,50 +2296,56 @@ while [[ $# -gt 0 ]]; do
 
   -m | --sensor)
 
-     sendPacket "${CMD[read_sensor_id_new]}" >/dev/null
-     #sensortype=search|disable,...
-     IFS=","
-     read -r -a SENSOR_MANAGEMENT  <<< "$2"
-     
-     s_disable="disable"
-     s_search="search"
-     
-     for ((n=0;n < ${#SENSOR_MANAGEMENT[@]}; n++)) ; do
+    if [ -n "$2" ]; then
 
-            IFS='='
-            read -r STYPE SID <<< "${SENSOR_MANAGEMENT[$n]}"
-            
-            IFS='-'
-            read -r STYPE_MIN STYPE_MAX <<< "$STYPE" # allow specifying range, for example 1-10=search
-            
-            #https://stackoverflow.com/questions/806906/how-do-i-test-if-a-variable-is-a-number-in-bash/806923
-            ! [[ $STYPE_MIN =~ ^[0-9]+$ ]] && >&2 echo "$STYPE_MIN is not a sensor type/number"  && continue;
-            [[ -n $STYPE_MAX ]] && ! [[ $STYPE_MAX =~ ^[0-9]+$ ]] && >&2 echo "$STYPE_MAX is not a sensor type/number"  && continue;
-            
-            [[ -z $STYPE_MAX ]] && STYPE_MAX=$STYPE_MIN
-            if [[ "${SID,,}" =~ ^${s_disable:0:${#SID}} ]]; then # 0:length of SID, matched substring, for example d for disable, s for search
-              for (( r=STYPE_MIN; r<= STYPE_MAX; r++ )); do 
-                  >&2 echo "Setting sensor type $r to disable $SENSOR_DISABLE" 
-                    SENSOR[$r]=$SENSOR_DISABLE
-              done
-            elif [[ "${SID,,}" =~ ^${s_search:0:${#SID}} ]] ; then
-              for (( r=STYPE_MIN; r<= STYPE_MAX; r++ )); do 
-                  >&2 echo "Setting sensor type $r to search $SENSOR_SEARCH" 
-                    SENSOR[$r]=$SENSOR_SEARCH
-              done
-            else
-               >&2 echo "Error unkown sensor id $SID, use disable or search"
-        
-            fi
+          sendPacket "$CMD_read_sensor_id_new" >/dev/null
+          #sensortype=search|disable,...
+          IFS=","
+          read -r -a SENSOR_MANAGEMENT  <<< "$2"
+          
+          s_disable="disable"
+          s_search="search"
+          
+          for ((n=0;n < ${#SENSOR_MANAGEMENT[@]}; n++)) ; do
 
-      done
+                  IFS='='
+                  read -r STYPE SID <<< "${SENSOR_MANAGEMENT[$n]}"
+                  
+                  IFS='-'
+                  read -r STYPE_MIN STYPE_MAX <<< "$STYPE" # allow specifying range, for example 1-10=search
+                  
+                  #https://stackoverflow.com/questions/806906/how-do-i-test-if-a-variable-is-a-number-in-bash/806923
+                  ! [[ $STYPE_MIN =~ ^[0-9]+$ ]] && >&2 echo "$STYPE_MIN is not a sensor type/number"  && continue;
+                  [[ -n $STYPE_MAX ]] && ! [[ $STYPE_MAX =~ ^[0-9]+$ ]] && >&2 echo "$STYPE_MAX is not a sensor type/number"  && continue;
+                  
+                  [[ -z $STYPE_MAX ]] && STYPE_MAX=$STYPE_MIN
+                  if [[ "${SID,,}" =~ ^${s_disable:0:${#SID}} ]]; then # 0:length of SID, matched substring, for example d for disable, s for search
+                    for (( r=STYPE_MIN; r<= STYPE_MAX; r++ )); do 
+                        >&2 echo "Setting sensor type $r to disable $SENSOR_DISABLE" 
+                          SENSOR[$r]=$SENSOR_DISABLE
+                    done
+                  elif [[ "${SID,,}" =~ ^${s_search:0:${#SID}} ]] ; then
+                    for (( r=STYPE_MIN; r<= STYPE_MAX; r++ )); do 
+                        >&2 echo "Setting sensor type $r to search $SENSOR_SEARCH" 
+                          SENSOR[$r]=$SENSOR_SEARCH
+                    done
+                  else
+                    >&2 echo "Error unkown sensor id $SID, use disable or search"
+              
+                  fi
 
-      updateSensorId
+            done
 
-     shift 2
+            updateSensorId
+
+          shift 2
+     else
+         sendPacket $CMD_read_sensor_id_new
+     #     echo >&2 Error no sensor id or range idn-idn+1=disable/search specified
+          shift
+     fi
 
      ;;
-
 
   -n | --notifyrain)
     runRainNotification "$2" "$3" #tested on GNOME
@@ -2271,6 +2361,7 @@ while [[ $# -gt 0 ]]; do
     fi
     shift
     ;;
+
   -z | --customized)
 
     updateCustomized "$2"
@@ -2279,7 +2370,7 @@ while [[ $# -gt 0 ]]; do
 
   -w | --wifi)
     
-    newPacketBody ${CMD[write_ssid]}
+    newPacketBody $CMD_write_ssid
     #ssid packet has two byte length
     # TEST wsview android app, wireshark: ffff | 11 |001b| 08536b6f676c756e640d6c756775626572313934322d2e | a9
     #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/ConfigrouterFragment.java - SaveData
