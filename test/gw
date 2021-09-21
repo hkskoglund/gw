@@ -1,4 +1,5 @@
 #!/bin/bash
+#!/usr/bin/zsh
 # Utility for administration of GW-1000 configuration
 # example ./gw -s
 # scan for devices
@@ -145,8 +146,8 @@ for ((LDFT=0x2A, LDFT2=0x4D, CH=1;CH<=4; CH++, LDFT++,LDFT2++ )); do
    LDFIELD[$LDFT2]="PM25_24HAVG_CH$CH:PM2.5 24h average CH$CH:μg/m3:2:1"
 done
 for ((LDFT=0x2B, CH=1;CH<=16; CH++, LDFT=LDFT+2 )); do
-   LDFIELD[$LDFT]="SOILTEMP_CH$CH:soil temperature CH$CH:℃:2:1"
-   LDFIELD[(( LDFT + 1 ))]="SOILHUMI_CH$CH:soil humidity CH$CH:%:1:0"
+   LDFIELD[$LDFT]="SOILTEMP_CH${CH}:soil temperature CH$CH:℃:2:1"
+   LDFIELD[(( LDFT + 1 ))]=SOILHUMI_CH$CH":soil humidity CH$CH"":%:1:0"
 done
 for ((LDFT=0x1A, LDFT2=0x22, CH=1;CH<=8; CH++, LDFT++,LDFT2++ )); do
    LDFIELD[$LDFT]="TEMP_CH$CH:temperature CH$CH:℃:2:1"
@@ -241,20 +242,23 @@ typeset -i WH43_type=0x16
 typeset -i WH43_max_ch=4
 
 typeset -a SENSOR_TYPE
+#setopt KSH_ZERO_SUBSCRIPT
+#emulate ksh
 #type:description:reportinginterval(s):max reportinterval:detection interval
-SENSOR_TYPE[WH65_type]="WH65:Outdoor Solar Powered 7-in-1 Weather Sensor:16.0:"
+SENSOR_TYPE[$WH65_type]="WH65:Outdoor Solar Powered 7-in-1 Weather Sensor:16.0:"
 SENSOR_TYPE[WH68_type]="WH68:Solar Powered Anemometer with Light and UV Sensor:16.5:"
 SENSOR_TYPE[WH80_type]="WH80:Wind Speed/Direction, Solar Radiation/Light, Temp/Humidity:4.75:"
 SENSOR_TYPE[WH40_type]="WH40:Self-Emptying Rain Collector Rainfall Sensor:49"
 #sensors with max 8 channels
 for (( CH=1; CH <= WH31_max_ch ; CH++)); do 
-   SENSOR_TYPE[WH31_type + $CH - 1]="WH31:Temperature and humidity CH$CH:61.0:"
-   SENSOR_TYPE[WH51_type + $CH - 1]="WH51:Soil Moisture CH$CH:70.0:"
+   SENSOR_TYPE[$(( WH31_type + CH - 1))]="WH31:Temperature and humidity CH$CH:61.0:"
+   SENSOR_TYPE[$(( WH51_type + CH - 1))]="WH51:Soil Moisture CH$CH:70.0:"
    if ((CH <= WH55_max_ch )); then
-      SENSOR_TYPE[WH43_type + $CH - 1]="WH43:PM2.5 Air Quality Indoor CH$CH:60.0:600.0"
-      SENSOR_TYPE[WH55_type + $CH - 1]="WH55:Water Leak CH$CH:60.0::3"
+      SENSOR_TYPE[$(( WH43_type + CH - 1))]="WH43:PM2.5 Air Quality Indoor CH$CH:60.0:600.0"
+      SENSOR_TYPE[$(( WH55_type + CH - 1))]="WH55:Water Leak CH$CH:60.0::3"
    fi
 done
+
 
 #SENSOR_TYPE[0x??]="WH41:PM2.5 Air Quality Sensor Monitor Outdoor:60:600"
 #SENSOR_TYPE[0x??]="WH57:Lightning Detection Sensor:79:"
@@ -291,40 +295,78 @@ typeset -i CONF_customized_wunderground_path=14
 typeset -i CONF_ecowitt_interval=15
 typeset -i CONF_host=16
 typeset -i CONF_mac=17
-typeset -i CONF_rainday=18
+typeset -i CONF_raindaily=18
 typeset -i CONF_rainmonth=19
 typeset -i CONF_rainrate=20
-typeset -i CONF_rainrate=21
-typeset -i CONF_rainweek=22
-typeset -i CONF_rainyear=23
-typeset -i CONF_system_dst_status=24
-typeset -i CONF_system_dst_status_bit=25
-typeset -i CONF_system_dst_status_state=26
-typeset -i CONF_system_frequency=27
-typeset -i CONF_system_frequency_state=28
-typeset -i CONF_system_sensor_type=29
-typeset -i CONF_system_sensor_type_state=30
-typeset -i CONF_system_timezone_auto_bit=31
-typeset -i CONF_system_timezone_auto_state=32
-typeset -i CONF_system_timezone_index=33
-typeset -i CONF_system_timezone_index_state=34
-typeset -i CONF_system_utc=35
-typeset -i CONF_system_utc_state=36
-typeset -i CONF_version=37
-typeset -i CONF_weathercloud_id=38
-typeset -i CONF_weathercloud_password=39
-typeset -i CONF_wow_id=40
-typeset -i CONF_wow_password=41
-typeset -i CONF_wunderground_id=42
-typeset -i CONF_wunderground_password=43
+typeset -i CONF_rainweek=21
+typeset -i CONF_rainyear=22
+typeset -i CONF_system_dst_status=23
+typeset -i CONF_system_dst_status_bit=24
+typeset -i CONF_system_dst_status_state=25
+typeset -i CONF_system_frequency=26
+typeset -i CONF_system_frequency_state=27
+typeset -i CONF_system_sensor_type=28
+typeset -i CONF_system_sensor_type_state=29
+typeset -i CONF_system_timezone_auto_bit=30
+typeset -i CONF_system_timezone_auto_state=31
+typeset -i CONF_system_timezone_index=32
+typeset -i CONF_system_timezone_index_state=33
+typeset -i CONF_system_utc=34
+typeset -i CONF_system_utc_state=35
+typeset -i CONF_version=36
+typeset -i CONF_weathercloud_id=37
+typeset -i CONF_weathercloud_password=38
+typeset -i CONF_wow_id=39
+typeset -i CONF_wow_password=40
+typeset -i CONF_wunderground_id=41
+typeset -i CONF_wunderground_password=42
 
 typeset -i CONF_sensortype_startindex=256 # start index of sensortype configuration (search/disable/id)
 typeset -i CONF_sensortype_endindex=$(( CONF_sensortype_startindex + 256 ))
 
-
-typeset -a CONF_DESCRIPTION 
-CONF_DESCRIPTION[$CONF_broadcast_ip]="broadcast_ip"
-
+typeset -a CONFIGURATION_NAME #allow reverse mapping from property to index -> make backup file readable/editable
+CONFIGURATION_NAME[CONF_broadcast_ip]="broadcast_ip"
+CONFIGURATION_NAME[CONF_broadcast_mac]="broadcast_mac"
+CONFIGURATION_NAME[CONF_broadcast_port]="broadcast_port"
+CONFIGURATION_NAME[CONF_broadcast_ssid]="broadcast_ssid"
+CONFIGURATION_NAME[CONF_broadcast_version]="broadcast_version"
+CONFIGURATION_NAME[CONF_customized_ecowitt_path]="customized_ecowitt_path"
+CONFIGURATION_NAME[CONF_customized_enabled]="customized_enabled"
+CONFIGURATION_NAME[CONF_customized_id]="customized_id"
+CONFIGURATION_NAME[CONF_customized_interval]="customized_interval"
+CONFIGURATION_NAME[CONF_customized_password]="customized password"
+CONFIGURATION_NAME[CONF_customized_port]="customized_port"
+CONFIGURATION_NAME[CONF_customized_server]="customized_server"
+CONFIGURATION_NAME[CONF_customized_type]="customized_type"
+CONFIGURATION_NAME[CONF_customized_wunderground_path]="customized_wunderground_path"
+CONFIGURATION_NAME[CONF_ecowitt_interval]="ecowitt_interval"
+CONFIGURATION_NAME[CONF_host]="host"
+CONFIGURATION_NAME[CONF_mac]="mac"
+CONFIGURATION_NAME[CONF_rainrate]="rainrate"
+CONFIGURATION_NAME[CONF_raindaily]="raindaily"
+CONFIGURATION_NAME[CONF_rainweek]="rainweek"
+CONFIGURATION_NAME[CONF_rainmonth]="rainmonth"
+CONFIGURATION_NAME[CONF_rainyear]="rainyear"
+CONFIGURATION_NAME[CONF_system_dst_status]="system_dst_status"
+CONFIGURATION_NAME[CONF_system_dst_status_bit]="system_dst_status_bit"
+CONFIGURATION_NAME[CONF_system_dst_status_state]="system_dst_status_state"
+CONFIGURATION_NAME[CONF_system_frequency]="system_frequency"
+CONFIGURATION_NAME[CONF_system_frequency_state]="system_frequency_state"
+CONFIGURATION_NAME[CONF_system_sensor_type]="system_sensor_type"
+CONFIGURATION_NAME[CONF_system_sensor_type_state]="system_sensor_type_state"
+CONFIGURATION_NAME[CONF_system_timezone_auto_bit]="system_timezone_auto_bit"
+CONFIGURATION_NAME[CONF_system_timezone_auto_state]="system_timezone_auto_state"
+CONFIGURATION_NAME[CONF_system_timezone_index]="system_timezone_index"
+CONFIGURATION_NAME[CONF_system_timezone_index_state]="system_timezone_index_state"
+CONFIGURATION_NAME[CONF_system_utc]="system_utc"
+CONFIGURATION_NAME[CONF_system_utc_state]="system_utc_state"
+CONFIGURATION_NAME[CONF_version]="version"
+CONFIGURATION_NAME[CONF_weathercloud_id]="weathercloud_id"
+CONFIGURATION_NAME[CONF_weathercloud_password]="weathercloud_password"
+CONFIGURATION_NAME[CONF_wow_id]="wow_id"
+CONFIGURATION_NAME[CONF_wow_password]="wow_password"
+CONFIGURATION_NAME[CONF_wunderground_id]="wunderground_id"
+CONFIGURATION_NAME[CONF_wunderground_password]="wunderground_password"
 
 typeset -a LDFNAMEDESC
 typeset -a LDFACTIVE # found fields in livedata from host
@@ -458,9 +500,24 @@ function printCustomized {
 }
 
 function printConfiguration {
+  local confName
+  local stype
   #echo "${!CONFIGURATION[$CONF_@]}"
   #https://www.artificialworlds.net/blog/2012/10/17/bash-associative-array-examples/
-  for K in "${!CONFIGURATION[@]}"; do printf "%-30s %s\n" "$K" "${CONFIGURATION[$K]}"; done
+  for K in "${!CONFIGURATION[@]}"; do
+   
+   if (( K < CONF_sensortype_startindex )); then
+      confName="${CONFIGURATION_NAME[$K]}"
+      printf "%-30s %s\n"  "$confName" "${CONFIGURATION[$K]}" 
+   else
+      stype=$(( K - CONF_sensortype_startindex  ))
+      confName="$CONFIGURATION_SENSORFIELD$stype"
+      IFS=':'
+      read -r SNAME SDESC SINTERVAL_MIN SREST <<< "${SENSOR_TYPE["$stype"]}"
+      printf "%-30s %s\n"  "$confName" "${CONFIGURATION[$K]} $SDESC" 
+   fi
+
+  done
 }
 
 function readUInt8 {
@@ -495,7 +552,7 @@ function printRain {
   local ry
   convertScale10ToFloat "${CONFIGURATION[$CONF_rainrate]}"
   rr=$VALUE_SCALE10_FLOAT
-  convertScale10ToFloat "${CONFIGURATION[$CONF_rainday]}"
+  convertScale10ToFloat "${CONFIGURATION[$CONF_raindaily]}"
   rd=$VALUE_SCALE10_FLOAT
   convertScale10ToFloat "${CONFIGURATION[$CONF_rainweek]}"
   rw=$VALUE_SCALE10_FLOAT
@@ -504,7 +561,7 @@ function printRain {
   convertScale10ToFloat "${CONFIGURATION[$CONF_rainyear]}"
   ry=$VALUE_SCALE10_FLOAT
   #echo rainrate "${CONFIGURATION[$CONF_rainrate]} "
-  #echo rainday "${CONFIGURATION[$CONF_rainday]} "
+  #echo rainday "${CONFIGURATION[$CONF_raindaily]} "
   #echo rainweek "${CONFIGURATION[$CONF_rainweek]} "
   #echo rainmonth "${CONFIGURATION[$CONF_rainmonth]} "
   #echo  rainyear "${CONFIGURATION[$CONF_rainyear]}"
@@ -1150,7 +1207,7 @@ function parsePacket {
     readUInt32BE
     CONFIGURATION[$CONF_rainrate]=$VALUE_UINT32BE
     readUInt32BE
-    CONFIGURATION[$CONF_rainday]=$VALUE_UINT32BE
+    CONFIGURATION[$CONF_raindaily]=$VALUE_UINT32BE
     readUInt32BE
     CONFIGURATION[$CONF_rainweek]=$VALUE_UINT32BE
     readUInt32BE
@@ -1846,7 +1903,7 @@ function runRainNotification {
     rainTimeout=5
     showStartStopEventOnly=1
     CONFIGURATION[$CONF_rainrate]=0
-    CONFIGURATION[$CONF_rainday]=10
+    CONFIGURATION[$CONF_raindaily]=10
   } # { list ; } run in current shell
 
   ((DEBUG)) && echo >&2 "Rain event interval $rainTimeout s. Show start/stop events only $showStartStopEventOnly"
@@ -1857,7 +1914,7 @@ function runRainNotification {
     ((simulation)) && ((CONFIGURATION[CONF_rainrate] = CONFIGURATION[CONF_rainrate] + 10)) && ((CONFIGURATION[CONF_rainrate] == 50)) && CONFIGURATION[CONF_rainrate]=0
     convertScale10ToFloat "${CONFIGURATION[$CONF_rainrate]}"
     rr=$VALUE_SCALE10_FLOAT
-    convertScale10ToFloat "${CONFIGURATION[$CONF_rainday]}"
+    convertScale10ToFloat "${CONFIGURATION[$CONF_raindaily]}"
     rd=$VALUE_SCALE10_FLOAT
     if ((CONFIGURATION[CONF_rainrate] != 0)); then
       ((rainInterval++))
@@ -2133,6 +2190,38 @@ function processCommand {
   return 0
 }
 
+function isNumber
+{
+#https://www.grymoire.com/Unix/Bourne.html#uh-84
+  local number
+#   echo "Type in a number"
+#read -r ans
+number=$(expr "$1" : "\([0-9]*\)") # number is extracted when using parentheses
+if [ "$number" != "$1" ]; then
+echo "Not a number"
+elif [ "$number" -eq 0 ]; then
+echo "Nothing was typed"
+else
+echo "$number is a fine number"
+fi
+}
+
+function getConfigurationIndexFromName
+{
+  typeset -i i
+
+  i=0
+  while [ $i -lt ${#CONFIGURATION_NAME[@]} ]; do
+    if [ -n "${CONFIGURATION_NAME[$i]}" ] && [ "${CONFIGURATION_NAME[$i]}" = "$1" ]; then
+       CONFIGURATION_INDEX=$i
+           echo i $i name ${CONFIGURATION_NAME[$i]} 
+
+       break;
+    fi
+   i=$((i + 1))
+  done
+}
+
 read -r -u 0 -t 0.5 STDIN
 
 if [ -n "$STDIN" ]; then
@@ -2273,10 +2362,21 @@ while [[ $# -gt 0 ]]; do
 
     if [ -s "$2" ]; then 
       IFS=' '
-      while read -r K V; do
-        CONFIGURATION["$K"]="$V"
-      done <"$2"
-
+      while read -r K V REST; do
+        unset CONFIGURATION_INDEX
+        STYPE=$(expr "$K" : "$CONFIGURATION_SENSORFIELD\([0-9]*\)" ) # extracts number part from sensortype_{number}
+        echo STYPE "$STYPE"
+        if [ -n "$STYPE" ]; then
+          CONFIGURATION_INDEX=$(( STYPE + CONF_sensortype_startindex )) 
+        else
+           getConfigurationIndexFromName "$K"
+        fi
+        #echo "Restore $K $CONFIGURATION_INDEX"
+        if [ -n "$CONFIGURATION_INDEX" ]; then 
+           CONFIGURATION["$CONFIGURATION_INDEX"]="$V"
+        fi
+      done < "$2"
+      
       printConfiguration
 
       sendEcowittInterval "${CONFIGURATION[$CONF_ecowitt_interval]}"
@@ -2284,7 +2384,7 @@ while [[ $# -gt 0 ]]; do
       sendWeatherservice "$CMD_write_wow"          "${CONFIGURATION[$CONF_wow_id]}"          "${CONFIGURATION[$CONF_wow_password]}"
       sendWeatherservice "$CMD_write_weathercloud" "${CONFIGURATION[$CONF_weathercloud_id]}" "${CONFIGURATION[$CONF_weathercloud_password]}"
       sendCustomized
-      sendRaindata "${CONFIGURATION[$CONF_rainday]}" "${CONFIGURATION[$CONF_rainweek]}" "${CONFIGURATION[$CONF_rainmonth]}" "${CONFIGURATION[$CONF_rainyear]}"
+      sendRaindata "${CONFIGURATION[$CONF_raindaily]}" "${CONFIGURATION[$CONF_rainweek]}" "${CONFIGURATION[$CONF_rainmonth]}" "${CONFIGURATION[$CONF_rainyear]}"
       sendSensor
     else
       >&2 echo Error File "$2 does not exists or is not empty";
@@ -2299,7 +2399,7 @@ while [[ $# -gt 0 ]]; do
     if [ -n "$2" ]; then
 
           sendPacket "$CMD_read_sensor_id_new" >/dev/null
-          #sensortype=search|disable,...
+          #sensortype=search|disable,st1-stn=search|disable,...
           IFS=","
           read -r -a SENSOR_MANAGEMENT  <<< "$2"
           
