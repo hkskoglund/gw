@@ -1,5 +1,7 @@
 #!/bin/bash
 #!/usr/bin/zsh
+#setopt KSH_ZERO_SUBSCRIPT
+#emulate ksh
 # Utility for administration of GW-1000 configuration
 # example ./gw -s
 # scan for devices
@@ -82,7 +84,7 @@ CMD_NAME[$CMD_broadcast]="broadcast"
 CMD_NAME[$CMD_write_reset]="reset"
 
 CMD_NAME[$CMD_read_ecowitt_interval]="read ecowitt intervall"
-CMD_NAME[$CMD_write_ecowitt_interval]="write ecowitt intreval"
+CMD_NAME[$CMD_write_ecowitt_interval]="write ecowitt interval"
 CMD_NAME[$CMD_read_wunderground]="read wunderground"
 CMD_NAME[$CMD_write_wunderground]="write wunderground"
 CMD_NAME[$CMD_read_wow]="read wow"
@@ -242,8 +244,7 @@ typeset -i WH43_type=0x16
 typeset -i WH43_max_ch=4
 
 typeset -a SENSOR_TYPE
-#setopt KSH_ZERO_SUBSCRIPT
-#emulate ksh
+
 #type:description:reportinginterval(s):max reportinterval:detection interval
 SENSOR_TYPE[$WH65_type]="WH65:Outdoor Solar Powered 7-in-1 Weather Sensor:16.0:"
 SENSOR_TYPE[WH68_type]="WH68:Solar Powered Anemometer with Light and UV Sensor:16.5:"
@@ -270,9 +271,10 @@ typeset -A LIVEDATA_NAME
 
 #CONNECT ERRORS
 ERROR_CONNECTION=1
-ERROR_RAINDATA_NOTSPECIFIED=2
-ERROR_NO_NMCLI=3
-ERROR_NO_SOCAT=4
+ERROR_NO_NMCLI=2
+ERROR_NO_SOCAT=3
+ERROR_RAINDATA_NOTSPECIFIED=4
+ERROR_SYSTEMPARAM_NOTSPECIFIED=5
 #ERROR_READ_RESPONSE=3
 
 typeset -a CONFIGURATION
@@ -1596,10 +1598,59 @@ function newPathPacket {
   writeString "${CONFIGURATION[$CONF_customized_ecowitt_path]}"
 }
 
+function sendSystem
+{
+ 
+  local dst
+  dst=0
+
+  if ! isNumber "$1" || [ "$1" -gt 1 ]; then
+    echo Error: System type must be 0 for WH24, or 1 for WH65 - "$1" invalid
+    return $ERROR_SYSTEMPARAM_NOTSPECIFIED
+  fi
+
+  if ! isNumber "$2" || [ "$2" -ge ${#SYSTEM_TIMEZONE[@]} ]; then
+     echo Error: System timezone index must be 0 -  $(( ${#SYSTEM_TIMEZONE[@]} - 1 )) - "$2" invalid
+     printTimezones 
+     return $ERROR_SYSTEMPARAM_NOTSPECIFIED
+  fi
+
+  if ! isNumber "$3" || [ "$3" -gt 1 ]; then
+    echo Error: Daylight saving must be 0 for disabled, or 1 for enabled - "$3" invalid
+    return $ERROR_SYSTEMPARAM_NOTSPECIFIED
+  fi
+
+
+  if ! isNumber "$4" || [ "$4" -gt 1 ]; then
+    echo Error: Auto timezone must be 0 for disabled, or 1 for enabled - "$4" invalid
+    return $ERROR_SYSTEMPARAM_NOTSPECIFIED
+  fi
+
+  #TODO dst=
+
+#        CONFIGURATION[$CONF_system_dst_status_bit]=$(( "${CONFIGURATION[$CONF_system_dst_status]}" & 0x1 ))
+#     CONFIGURATION[$CONF_system_timezone_auto_bit]=$(( ( "${CONFIGURATION[$CONF_system_dst_status]}" & 0x2 ) >> 1 )) # bit 2 1= off, 0=on ?
+  
+  if [  "$4" -eq 0 ]; then
+    dst=$(( $3 | 2 ))
+  else
+    dst=$(( $3 ))
+  fi
+
+  newPacketBody $CMD_write_system
+  writeUInt8 0    #frequency - only read
+  writeUInt8 "$1"   #sensortype 0=WH24, 1=WH65
+  writeUInt32BE 0 #UTC time - only read
+  writeUInt8 "$2"   #timezone index
+  writeUInt8 "$dst"   #daylight saving - dst
+  sendPacket
+}
+
 function sendRaindata {
-  if ! [[ "$1" =~ ^[0-9]+$ ]] || ! [[ "$2" =~ ^[0-9]+$ ]] || ! [[ "$3" =~ ^[0-9]+$ ]] || ! [[ "$4" =~ ^[0-9]+$ ]]; then
-    echo Raindata has "element(s)" which is not a number
-    return
+ # if ! [[ "$1" =~ ^[0-9]+$ ]] || ! [[ "$2" =~ ^[0-9]+$ ]] || ! [[ "$3" =~ ^[0-9]+$ ]] || ! [[ "$4" =~ ^[0-9]+$ ]]; then
+ if ! isNumber "$1" || ! isNumber "$2" || ! isNumber "$3" || ! isNumber "$4"; then
+    echo Error: Raindata has "element(s)" which is not a number
+    return $ERROR_RAINDATA_NOTSPECIFIED
   fi 
 
   (( DEBUG )) && >&2 echo  rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
@@ -1662,7 +1713,7 @@ function sendCustomized {
 
 function sendSensor
 {
-  local stypeField
+  #local stypeField
   local stype
   local stypeIndex
   
@@ -2041,6 +2092,12 @@ function initSearchPatternForCommand
      SPATTERN=${SPATTERN,,} # to lowercase
 }
 
+
+function paramNotOption
+{
+  [ -z "$1" ] || [ "${1:0:1}" = "-" ]
+}
+
 function processCommand {
 #$1 - field pattern for livedata/sensor id
 
@@ -2077,13 +2134,21 @@ function processCommand {
           ;;
 
         system)
-
-          sendPacket $CMD_read_system
+          
+          if paramNotOption "$1"; then 
+            sendPacket $CMD_read_system
+          else
+            if (( $# < 4 )); then
+              echo >&2 "Error {sensortype} {timezoneindex} {dst} {autotimezone} must be specified"
+            else
+              sendSystem "$1" "$2" "$3" "$4"
+            fi
+          fi
           ;;
 
         ecowitt)
- 
-          if [[ -z "$1" || "$1" =~ ^"-" ]]; then
+
+          if paramNotOption "$1"; then
             sendPacket $CMD_read_ecowitt_interval
           else
            sendEcowittInterval "$1"
@@ -2092,7 +2157,7 @@ function processCommand {
 
         wunderground)
 
-            if [[ -z "$1" || "$1" =~ ^"-" ]]; then
+            if paramNotOption "$1"; then
               sendPacket $CMD_read_wunderground;
             else
               if (( $# < 2 )); then
@@ -2106,7 +2171,7 @@ function processCommand {
 
         wow)
           
-          if [[ -z "$1" || "$1" =~ ^"-" ]]; then
+          if paramNotOption "$1"; then
             sendPacket $CMD_read_wow
           else
             if (( $# < 2 )); then
@@ -2119,7 +2184,7 @@ function processCommand {
 
         weathercloud)
 
-          if [[ -z "$1" || "$1" =~ ^"-" ]]; then
+          if paramNotOption "$1"; then
             sendPacket $CMD_read_weathercloud
           else
                 if (( $# < 2 )); then
@@ -2143,7 +2208,7 @@ function processCommand {
 
         rain)
 
-          if [[ -z "$1" || "$1" =~ ^"-" ]]; then
+          if paramNotOption "$1"; then
             sendPacket $CMD_read_raindata
           else
 
@@ -2194,16 +2259,12 @@ function isNumber
 {
 #https://www.grymoire.com/Unix/Bourne.html#uh-84
   local number
-#   echo "Type in a number"
-#read -r ans
-number=$(expr "$1" : "\([0-9]*\)") # number is extracted when using parentheses
-if [ "$number" != "$1" ]; then
-echo "Not a number"
-elif [ "$number" -eq 0 ]; then
-echo "Nothing was typed"
-else
-echo "$number is a fine number"
-fi
+  number=$(expr "$1" : "\([0-9]*\)") # number is extracted when using parentheses
+  if [ "$number" != "$1" ]; then
+    return 1  
+  else
+    return 0 
+  fi
 }
 
 function getConfigurationIndexFromName
@@ -2365,13 +2426,11 @@ while [[ $# -gt 0 ]]; do
       while read -r K V REST; do
         unset CONFIGURATION_INDEX
         STYPE=$(expr "$K" : "$CONFIGURATION_SENSORFIELD\([0-9]*\)" ) # extracts number part from sensortype_{number}
-        echo STYPE "$STYPE"
         if [ -n "$STYPE" ]; then
-          CONFIGURATION_INDEX=$(( STYPE + CONF_sensortype_startindex )) 
+          CONFIGURATION_INDEX=$(( STYPE + CONF_sensortype_startindex )) # move to sensortype part of CONFIGURATION array
         else
            getConfigurationIndexFromName "$K"
         fi
-        #echo "Restore $K $CONFIGURATION_INDEX"
         if [ -n "$CONFIGURATION_INDEX" ]; then 
            CONFIGURATION["$CONFIGURATION_INDEX"]="$V"
         fi
