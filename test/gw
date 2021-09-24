@@ -307,7 +307,7 @@ CONFIGURATION_SENSORFIELD="sensortype_"
 #mapping from livedata field type/decimal to rename of description (specified in configuration file)
 typeset -a LIVEDATA_FIELDRENAME
 # fieldtypes discovered/parsed in livedata from host
-typeset -a LDFACTIVE 
+typeset -a LDF_DISCOVERED 
 
 #CONNECT ERRORS
 ERROR_CONNECTION=1
@@ -418,7 +418,7 @@ function listLivedataFieldsAndDescription
   IFS=' '
 
   fk="${!LDFIELD[*]}" # !  all keys
-  [ -n "$1" ] && fk="${LDFACTIVE[*]}"
+  [ -n "$1" ] && fk="${LDF_DISCOVERED[*]}"
   
   printf "%4s %-16s %s\n" "type" "name" "description"
   for k in $fk; do
@@ -539,10 +539,11 @@ function printConfiguration {
 
   IFS=':'
   for K in "${!CONFIGURATION_SENSOR[@]}"; do
-      read -r SNAME SDESC DISCARD <<< "${SENSOR_TYPE["$K"]}"
+      read -r SNAME SDESC DISCARD <<< "${SENSOR_TYPE[$K]}"
       decToHex "${CONFIGURATION_SENSOR[$K]}" 
       printf "%-30s %10s %s\n"  "$CONFIGURATION_SENSORFIELD$K" "$VALUE_HEX" "$SDESC" 
   done
+
 }
 
 function readUInt8 {
@@ -690,27 +691,23 @@ function parseLivedata
   local len
   match=0
 
-  #if [ "$1" == "*" ]; then
-  #  SPATTERN='.*'
-  #fi
-  #SPATTERN=${SPATTERN,,} # to lowercase
-
  [[ $DEBUG -eq 1 ]] && >&2 echo parseLivedata "SPATTERN" "$SPATTERN"
 
   IFS=':'
-  unset LDFACTIVE
+  unset LDF_DISCOVERED
 
   len=$((${#PACKET_RX[@]} - 1))
+
   while [ "$RX_POS" -lt $len  ]; do
 
-    #echo START $(date)
+    #date +"%s.%N"
 
     [ $DEBUG -eq 1 ]&& >&2 echo PACKET_RX_HEX "${PACKET_RX_HEX:(( $RX_POS * 2 ))}" RX_POS "$RX_POS" PACKET_RX_LENGTH "${#PACKET_RX[@]}"
 
     readUInt8
     fieldTypeDec=$VALUE_UINT8
 
-    LDFACTIVE+=( "$fieldTypeDec" ) # keep track of discovered fields
+    LDF_DISCOVERED+=( "$fieldTypeDec" ) # keep track of discovered fields
 
     read -r LDFNAME LDFDESC LDFUNIT LDFBYTES LDFSCALE <<< "${LDFIELD[$fieldTypeDec]}"
     
@@ -718,7 +715,7 @@ function parseLivedata
     if [ -n "${LIVEDATA_FIELDRENAME[$fieldTypeDec]}" ]; then #rename sensor description
        LDFDESC_RENAME=${LIVEDATA_FIELDRENAME[$fieldTypeDec]}
     fi
-   
+
     case "$LDFBYTES" in 
 
        1) readUInt8
@@ -735,10 +732,13 @@ function parseLivedata
      
      esac
 
+    
      if [ "$LDFSCALE" -eq 1 ]; then # scale: divide by 10 if neccessary
         convertScale10ToFloat "${LIVEDATA[$fieldTypeDec]}"
         LIVEDATA[$fieldTypeDec]=$VALUE_SCALE10_FLOAT
+
      fi
+
 
    #  if matchSensorField "${LDFNAME}" "${LDFDESC}"  "${LDFDESC_RENAME}"; then   # ^ line starts with, ,,=to lowercase
      #  if [[ ${LDFNAME,,} =~ ^${SPATTERN} || ${LDFDESC,,} =~ ${SPATTERN} || ${LDFDESC_RENAME,,} =~  ${SPATTERN} ]] ; then  # ^ line starts with, ,,=to lowercase
@@ -752,11 +752,14 @@ function parseLivedata
 
         if [ "$LDFUNIT" = "℃" ]; then
             #multibyte character/unicode requires 1 larger width and a space padding for description
-                  printf "%8s %6s %s\n" "${LIVEDATA[$fieldTypeDec]}" "$LDFUNIT" " $LDFDESC"
+                :
+                #  printf "%8s %6s %s\n" "${LIVEDATA[$fieldTypeDec]}" "$LDFUNIT" " $LDFDESC"
         elif [ "$LDFUNIT"  = "°" ]; then
-                  printf "%8s %6s %s\n" "${LIVEDATA[$fieldTypeDec]}" "$LDFUNIT" "$LDFDESC"
+                  :
+                  #printf "%8s %6s %s\n" "${LIVEDATA[$fieldTypeDec]}" "$LDFUNIT" "$LDFDESC"
         else
-                printf "%8s %5s %s\n" "${LIVEDATA[$fieldTypeDec]}" "$LDFUNIT" "$LDFDESC"
+              :
+               # printf "%8s %5s %s\n" "${LIVEDATA[$fieldTypeDec]}" "$LDFUNIT" "$LDFDESC"
         fi 
 
         if [ "$LDFNAME" = 'WINDDIRECTION' ]; then  
@@ -773,12 +776,9 @@ function parseLivedata
 
       fi
 
-     #  echo END $(date)
-
-
   done
 
-  [ $DEBUG -eq 1 ] && >&2 echo active fields "${LDFACTIVE[@]}"
+  [ $DEBUG -eq 1 ] && >&2 echo active fields "${LDF_DISCOVERED[@]}"
 
   if [ "$match" -eq 0 ]; then
   >&2 echo "Error Failed to match '$SPATTERN' in current livedata fields"
@@ -904,6 +904,7 @@ function parseSensor
   
 
 {
+  #set -x
   local match
   local printSensorHeader
   match=0
@@ -924,7 +925,7 @@ function parseSensor
 
               STYPE="$VALUE_UINT8"
 
-              read -r SNAME SDESC SINTERVAL_MIN DISCARD <<< "${SENSOR_TYPE["$STYPE"]}"
+              read -r SNAME SDESC SINTERVAL_MIN DISCARD <<< "${SENSOR_TYPE[$STYPE]}"
               [ -z "$SNAME" ] && [ $DEBUG -eq 1 ] && echo >&2 "Unknown SENSOR_TYPE $STYPE"
 
               readUInt32BE
@@ -998,6 +999,7 @@ function parseSensor
        if [ -n "$SPATTERN" ] && [ $match -ne 1 ]; then
           echo >&2 Error: Failed to find sensor "$SPATTERN"
        fi
+  #set +x
 }
 
 function initTimezones
@@ -1008,7 +1010,7 @@ function initTimezones
 #Based on decompiled /WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/SystemFragment.java
 unset SYSTEM_TIMEZONE
 while read -r line; do
- SYSTEM_TIMEZONE+=( $line )
+ SYSTEM_TIMEZONE+=( "$line" )
  done <<EOF
 (UTC-12:00) International Date Line West
 (UTC-11:00) Samoa
@@ -2466,9 +2468,9 @@ while [ $# -gt 0 ]; do
   case $key in
 
   -b | --backup)
-    sendPacket $CMD_read_mac >/dev/null
+   sendPacket $CMD_read_mac >/dev/null
     sendPacket $CMD_read_version >/dev/null
-    sendPacket $CMD_broadcast $FD_UDP >/dev/null
+   # sendPacket $CMD_broadcast $FD_UDP >/dev/null
     sendPacket $CMD_read_ecowitt_interval >/dev/null
     sendPacket $CMD_read_wunderground >/dev/null
     sendPacket $CMD_read_wow >/dev/null
@@ -2744,7 +2746,7 @@ while [ $# -gt 0 ]; do
 
 done
 
-((${#POSITIONAL[@]})) && echo >&2 Failed to recognize options "${POSITIONAL[@]}"
+[ ${#POSITIONAL[@]} -ge 1 ] && echo >&2 Failed to recognize options "${POSITIONAL[@]}"
 
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
