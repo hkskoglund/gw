@@ -207,31 +207,42 @@ typeset -ir WH55_max_ch=4
 typeset -ir WH43_type=0x16
 typeset -ir WH43_max_ch=4
 
+typeset -ir WH57_type=0x1a
+
+typeset -ir WH34_type=0x1f
+typeset -ir WH34_max_ch=8
+
+typeset -ir WH35_type=0x28
+typeset -ir WH35_max_ch=8
+
+typeset -ir WH45_type=0x27
+
 typeset -a SENSOR_TYPE
 
 #type:description:reportinginterval(s):max reportinterval:detection interval
 SENSOR_TYPE[WH65_type]="WH65:Outdoor Solar Powered 7-in-1 Weather Sensor:16.0:"
 SENSOR_TYPE[WH68_type]="WH68:Solar Powered Anemometer with Light and UV Sensor:16.5:"
 SENSOR_TYPE[WH80_type]="WH80:Wind Speed/Direction, Solar Radiation/Light, Temp/Humidity:4.75:"
-SENSOR_TYPE[WH40_type]="WH40:Self-Emptying Rain Collector Rainfall Sensor:49"
+SENSOR_TYPE[WH40_type]="WH40:Self-Emptying Rain Collector Rainfall Sensor:49.0"
 SENSOR_TYPE[WH32_type]="WH32:Outdoor Temperature and Humidity Sensor:64.0"
+SENSOR_TYPE[WH57_type]="WH57:Lightning Detection Sensor:79.0:"
+SENSOR_TYPE[WH45_type]="WH45:Indoor CO2 PM2.5 PM10 Temperature and Humidity:60.0:600"
+
+
 #sensors with max 8 channels
 typeset -i CH
 CH=1
 while [ "$CH" -le $WH31_max_ch ]; do 
    SENSOR_TYPE[$(( WH31_type + CH - 1 ))]="WH31:Temperature and humidity CH$CH:61.0:"
    SENSOR_TYPE[$(( WH51_type + CH - 1 ))]="WH51:Soil Moisture CH$CH:70.0:"
+   SENSOR_TYPE[$(( WH34_type + CH - 1 ))]="WH34:Soil Temperature Sensor CH$CH:77.0"
+   SENSOR_TYPE[$(( WH35_type + CH - 1 ))]="WH35:Leaf Wetness Sensor for Garden and Farm CH$CH:79.5"
    if [ $CH -le $WH55_max_ch ]; then
       SENSOR_TYPE[$(( WH43_type + CH - 1 ))]="WH43:PM2.5 Air Quality Indoor CH$CH:60.0:600.0"
       SENSOR_TYPE[$(( WH55_type + CH - 1 ))]="WH55:Water Leak CH$CH:60.0::3"
    fi
    CH=$((CH + 1))
 done
-
-#SENSOR_TYPE[0x??]="WH41:PM2.5 Air Quality Sensor Monitor Outdoor:60:600"
-#SENSOR_TYPE[0x??]="WH57:Lightning Detection Sensor:79:"
-#SENSOR_TYPE[0x??]="WH34S:Soil Temperature Sensor:77"
-#SENSOR_TYPE[0x??]="WH35:Leaf Wetness Sensor for Garden and Farm:79.5"
 
 typeset -a LIVEDATA
 
@@ -853,10 +864,8 @@ function parseSensor
 #   29) Read Sensors ID parameter:
 #typedef enum
 # {
-# //eWH24_SENSOR = 0x00,
-# eWH65_SENSOR = 0x00,// 1: BATT low, 0: normal
-# //eWH69_SENSOR,
-# eWH68_SENSOR,// voltage=val*0.02V if <=1.2V BAT is low
+# eWH65_SENSOR = 0x00,// 1: BATT low, 0: normal # //eWH24_SENSOR = 0x00,
+# eWH68_SENSOR,// voltage=val*0.02V if <=1.2V BAT is low   # //eWH69_SENSOR,
 # eWH80_SENSOR,// 0.02V * val(received val) = wh80;
 # eWH40_SENSOR,// 1: BATT low, 0: normal
 # eWH25_SENSOR,// 1: BATT low, 0: normal
@@ -874,15 +883,14 @@ function parseSensor
 # eWH51_SENSORCH3,// 1: BATT low, 0: normal
 # eWH51_SENSORCH4,// 1: BATT low, 0: normal
 # eWH51_SENSORCH5,// 1: BATT low, 0: normal
-## eWH51_SENSORCH6,// 1: BATT low, 0: normal
-#eWH51_SENSORCH7,// 1: BATT low, 0: normal
-#eWH51_SENSORCH8,// 1: BATT low, 0: normal
-#eWH41_SENSORCH1,// level0~5，<=1 for BATT low
-#eWH41_SENSORCH2,// level0~5，<=1 for BATT low
-#eWH41_SENSORCH3,// level0~5，<=1 for BATT low
-#eWH41_SENSORCH4,// level0~5，<=1 for BATT low
-# //-------------
-# eWH57_SENSOR, // level0~5，<=1 for BATT low
+# eWH51_SENSORCH6,// 1: BATT low, 0: normal
+# eWH51_SENSORCH7,// 1: BATT low, 0: normal
+# eWH51_SENSORCH8,// 1: BATT low, 0: normal
+# eWH41_SENSORCH1,// level0~5，<=1 for BATT low
+# eWH41_SENSORCH2,// level0~5，<=1 for BATT low
+# eWH41_SENSORCH3,// level0~5，<=1 for BATT low
+# eWH41_SENSORCH4,// level0~5，<=1 for BATT low
+# eWH57_SENSOR = 26, // level0~5，<=1 for BATT low
 # eWH55_SENSORCH1,// level0~5，<=1 for BATT low
 # eWH55_SENSORCH2,// level0~5，<=1 for BATT low
 # eWH55_SENSORCH3,// level0~5，<=1 for BATT low
@@ -965,7 +973,8 @@ function parseSensor
               if [[ "$SID_STATE" = "enabled" ]]; then # intepret battery levels
 
                   if [[ "$STYPE" -ge $WH43_type ]] && [[ "$STYPE" -lt  $(( WH43_type + WH43_max_ch )) ]] ||
-                     [[ "$STYPE" -ge $WH55_type ]] && [[ "$STYPE" -lt  $(( WH55_type + WH55_max_ch )) ]]; then  #WH43 - PM2.5 indoor, WH41? same ID?
+                     [[ "$STYPE" -ge $WH55_type ]] && [[ "$STYPE" -lt  $(( WH55_type + WH55_max_ch )) ]] ||
+                     [[ "$STYPE" -eq $WH57_type ]]; then  #WH43 - PM2.5 indoor, WH41? same ID?
                   #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/CurdataGwFragment.java l 4575
                     getBatteryLevelState "$SBATTERY"
                   fi
