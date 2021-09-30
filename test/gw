@@ -120,64 +120,7 @@ typeset -ir SYSTEM_SENSOR_TYPE_WH65=1
 typeset -a SYSTEM_TIMEZONE #initTimezones
 
 #sensors
-#typedef enum
-#{
-# //eWH24_SENSOR = 0x00,
-# eWH65_SENSOR = 0x00,
-# //eWH69_SENSOR,
-# eWH68_SENSOR,
-# eWH80_SENSOR, //80H（
-# eWH40_SENSOR,
-# eWH25_SENSOR,
-# eWH26_SENSOR,
-# eWH31_SENSORCH1, // 6
-# eWH31_SENSORCH2,
-# eWH31_SENSORCH3,
-# eWH31_SENSORCH4,
-# eWH31_SENSORCH5,
-# eWH31_SENSORCH6,
-# eWH31_SENSORCH7,
-# eWH31_SENSORCH8,
-# eWH51_SENSORCH1, // 14 - 0x0e
-# eWH51_SENSORCH2,
-# eWH51_SENSORCH3,
-# eWH51_SENSORCH4,
-# eWH51_SENSORCH5,
-# eWH51_SENSORCH6,
-# eWH51_SENSORCH7, 
-# eWH51_SENSORCH8, // 22
-# eWH41_SENSORCH1, // 23 - 0x17
-#eWH41_SENSORCH2,
-# eWH41_SENSORCH3,
-# eWH41_SENSORCH4,
-# //-------------
-# eWH57_SENSOR,    // 26? - 0x1a - lightning detector
-# eWH55_SENSORCH1, // 27  - 0x1b - water leak ch1
-# eWH55_SENSORCH2,
-# eWH55_SENSORCH3,
-#eWH55_SENSORCH4,
-# eWH34_SENSORCH1 = 31,
-# eWH34_SENSORCH2 = 32,
-# eWH34_SENSORCH3 = 33,
-# eWH34_SENSORCH4 = 34,
-# eWH34_SENSORCH5 = 35,
-# eWH34_SENSORCH6 = 36,
-# eWH34_SENSORCH7 = 37,
-#eWH34_SENSORCH8 = 38,
-#eWH45_SENSOR = 39,
-#// GW1000 Firmware V1.5.6 之后加入的
-#eWH35_SENSORCH1 = 40,
-#eWH35_SENSORCH2 = 41,
-#eWH35_SENSORCH3 = 42,
-#eWH35_SENSORCH4 = 43,
-#eWH35_SENSORCH5 = 44,
-#eWH35_SENSORCH6 = 45,
-#eWH35_SENSORCH7 = 46,
-#eWH35_SENSORCH8 = 47,
-# // the SENSOR_TYPE sequence can not be altered!!
-#//-------------
-# eMAX_SENSOR
-#}SENSOR_IDT
+
 #https://www.wxforum.net/index.php?topic=40730.0
 SENSOR_SEARCH=$(( 0xffffffff ))
 SENSOR_DISABLE=$(( 0xfffffffe ))
@@ -265,7 +208,7 @@ LDFIELD[0x10]="RAINDAILY:rain daily:mm:2:1"
 LDFIELD[0x11]="RAINWEEK:rain week:mm:2:1"
 LDFIELD[0x12]="RAINMONTH:rain month:mm:4:1"
 LDFIELD[0x13]="RAINYEAR:rain year:mm:4:1"
-LDFIELD[0x15]="LIGHT:light:lx:4:1" # lux=lumen/m2]
+LDFIELD[0x15]="LIGHT:light:lx:4:1" # lux=lumen/m2
 LDFIELD[0x16]="UV:UV radiation:µW/m2:2:1"
 LDFIELD[0x17]="UVI:UV index (0-15)::1:0"
 
@@ -345,7 +288,6 @@ typeset -a CONFIGURATION_SENSOR
 #  unset ASSOCIATIVE_ARRAY
 #fi
 
-#CONF_$CONFIGURATION_SENSORFIELD$STYPE]
 typeset -ir CONF_broadcast_ip=0
 typeset -ir CONF_broadcast_mac=1
 typeset -ir CONF_broadcast_port=2
@@ -436,26 +378,34 @@ CONFIGURATION_NAME[CONF_wunderground_password]="wunderground_password"
 function listLivedataFieldsAndDescription
 # $1 - if non-zero list only active fields found during parsing of livedata, else list all known fields
 {
-  local fn
-  local fd
-  local fk
+  typeset fn #using typeset instead of local which isnt available in ksh https://stackoverflow.com/questions/12000949/scope-of-variables-in-ksh
+  typeset fd
+  typeset fk
   
   IFS=' '
-
-  fk="${!LDFIELD[*]}" # !  all keys
-  [ -n "$1" ] && fk="${LDF_DISCOVERED[*]}"
   
+  if [ -n "$1" ]; then
+   fk="${LDF_DISCOVERED[*]}" # works for zsh
+  elif [[ -z "$ZSH_VERSION" ]]; then
+   fk=${!LDFIELD[*]} # !  all keys, except zsh which expands all values
+  fi
+
   printf "%4s %-16s %s\n" "type" "name" "description"
+
   for k in $fk; do
     IFS=':'
-    read -r fn fd DISCARD <<< "${LDFIELD[$k]}"  
+   if [[ -n "$1" || -z "$ZSH_VERSION" ]]; then
+      read -r fn fd DISCARD <<< "${LDFIELD[$k]}"
+   elif [[ -n "$ZSH_VERSION" ]]; then
+      read -r fn fd DISCARD <<< "$k"
+   fi   
     printf "%4d %-16s %s\n" "$k" "$fn" "$fd"
   done
 }
 
 function connect {
   # Info  from https://www.xmodulo.com/tcp-udp-socket-bash-shell.html
-  local host
+  typeset host
   host="$1"
 
   if [ -v FD_TCP ] || [ -v FD_UDP ]; then # True if the shell variable varname is set (has been assigned a value). - man bash
@@ -507,9 +457,9 @@ function disconnect {
 }
 
 function parseResultPacket {
-  local cmd
+  typeset cmd
   cmd="0x${PACKET_RX[2]}"
-  local result
+  typeset result
 
   result=$(( 0x${PACKET_RX[4]} ))
   echo -n "${CMD_NAME[cmd]}" "$result" >&2
@@ -601,9 +551,9 @@ function readUInt32BE {
 }
 
 function readString {
-  local len
+  typeset len
   len=0x${PACKET_RX[$RX_POS]}
-  local n
+  typeset n
   n=1
   #VALUE_STRING="${PACKET_RX_OD_ASCII:(($RX_POS + 1)):len}"
   unset VALUE_STRING
@@ -618,11 +568,11 @@ function readString {
 }
 
 function printRain {
-  local rr
-  local rd
-  local rw
-  local rm
-  local ry
+  typeset rr
+  typeset rd
+  typeset rw
+  typeset rm
+  typeset ry
   convertScale10ToFloat "${CONFIGURATION[$CONF_rainrate]}"
   rr=$VALUE_SCALE10_FLOAT
   convertScale10ToFloat "${CONFIGURATION[$CONF_raindaily]}"
@@ -692,7 +642,7 @@ function getBatteryLevelState
       SBATTERY_STATE="dc"; # for example PM 2.5 indoor
     else
       SBATTERY_STATE=""
-      local l
+      typeset l
       l=1
       while [ "$l" -le "$1" ]; do
           SBATTERY_STATE+="+";
@@ -747,9 +697,9 @@ function parseLivedata
 # $1 -pattern to match
 #https://unix.stackexchange.com/questions/306111/what-is-the-difference-between-the-bash-operators-vs-vs-vs [[ [ ((
 {
-  local fieldTypeDec
-  local match
-  local len
+  typeset fieldTypeDec
+  typeset match
+  typeset len
 
  [ $DEBUG -eq 1 ] && >&2 echo parseLivedata "SPATTERN" "$SPATTERN"
 
@@ -757,6 +707,7 @@ function parseLivedata
   unset LDF_DISCOVERED
 
   len=$((${#PACKET_RX[@]} - 1))
+  match=0
 
   #date +"%s.%N"
 
@@ -814,7 +765,7 @@ function parseLivedata
   done
 
   [ $DEBUG -eq 1 ] && >&2 echo Discovered fields in packet "${LDF_DISCOVERED[@]}"
-
+  
   if [ "$match" -eq 0 ]; then
   >&2 echo "Error Failed to match '$SPATTERN' in current livedata fields"
      listLivedataFieldsAndDescription 1 # 1 - list only active/discovered fields in parsed data
@@ -858,68 +809,10 @@ function toLowercase
 }
 
 function parseSensor
- # echo "$PACKET_RX_HEX"
-   # for s in "${!SENSOR_TYPE[@]}"; do # ! - keys in SENSOR_TYPE
-   #   echo "$s" "${SENSOR_TYPE[$s]}"
-   # done
-
-#   29) Read Sensors ID parameter:
-#typedef enum
-# {
-# eWH65_SENSOR = 0x00,// 1: BATT low, 0: normal # //eWH24_SENSOR = 0x00,
-# eWH68_SENSOR,// voltage=val*0.02V if <=1.2V BAT is low   # //eWH69_SENSOR,
-# eWH80_SENSOR,// 0.02V * val(received val) = wh80;
-# eWH40_SENSOR,// 1: BATT low, 0: normal
-# eWH25_SENSOR,// 1: BATT low, 0: normal
-# eWH26_SENSOR,// 1: BATT low, 0: normal
-# eWH31_SENSORCH1,// 1: BATT low, 0: normal
-# eWH31_SENSORCH2,// 1: BATT low, 0: normal
-# eWH31_SENSORCH3,// 1: BATT low, 0: normal
-# eWH31_SENSORCH4,// 1: BATT low, 0: normal
-# eWH31_SENSORCH5,// 1: BATT low, 0: normal
-# eWH31_SENSORCH6,// 1: BATT low, 0: normal
-# eWH31_SENSORCH7,// 1: BATT low, 0: normal
-# eWH31_SENSORCH8,// 1: BATT low, 0: normal
-# eWH51_SENSORCH1,// 1: BATT low, 0: normal
-# eWH51_SENSORCH2,// 1: BATT low, 0: normal
-# eWH51_SENSORCH3,// 1: BATT low, 0: normal
-# eWH51_SENSORCH4,// 1: BATT low, 0: normal
-# eWH51_SENSORCH5,// 1: BATT low, 0: normal
-# eWH51_SENSORCH6,// 1: BATT low, 0: normal
-# eWH51_SENSORCH7,// 1: BATT low, 0: normal
-# eWH51_SENSORCH8,// 1: BATT low, 0: normal
-# eWH41_SENSORCH1,// level0~5，<=1 for BATT low
-# eWH41_SENSORCH2,// level0~5，<=1 for BATT low
-# eWH41_SENSORCH3,// level0~5，<=1 for BATT low
-# eWH41_SENSORCH4,// level0~5，<=1 for BATT low
-# eWH57_SENSOR = 26, // level0~5，<=1 for BATT low
-# eWH55_SENSORCH1,// level0~5，<=1 for BATT low
-# eWH55_SENSORCH2,// level0~5，<=1 for BATT low
-# eWH55_SENSORCH3,// level0~5，<=1 for BATT low
-# eWH55_SENSORCH4,// level0~5，<=1 for BATT low
-# eWH34_SENSORCH1 = 31,// v=val*0.02V if v<=1.2V BATT low
-# eWH34_SENSORCH2 = 32,// v=val*0.02V if v<=1.2V BATT low
-# eWH34_SENSORCH3 = 33,// v=val*0.02V if v<=1.2V BATT low
-# eWH34_SENSORCH4 = 34,// v=val*0.02V if v<=1.2V BATT low
-# eWH34_SENSORCH5 = 35,// v=val*0.02V if v<=1.2V BATT low
-# eWH34_SENSORCH6 = 36,// v=val*0.02V if v<=1.2V BATT low
-# eWH34_SENSORCH7 = 37,// v=val*0.02V if v<=1.2V BATT low
-# eWH34_SENSORCH8 = 38,// v=val*0.02V if v<=1.2V BATT low
-# eWH45_SENSOR = 39,// 0~5
-# eWH35_SENSORCH1 = 40,//电压=val*0.02V 当<=1.2V 时显示低电压
-# eWH35_SENSORCH2 = 41,//电压=val*0.02V 当<=1.2V 时显示低电压
-# eWH35_SENSORCH3 = 42,//电压=val*0.02V 当<=1.2V 时显示低电压
-# eWH35_SENSORCH4 = 43,//电压=val*0.02V 当<=1.2V 时显示低电压
-# eWH35_SENSORCH5 = 44,//电压=val*0.02V 当<=1.2V 时显示低电压
-# eWH35_SENSORCH6 = 45,//电压=val*0.02V 当<=1.2V 时显示低电压
-# eWH35_SENSORCH7 = 46,//电压=val*0.02V 当<=1.2V 时显示低电压
-# eWH35_SENSORCH8 = 47,//电压=val*0.02V 当<=1.2V 时显示低电压
-  
-
 {
-  local match # flag when pattern matches fields
-  local printSensorHeaderFlag
-  local n
+  typeset match # flag when pattern matches fields
+  typeset printSensorHeaderFlag
+  typeset n
   unset CONFIGURATION_SENSOR_DISCOVER
   unset CONFIGURATION_SENSOR_MATCH # keeps track of sensors matching search pattern
   n=0
@@ -936,7 +829,7 @@ function parseSensor
     
        while [ "$RX_POS" -lt $(( ${#PACKET_RX[@]} - 1 )) ]; do
             
-            local RX_START_POS
+            typeset RX_START_POS
             RX_START_POS=$RX_POS # for listing entire record as hex
 
               readUInt8
@@ -1163,7 +1056,7 @@ EOF
 
 function printTimezones
 {
-  local n
+  typeset n
   n=0
   printf "%3s %s\n" "tzi" "timezone" #tzi timezone index
   for tz in "${SYSTEM_TIMEZONE[@]}"; do
@@ -1376,8 +1269,8 @@ function parsePacket {
     CONFIGURATION[$CONF_broadcast_ip]=$(printf "%u.%u.%u.%u" 0x"${PACKET_RX[11]}" 0x"${PACKET_RX[12]}" 0x"${PACKET_RX[13]}" 0x"${PACKET_RX[14]}" )
     
     RX_POS=17
-    local ssid
-    local version
+    typeset ssid
+    typeset version
     #        IFS=' '; read -r ssid version <<< "${PACKET_RX_OD[1]:(( $pos + 1)):0x${PACKET_RX[$pos]}}" # ssid appends space+version
     readString
     IFS=' '
@@ -1449,7 +1342,7 @@ function newPacketBody {
 function printPacketBody
 {
   echo -------------------------- PACKET_BODY_LENGTH "${#PACKET_BODY[@]}"
-  local n
+  typeset n
   n=0
   while [ "$n" -lt ${#PACKET_BODY[@]} ]; do
      printf "%d %x\n" "$n" "${PACKET_BODY[$n]}"
@@ -1457,9 +1350,9 @@ function printPacketBody
   done
 }
 function createPacketTX {
-  local packetLengthLSB
-  local packetLengthMSB
-  local n
+  typeset packetLengthLSB
+  typeset packetLengthMSB
+  typeset n
 
 
   #Update packet length, either 1 or 2 bytes
@@ -1505,7 +1398,7 @@ function createPacketTX {
 }
 
 function readResponseCat {
-  local timeoutCat
+  typeset timeoutCat
   timeoutCat=0.025 # Wireshark [Time delta from previous captured frame: 0.013166760 seconds]
   #   [ $DEBUG -eq 1 ] && timeoutOptions='-v'
   # cat inside while (true) { continue read }
@@ -1518,7 +1411,7 @@ function readResponseCat {
 }
 
 function readResponseDD {
-  local dd_result
+  typeset dd_result
   [ $DEBUG -eq 1 ] && unset "DEBUG_OPTIONS_dd"
   # shellcheck disable=SC2086
   timeout 0.5 dd bs=1024 count=1 ${DEBUG_OPTIONS_dd} <&"$FD" >$FILENAME_rx # timeout request, for example EasyWeather doesnt respond to rain command
@@ -1545,7 +1438,7 @@ function readHexASCII {
 
 function convert_od_hexStringToArray 
 {
-  local hexCode
+  typeset hexCode
  IFS=' '
  unset PACKET_RX
  for hexCode in $1; do
@@ -1561,10 +1454,10 @@ function sendPacket
 
 function sendPacketnc
 {
-  local ncUDPOpt 
-  local ncIdle
-  local port
-  local ncStatus
+  typeset ncUDPOpt 
+  typeset ncIdle
+  typeset port
+  typeset ncStatus
 
   #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
   if [ $# -ge 1 ]; then
@@ -1623,7 +1516,7 @@ function sendPacketnc
 #including checksum byte
 function sendPacketdd {
   #takes two arguments $1 - command, $2 is udp broadcast request
-  local FD
+  typeset FD
   FD=$FD_TCP # default TCP command port
 
   [ -n "$2" ] && FD="$2" #may also use UDP for broadcast (ssid etc.)
@@ -1667,13 +1560,13 @@ function sendPacketdd {
 }
 
 function discovery {
-  local TIMEOUT_SCAN
+  typeset TIMEOUT_SCAN
   TIMEOUT_SCAN=2 #seconds
-  local rxscan
-  local rxscan_sorted
-  local socat_discovery_server_pid
-  local n
-  local hex_escape
+  typeset rxscan
+  typeset rxscan_sorted
+  typeset socat_discovery_server_pid
+  typeset n
+  typeset hex_escape
 
   [ $DEBUG -eq 0 ] && unset "DEBUG_OPTIONS_socat"
 
@@ -1726,7 +1619,7 @@ function discovery {
 }
 
 function checksum {
-  local n
+  typeset n
   #caller 0
 
   CHECKSUM=0
@@ -1745,7 +1638,7 @@ function checksum {
 }
 
 function writeString {
-  local n
+  typeset n
 
   [ $DEBUG -eq 1 ] && echo >&2 "${FUNCNAME[0]} $1 len ${#1}"
   decToHex ${#1}
@@ -1770,7 +1663,7 @@ function writeUInt8 {
 }
 
 function writeUInt {
-  local hex
+  typeset hex
 
   case $1 in
       
@@ -1824,7 +1717,7 @@ function newPathPacket {
 function sendSystem
 {
  
-  local dst
+  typeset dst
   dst=0
 
   if ! isNumber "$1" || [ "$1" -gt 1 ]; then
@@ -1948,11 +1841,11 @@ function sendSensor
 }
 
 function updateCustomized {
-  local needUpdate
-  local key_value
-  local value
-  local key
-  local n
+  typeset needUpdate
+  typeset key_value
+  typeset value
+  typeset key
+  typeset n
 
   newPacketBody $CMD_read_path
   sendPacket
@@ -2076,8 +1969,8 @@ function updateCustomized {
 }
 
 function convertScale10ToFloat {
-  local int
-  local frac
+  typeset int
+  typeset frac
 
   if [ "$1" -lt  10 ]; then
     #printf -v VALUE_SCALE10_FLOAT "%s" "0.$1" 2>/dev/null ||
@@ -2143,13 +2036,13 @@ function showRainInfoMessage {
 function runRainNotification { 
   # $1 - number of seconds between each rain probe
   # $2 - show start/stop messages only (1 on, 0 off)
-  local rr
-  local rd
-  local rainInterval # raining continously for "$1" seconds
-  local rainDuration # minutes raining
-  local simulation
-  local showStartStopEventOnly
-  local rainTimeout
+  typeset rr
+  typeset rd
+  typeset rainInterval # raining continously for "$1" seconds
+  typeset rainDuration # minutes raining
+  typeset simulation
+  typeset showStartStopEventOnly
+  typeset rainTimeout
   rainTimeout=$1
   showStartStopEventOnly=$2
 
@@ -2195,7 +2088,7 @@ function runRainNotification {
 function updateSensorIdRange
 #$1 - search or disable
 {
-  local r
+  typeset r
   r=$STYPE_MIN
   while [ "$r" -le "$STYPE_MAX" ]; do 
     #    for (( r=STYPE_MIN; r<= STYPE_MAX; r++ )); do 
@@ -2216,7 +2109,7 @@ function updateSensorId
 
 function writeSensorId
 {
-  local type
+  typeset type
   #debug : WSVIEW sensor overview is updated periodically to reflect current state
 
   newPacketBody $CMD_write_sensor_id
@@ -2233,19 +2126,19 @@ function writeSensorId
 }
 
 function connectGW {
-  local lan_mac
-  local lan_mac_lc #lowercase
-  local ap_mac
-  local ap_all_scan
-  local ap_scan
-  local ap_scan_result
-  local connect_result
-  local connect_str
-  local connect_attempt
-  local connect_attempt_MAX
-  local connected
-  local timeout
-  local bssid_pattern
+  typeset lan_mac
+  typeset lan_mac_lc #lowercase
+  typeset ap_mac
+  typeset ap_all_scan
+  typeset ap_scan
+  typeset ap_scan_result
+  typeset connect_result
+  typeset connect_str
+  typeset connect_attempt
+  typeset connect_attempt_MAX
+  typeset connected
+  typeset timeout
+  typeset bssid_pattern
 
   timeout=5
   connected=1
@@ -2489,7 +2382,7 @@ function processCommand {
 function isNumber
 {
 #https://www.grymoire.com/Unix/Bourne.html#uh-84
-  local number
+  typeset number
   number=$(expr "$1" : "\([0-9]*\)") # number is extracted when using parentheses
   if [ "$number" != "$1" ]; then
     return 1  
@@ -2512,12 +2405,6 @@ function getConfigurationIndexFromName
     fi
    i=$((i + 1))
   done
-}
-
-function local
-#just ignore local for ksh
-{
-  :
 }
 
 #read -r -u 0 -t 0 STDIN
