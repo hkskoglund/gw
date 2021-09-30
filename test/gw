@@ -3,7 +3,7 @@
 #!/usr/bin/zsh
 #setopt KSH_ZERO_SUBSCRIPT 2>/dev/null
 emulate ksh 2>/dev/null # for zsh
-# Utility for administration of GW-1000 configuration
+# Utility for configuration of GW-1000
 # example ./gw -s
 # scan for devices
 # example ./gw -h 10.42.0.180 -c mac
@@ -16,7 +16,7 @@ emulate ksh 2>/dev/null # for zsh
 #echo PID "$$"
 #read -r -p "DEBUG - press key to continue"
 
-SHELLIFS=$IFS
+#SHELLIFS=$IFS
 
 #https://stackoverflow.com/questions/29968096/get-android-os-version-of-device-connected-via-adb
 #testing purpose
@@ -217,6 +217,8 @@ typeset -ir WH35_max_ch=8
 
 typeset -ir WH45_type=0x27
 
+typeset -ir SENSORTYPE_MAX=47
+
 typeset -a SENSOR_TYPE
 
 #type:description:reportinginterval(s):max reportinterval:detection interval
@@ -227,7 +229,6 @@ SENSOR_TYPE[WH40_type]="WH40:Self-Emptying Rain Collector Rainfall Sensor:49.0"
 SENSOR_TYPE[WH32_type]="WH32:Outdoor Temperature and Humidity Sensor:64.0"
 SENSOR_TYPE[WH57_type]="WH57:Lightning Detection Sensor:79.0:"
 SENSOR_TYPE[WH45_type]="WH45:Indoor CO2 PM2.5 PM10 Temperature and Humidity:60.0:600"
-
 
 #sensors with max 8 channels
 typeset -i CH
@@ -339,9 +340,10 @@ typeset -a CONFIGURATION
 #CONFIGURATION_DISCOVER array contains indexes to CONFIGURAITION with values
 typeset -a CONFIGURATION_SENSOR
 #CONFIGURATION_SENSOR_TYPE array contains indexes to CONFIGURATION_SENSOR with values
-if typeset -A ASSOCIATIVE_ARRAY 2>/dev/null; then # is easier to use, otherwise two arrays
-  SUPPORT_ASSOCIATIVE_ARRAY=1
-fi
+#if typeset -A ASSOCIATIVE_ARRAY 2>/dev/null; then # is easier to use, otherwise two arrays
+#  SUPPORT_ASSOCIATIVE_ARRAY=1
+#  unset ASSOCIATIVE_ARRAY
+#fi
 
 #CONF_$CONFIGURATION_SENSORFIELD$STYPE]
 typeset -ir CONF_broadcast_ip=0
@@ -822,7 +824,7 @@ function parseLivedata
 
 function printSensorHeader
 {
-   printf "%5s %5s %8s %10s %7s %13s %6s %12s %s\n" type name id id_state battery battery_state signal interval_min description
+   printf "%4s %5s %8s %10s %7s %13s %6s %12s %s\n" type name id id_state battery battery_state signal interval_min description
 }
 
 function printSensorLine
@@ -830,10 +832,10 @@ function printSensorLine
   case "$KSH_VERSION" in 
    *MIRBSD*)
       typeset -iU SID_PRINT=$SID #force usigned int for mirbsd korn shell/android to get proper formatting 
-       printf "%5s %5s %8x %10s %7s %13s %6s %12s %s\n" "$STYPE" "$SNAME" "$SID_PRINT" "$SID_STATE" "$SBATTERY" "$SBATTERY_STATE" "$SSIGNAL" "$SINTERVAL_MIN" "$SDESC"
+       printf "%4s %5s %8x %10s %7s %13s %6s %12s %s\n" "$STYPE" "$SNAME" "$SID_PRINT" "$SID_STATE" "$SBATTERY" "$SBATTERY_STATE" "$SSIGNAL" "$SINTERVAL_MIN" "$SDESC"
        ;;
   *)
-    printf "%5s %5s %8x %10s %7s %13s %6s %12s %s\n" "$STYPE" "$SNAME" "$SID" "$SID_STATE" "$SBATTERY" "$SBATTERY_STATE" "$SSIGNAL" "$SINTERVAL_MIN" "$SDESC"
+    printf "%4s %5s %8x %10s %7s %13s %6s %12s %s\n" "$STYPE" "$SNAME" "$SID" "$SID_STATE" "$SBATTERY" "$SBATTERY_STATE" "$SSIGNAL" "$SINTERVAL_MIN" "$SDESC"
     ;;
   esac
 }
@@ -940,7 +942,7 @@ function parseSensor
               readUInt8
 
               STYPE=$VALUE_UINT8
-
+    # shellcheck disable=SC2034
               read -r SNAME SDESC SINTERVAL_MIN DISCARD <<< "${SENSOR_TYPE[STYPE]}"
               [ -z "$SNAME" ] && [ $DEBUG -eq 1 ] && echo >&2 "Unknown SENSOR_TYPE $STYPE"
 
@@ -974,7 +976,8 @@ function parseSensor
 
                   if [[ "$STYPE" -ge $WH43_type ]] && [[ "$STYPE" -lt  $(( WH43_type + WH43_max_ch )) ]] ||
                      [[ "$STYPE" -ge $WH55_type ]] && [[ "$STYPE" -lt  $(( WH55_type + WH55_max_ch )) ]] ||
-                     [[ "$STYPE" -eq $WH57_type ]]; then  #WH43 - PM2.5 indoor, WH41? same ID?
+                     [[ "$STYPE" -eq $WH57_type ]] ||
+                     [[ "$STYPE" -eq $WH45_type ]]; then  #WH43 - PM2.5 indoor, WH41? same ID?
                   #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/CurdataGwFragment.java l 4575
                     getBatteryLevelState "$SBATTERY"
                   fi
@@ -1235,10 +1238,12 @@ function parsePacket {
 
      if [[ "${CONFIGURATION[$CONF_system_sensor_type]}" -eq $SYSTEM_SENSOR_TYPE_WH24 ]]; then
        CONFIGURATION[$CONF_system_sensor_type_state]="WH24"
+       SENSOR_TYPE[WH24_type]="WH24:Outdoor Weather Sensor:16.0:" # overwrite default WH65_type=0
      elif [[  "${CONFIGURATION[$CONF_system_sensor_type]}" -eq $SYSTEM_SENSOR_TYPE_WH65 ]]; then
        CONFIGURATION[$CONF_system_sensor_type_state]="WH65"
       
      fi
+
      echo System type "${CONFIGURATION[$CONF_system_sensor_type]}" "${CONFIGURATION[$CONF_system_sensor_type_state]}"
 
      readUInt32BE
@@ -1611,7 +1616,7 @@ function sendPacketnc
         fi
 
   else
-   >&2 echo  "$(date)" Error nc failed to receive response or empty response for command "${CMD_NAME["$PACKET_TX_COMMAND"]}", nc error code $ncStatus, "$FILENAME_rx"
+   >&2 echo Error nc failed to receive response or empty response for command "${CMD_NAME["$PACKET_TX_COMMAND"]}", nc error code $ncStatus, "$FILENAME_rx"
   fi
 }
 
@@ -1646,7 +1651,7 @@ function sendPacketdd {
 
       if readResponseDD; then #readResponseCat
 
-        PACKET_TIMESTAMP=$(date)
+       # PACKET_TIMESTAMP=$(date)
         readHexASCII "$FILENAME_rx"
 
         if [ ${#PACKET_RX[@]} -eq 0 ]; then
@@ -2187,6 +2192,18 @@ function runRainNotification {
   done
 }
 
+function updateSensorIdRange
+#$1 - search or disable
+{
+  local r
+  r=$STYPE_MIN
+  while [ "$r" -le "$STYPE_MAX" ]; do 
+    #    for (( r=STYPE_MIN; r<= STYPE_MAX; r++ )); do 
+            updateSensorId "$r" "$1"
+            r=$(( r + 1))
+  done
+}
+
 function updateSensorId
 #$1 - STYPE sensor type
 #$2 - SID sensor id
@@ -2202,21 +2219,17 @@ function writeSensorId
   local type
   #debug : WSVIEW sensor overview is updated periodically to reflect current state
 
-  if [ ${#CONFIGURATION_SENSOR_UPDATE[@]} -gt 0 ]; then
+  newPacketBody $CMD_write_sensor_id
 
-        newPacketBody $CMD_write_sensor_id
+  for type in "${CONFIGURATION_SENSOR_UPDATE[@]}"; do
+  
+    writeUInt8 "$type"                  # 1 byte packet length? (255-3)/5 bytes pr field = 50 sensor types max
+    writeUInt32BE "${CONFIGURATION_SENSOR[$type]}"
 
-        for type in "${CONFIGURATION_SENSOR_UPDATE[@]}"; do
-        
-          writeUInt8 "$type"                  # 1 byte packet length? (255-3)/5 bytes pr field = 50 sensor types max
-          writeUInt32BE "${CONFIGURATION_SENSOR[$type]}"
+    [ $DEBUG -eq 1 ] && >&2 printf "Update sensor type %3d id %8x\n" "$type" "${CONFIGURATION_SENSOR[$type]}"
+  done
 
-          [ $DEBUG -eq 1 ] && >&2 printf "Update sensor type %3d id %8x\n" "$type" "${CONFIGURATION_SENSOR[$type]}"
-        done
-
-        sendPacket
-  fi
-
+  sendPacket
 }
 
 function connectGW {
@@ -2608,13 +2621,8 @@ while [ $# -gt 0 ]; do
 
     #sendPacket "$CMD_read_mac" >/dev/null
     sendPacket "$CMD_read_version" >/dev/null
-
     sendPacket "$CMD_read_system" >/dev/null 2>/dev/null # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
     
-    if [ "${CONFIGURATION[$CONF_system_sensor_type]}" -eq "$SYSTEM_SENSOR_TYPE_WH24" ]; then
-      SENSOR_TYPE[WH24_type]="WH24:Outdoor Weather Sensor:16.0:"
-    fi
-
     >&2  printf "%s %s\n\n" "${CONFIGURATION[$CONF_version]}" "${CONFIGURATION[$CONF_system_utc_state]}" 
 
     shift 2
@@ -2707,7 +2715,7 @@ while [ $# -gt 0 ]; do
                         else
                           arrayOption='-A'
                         fi
-
+#shellcheck disable=2229
                         read -r $arrayOption SENSOR_MANAGEMENT  <<< "$2" 
 
                         s_disable="disable"
@@ -2716,89 +2724,97 @@ while [ $# -gt 0 ]; do
 
                         while [ "$n" -lt ${#SENSOR_MANAGEMENT[@]} ];  do
 
-                                IFS='='
-                                read -r STYPE SID <<< "${SENSOR_MANAGEMENT[$n]}" # {st1-stn}=search|disable|hexid (for example 1-10=search)
-                                
-                                IFS='-'
-                                read -r STYPE_MIN STYPE_MAX <<< "$STYPE" 
-                                
-                                #https://stackoverflow.com/questions/806906/how-do-i-test-if-a-variable-is-a-number-in-bash/806923
-                                ! isNumber  "$STYPE_MIN"  && >&2 echo "$STYPE_MIN is not a sensor type/number"  && continue;
-                                [ -n "$STYPE_MAX" ] && ! isNumber "$STYPE_MAX" && >&2 echo "$STYPE_MAX is not a sensor type/number"  && continue;
-                                
-                                [ -z "$STYPE_MAX" ] && STYPE_MAX=$STYPE_MIN
+                              IFS='='
+                              read -r STYPE SID <<< "${SENSOR_MANAGEMENT[$n]}" # {st1-stn}=search|disable|hexid (for example 1-10=search)
 
-                                 [[ $DEBUG -eq  1 ]] &&  >&2 echo Parsing expression $n "${SENSOR_MANAGEMENT[$n]}" STYPE "$STYPE" SID "$SID"
-
-                                toLowercase "$SID"
-                                SID=$lowercase
-                                s_search=${s_search:0:${#SID}}
-                                [[ ${#SID} -gt 1 ]] && s_disable=${s_disable:0:${#SID}} # shrink search pattern for case pattern matching, but not single d hex
-
-                                case $SID in
-                                
-                                    "$s_search")
-                                              
-                                                        r=$STYPE_MIN
-                                                        while [ "$r" -le "$STYPE_MAX" ]; do 
-                                                          #    for (( r=STYPE_MIN; r<= STYPE_MAX; r++ )); do 
-                                                                  updateSensorId "$r" "$SENSOR_SEARCH_STRING"
-                                                                  r=$(( r + 1))
-                                                        done
-                                                      ;;
-
-                                  "$s_disable")
-                                                        r=$STYPE_MIN
-                                                        while [ "$r" -le "$STYPE_MAX" ]; do 
-                                                            #   for (( r=STYPE_MIN; r<= STYPE_MAX; r++ )); do 
-                                                                      updateSensorId "$r" "$SENSOR_DISABLE_STRING"
-                                                                      r=$(( r + 1 ))
-                                                        done
-                                                        set +x
-                                                      ;;
-                                  
-                                            *)
-                                                  r=$STYPE_MIN
-                                                  if [[ $r -eq $STYPE_MAX ]]; then 
-                                                        if [[ -n $BASH_VERSION || -n $ZSH_VERSION ]]; then 
-                                                                  #extended regular expression ^ -start of line $-end of line - {1,8} iterator/quantifier
-                                                            eval 'if [[ $SID =~ ^[a-fA-F0-9]{1,8}$ ]]; then 
-                                                                            updateSensorId "$r" "$SID" 
-                                                                  else
-                                                                          >&2 echo "Error unknown or invalid sensor id $SID, use disable/search/hexid"
-                                                                  fi'
-                                                            #use eval to avoid syntax error in mirbsd korn shell/android
-                                                        elif [[ $KSH_VERSION == Version* ]]; then
-                                                           eval 'if [[ $SID == {1,8}([a-fA-F0-9]) ]]; then
-                                                                            updateSensorId "$r" "$SID" 
-                                                                  else
-                                                                          >&2 echo "Error unknown or invalid sensor id $SID, use disable/search/hexid"
-                                                                 fi'
-                                                          #http://www.mirbsd.org/htman/i386/man1/mksh.htm
-                                                        elif [[ $KSH_VERSION == *MIRBSD* ]]; then #android shell
-                                                            eval 'if [[ $SID == +([a-f]|[A-F]|[0-9]) && ${#SID} -le 8 ]]; then 
-                                                                            updateSensorId "$r" "$SID" 
-                                                                  else
-                                                                     >&2 echo "Error unknown or invalid sensor id $SID, use disable/search/hexid"
-                                                                  fi'
-                                                        elif echo "$SID" | grep -E -q "^[a-fA-F0-9]{1,8}$"; then  
-                                                                   updateSensorId "$r" "$SID"
-                                                        else
-                                                            echo >&2 "Error shell not supported, cannot set $r to $SID"
-                                                        fi
-                                                         r=$(( r + 1 ))
-                                                  else
-                                                     echo >&2 "Error: Cannot set type $STYPE_MIN-$STYPE_MAX to same id $SID"
-                                                  fi
-                      
-                                                  ;;
-                                esac
-                          
+                              if [ -z "$SID" ]; then
+                               >&2 echo Sensor id after = empty, use search/disable/hexid
                                 n=$(( n + 1 ))
+                                continue
+                              fi
+                              
+                              IFS='-'
+                              read -r STYPE_MIN STYPE_MAX <<< "$STYPE" 
+ 
+                              [[ $DEBUG -eq 1 ]] && >&2 echo "STYPE_MIN $STYPE_MIN STYPE_MAX $STYPE_MAX"
+ 
+                              #https://stackoverflow.com/questions/806906/how-do-i-test-if-a-variable-is-a-number-in-bash/806923
+                              STYPE_INVALID=0
+                              [ -z "$STYPE_MAX" ] && STYPE_MAX=$STYPE_MIN
+
+                              if ! isNumber  "$STYPE_MIN"; then # first check for valid number, then check limits
+                                 >&2 echo "$STYPE_MIN is  invalid sensor type/number"
+                                STYPE_INVALID=1
+                              elif ! isNumber "$STYPE_MAX"; then  
+                                  >&2 echo "$STYPE_MAX is invalid sensor type/number"
+                                  STYPE_INVALID=1
+                              elif [[ "$STYPE_MIN" -gt "$SENSORTYPE_MAX" || "$STYPE_MIN" -gt "$STYPE_MAX" ]]; then
+                                  >&2 echo "$STYPE_MIN is not valid, max is $SENSORTYPE_MAX"
+                                  STYPE_INVALID=1
+                              elif [[  "$STYPE_MAX" -gt "$SENSORTYPE_MAX" || "$STYPE_MAX" -lt "$STYPE_MIN" ]]; then  
+                                 >&2 echo "$STYPE_MAX is invalid, max is $SENSORTYPE_MAX";
+                                  STYPE_INVALID=1    
+                              fi
+
+                              if [[ $STYPE_INVALID -eq 1 ]]; then 
+                                n=$(( n + 1 ))
+                                continue
+                              fi 
+
+                              [[ $DEBUG -eq  1 ]] &&  >&2 echo Parsing expression $n "${SENSOR_MANAGEMENT[$n]}" STYPE "$STYPE" SID "$SID"
+
+                              toLowercase "$SID"
+                              SID=$lowercase
+                              s_search=${s_search:0:${#SID}}
+                              s_disable=${s_disable:0:${#SID}} # shrink search pattern for matching
+
+                             if [[ "$SID" = "$s_search" ]]; then
+                                 updateSensorIdRange "$SENSOR_SEARCH_STRING"
+                             elif [[ "$SID" = "$s_disable" && "$SID" != 'd' ]]; then
+                                 updateSensorIdRange "$SENSOR_DISABLE_STRING"
+                             else
+                                r=$STYPE_MIN
+                                if [[ $r -eq $STYPE_MAX ]]; then 
+                                #https://www.gnu.org/software/grep/manual/html_node/Regular-Expressions.html#Regular-Expressions
+                                      if [[ -n $BASH_VERSION || -n $ZSH_VERSION ]]; then 
+                                                #extended regular expression ^ -start of line $-end of line - {1,8} iterator/quantifier
+                                          eval 'if [[ $SID =~ ^[a-fA-F0-9]{1,8}$ ]]; then 
+                                                          updateSensorId "$r" "$SID" 
+                                                else
+                                                        >&2 echo "Error unknown or invalid sensor id $SID, use disable/search/hexid"
+                                                fi'
+                                          #use eval to avoid syntax error in mirbsd korn shell/android
+                                      elif [[ $KSH_VERSION == Version* ]]; then
+                                          eval 'if [[ $SID == {1,8}([a-fA-F0-9]) ]]; then
+                                                          updateSensorId "$r" "$SID" 
+                                                else
+                                                        >&2 echo "Error unknown or invalid sensor id $SID, use disable/search/hexid"
+                                                fi'
+                                        #http://www.mirbsd.org/htman/i386/man1/mksh.htm
+                                      elif [[ $KSH_VERSION == *MIRBSD* ]]; then #android shell
+                                          eval 'if [[ $SID == +([a-f]|[A-F]|[0-9]) && ${#SID} -le 8 ]]; then 
+                                                          updateSensorId "$r" "$SID" 
+                                                else
+                                                    >&2 echo "Error unknown or invalid sensor id $SID, use disable/search/hexid"
+                                                fi'
+                                      elif echo "$SID" | grep -E -q "^[a-fA-F0-9]{1,8}$"; then  
+                                                  updateSensorId "$r" "$SID"
+                                      else
+                                          echo >&2 "Error shell not supported, cannot set $r to $SID"
+                                      fi
+                                        r=$(( r + 1 ))
+                                else
+                                    echo >&2 "Error cannot set type $STYPE_MIN-$STYPE_MAX to same id $SID"
+                                fi
+                                #expr $SID : "\([a-fA-F0-9]\+\)" works in BASH/KSH/ZSH, but not MIRBSD KSH - \+ - one or more repetitions \() - extract substring
+
+                              fi
+                        
+                              n=$(( n + 1 ))
                           
                           done
 
-                          writeSensorId
+                          if [[ ${#CONFIGURATION_SENSOR_UPDATE} -ge 1 ]] ; then writeSensorId; fi
 
                         shift 2
                           ;;
