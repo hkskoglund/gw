@@ -665,6 +665,7 @@ function getBatteryState
 }
 
 function printLivedata
+#$1 field type in decimal
 {
     if [ -n "${LDFDESC_RENAME}" ]; then
            LDFDESC=$LDFDESC_RENAME
@@ -672,15 +673,15 @@ function printLivedata
 
     if [ "$LDFUNIT" = "℃" ]; then
         #multibyte character/unicode requires 1 larger width and a space padding for description
-              printf "%8s %6s %s\n" "${LIVEDATA[$fieldTypeDec]}" "$LDFUNIT" " $LDFDESC"
+              printf "%8s %6s %s\n" "${LIVEDATA[$1]}" "$LDFUNIT" " $LDFDESC"
     elif [ "$LDFUNIT"  = "°" ]; then
-              printf "%8s %6s %s\n" "${LIVEDATA[$fieldTypeDec]}" "$LDFUNIT" "$LDFDESC"
+              printf "%8s %6s %s\n" "${LIVEDATA[$1]}" "$LDFUNIT" "$LDFDESC"
     else
-            printf "%8s %5s %s\n" "${LIVEDATA[$fieldTypeDec]}" "$LDFUNIT" "$LDFDESC"
+            printf "%8s %5s %s\n" "${LIVEDATA[$1]}" "$LDFUNIT" "$LDFDESC"
     fi 
 
     if [ "$LDFNAME" = 'WINDDIRECTION' ]; then  
-            convertWindDirectionToCompassDirection "${LIVEDATA[$fieldTypeDec]}"
+            convertWindDirectionToCompassDirection "${LIVEDATA[$1]}"
             #LIVEDATA_EXTRA[$fieldTypeDec]=$VALUE_COMPASS_DIRECTION_NAME
             if [ -n "${LIVEDATA_FIELDRENAME[compass_direction]}" ]; then
                 LDFDESC=${LIVEDATA_FIELDRENAME[compass_direction]}
@@ -746,10 +747,10 @@ function parseLivedata
      fi
 
     if [[ -n "$BASH_VERSION"  ]]; then
-       eval 'if [[ ${LDFNAME,,} =~ ^${SPATTERN} || ${LDFDESC,,} =~ ${SPATTERN} || ${LDFDESC_RENAME,,} =~  ${SPATTERN} ]] ; then match=1; printLivedata; fi' #eval prevent ksh parser syntax error
+       eval 'if [[ ${LDFNAME,,} =~ ^${SPATTERN} || ${LDFDESC,,} =~ ${SPATTERN} || ${LDFDESC_RENAME,,} =~  ${SPATTERN} ]] ; then match=1; printLivedata "$fieldTypeDec"; fi' #eval prevent ksh parser syntax error
       # ^ line starts with, ,,=to lowercase
     elif [[ -n "$ZSH_VERSION" ]]; then
-        eval 'if [[ ${LDFNAME:l} =~ ^${SPATTERN} || ${LDFDESC:l} =~ ${SPATTERN} || ${LDFDESC_RENAME:l} =~  ${SPATTERN} ]] ; then match=1; printLivedata; fi'
+        eval 'if [[ ${LDFNAME:l} =~ ^${SPATTERN} || ${LDFDESC:l} =~ ${SPATTERN} || ${LDFDESC_RENAME:l} =~  ${SPATTERN} ]] ; then match=1; printLivedata "$fieldTypeDec"; fi'
     elif [[ "${KSH_VERSION:7}" == "Version" ]]; then 
        toLowercase "$LDFNAME"
        LDFNAME=$lowercase
@@ -757,9 +758,9 @@ function parseLivedata
        LDFDESC=$lowercase
        toLowercase "$LDFDESC_RENAME"
        LDFDESC_RENAME=$lowercase
-       eval 'if [[ "$LDFNAME" =~ ^${SPATTERN} || "$LDFDESC" =~ ${SPATTERN} || "$LDFDESC_RENAME" =~  ${SPATTERN} ]] ; then match=1; printLivedata; fi'
+       eval 'if [[ "$LDFNAME" =~ ^${SPATTERN} || "$LDFDESC" =~ ${SPATTERN} || "$LDFDESC_RENAME" =~  ${SPATTERN} ]] ; then match=1; printLivedata "$fieldTypeDec"; fi'
      elif  echo "$LDFNAME" | grep -i -q -E "$SPATTERN" || echo "$LDFDESC" | grep -i -q -E "$SPATTERN" || echo "$LDFDESC_RENAME" | grep -i -q -E "$SPATTERN"; then
-        match=1; printLivedata;
+        match=1; printLivedata "$fieldTypeDec";
     fi
 
   done
@@ -1452,10 +1453,24 @@ function sendPacket
   #sendPacketdd "$@"
 }
 
+
+function parse_od_hex_packet
+#$1 od hex string
+{
+      PACKET_RX_HEX=${1// /}                                 # strip off all spaces, just hex
+      if [ ${#PACKET_RX_HEX} -eq  0 ]; then
+          echo >&2 "Warning no data in response received from host"
+      else
+          [  "$DEBUG" -eq 1 ] && echo >&2 PACKET_RX_HEX "$PACKET_RX_HEX" length "${#PACKET_RX_HEX}"
+          convert_od_hexStringToArray "$1"
+          parsePacket
+      fi
+}
+
 function sendPacketnc
 {
   typeset ncUDPOpt 
-  typeset ncIdle
+  typeset ncIdleOpt
   typeset port
   typeset ncStatus
 
@@ -1471,39 +1486,39 @@ function sendPacketnc
             port=$PORT_udp_discovery_client #change to UDP from TCP default
   elif [[ "$PACKET_TX_COMMAND" -eq $CMD_write_reset || "$PACKET_TX_COMMAND" -eq $CMD_write_ssid ]]; then
        # some commands needs idle timeout
-         [ $DEBUG -eq 1 ] && >&2 echo "${CMD_NAME["$PACKET_TX_COMMAND"]}" Setting device idle timeout for nc
-         ncIdle='-i 100ms'
+         #https://www.gnu.org/software/bash/manual/bash.html#Pattern-Matching
+         # man bash "When  the == and != operators are used, the string to the right of the operator
+         #     is considered a pattern and matched according to the rules described below  un‐
+         #     der Pattern Matching, as if the extglob shell option were enabled."
+         if ! [[ $KSH_VERSION == *Android* ]]; then
+            ncIdleOpt='-i 100ms'
+            [ $DEBUG -eq 1 ] && >&2 echo "${CMD_NAME["$PACKET_TX_COMMAND"]}" Setting device idle timeout option for nc "$ncIdleOpt" 
+         fi
   else
      unset ncUDPOpt
      #1>&2 echo ncUDPOpt $ncUDPOpt
      port=$PORT_tcp_command_server
   
   fi
-  #  ncIdle='-i 25ms'
   # shellcheck disable=SC2059
-  printf "$PACKET_TX_ECHO" >"$FILENAME_tx"
+  printf "$PACKET_TX_ECHO" >"$FILENAME_tx" #print to file for debuggging purpose
   rm "$FILENAME_rx" 2>/dev/null
   rm "$FILENAME_nc_hex" 2>/dev/null
 
-  # shellcheck disable=SC2086
- #{ cat "$FILENAME_tx"; sleep 0.1; } |  nc  $ncUDPOpt $ncIdle -w 500ms -x "$FILENAME_nc_hex" -4 "$HOST" "$port"  >"$FILENAME_rx" # wait 0.1s to disable READ KILL of nc on stdin
-  { cat "$FILENAME_tx"; sleep 0.1; } |  nc $DEBUG_OPTIONS_nc $ncUDPOpt $ncIdle -w 500ms  -4 "$HOST" "$port"  >"$FILENAME_rx" # wait 0.1s to disable READ KILL of nc on stdin
-
+ #{ cat "$FILENAME_tx"; sleep 0.1; } |  nc  $ncUDPOpt $ncIdleOpt -w 500ms -x "$FILENAME_nc_hex" -4 "$HOST" "$port"  >"$FILENAME_rx" # wait 0.1s to disable READ KILL of nc on stdin
+  
+    # shellcheck disable=SC2086
+  { cat "$FILENAME_tx"; sleep 0.1; } | nc $ncUDPOpt $ncIdleOpt -w 250ms -4 "$HOST" "$port" >"$FILENAME_rx" 
+  # Fedora 35: use --no-shutdown to continue even if receving EOF on stdin
+  # Android : -q Quit SECONDS after EOF on stdin, even if stdout hasn't closed yet" (from nc --help)
   ncStatus=$?
   
-  if [ -s "$FILENAME_rx" ] && [ $ncStatus -eq 0 ] ; then # -s file exists and not empty
+  if [ -s "$FILENAME_rx" ] ; then # -s file exists and not empty
 
         if od -A n -t x1 -v -w"$(stat -c %s "$FILENAME_rx")" "$FILENAME_rx" >"$FILENAME_od_hex"; then
             read -r PACKET_RX_OD_HEX <"$FILENAME_od_hex"
            [ $DEBUG -eq 1 ] && { cat "$FILENAME_nc_hex"; echo >&2 OD HEX "$PACKET_RX_OD_HEX" length "${#PACKET_RX_OD_HEX}"; }
-            PACKET_RX_HEX=${PACKET_RX_OD_HEX// /}                                 # strip off all spaces, just hex
-            if [ ${#PACKET_RX_HEX} -eq  0 ]; then
-                echo >&2 "Warning no data in response received from host"
-            else
-                [  "$DEBUG" -eq 1 ] && echo >&2 PACKET_RX_HEX "$PACKET_RX_HEX" length "${#PACKET_RX_HEX}"
-                convert_od_hexStringToArray "$PACKET_RX_OD_HEX"
-               parsePacket
-            fi
+            parse_od_hex_packet "$PACKET_RX_OD_HEX"
         else
           echo >&2 Error od failed to create hex decoding for packet, error code $?
         fi
@@ -1559,7 +1574,54 @@ function sendPacketdd {
 
 }
 
-function discovery {
+function discovery
+{
+  if which nc >/dev/null; then
+    discovery_nc;
+  else
+    echo >&2 Error nc not found, cannot scan for devices
+  fi
+  #if which socat >/dev/null; then
+  #    discovery_socat
+  #  else
+  #    echo >&2 Error socat not found, cannot scan for devices
+  #    return "$ERROR_NO_SOCAT"
+  #  fi
+  
+}
+
+function discovery_nc
+{
+  typeset -i SCAN_MAX_ITERATIONS
+  SCAN_MAX_ITERATIONS=5
+  typeset  SCAN_NC_IDLE_TIMEOUT
+  SCAN_NC_IDLE_TIMEOUT=0.01
+  typeset SCAN_NC_IDLE_OPT
+  typeset -i n
+  typeset broadcast 
+
+  if [[ $KSH_VERSION != *Android* ]]; then
+      SCAN_NC_IDLE_OPT="-i $SCAN_NC_IDLE_TIMEOUT"
+  else
+     echo >&2 Error Scanning for devices not supported
+  fi
+
+  if scan_result=$(n=0; while [ $n -lt $SCAN_MAX_ITERATIONS ]; do 
+                              nc  -l -u "$SCAN_NC_IDLE_OPT" -p $PORT_udp_discovery_server 2>/dev/null | od -A n -w64 -t x1 
+                            n=$(( n + 1 ))
+                        done | sort | uniq); then
+  #https://stackoverflow.com/questions/16831429/when-setting-ifs-to-split-on-newlines-why-is-it-necessary-to-include-a-backspac
+      IFS=$(echo -ne '\n\b')
+      for broadcast in $scan_result; do
+        parse_od_hex_packet "$broadcast"
+      done
+  else
+         echo >&2 Error failed to obtain scan result, error code $?
+  fi
+
+}
+
+function discovery_socat {
   typeset TIMEOUT_SCAN
   TIMEOUT_SCAN=2 #seconds
   typeset rxscan
@@ -2729,12 +2791,8 @@ while [ $# -gt 0 ]; do
     ;;
 
   -s | --scan)
-    if which socat >/dev/null; then
       discovery
-    else
-      Echo >&2 Error socat not found, cannot scan for devices
-      return "$ERROR_NO_SOCAT"
-    fi
+    
     shift
     ;;
 
