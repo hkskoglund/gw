@@ -9,8 +9,21 @@ emulate ksh 2>/dev/null # for zsh
 # example ./gw -h 10.42.0.180 -c mac
 # read mac
 
-#Protocol documentation : https://osswww.ecowitt.net/uploads/20210716/WN1900%20GW1000,1100%20WH2680,2650%20telenet%20v1.6.0%20.pdf (https://www.ecowitt.com/shop/forum/forumDetails/255)
-#https://devhints.io/bash
+#Documentation:
+
+#Protocol
+# https://osswww.ecowitt.net/uploads/20210716/WN1900%20GW1000,1100%20WH2680,2650%20telenet%20v1.6.0%20.pdf (https://www.ecowitt.com/shop/forum/forumDetails/255)
+#Shell
+# bash
+# ksh
+# zsh
+# mirbsd ksh http://www.mirbsd.org/htman/i386/man1/mksh.htm
+
+# Converting
+#inch to mm (1 inch is 25.4mm):
+# printf "%s" $(echo "25.4*13.043" | bc)
+#farenheit to celcius 
+# printf "%s" $(echo "(58.64-32)/1.8" | bc)
 
 #for debugging
 #echo PID "$$"
@@ -274,13 +287,13 @@ typeset -a LDF_DISCOVERED
 #CONNECT ERRORS
 ERROR_CONNECTION=1
 ERROR_NO_NMCLI=2
-ERROR_NO_SOCAT=3
 ERROR_RAINDATA_NOTSPECIFIED=4
 ERROR_SYSTEMPARAM_NOTSPECIFIED=5
 #ERROR_READ_RESPONSE=3
 
 typeset -a CONFIGURATION
 #CONFIGURATION_DISCOVER array contains indexes to CONFIGURAITION with values
+#CONFIGURATION_SENSOR[sensortype]=sensorid
 typeset -a CONFIGURATION_SENSOR
 #CONFIGURATION_SENSOR_TYPE array contains indexes to CONFIGURATION_SENSOR with values
 #if typeset -A ASSOCIATIVE_ARRAY 2>/dev/null; then # is easier to use, otherwise two arrays
@@ -1311,7 +1324,7 @@ function parsePacket {
 
   elif [[  "$cmd" -eq $CMD_read_sensor_id_new ]] || [[  "$cmd" -eq $CMD_read_sensor_id ]]; then
 
-    time parseSensor 1
+    parseSensor 1
      
   else
 
@@ -1889,19 +1902,6 @@ function sendCustomized {
   fi
 }
 
-function sendSensor
-{
-  newPacketBody $CMD_write_sensor_id
-  
-  for STYPE in "${!CONFIGURATION_SENSOR[@]}"; do
-    [ $DEBUG -eq 1 ] && >&2 echo sendSensor SensorType "$STYPE" "${CONFIGURATION_SENSOR[$STYPE]}"
-     writeUInt8 "$STYPE"
-     writeUInt32BE "${CONFIGURATION_SENSOR[$STYPE]}" 
-  done
-
-  sendPacket
-}
-
 function updateCustomized {
   typeset needUpdate
   typeset key_value
@@ -2047,10 +2047,10 @@ function convertScale10ToFloat {
 
 function initConfigDir {
 
-  DIR=$HOME'/.config/gw'
+  DIR=$HOME'/.config/gw' # .config subdirectory used for configuration on gnome/linux
   [ -n "$EXTERNAL_STORAGE" ] && DIR=$EXTERNAL_STORAGE # testing in Android 11 adb shell
-  [ $DEBUG -eq 1 ] && echo >&2 Configuration directory "$DIR"
-  [ ! -d "$DIR" ] && mkdir -v "$DIR" 1>&2
+  [[ ! -d "$DIR" ]] && mkdir -p -v "$DIR" 1>&2
+  [[ $DEBUG -eq 1 ]] && echo >&2 Configuration directory "$DIR"
 
   FILENAME_tx=$DIR'/txpacket'
   FILENAME_rx=$DIR'/rxpacket'
@@ -2067,7 +2067,7 @@ function initConfigDir {
 function initLivedataFieldDescriptionRenaming
 {
   if [ ! -s "$FILENAME_livedata_description" ]; then
-     >&2 echo Warning File is empty or does not exists "$FILENAME_livedata_description" - using default names for livedata fields
+     [[ $DEBUG -eq 1 ]] && >&2 echo Warning "$FILENAME_livedata_description" is empty or does not exists, using default names for livedata field descriptions
      return 1
   fi
 
@@ -2154,18 +2154,18 @@ function updateSensorIdRange
   r=$STYPE_MIN
   while [ "$r" -le "$STYPE_MAX" ]; do 
     #    for (( r=STYPE_MIN; r<= STYPE_MAX; r++ )); do 
-            updateSensorId "$r" "$1"
+            setSensorId "$r" "$1"
             r=$(( r + 1))
   done
 }
 
-function updateSensorId
+function setSensorId
 #$1 - STYPE sensor type
 #$2 - SID sensor id
 {
  [[ DEBUG -eq 1 ]] &&  >&2 echo "Setting sensor type $1 to $2"
                                                           
-  CONFIGURATION_SENSOR[$1]=$(( 0x$2 ))
+  CONFIGURATION_SENSOR[$1]=$(( $2 ))
   CONFIGURATION_SENSOR_UPDATE+=( "$1" )
 }
 
@@ -2461,8 +2461,6 @@ function getConfigurationIndexFromName
   while [ $i -lt ${#CONFIGURATION_NAME[@]} ]; do
     if [ -n "${CONFIGURATION_NAME[$i]}" ] && [ "${CONFIGURATION_NAME[$i]}" = "$1" ]; then
        CONFIGURATION_INDEX=$i
-           echo i $i name ${CONFIGURATION_NAME[$i]} 
-
        break;
     fi
    i=$((i + 1))
@@ -2500,8 +2498,7 @@ while [ $# -gt 0 ]; do
     sendPacket $CMD_read_customized >/dev/null
     sendPacket $CMD_read_path >/dev/null
     sendPacket $CMD_read_raindata >/dev/null
-    sendPacket $CMD_read_sensor_id_new 
-    #>/dev/null
+    sendPacket $CMD_read_sensor_id_new >/dev/null
     # some data probably saved to device EEPROM
     # TODO? calibration data?
     if [ -n "$2" ]; then #save to file
@@ -2545,7 +2542,7 @@ while [ $# -gt 0 ]; do
   -d | --debug)
     DEBUG=1
     DEBUG_OPTIONS_socat='-d -d -x'
-    DEBUG_OPTIONS_nc="-v"
+    #DEBUG_OPTIONS_nc="-v"
     shift
     ;;
 
@@ -2603,30 +2600,37 @@ while [ $# -gt 0 ]; do
     #PASSKEY=976D09F15C41FD8DC6E9A9E8C4F39707&stationtype=GW1000A_V1.6.8&dateutc=2021-08-10+12:08:12&tempinf=74.1&humidityin=61&baromrelin=29.754&baromabsin=29.754&tempf=63.0&humidity=82&winddir=15&windspeedmph=3.80&windgustmph=4.47&maxdailygust=5.82&solarradiation=206.01&uv=2&rainratein=0.000&eventrainin=0.051&hourlyrainin=0.000&dailyrainin=0.020&weeklyrainin=0.051&monthlyrainin=0.311&yearlyrainin=4.811&totalrainin=4.811&temp1f=68.72&humidity1=67&temp2f=72.14&humidity2=63&temp3f=80.24&humidity3=48&soilmoisture1=16&wh65batt=0&batt1=0&batt2=0&batt3=0&soilbatt1=1.4&freq=868M&model=GW1000_Pro
     #
     #A = 868 Mhz GW1000A, B= , C= 433
+
+    #quick ecowitt parsing
+    #IFS='&' read -a data <<<$(nc  -l 8080 -i 0.1 | tail -n +7) && for f in "${data[@]}"; do echo $f; done
+
   -r | --restore)
 
     unset CONFIGURATION
     unset CONFIGURATION_SENSOR
+    unset CONFIGURATION_SENSOR_UPDATE
     typeset -a CONFIGURATION
     typeset -a CONFIGURATION_SENSOR
-
+    typeset -a CONFIGURATION_SENSOR_UPDATE # sensor types that needs update/write
     if [ -s "$2" ]; then 
       IFS=' '
-      while read -r K V REST; do
+      #shellcheck disable=2034
+      while read -r K V DISCARD; do
         unset CONFIGURATION_INDEX
         STYPE=$(expr "$K" : "$CONFIGURATION_SENSORFIELD\([0-9]*\)" ) # extracts number part from sensortype_{number}
         if [ -n "$STYPE" ]; then
-          CONFIGURATION_SENSOR[$STYPE]=$V 
+          setSensorId "$STYPE" "$V"
         else
            getConfigurationIndexFromName "$K"
            if [ -n "$CONFIGURATION_INDEX" ]; then 
+            [[ $DEBUG -eq 1 ]] && echo >&2 "$K" Configuration["$CONFIGURATION_INDEX"]="$V"
              CONFIGURATION["$CONFIGURATION_INDEX"]="$V"
            fi
         fi
       
       done < "$2"
       
-      printConfiguration
+      printConfiguration >&2
 
       sendEcowittInterval "${CONFIGURATION[$CONF_ecowitt_interval]}"
       sendWeatherservice "$CMD_write_wunderground" "${CONFIGURATION[$CONF_wunderground_id]}" "${CONFIGURATION[$CONF_wunderground_password]}"
@@ -2634,7 +2638,7 @@ while [ $# -gt 0 ]; do
       sendWeatherservice "$CMD_write_weathercloud" "${CONFIGURATION[$CONF_weathercloud_id]}" "${CONFIGURATION[$CONF_weathercloud_password]}"
       sendCustomized
       sendRaindata "${CONFIGURATION[$CONF_raindaily]}" "${CONFIGURATION[$CONF_rainweek]}" "${CONFIGURATION[$CONF_rainmonth]}" "${CONFIGURATION[$CONF_rainyear]}"
-      sendSensor
+      writeSensorId
     else
       >&2 echo Error File "$2 does not exists or is not empty";
     fi
@@ -2728,26 +2732,26 @@ while [ $# -gt 0 ]; do
                                       if [[ -n $BASH_VERSION || -n $ZSH_VERSION ]]; then 
                                                 #extended regular expression ^ -start of line $-end of line - {1,8} iterator/quantifier
                                           eval 'if [[ $SID =~ ^[a-fA-F0-9]{1,8}$ ]]; then 
-                                                          updateSensorId "$r" "$SID" 
+                                                          setSensorId "$r" 0x"$SID" 
                                                 else
                                                         >&2 echo "Error unknown or invalid sensor id $SID, use disable/search/hexid"
                                                 fi'
                                           #use eval to avoid syntax error in mirbsd korn shell/android
                                       elif [[ $KSH_VERSION == Version* ]]; then
                                           eval 'if [[ $SID == {1,8}([a-fA-F0-9]) ]]; then
-                                                          updateSensorId "$r" "$SID" 
+                                                          setSensorId "$r" 0x"$SID" 
                                                 else
                                                         >&2 echo "Error unknown or invalid sensor id $SID, use disable/search/hexid"
                                                 fi'
                                         #http://www.mirbsd.org/htman/i386/man1/mksh.htm
                                       elif [[ $KSH_VERSION == *MIRBSD* ]]; then #android shell
                                           eval 'if [[ $SID == +([a-f]|[A-F]|[0-9]) && ${#SID} -le 8 ]]; then 
-                                                          updateSensorId "$r" "$SID" 
+                                                          setSensorId "$r" 0x"$SID" 
                                                 else
                                                     >&2 echo "Error unknown or invalid sensor id $SID, use disable/search/hexid"
                                                 fi'
                                       elif echo "$SID" | grep -E -q "^[a-fA-F0-9]{1,8}$"; then  
-                                                  updateSensorId "$r" "$SID"
+                                                  setSensorId "$r" 0x"$SID"
                                       else
                                           echo >&2 "Error shell not supported, cannot set $r to $SID"
                                       fi
