@@ -1673,9 +1673,9 @@ function discovery_nc
 #$1 - subnet for udp scan
 {
   typeset -i SCAN_MAX_ITERATIONS
-  SCAN_MAX_ITERATIONS=5
+  SCAN_MAX_ITERATIONS=10
   typeset  SCAN_NC_IDLE_TIMEOUT
-  SCAN_NC_IDLE_TIMEOUT=0.01
+  SCAN_NC_IDLE_TIMEOUT=0.005 # 5ms
   typeset SCAN_NC_IDLE_OPT
   typeset -i n
   typeset broadcast 
@@ -1686,11 +1686,20 @@ function discovery_nc
      echo >&2 Error Scanning for devices not supported
   fi
 
-  if [[ -z "$1" ]]; then
+  if [[ -z "$1" ]]; then # set up server on 59387 port
+
+   if [[ $NC_VERSION -ne $NC_NMAP ]]; then
+     SCAN_MAX_ITERATIONS=30
+     SCAN_NC_TIMEOUT=0.1
+   fi
   
     if  scan_result=$(n=0; while [ $n -lt $SCAN_MAX_ITERATIONS ]; do 
-                              nc  -l -u "$SCAN_NC_IDLE_OPT" -p $PORT_udp_discovery_server 2>/dev/null | od -A n -w64 -t x1 
-                            n=$(( n + 1 ))
+                                if [[ $NC_VERSION -eq $NC_NMAP ]]; then 
+                                        nc  -4 -u -i $SCAN_NC_IDLE_TIMEOUT -l $PORT_udp_discovery_server 2>/dev/null | od -A n -w64 -t x1 
+                                else
+                                        { timeout $SCAN_NC_TIMEOUT nc -4 -u -l $PORT_udp_discovery_server 2>/dev/null; } | od -A n -w64 -t x1 
+                                fi    
+                                n=$(( n + 1 ))
                         done | sort | uniq); then
   #https://stackoverflow.com/questions/16831429/when-setting-ifs-to-split-on-newlines-why-is-it-necessary-to-include-a-backspac
               if [[ -n "$scan_result" ]]; then
@@ -1703,7 +1712,11 @@ function discovery_nc
          echo >&2 Error failed to obtain scan result while listening on UDP port $PORT_udp_discovery_server, error code $?
     fi
 
-  else
+   # cat $FILENAME_nc_discovery
+
+    #rm $FILENAME_nc_discovery 2>/dev/null
+
+  else 
     discovery_udp_client "$1"
   fi
 
@@ -2162,6 +2175,7 @@ function initConfigDir {
   FILENAME_nc_hex=$DIR/"nc_hex-$SHELLPID.txt"
   FILENAME_livedata_description=$DIR/'livedata-description.txt'
   FILENAME_od_hex=$DIR/"rxpacket-od-hex-$SHELLPID.txt"
+  FILENAME_nc_discovery=$DIR/"nc-discovery-$SHELLPID"
 
 }
 
