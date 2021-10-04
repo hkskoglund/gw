@@ -7,3 +7,4 @@ test/sensor_id_new.txt
 test/sensor_id.txt
 test/itsraining.wav
 test/prod/gw
+test/cmd-broadcast

@@ -18,6 +18,10 @@ emulate ksh 2>/dev/null # for zsh
 # ksh
 # zsh
 # mirbsd ksh http://www.mirbsd.org/htman/i386/man1/mksh.htm
+#Netcat
+#https://en.wikipedia.org/wiki/Netcat
+#choosing which nc on fedora (openbsd/nmap)
+#sudo alternatives --config nc
 
 # Converting
 #inch to mm (1 inch is 25.4mm):
@@ -42,6 +46,10 @@ typeset -i DEBUG
 DEBUG=0
 
 DEBUG_OPTIONS_dd='status=none'
+
+typeset -ir NC_NMAP=0
+typeset -ir NC_OPENBSD=1
+typeset -ir NC_TOYBOX=2
 
 typeset -ir PORT_tcp_command_server=45000
 typeset -ir PORT_udp_discovery_server=59387
@@ -137,8 +145,8 @@ typeset -a SYSTEM_TIMEZONE #initTimezones
 #https://www.wxforum.net/index.php?topic=40730.0
 SENSOR_SEARCH=$(( 0xffffffff ))
 SENSOR_DISABLE=$(( 0xfffffffe ))
-SENSOR_SEARCH_STRING=ffffffff
-SENSOR_DISABLE_STRING=fffffffe
+SENSOR_SEARCH_STRING="0xffffffff"
+SENSOR_DISABLE_STRING="0xfffffffe"
 #typeset -i SENSOR_SEARCH=4294967295
 #typeset -i SENSOR_DISABLE=4294967294
 
@@ -1346,7 +1354,7 @@ function newPacketBody {
   PACKET_BODY+=("$VALUE_HEX" "0x00")
   [ $DEBUG -eq 1 ] && >&2 echo PACKET BODY "${PACKET_BODY[@]}"
   
-  if [[ "$1" -eq $CMD_broadcast ]] || [[ "$1" -eq $CMD_write_ssid ]]; then  
+  if [[ "$1" -eq $CMD_broadcast || "$1" -eq $CMD_write_ssid ]]; then  
    # WSVIEW sends 2 byte field for size
     PACKET_BODY+=("0x00")
     [ $DEBUG -eq 1 ] && echo >&2 appending 0x00 for 2-byte packet length PACKET BODY "${PACKET_BODY[@]}"
@@ -1367,27 +1375,24 @@ function createPacketTX {
   typeset packetLengthLSB
   typeset packetLengthMSB
   typeset n
-
+  typeset cmd
+  cmd=$(( PACKET_BODY[0] )) #make sure its an int
 
   #Update packet length, either 1 or 2 bytes
-  case ${PACKET_BODY[0]} in
-  
-        "$CMD_write_ssid" | "$CMD_broadcast")
-
+   
+  if [[  "$cmd" -eq  "$CMD_broadcast" || "$cmd" -eq $CMD_write_ssid ]]; then 
           packetLengthLSB=$((   (${#PACKET_BODY[@]} + 1) & 0xff ))
           packetLengthMSB=$(( ( (${#PACKET_BODY[@]} + 1) & 0xff00 ) >> 8 ))
+          
           decToHex $packetLengthMSB
           PACKET_BODY[1]=$VALUE_HEX
+
           decToHex $packetLengthLSB
           PACKET_BODY[2]=$VALUE_HEX
-          ;;
-        
-        *)
+  else
           decToHex $(( ${#PACKET_BODY[@]} + 1 ))
           PACKET_BODY[1]=$VALUE_HEX # set packet length including checksum byte
-
-          ;;
-  esac
+  fi
 
   checksum
 
@@ -1442,6 +1447,7 @@ function readHexASCII {
   unset PACKET_RX_HEX # compact hex string without spaces ffff
   od -A n -t x1 -v -w"$(stat -c %s "$1")"  "$1" >"$FILENAME_od_hex"; 
   read -r  PACKET_RX_OD_HEX <"$FILENAME_od_hex" 
+  rm "$FILENAME_od_hex"
   [ $DEBUG -eq 1 ] && echo >&2 OD HEX "$PACKET_RX_OD_HEX"
   
   convert_od_hexStringToArray "$PACKET_RX_OD_HEX" 
@@ -1481,11 +1487,27 @@ function parse_od_hex_packet
 }
 
 function sendPacketnc
+#$1 - command
+#$2 - host
 {
   typeset ncUDPOpt 
   typeset ncIdleOpt
   typeset port
   typeset ncStatus
+  typeset host
+  host=$2
+  typeset timeout_udp_broadcast
+  timeout_udp_broadcast=0.075
+  typeset timeout_nc=0.05
+
+  if [[ -n $TIMEOUT_READ ]]; then # allow override via -x option
+    timeout_nc=$TIMEOUT_READ
+  fi
+
+  if [[ -z $host ]]; then
+     host=$HOST #use default host, specfied using -h option
+  fi 
+
 
   #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
   if [ $# -ge 1 ]; then
@@ -1497,6 +1519,7 @@ function sendPacketnc
   if [[ $PACKET_TX_COMMAND -eq  $CMD_broadcast ]]; then
             ncUDPOpt='-u'
             port=$PORT_udp_discovery_client #change to UDP from TCP default
+            timeout_nc=$timeout_udp_broadcast
   elif [[ "$PACKET_TX_COMMAND" -eq $CMD_write_reset || "$PACKET_TX_COMMAND" -eq $CMD_write_ssid ]]; then
        # some commands needs idle timeout
          #https://www.gnu.org/software/bash/manual/bash.html#Pattern-Matching
@@ -1515,16 +1538,38 @@ function sendPacketnc
   fi
   # shellcheck disable=SC2059
   printf "$PACKET_TX_ECHO" >"$FILENAME_tx" #print to file for debuggging purpose
-  rm "$FILENAME_rx" 2>/dev/null
+  
   rm "$FILENAME_nc_hex" 2>/dev/null
 
- #{ cat "$FILENAME_tx"; sleep 0.1; } |  nc  $ncUDPOpt $ncIdleOpt -w 500ms -x "$FILENAME_nc_hex" -4 "$HOST" "$port"  >"$FILENAME_rx" # wait 0.1s to disable READ KILL of nc on stdin
+ #{ cat "$FILENAME_tx"; sleep 0.175; } |  nc  $ncUDPOpt $ncIdleOpt -w 500ms -x "$FILENAME_nc_hex" -4 "$host" "$port"  >"$FILENAME_rx" # wait 0.1s to disable READ KILL of nc on stdin
   
+  # if timeout is too small, ICMP port unreachable is generated when doing udp port 46000 probing/broadcast
+  # udp debugging in wireshark : udp.dstport == 46000 || udp.srcport == 46000
     # shellcheck disable=SC2086
-  { cat "$FILENAME_tx"; sleep 0.1; } | nc $ncUDPOpt $ncIdleOpt -w 250ms -4 "$HOST" "$port" >"$FILENAME_rx" 
+    if [[ $NC_VERSION -eq $NC_OPENBSD  ]]; then
+       
+       if [[ $ncUDPOpt != '-u' ]]; then
+          { cat "$FILENAME_tx"; sleep $timeout_nc; } | nc -4 -N "$host" "$port" >"$FILENAME_rx" #-N shutdown socket after EOF on stdin
+           ncStatus=$?
+    
+        elif [[ $ncUDPOpt == '-u' ]]; then
+            nc -4 -u "$host" "$port" <"$FILENAME_tx" >"$FILENAME_rx" & #-w only allow >=1s timeout, too slow, must move process to background and kill
+            sleep $timeout_nc
+            #jobs
+            kill %1
+        fi
+    elif [[ $NC_VERSION -eq $NC_NMAP ]]; then
+
+          { cat "$FILENAME_tx"; sleep $timeout_nc; } | nc -4  $ncUDPOpt $ncIdleOpt "$host" "$port" >"$FILENAME_rx" 
+           ncStatus=$?
+    elif [[ $NC_VERSION -eq $NC_TOYBOX ]]; then
+
+          { cat "$FILENAME_tx"; sleep $timeout_nc; } | nc -4  $ncUDPOpt "$host" "$port" >"$FILENAME_rx" 
+           ncStatus=$?
+    fi
+
   # Fedora 35: use --no-shutdown to continue even if receving EOF on stdin
   # Android : -q Quit SECONDS after EOF on stdin, even if stdout hasn't closed yet" (from nc --help)
-  ncStatus=$?
   
   if [ -s "$FILENAME_rx" ] ; then # -s file exists and not empty
 
@@ -1537,8 +1582,15 @@ function sendPacketnc
         fi
 
   else
-   >&2 echo Error nc failed to receive response or empty response for command "${CMD_NAME["$PACKET_TX_COMMAND"]}", nc error code $ncStatus, "$FILENAME_rx"
+    [[ $DEBUG -eq 1 ]] &&  >&2 echo Error nc failed to receive response or empty response for command "${CMD_NAME["$PACKET_TX_COMMAND"]}", nc error code $ncStatus, "$FILENAME_rx"
   fi
+
+  #cleanup files
+  rm "$FILENAME_tx" 2>/dev/null
+  rm "$FILENAME_rx" 2>/dev/null
+  rm "$FILENAME_od_hex" 2>/dev/null
+
+
 }
 
 #including checksum byte
@@ -1590,7 +1642,7 @@ function sendPacketdd {
 function discovery
 {
   if which nc >/dev/null; then
-    discovery_nc;
+    discovery_nc "$@"
   else
     echo >&2 Error nc not found, cannot scan for devices
   fi
@@ -1603,7 +1655,22 @@ function discovery
   
 }
 
+function discovery_udp_client
+#$1 - subnet, for example 192.168.3
+#issue: nc fails to read when sending to subnet broadcast address 192.168.3.255
+{
+typeset host
+host=1;
+while [[ $host -le 254 ]]; do
+  [[ $DEBUG -eq 1 ]] && >&2 echo Sending broadcast to "$1.$host"
+   sendPacket $CMD_broadcast "$1.$host"
+   host=$(( host + 1 ))
+done
+
+}
+
 function discovery_nc
+#$1 - subnet for udp scan
 {
   typeset -i SCAN_MAX_ITERATIONS
   SCAN_MAX_ITERATIONS=5
@@ -1619,17 +1686,25 @@ function discovery_nc
      echo >&2 Error Scanning for devices not supported
   fi
 
-  if scan_result=$(n=0; while [ $n -lt $SCAN_MAX_ITERATIONS ]; do 
+  if [[ -z "$1" ]]; then
+  
+    if  scan_result=$(n=0; while [ $n -lt $SCAN_MAX_ITERATIONS ]; do 
                               nc  -l -u "$SCAN_NC_IDLE_OPT" -p $PORT_udp_discovery_server 2>/dev/null | od -A n -w64 -t x1 
                             n=$(( n + 1 ))
                         done | sort | uniq); then
   #https://stackoverflow.com/questions/16831429/when-setting-ifs-to-split-on-newlines-why-is-it-necessary-to-include-a-backspac
-      IFS=$(echo -ne '\n\b')
-      for broadcast in $scan_result; do
-        parse_od_hex_packet "$broadcast"
-      done
+              if [[ -n "$scan_result" ]]; then
+                  IFS=$(echo -ne '\n\b')
+                  for broadcast in $scan_result; do
+                    parse_od_hex_packet "$broadcast"
+                  done
+              fi
+    else
+         echo >&2 Error failed to obtain scan result while listening on UDP port $PORT_udp_discovery_server, error code $?
+    fi
+
   else
-         echo >&2 Error failed to obtain scan result, error code $?
+    discovery_udp_client "$1"
   fi
 
 }
@@ -2045,22 +2120,48 @@ function convertScale10ToFloat {
   fi
 }
 
+function initnc
+{
+  typeset nc_ver
+  typeset nc_ver_header
+
+  if nc_ver=$(nc --version 2>&1 ); then
+     if [[ $nc_ver == *nmap* ]]; then
+       NC_VERSION=$NC_NMAP
+    elif [[ $nc_ver == *toybox* ]]; then
+       NC_VERSION=$NC_TOYBOX
+    fi
+  else
+     read -r nc_ver_header <<<  "$nc_ver"
+     if [[ $nc_ver_header == "nc: invalid option --"* ]]; then
+       NC_VERSION=$NC_OPENBSD
+     else
+        >&2 echo "Error Unknown nc version header $nc_ver" 
+        NC_VERSION=$NC_OPENBSD
+     fi
+  fi
+
+  [[ $DEBUG -eq 1 ]] && >&2 "echo nc version $nc_ver $NC_VERSION"
+  
+}
+
 function initConfigDir {
 
   DIR=$HOME'/.config/gw' # .config subdirectory used for configuration on gnome/linux
   [ -n "$EXTERNAL_STORAGE" ] && DIR=$EXTERNAL_STORAGE # testing in Android 11 adb shell
   [[ ! -d "$DIR" ]] && mkdir -p -v "$DIR" 1>&2
   [[ $DEBUG -eq 1 ]] && echo >&2 Configuration directory "$DIR"
-
-  FILENAME_tx=$DIR'/txpacket'
-  FILENAME_rx=$DIR'/rxpacket'
-  FILENAME_discovery=$DIR'/rxsocat'
-  FILENAME_discovery_sorted=$DIR/'rxsocat_sorted'
-  FILENAME_udp_server="$FILENAME_discovery"_UDP_"$PORT_udp_discovery_server"
-  FILENAME_udp_client="$FILENAME_discovery"_UDP_"$PORT_udp_discovery_client"
-  FILENAME_nc_hex=$DIR/'nc_hex.txt'
+  
+  SHELLPID=$$
+  FILENAME_tx=$DIR"/txpacket-$SHELLPID"
+  FILENAME_rx=$DIR"/rxpacket-$SHELLPID"
+  FILENAME_discovery=$DIR"/rxsocat-$SHELLPID"
+  FILENAME_discovery_sorted=$DIR/"rxsocat_sorted-$SHELLPID"
+  FILENAME_udp_server="$FILENAME_discovery"_UDP_"$PORT_udp_discovery_server"-$SHELLPID
+  FILENAME_udp_client="$FILENAME_discovery"_UDP_"$PORT_udp_discovery_client"-$SHELLPID
+  FILENAME_nc_hex=$DIR/"nc_hex-$SHELLPID.txt"
   FILENAME_livedata_description=$DIR/'livedata-description.txt'
-  FILENAME_od_hex=$DIR/'od-hex.txt'
+  FILENAME_od_hex=$DIR/"rxpacket-od-hex-$SHELLPID.txt"
 
 }
 
@@ -2477,6 +2578,7 @@ function getConfigurationIndexFromName
 #fi
 
 initConfigDir
+initnc
 initLivedataFieldDescriptionRenaming
 
 #https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
@@ -2795,14 +2897,25 @@ while [ $# -gt 0 ]; do
     ;;
 
   -s | --scan)
-      discovery
+      if [[ -n "$2" && ${2:0:1} != '-' ]]; then 
+        discovery "$2"
+        shift 2
+      else
+        discovery
+        shift 1
+      fi
     
-    shift
     ;;
 
   -t | --timezones)
       printTimezones
       ;;
+  
+  -x | --read-timeout)
+
+     TIMEOUT_READ="$2"
+     shift 2
+     ;;
 
   -z | --customized)
 
