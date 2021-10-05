@@ -58,44 +58,44 @@ typeset -ir PORT_udp_discovery_server=59387
 typeset -ir PORT_udp_discovery_client=46000
 
 
-typeset -ir CMD_read_version=0x50; 
-typeset -ir CMD_reboot=0x40;
-typeset -ir CMD_read_mac=0x26; 
-typeset -ir CMD_write_ssid=0x11; 
-typeset -ir CMD_broadcast=0x12; 
-typeset -ir CMD_write_reset=0x41; 
+typeset -ir CMD_read_version=$(( 0x50 )); #zsh - wont compare int with hex 16#50 in [ ] expression unless converted to decimal, works in [[ ]] expression
+typeset -ir CMD_reboot=$(( 0x40 ));
+typeset -ir CMD_read_mac=$(( 0x26 )); 
+typeset -ir CMD_write_ssid=$(( 0x11 )); 
+typeset -ir CMD_broadcast=$(( 0x12 )); 
+typeset -ir CMD_write_reset=$(( 0x41 )); 
 
 #weather services
-typeset -ir CMD_read_ecowitt_interval=0x1e; 
-typeset -ir CMD_write_ecowitt_interval=0x1f; 
+typeset -ir CMD_read_ecowitt_interval=$(( 0x1e )); 
+typeset -ir CMD_write_ecowitt_interval=$(( 0x1f )); 
 
-typeset -ir CMD_read_wunderground=0x20; 
-typeset -ir CMD_write_wunderground=0x21; 
+typeset -ir CMD_read_wunderground=$(( 0x20 )); 
+typeset -ir CMD_write_wunderground=$(( 0x21 )); 
 
-typeset -ir CMD_read_wow=0x22; 
-typeset -ir CMD_write_wow=0x23; 
+typeset -ir CMD_read_wow=$(( 0x22 )); 
+typeset -ir CMD_write_wow=$(( 0x23 )); 
 
-typeset -ir CMD_read_weathercloud=0x24; 
-typeset -ir CMD_write_weathercloud=0x25; 
+typeset -ir CMD_read_weathercloud=$(( 0x24 )); 
+typeset -ir CMD_write_weathercloud=$(( 0x25 )); 
 
 #customized server for ecowitt/wunderground http requests
-typeset -ir CMD_read_customized=0x2a; 
-typeset -ir CMD_write_customized=0x2b; 
-typeset -ir CMD_read_path=0x51; 
-typeset -ir CMD_write_path=0x52; 
+typeset -ir CMD_read_customized=$(( 0x2a )); 
+typeset -ir CMD_write_customized=$(( 0x2b )); 
+typeset -ir CMD_read_path=$(( 0x51 )); 
+typeset -ir CMD_write_path=$(( 0x52 )); 
 
-typeset -ir CMD_read_raindata=0x34; 
-typeset -ir CMD_write_raindata=0x35; 
+typeset -ir CMD_read_raindata=$(( 0x34 )); 
+typeset -ir CMD_write_raindata=$(( 0x35 )); 
 
-typeset -ir CMD_livedata=0x27; 
+typeset -ir CMD_livedata=$(( 0x27 )); 
 
 #sensors
-typeset -ir CMD_read_sensor_id=0x3a; 
-typeset -ir CMD_write_sensor_id=0x3b; 
-typeset -ir CMD_read_sensor_id_new=0x3c;  # for new sensors
+typeset -ir CMD_read_sensor_id=$(( 0x3a )); 
+typeset -ir CMD_write_sensor_id=$(( 0x3b )); 
+typeset -ir CMD_read_sensor_id_new=$(( 0x3c ));  # for new sensors
 
-typeset -ir CMD_read_system=0x30; 
-typeset -ir CMD_write_system=0x31; 
+typeset -ir CMD_read_system=$(( 0x30 )); 
+typeset -ir CMD_write_system=$(( 0x31 )); 
 
 typeset -a CMD_NAME
 
@@ -147,15 +147,15 @@ typeset -a SYSTEM_TIMEZONE #initTimezones
 
 #https://www.wxforum.net/index.php?topic=40730.0
 if [[ $KSH_VERSION = *MIRBSD?KSH* ]]; then
-   typeset -irU  SENSOR_SEARCH=0xffffffff
-   typeset -irU SENSOR_DISABLE=0xfffffffe
+   typeset -irU  SENSOR_SEARCH=$(( 0xffffffff ))
+   typeset -irU SENSOR_DISABLE=$(( 0xfffffffe ))
 # mksh - sets 0xffffffff to -1!? if typeset -i SENSOR_SEARCH=0xffffffff - its using 32-bit signed integer by default unless typeset -iU is used
    typeset -iU VALUE_UINT32BE #force to unsigned 32-bit int (-U option)
    typeset -iU VALUE_UINT16BE
    typeset -iU VALUE_UINT8
 else
-  typeset -ir  SENSOR_SEARCH=0xffffffff
-  typeset -ir SENSOR_DISABLE=0xfffffffe
+  typeset -ir  SENSOR_SEARCH=$(( 0xffffffff ))
+  typeset -ir SENSOR_DISABLE=$(( 0xfffffffe ))
   typeset -i VALUE_UINT32BE
   typeset -i VALUE_UINT16BE
   typeset -i VALUE_UINT8
@@ -163,36 +163,36 @@ fi
 
 
 
-typeset -ir WH24_type=0x00
-typeset -ir WH65_type=0x00
-typeset -ir WH68_type=0x01
-typeset -ir WH80_type=0x02
-typeset -ir WH40_type=0x03
+typeset -ir WH24_type=$(( 0x00 ))
+typeset -ir WH65_type=$(( 0x00 ))
+typeset -ir WH68_type=$(( 0x01 ))
+typeset -ir WH80_type=$(( 0x02 ))
+typeset -ir WH40_type=$(( 0x03 ))
 
-typeset -ir WH32_type=0x05
+typeset -ir WH32_type=$(( 0x05 ))
 
-typeset -ir WH31_type=0x06
+typeset -ir WH31_type=$(( 0x06 ))
 typeset -ir WH31_max_ch=8
 
-typeset -ir WH51_type=0x0e
+typeset -ir WH51_type=$(( 0x0e ))
 typeset -ir WH51_max_ch=8
 
 #Probably: cmd sensor_id up to 0x1e sensors type, and sensor_id_new from 0x1f (31)
-typeset -ir WH55_type=0x1b
+typeset -ir WH55_type=$(( 0x1b ))
 typeset -ir WH55_max_ch=4
 
-typeset -ir WH43_type=0x16
+typeset -ir WH43_type=$(( 0x16 ))
 typeset -ir WH43_max_ch=4
 
-typeset -ir WH57_type=0x1a
+typeset -ir WH57_type=$(( 0x1a ))
 
-typeset -ir WH34_type=0x1f
+typeset -ir WH34_type=$(( 0x1f ))
 typeset -ir WH34_max_ch=8
 
-typeset -ir WH35_type=0x28
+typeset -ir WH35_type=$(( 0x28 ))
 typeset -ir WH35_max_ch=8
 
-typeset -ir WH45_type=0x27
+typeset -ir WH45_type=$(( 0x27 ))
 
 typeset -ir SENSORTYPE_MAX=47
 
@@ -248,12 +248,12 @@ LIVEDATA_FIELD[0x16]="UV:UV radiation:µW/m2:2:1"
 LIVEDATA_FIELD[0x17]="UVI:UV index (0-15)::1:0"
 
 LIVEDATA_FIELD[0x60]="LIGHTNING:lightning distance (1-40km):km:1:0"
-typeset -i LDF_LIGHTNING_TIME=0x61
+typeset -i LDF_LIGHTNING_TIME=$(( 0x61 ))
 LIVEDATA_FIELD[LDF_LIGHTNING_TIME]="LIGHTNING_TIME:lightning utc time:utc:4:0"
 LIVEDATA_FIELD[0x62]="LIGHTNING_POWER:lightning power::4:0"
 
-typeset -i LDF_SENSOR_CO2=0x70
-LIVEDATA_FIELD[LDF_SENSOR_CO2]="CO2:co2 pm2.5 pm10 temperature::16:0" # special parsing of livedata for this sensor 32 hexdigits
+typeset -i LDF_SENSOR_CO2=$(( 0x70 ))
+LIVEDATA_FIELD[LDF_SENSOR_CO2]="CO2:co2 pm2.5 pm10 temperature::16:0" #  parsing of livedata for this sensor 32 hexdigits
 
 
 LDFT_WH43=0x2A
@@ -2211,7 +2211,7 @@ function convertScale10ToFloat {
   typeset -i frac
   typeset -i number
 
-  number=$(( "$1" ))
+  number=$(( $1 ))
 
   if [ "$number" -lt  10 ]; then
     #printf -v VALUE_SCALE10_FLOAT "%s" "0.$1" 2>/dev/null ||
