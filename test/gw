@@ -95,7 +95,10 @@ typeset -ir CMD_write_sensor_id=$(( 0x3b ));
 typeset -ir CMD_read_sensor_id_new=$(( 0x3c ));  # for new sensors
 
 typeset -ir CMD_read_system=$(( 0x30 )); 
-typeset -ir CMD_write_system=$(( 0x31 )); 
+typeset -ir CMD_write_system=$(( 0x31 ));
+
+typeset -ir CMD_read_calibration=$(( 0x38 ))
+typeset -ir CMD_write_calibration=$(( 0x39 ))
 
 typeset -a CMD_NAME
 
@@ -154,14 +157,10 @@ if [[ $KSH_VERSION = *MIRBSD?KSH* ]]; then
    typeset -iU VALUE_UINT16BE
    typeset -iU VALUE_UINT8
 else
-  typeset -ir  SENSOR_SEARCH=$(( 0xffffffff ))
-  typeset -ir SENSOR_DISABLE=$(( 0xfffffffe ))
-  typeset -i VALUE_UINT32BE
-  typeset -i VALUE_UINT16BE
-  typeset -i VALUE_UINT8
+  typeset -r SENSOR_SEARCH=$(( 0xffffffff ))
+  typeset -r SENSOR_DISABLE=$(( 0xfffffffe ))
+  #ksh typeset option -iu for usigned int https://docstore.mik.ua/orelly/unix3/korn/appb_07.htm
 fi
-
-
 
 typeset -ir WH24_type=$(( 0x00 ))
 typeset -ir WH65_type=$(( 0x00 ))
@@ -225,9 +224,9 @@ done
 typeset -a LIVEDATA
 
 typeset -a LIVEDATA_FIELD
-                      #name:description:unit:bytes:scaling
-LIVEDATA_FIELD[0x01]="INTEMP:indoor temperature:C:2:1"
-LIVEDATA_FIELD[0x02]="OUTTEMP:outdoor temperature:C:2:1"
+                      #name:description:unit:bytes:scaling/10:signedint
+LIVEDATA_FIELD[0x01]="INTEMP:indoor temperature:C:2:1:1"
+LIVEDATA_FIELD[0x02]="OUTTEMP:outdoor temperature:C:2:1:1"
 LIVEDATA_FIELD[0x06]="INHUMI:indoor humidity:%:1:0"
 LIVEDATA_FIELD[0x07]="OUTHUMI:outdoor humidity:%:1:0"
 LIVEDATA_FIELD[0x08]="ABSBARO:absolute pressure:hpa:2:1"
@@ -278,13 +277,13 @@ while [ "$CH" -le 8 ]; do
   fi
 
   if [ "$CH" -le $WH51_max_ch ]; then 
-   LIVEDATA_FIELD[$LDFT_WH51]="SOILTEMP_CH${CH}:soil temperature CH$CH:C:2:1"
+   LIVEDATA_FIELD[$LDFT_WH51]="SOILTEMP_CH${CH}:soil temperature CH$CH:C:2:1:1"
    LIVEDATA_FIELD[$(( LDFT_WH51 + 1 ))]=SOILHUMI_CH$CH":soil humidity CH$CH"":%:1:0"
    LDFT_WH51=$(( LDFT_WH51 + 2))
   fi 
 
   if [ "$CH" -le $WH31_max_ch ]; then 
-     LIVEDATA_FIELD[$LDFT_WH31_TEMP]="TEMP_CH$CH:temperature CH$CH:C:2:1"
+     LIVEDATA_FIELD[$LDFT_WH31_TEMP]="TEMP_CH$CH:temperature CH$CH:C:2:1:1"
      LIVEDATA_FIELD[$LDFT_WH31_HUMI]="HUMI_CH$CH:humidity CH$CH:%:1:0"
      LDFT_WH31_TEMP=$(( LDFT_WH31_TEMP + 1 ))
      LDFT_WH31_HUMI=$(( LDFT_WH31_HUMI + 1 ))
@@ -333,6 +332,7 @@ typeset -ir CONF_broadcast_mac=1
 typeset -ir CONF_broadcast_port=2
 typeset -ir CONF_broadcast_ssid=3
 typeset -ir CONF_broadcast_version=4
+
 typeset -ir CONF_customized_ecowitt_path=5
 typeset -ir CONF_customized_enabled=6
 typeset -ir CONF_customized_id=7
@@ -342,14 +342,18 @@ typeset -ir CONF_customized_port=10
 typeset -ir CONF_customized_server=11
 typeset -ir CONF_customized_type=12
 typeset -ir CONF_customized_wunderground_path=13
+
 typeset -ir CONF_ecowitt_interval=14
+
 typeset -ir CONF_host=15
 typeset -ir CONF_mac=16
+
 typeset -ir CONF_raindaily=17
 typeset -ir CONF_rainmonth=18
 typeset -ir CONF_rainrate=19
 typeset -ir CONF_rainweek=20
 typeset -ir CONF_rainyear=21
+
 typeset -ir CONF_system_dst_status=22
 typeset -ir CONF_system_dst_status_bit=23
 typeset -ir CONF_system_dst_status_state=24
@@ -363,13 +367,23 @@ typeset -ir CONF_system_timezone_index=31
 typeset -ir CONF_system_timezone_index_state=32
 typeset -ir CONF_system_utc=33
 typeset -ir CONF_system_utc_state=34
+
 typeset -ir CONF_version=35
+
 typeset -ir CONF_weathercloud_id=36
 typeset -ir CONF_weathercloud_password=37
 typeset -ir CONF_wow_id=38
 typeset -ir CONF_wow_password=39
 typeset -ir CONF_wunderground_id=40
 typeset -ir CONF_wunderground_password=41
+
+typeset -ir CONF_calibration_intempoffset=42
+typeset -ir CONF_calibration_inhumidityoffset=43
+typeset -ir CONF_calibration_absoffset=44
+typeset -ir CONF_calibration_reloffset=45
+typeset -ir CONF_calibration_outtempoffset=46
+typeset -ir CONF_calibration_outhumidityoffset=47
+typeset -ir CONF_calibration_windiroffset=48
 
 typeset -a CONFIGURATION_NAME #allow reverse mapping from property to index -> make backup file readable/editable
 CONFIGURATION_NAME[CONF_broadcast_ip]="broadcast_ip"
@@ -414,6 +428,14 @@ CONFIGURATION_NAME[CONF_wow_id]="wow_id"
 CONFIGURATION_NAME[CONF_wow_password]="wow_password"
 CONFIGURATION_NAME[CONF_wunderground_id]="wunderground_id"
 CONFIGURATION_NAME[CONF_wunderground_password]="wunderground_password"
+CONFIGURATION_NAME[CONF_calibration_intempoffset]="calibration_intempoffset"
+CONFIGURATION_NAME[CONF_calibration_inhumidityoffset]="calibration_intempoffset"
+CONFIGURATION_NAME[CONF_calibration_absoffset]="calibration_absoffset"
+CONFIGURATION_NAME[CONF_calibration_reloffset]="calibration_reloffset"
+CONFIGURATION_NAME[CONF_calibration_outtempoffset]="calibration_outtempoffset"
+CONFIGURATION_NAME[CONF_calibration_outhumidityoffset]="calibration_outhumidityoffset"
+CONFIGURATION_NAME[CONF_calibration_windiroffset]="calibration_windiroffset"
+
 
 #function getCommandName
 #$1 - cmd
@@ -563,31 +585,90 @@ function printConfiguration {
   IFS=':'
   for K in  "${CONFIGURATION_SENSOR_DISCOVER[@]}"; do
       read -r SNAME SDESC DISCARD <<< "${SENSOR_TYPE[$K]}"
-      decToHex "${CONFIGURATION_SENSOR[$K]}" 
+      decToHex "${CONFIGURATION_SENSOR[$K]}"
       printf "%-30s %10s %s\n"  "$CONFIGURATION_SENSORFIELD$K" "$VALUE_HEX" "$SDESC" 
   done
 
 }
 
 function readUInt8 {
-  VALUE_HEX="0x${PACKET_RX_HEX:(($RX_POS * 2)):2}"
+  #VALUE_UINT8_HEX="0x${PACKET_RX_HEX:(($RX_POS * 2)):2}"
   VALUE_UINT8=$(( 0x${PACKET_RX[$RX_POS ]} ))
 
   RX_POS=$(( RX_POS + 1 ))
 }
 
+function readInt8
+#$1 - decimal
+{
+  typeset hexstr
+
+  if [ -n "$1" ]; then
+    hexstr=$1
+  else
+    hexstr="0x${PACKET_RX_HEX:(($RX_POS * 2)):2}"
+  fi
+  #VALUE_INT8_HEX=$hexstr
+  VALUE_INT8=$(( -1 * ( hexstr >> 7) * 0x80 + ( hexstr & 0x7f ) ))
+
+  if [ -z "$1" ]; then
+    RX_POS=$(( RX_POS + 1 ))
+  fi
+}
+
 function readUInt16BE {
-  VALUE_UINT16BE_HEX="0x${PACKET_RX_HEX:(($RX_POS * 2)):4}"
+  #VALUE_UINT16BE_HEX="0x${PACKET_RX_HEX:(($RX_POS * 2)):4}"
   VALUE_UINT16BE=$(( (0x${PACKET_RX[$RX_POS]} << 8) |  0x${PACKET_RX[$RX_POS + 1]} ))
  
   RX_POS=$(( RX_POS + 2 ))
 }
 
+function readInt16BE 
+#$1 - decimal
+#2's complement big endian
+#msb is the sign bit
+#test cmd: n=0; while [ "$n" -lt $(( 1 << 16 )) ]; do readInt16BE $(printf "%x" $n); echo $n $VALUE_INT16BE; n=$(( n + 1 )); done 
+{
+  typeset hexstr
+
+  if [ -n "$1" ]; then
+    hexstr=$1
+  else
+    hexstr="0x${PACKET_RX_HEX:(($RX_POS * 2)):4}"
+  fi
+  #VALUE_INT16BE_HEX=$hexstr
+  #Converting from two's complement representation
+  #https://en.wikipedia.org/wiki/Two%27s_complement
+  VALUE_INT16BE=$(( -1* ( hexstr >> 15) * 0x8000 +  ( hexstr & 0x7fff ) ))
+  if [ -z "$1" ]; then
+     RX_POS=$(( RX_POS + 2 ))
+  fi
+}
+
 function readUInt32BE {
   VALUE_UINT32BE_HEX="0x${PACKET_RX_HEX:(($RX_POS * 2)):8}"
   VALUE_UINT32BE=$(( (0x${PACKET_RX[$RX_POS ]} << 24) | (0x${PACKET_RX[$RX_POS + 1 ]} << 16)  | (0x${PACKET_RX[$RX_POS + 2 ]} << 8) |  0x${PACKET_RX[$RX_POS + 3]} ))
-  
   RX_POS=$(( RX_POS + 4 ))
+}
+
+
+function readInt32BE 
+#$1 decimal
+#2's complement big endian
+#msb is the sign bit
+{
+  typeset hexstr
+
+  if [ -n "$1" ]; then
+    hexstr=$1
+  else
+     hexstr="0x${PACKET_RX_HEX:(($RX_POS * 2)):8}"
+  fi
+  #VALUE_INT32BE_HEX=$hexstr
+  VALUE_INT32BE=$(( -1* ( hexstr >> 31) * 0x80000000 +   ( hexstr & 0x7fffffff ) ))
+  if [ -z "$1" ]; then
+    RX_POS=$(( RX_POS + 4 ))
+  fi
 }
 
 function readString {
@@ -613,6 +694,47 @@ function readHex
   # PACKET_RX_HEX : string of hex bytes ffff...<checksum>
   VALUE_HEX_STRING=${PACKET_RX_HEX:(($RX_POS * 2)):$(( $1 * 2 ))}
   RX_POS=$(( RX_POS + $1 + 1))
+}
+
+function printCalibration
+#for sensor array
+{
+  typeset intempoffset
+  typeset inhumidityoffset
+  typeset absoffset
+  typeset reloffset
+  typeset outtempoffset
+  typeset outhumidityoffset
+  typeset windiroffset
+
+  readInt16BE "${CONFIGURATION[$CONF_calibration_intempoffset]}" # convert to signed int intepretation
+  convertScale10ToFloat "$VALUE_INT16BE"
+  intempoffset=$VALUE_SCALE10_FLOAT
+   
+   readInt8 "${CONFIGURATION[$CONF_calibration_inhumidityoffset]}"
+  inhumidityoffset=$VALUE_INT8
+
+  readInt32BE "${CONFIGURATION[$CONF_calibration_absoffset]}"
+  convertScale10ToFloat "$VALUE_INT32BE"
+  absoffset=$VALUE_SCALE10_FLOAT
+
+  readInt32BE "${CONFIGURATION[$CONF_calibration_reloffset]}"
+  convertScale10ToFloat "$VALUE_INT32BE"
+  reloffset=$VALUE_SCALE10_FLOAT
+
+  readInt16BE "${CONFIGURATION[$CONF_calibration_outtempoffset]}"
+  convertScale10ToFloat "$VALUE_INT16BE"
+  outtempoffset=$VALUE_SCALE10_FLOAT
+  
+  readInt8 "${CONFIGURATION[$CONF_calibration_outhumidityoffset]}"
+  outhumidityoffset=$VALUE_INT8
+  
+  readInt16BE "${CONFIGURATION[$CONF_calibration_windiroffset]}"
+  windiroffset=$VALUE_INT16BE
+
+  printf "%12s %16s %12s %12s %12s %12s %12s\n" intempoffset inhumidityoffset absoffset reloffset outtempoffset outhumidityoffset windiroffset
+
+  printf "%12s %16s %12s %12s %12s %12s %12s\n" "$intempoffset" "$inhumidityoffset" "$absoffset" "$reloffset" "$outtempoffset" "$outhumidityoffset" "$windiroffset"
 }
 
 function printRain {
@@ -735,7 +857,8 @@ function parseLivedata_C02_sensor
   [ "$DEBUG" -eq 1 ] && >&2 echo  parse livedata co2 hex string"$1" "${#1}"
   #testdata: parseLivedata_C02_sensor "$(printf "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x" 00 100 70 00 101 00 110 00 120 00 130 00 140 00 150 0)"
 
-  convertScale10ToFloat "0x${1:0:4}"
+  readInt16BE "0x${1:0:4}"
+  convertScale10ToFloat $VALUE_INT16BE
   ld_temp_co2=$VALUE_SCALE10_FLOAT
   
   ld_humidity_co2=$(( 0x${1:4:2} ))
@@ -829,7 +952,7 @@ function parseLivedata
 
      LDF_DISCOVERED+=( "$fieldTypeDec" ) # keep track of discovered fields
 
-   read -r LDFNAME LDFDESC LDFUNIT LDFBYTES LDFSCALE <<< "${LIVEDATA_FIELD[$fieldTypeDec]}"
+   read -r LDFNAME LDFDESC LDFUNIT LDFBYTES LDFSCALE LDFSIGNEDINT <<< "${LIVEDATA_FIELD[$fieldTypeDec]}"
     
     unset LDFDESC_RENAME
     if [ -n "${LIVEDATA_FIELDRENAME[$fieldTypeDec]}" ]; then #rename sensor description
@@ -840,10 +963,12 @@ function parseLivedata
           readUInt8
           LIVEDATA[$fieldTypeDec]=$VALUE_UINT8
 
-    elif [ "$LDFBYTES" -eq 2 ]; then 
-          readUInt16BE
+    elif [ "$LDFBYTES" -eq 2 ] && [ -z "$LDFSIGNEDINT" ]; then 
+          readUInt16BE 
           LIVEDATA[$fieldTypeDec]=$VALUE_UINT16BE
-
+    elif [ "$LDFBYTES" -eq 2 ] && [ "$LDFSIGNEDINT" -eq 1 ]; then
+          readInt16BE # temp is signed 16-bit
+          LIVEDATA[$fieldTypeDec]=$VALUE_INT16BE
     elif [ "$LDFBYTES" -eq 4 ]; then
           readUInt32BE
           LIVEDATA[$fieldTypeDec]=$VALUE_UINT32BE
@@ -951,6 +1076,7 @@ function parseSensor
               [ -z "$SNAME" ] && [ $DEBUG -eq 1 ] && echo >&2 "Unknown SENSOR_TYPE $STYPE"
 
               readUInt32BE
+
               SID=$VALUE_UINT32BE
               SID_HEX=$VALUE_UINT32BE_HEX # for searching
 
@@ -958,7 +1084,7 @@ function parseSensor
               CONFIGURATION_SENSOR_DISCOVER+=( "$STYPE" )
 
               CONFIGURATION_SENSOR[STYPE]=$SID
-              
+              set +x
               if [ "$SID" -eq "$SENSOR_SEARCH" ]; then 
                   SID_STATE="searching"
               elif [ "$SID" -eq  "$SENSOR_DISABLE" ]; then
@@ -1195,18 +1321,19 @@ function parsePacket {
 
   [ $DEBUG -eq 1 ] && echo >&2 "Parse packet ${PACKET_RX[*]} length $PACKET_RX_LENGTH"
 
-  if [  "$cmd" -eq $CMD_write_reset ]            ||
-     [  "$cmd" -eq $CMD_write_customized ]       || 
-     [  "$cmd" -eq $CMD_write_path ]             || 
-     [  "$cmd" -eq $CMD_reboot ]                 || 
+  if [ "$cmd" -eq $CMD_write_reset ]            ||
+     [ "$cmd" -eq $CMD_write_customized ]       || 
+     [ "$cmd" -eq $CMD_write_path ]             || 
+     [ "$cmd" -eq $CMD_reboot ]                 || 
      [ "$cmd" -eq $CMD_write_ssid ]             ||
-     [  "$cmd" -eq $CMD_write_raindata ]         ||
-     [  "$cmd" -eq $CMD_write_ecowitt_interval ] ||
-     [  "$cmd" -eq $CMD_write_wunderground ]     ||
-     [  "$cmd" -eq $CMD_write_wow ]              ||
-     [  "$cmd" -eq $CMD_write_weathercloud ]     || 
-     [  "$cmd" -eq $CMD_write_sensor_id ]        || 
-     [  "$cmd" -eq $CMD_write_system ]; then 
+     [ "$cmd" -eq $CMD_write_raindata ]         ||
+     [ "$cmd" -eq $CMD_write_ecowitt_interval ] ||
+     [ "$cmd" -eq $CMD_write_wunderground ]     ||
+     [ "$cmd" -eq $CMD_write_wow ]              ||
+     [ "$cmd" -eq $CMD_write_weathercloud ]     || 
+     [ "$cmd" -eq $CMD_write_sensor_id ]        || 
+     [ "$cmd" -eq $CMD_write_calibration ]
+     [ "$cmd" -eq $CMD_write_system ]; then 
     parseResultPacket
 
   elif [  "$cmd" -eq $CMD_read_mac ]; then
@@ -1416,6 +1543,35 @@ function parsePacket {
 
     printRain
 
+ elif [ "$cmd" -eq $CMD_read_calibration ]; then
+
+   readUInt16BE
+   CONFIGURATION[$CONF_calibration_intempoffset]=$VALUE_UINT16BE
+   
+   readUInt8 
+   CONFIGURATION[$CONF_calibration_inhumidityoffset]=$VALUE_UINT8
+
+   readUInt32BE ""
+   CONFIGURATION[$CONF_calibration_absoffset]=$VALUE_UINT32BE
+
+   readUInt32BE ""
+   CONFIGURATION[$CONF_calibration_reloffset]=$VALUE_UINT32BE
+
+   readUInt16BE
+   CONFIGURATION[$CONF_calibration_outtempoffset]=$VALUE_UINT16BE 
+   
+   readUInt8
+   CONFIGURATION[$CONF_calibration_outhumidityoffset]=$VALUE_UINT8 
+
+   readUInt16BE
+   CONFIGURATION[$CONF_calibration_windiroffset]=$VALUE_UINT16BE  
+
+    CONFIGURATION_DISCOVER+=("$CONF_calibration_intempoffset" "$CONF_calibration_inhumidityoffset" "$CONF_calibration_absoffset" 
+    "$CONF_calibration_reloffset" "$CONF_calibration_outtempoffset" "$CONF_calibration_outhumidityoffset" "$CONF_calibration_windiroffset" )
+
+
+   printCalibration
+   
   elif [  "$cmd" -eq $CMD_livedata ]; then
 
     parseLivedata "$SPATTERN" # use time for performance monitoring/optimization
@@ -1678,10 +1834,12 @@ function sendPacketnc
   fi
 
   #cleanup files
-  rm "$FILENAME_tx" 2>/dev/null
-  rm "$FILENAME_rx" 2>/dev/null
-  rm "$FILENAME_od_hex" 2>/dev/null
 
+  if [ $DEBUG -eq 0 ]; then 
+      rm "$FILENAME_tx" 2>/dev/null
+      rm "$FILENAME_rx" 2>/dev/null
+      rm "$FILENAME_od_hex" 2>/dev/null
+  fi
 
 }
 
@@ -1921,17 +2079,17 @@ function writeUInt {
       
        8)  #printf -v hex "%02x" "$2" 2>/dev/null ||  
            hex=$( printf "%02x" "$2")
-           VALUE_HEX=$hex
+           #VALUE_UINT8_HEX=$hex
             ;;
       
       16) #printf -v hex "%04x" "$2" 2>/dev/null ||  
           hex=$( printf  "%04x" "$2")
-          VALUE_UINT16BE_HEX=$hex
+          #VALUE_UINT16BE_HEX=$hex
            ;;
       
       32) #printf -v hex "%08x" "$2" 2>/dev/null ||
           hex=$(  printf "%08x" "$2" )
-          VALUE_UINT32BE_HEX=$hex
+          #VALUE_UINT32BE_HEX=$hex
           ;;
   esac
    
@@ -2032,16 +2190,14 @@ function sendRaindata {
 
 function sendEcowittInterval {
 # observation: GW1000 red-wifi led blinks slowly if not sending data to ecowitt when 0=off
-  case "$1" in
-    0|1|2|3|4|5)
+  if [ "$1" -ge 0 ] && [ "$1" -le 5 ]; then
       newPacketBody $CMD_write_ecowitt_interval
       writeUInt8 "$1" #interval
       [ $DEBUG -eq 1 ] && echo >&2 Sending ecowitt interval "$1"
       sendPacket
-      ;;
-    *) >&2 echo Error Not a valid ecowitt interval, range 0-5 minutes
-      ;;
-   esac
+  else
+      >&2 echo Error Not a valid ecowitt interval, range 0-5 minutes
+  fi
 }
 
 function sendWeatherservice {
@@ -2210,17 +2366,22 @@ function convertScale10ToFloat {
   typeset -i int
   typeset -i frac
   typeset -i number
-
+  typeset sign
+  
   number=$(( $1 ))
+  if [ "$number" -lt 0 ]; then
+   number=$(( number * - 1))
+   sign="-"
+  fi
 
   if [ "$number" -lt  10 ]; then
     #printf -v VALUE_SCALE10_FLOAT "%s" "0.$1" 2>/dev/null ||
-     VALUE_SCALE10_FLOAT="0.$number"
+     VALUE_SCALE10_FLOAT=$sign"0.$number"
   else
     int=$(( number / 10))
     frac=$(( number - int * 10))
     #printf -v VALUE_SCALE10_FLOAT "%u.%u" $int $frac 2>/dev/null ||
-     VALUE_SCALE10_FLOAT="$int.$frac" 
+     VALUE_SCALE10_FLOAT=$sign"$int.$frac" 
   fi
 }
 
@@ -2636,20 +2797,25 @@ function processCommand {
 
         sensor_id_new) # for new SENSOR_TYPE types
         
-        if expr "$1" : "-"; then # probably new option - or --
-          initSearchPatternForCommand
-        else
-          initSearchPatternForCommand "$1"
-        fi
-        
-          sendPacket $CMD_read_sensor_id_new
+            if expr "$1" : "-"; then # probably new option - or --
+              initSearchPatternForCommand
+            else
+              initSearchPatternForCommand "$1"
+            fi
+            
+              sendPacket $CMD_read_sensor_id_new
+              ;;
+
+        calibration)
+
+          sendPacket $CMD_read_calibration
           ;;
 
         *)
-          
-          echo >&2 Error Unkown command "$COMMAND"
-          return 1
-          ;;
+              
+              echo >&2 Error Unkown command "$COMMAND"
+              return 1
+              ;;
   esac
 
   return 0
@@ -2714,6 +2880,7 @@ while [ $# -gt 0 ]; do
     sendPacket $CMD_read_path >/dev/null
     sendPacket $CMD_read_raindata >/dev/null
     sendPacket $CMD_read_sensor_id_new >/dev/null
+    sendPacket $CMD_read_calibration >/dev/null
     # some data probably saved to device EEPROM
     # TODO? calibration data?
     if [ -n "$2" ]; then #save to file
@@ -2783,7 +2950,7 @@ while [ $# -gt 0 ]; do
     #sendPacket "$CMD_read_mac" >/dev/null
     sendPacket "$CMD_read_version" >/dev/null
     sendPacket "$CMD_read_system" >/dev/null 2>/dev/null # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
-    
+    #maybe: option to turn off?
     >&2  printf "%s %s\n\n" "${CONFIGURATION[$CONF_version]}" "${CONFIGURATION[$CONF_system_utc_state]}" 
 
     shift 2
