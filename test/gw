@@ -1154,7 +1154,7 @@ function parseSensor
          # typeset zshv
          # zshv=$ZSH_VERSION
          # unset BASH_VERSION KSH_VERSON ZSH_VERSION
-          SLINE="$STYPE $SNAME $SID $SID_HEX $SID_STATE $SBATTERY $SBATTERY_STATE $SSIGNAL $SINTERVAL_MIN $SDESC"
+          SLINE="$STYPE $SNAME $SID_HEX $SID_STATE $SBATTERY $SBATTERY_STATE $SSIGNAL $SINTERVAL_MIN $SDESC"
           [ $DEBUG -eq 1 ] && >&2 echo SLINE "$SLINE"
           if [ -n "$BASH_VERSION" ]; then
             eval 'if [[ ${SLINE,,} = $SPATTERN; then match=1; fi' #eval prevent ksh parser syntax error
@@ -1672,7 +1672,8 @@ function createPacketTX {
   PACKET_TX=(0xff 0xff "${PACKET_BODY[@]}" "$CHECKSUM")
   PACKET_TX_COMMAND=$(( PACKET_TX[2] )) # convert to decimal/integer for comparison in sendPacket
 
-  [ $DEBUG -eq 1 ] && echo >&2 PACKET_TX "${PACKET_TX[@]//0x/''}"
+  #workaround for @(#)MIRBSD KSH R58 2020/03/27, assign array to ptx, complains about "bad subtitution"
+  [ $DEBUG -eq 1 ] && { typeset ptx; ptx="${PACKET_TX[*]}"; echo >&2 PACKET_TX "${ptx//0x/''}"; }
 
   unset PACKET_TX_ECHO
   
