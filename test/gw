@@ -1146,12 +1146,22 @@ function parseSensor
             [ $DEBUG -eq 1 ] && >&2 echo "${PACKET_RX_HEX:(($RX_START_POS * 2)):14}"
 
           match=0
-          if [ -n "$BASH_VERSION"  ]; then
-            eval 'if [[ ${SNAME,,} =~ ^$SPATTERN || ${SDESC,,} =~ $SPATTERN || ${SID_STATE,,} =~  $SPATTERN || ${SID_HEX,,} =~  $SPATTERN ]] ; then match=1; fi' #eval prevent ksh parser syntax error
+#force grep for testing
+          typeset bashv
+          bashv=$BASH_VERSION
+          typeset kshv
+          kshv=$KSH_VERSION
+          typeset zshv
+          zshv=$ZSH_VERSION
+          unset BASH_VERSION KSH_VERSON ZSH_VERSION
+          #SLINE="$STYPE $SNAME $SID $SID_STATE $SBATTERY $SBATTERY_STATE $SSIGNAL $SINTERVAL_MIN $SDESC"
+          if [ -n "$BASH_VERSION" ]; then
+            eval 'if [[  ${STYPE} = $SPATTERN || ${SNAME,,} =~ ^$SPATTERN || ${SDESC,,} =~ $SPATTERN || ${SID_STATE,,} =~  $SPATTERN || ${SID_HEX,,} =~  $SPATTERN  || ${SBATTERY_STATE,,} =~ $SPATTERN ]] ; then match=1; fi' #eval prevent ksh parser syntax error
                 # ^ line starts with, ,,=to lowercase
           elif [ -n "$ZSH_VERSION" ]; then
-             eval 'if [[ ${SNAME:l} =~ ^$SPATTERN || ${SDESC:l} =~ $SPATTERN || ${SID_STATE:l} =~  $SPATTERN || ${SID_HEX:l} =~  $SPATTERN  ]] ; then match=1; fi'
-          elif expr "$KSH_VERSION" : "Version" >/dev/null; then 
+             #:l - to lowercase
+             eval 'if [[ ${STYPE:l} =~ ^$SPATTERN || ${SNAME:l} =~ ^$SPATTERN || ${SDESC:l} =~ $SPATTERN || ${SID_STATE:l} =~  $SPATTERN || ${SID_HEX:l} =~  $SPATTERN || ${SBATTERY_STATE:l} =~ $SPATTERN ]] ; then match=1; fi'
+          else
               toLowercase "$SNAME"
               SNAME=$lowercase
               toLowercase "$SDESC"
@@ -1160,10 +1170,19 @@ function parseSensor
               SID_STATE=$lowercase
               toLowercase "$SID_HEX"
               SID_HEX=$lowercase
-              eval 'if [[ $SNAME =~ ^$SPATTERN || $SDESC =~ $SPATTERN || $SID_STATE =~  $SPATTERN || $SID_HEX =~  $SPATTERN  ]] ; then match=1; fi'
-          elif echo "$SNAME" | grep -i -q -E "$SPATTERN" || echo "$SDESC" | grep -i -q -E "$SPATTERN" || echo "$SID_STATE" | grep -i -q -E "$SPATTERN" || echo "$SID_HEX" | grep -i -q -E "$SPATTERN"; then 
-             match=1   
+              toLowercase "$SBATTERY_STATE"
+              SBATTERY_STATE=$lowercase
+              if expr "$KSH_VERSION" : "Version" >/dev/null; then 
+                eval 'if [[ ${STYPE} = $SPATTERN || $SNAME =~ ^$SPATTERN || $SDESC =~ $SPATTERN || $SID_STATE =~  $SPATTERN || $SID_HEX =~  $SPATTERN || ${SBATTERY_STATE} =~ $SPATTERN ]] ; then match=1; fi'
+              elif echo "$STYPE"   | grep -i -q -E "$SPATTERN" || echo "$SNAME" | grep -i -q -E "$SPATTERN" ||\
+                   echo "$SDESC"   | grep -i -q -E "$SPATTERN" || echo "$SID_STATE" | grep -i -q -E "$SPATTERN" ||\
+                   echo "$SID_HEX" | grep -i -q -E "$SPATTERN" || echo "$SBATTERY_STATE" | grep -i -q -E "$SPATTERN"; then
+                match=1
+              fi
           fi
+          BASH_VERSION=$bashv
+          KSH_VERSION=$kshv
+          ZSH_VERSION=$zshv
        
           if [ $match -eq 1 ] && [ $printSensorHeaderFlag -eq 0 ]; then
             printSensorHeaderFlag=1
@@ -1735,7 +1754,6 @@ function sendPacket
   #sendPacketdd "$@"
 }
 
-
 function parse_od_hex_packet
 #$1 od hex string
 {
@@ -1770,7 +1788,6 @@ function sendPacketnc
   if [ -z "$host" ]; then
      host=$HOST #use default host, specfied using -h option
   fi 
-
 
   #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
   if [ $# -ge 1 ]; then
@@ -3033,7 +3050,7 @@ while [ $# -gt 0 ]; do
     sendPacket "$CMD_read_version" >/dev/null
     sendPacket "$CMD_read_system" >/dev/null  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
     #maybe: option to turn off?
-    >&2  printf "%s %s\n" "${CONFIGURATION[$CONF_version]}" "${CONFIGURATION[$CONF_system_utc_state]}" 
+    #>&2  printf "%s %s\n" "${CONFIGURATION[$CONF_version]}" "${CONFIGURATION[$CONF_system_utc_state]}" 
     
     shift 2
     ;;
