@@ -1146,43 +1146,34 @@ function parseSensor
             [ $DEBUG -eq 1 ] && >&2 echo "${PACKET_RX_HEX:(($RX_START_POS * 2)):14}"
 
           match=0
-#force grep for testing
-          typeset bashv
-          bashv=$BASH_VERSION
-          typeset kshv
-          kshv=$KSH_VERSION
-          typeset zshv
-          zshv=$ZSH_VERSION
-          unset BASH_VERSION KSH_VERSON ZSH_VERSION
-          #SLINE="$STYPE $SNAME $SID $SID_STATE $SBATTERY $SBATTERY_STATE $SSIGNAL $SINTERVAL_MIN $SDESC"
+     #force external grep for testing
+         # typeset bashv
+         # bashv=$BASH_VERSION
+         # typeset kshv
+         # kshv=$KSH_VERSION
+         # typeset zshv
+         # zshv=$ZSH_VERSION
+         # unset BASH_VERSION KSH_VERSON ZSH_VERSION
+          SLINE="$STYPE $SNAME $SID $SID_HEX $SID_STATE $SBATTERY $SBATTERY_STATE $SSIGNAL $SINTERVAL_MIN $SDESC"
+          [ $DEBUG -eq 1 ] && >&2 echo SLINE "$SLINE"
           if [ -n "$BASH_VERSION" ]; then
-            eval 'if [[  ${STYPE} = $SPATTERN || ${SNAME,,} =~ ^$SPATTERN || ${SDESC,,} =~ $SPATTERN || ${SID_STATE,,} =~  $SPATTERN || ${SID_HEX,,} =~  $SPATTERN  || ${SBATTERY_STATE,,} =~ $SPATTERN ]] ; then match=1; fi' #eval prevent ksh parser syntax error
+            eval 'if [[ ${SLINE,,} = $SPATTERN; then match=1; fi' #eval prevent ksh parser syntax error
                 # ^ line starts with, ,,=to lowercase
           elif [ -n "$ZSH_VERSION" ]; then
              #:l - to lowercase
-             eval 'if [[ ${STYPE:l} =~ ^$SPATTERN || ${SNAME:l} =~ ^$SPATTERN || ${SDESC:l} =~ $SPATTERN || ${SID_STATE:l} =~  $SPATTERN || ${SID_HEX:l} =~  $SPATTERN || ${SBATTERY_STATE:l} =~ $SPATTERN ]] ; then match=1; fi'
+             eval 'if [[ ${SLINE:l} =~ $SPATTERN  ]] ; then match=1; fi'
           else
-              toLowercase "$SNAME"
-              SNAME=$lowercase
-              toLowercase "$SDESC"
-              SDESC=$lowercase
-              toLowercase "$SID_STATE"
-              SID_STATE=$lowercase
-              toLowercase "$SID_HEX"
-              SID_HEX=$lowercase
-              toLowercase "$SBATTERY_STATE"
-              SBATTERY_STATE=$lowercase
+              toLowercase "$SLINE"
+              SLINE=$lowercase
               if expr "$KSH_VERSION" : "Version" >/dev/null; then 
-                eval 'if [[ ${STYPE} = $SPATTERN || $SNAME =~ ^$SPATTERN || $SDESC =~ $SPATTERN || $SID_STATE =~  $SPATTERN || $SID_HEX =~  $SPATTERN || ${SBATTERY_STATE} =~ $SPATTERN ]] ; then match=1; fi'
-              elif echo "$STYPE"   | grep -i -q -E "$SPATTERN" || echo "$SNAME" | grep -i -q -E "$SPATTERN" ||\
-                   echo "$SDESC"   | grep -i -q -E "$SPATTERN" || echo "$SID_STATE" | grep -i -q -E "$SPATTERN" ||\
-                   echo "$SID_HEX" | grep -i -q -E "$SPATTERN" || echo "$SBATTERY_STATE" | grep -i -q -E "$SPATTERN"; then
+                eval 'if [[ ${SLINE} =~ $SPATTERN ]] ; then match=1; fi'
+              elif echo "$SLINE"   | grep -i -q -E "$SPATTERN"; then
                 match=1
               fi
           fi
-          BASH_VERSION=$bashv
-          KSH_VERSION=$kshv
-          ZSH_VERSION=$zshv
+          #BASH_VERSION=$bashv
+          #KSH_VERSION=$kshv
+          #ZSH_VERSION=$zshv
        
           if [ $match -eq 1 ] && [ $printSensorHeaderFlag -eq 0 ]; then
             printSensorHeaderFlag=1
