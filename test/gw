@@ -320,6 +320,7 @@ ERROR_NO_NMCLI=2
 ERROR_NC_UDP_SCAN_UNAVAILABLE=3
 ERROR_RAINDATA_NOTSPECIFIED=4
 ERROR_SYSTEMPARAM_NOTSPECIFIED=5
+ERROR_NO_NC=6
 
 typeset -a CONFIGURATION
 typeset -a CONFIGURATION_INDEX
@@ -533,7 +534,7 @@ function disconnect {
 
 function parseResultPacket {
   typeset -i cmd
-  cmd=$(( "0x${PACKET_RX[2]}" ))
+  cmd=$(( 0x${PACKET_RX[2]} ))
   typeset -i result
 
   result=$(( 0x${PACKET_RX[4]} ))
@@ -553,31 +554,16 @@ function printStack {
 }
 
 function printCustomized {
-
-  echo "customized_id ${CONFIGURATION[$CONF_customized_id]}"
-  echo "customized_password ${CONFIGURATION[$CONF_customized_password]}"
-  echo "customized_server ${CONFIGURATION[$CONF_customized_server]}"
-  echo "customized_port ${CONFIGURATION[$CONF_customized_port]}"
-  echo "customized_interval ${CONFIGURATION[$CONF_customized_interval]}"
-
-  if [ "${CONFIGURATION[$CONF_customized_type]}" -eq 1 ]; then
-    echo "customized_type 1 wunderground"
-  elif [ "${CONFIGURATION[$CONF_customized_type]}" -eq 0 ]; then
-    echo "customized_type 0 ecowitt "
-  else
-    echo "customized_type ${CONFIGURATION[$CONF_customized_type]}" "UNKNOWN"
-  fi
-
-  if [ "${CONFIGURATION[$CONF_customized_enabled]}" -eq 1 ]; then
-    echo "customized_enabled 1 ON"
-  elif [ "${CONFIGURATION[$CONF_customized_enabled]}" -eq 0 ]; then
-    echo "customized_enabled 0 OFF"
-  else
-    echo "customized_enabled ${CONFIGURATION[$CONF_customized_enabled]} UNKNOWN"
-  fi
-
-  echo "customized_ecowitt_path ${CONFIGURATION[$CONF_customized_ecowitt_path]}"
-  echo "customized_wunderground path ${CONFIGURATION[$CONF_customized_wunderground_path]}"
+  printf "%16s %s\n" "id" "$C_WS_CUSTOMIZED_ID"
+  printf "%16s %s\n" "password" "$C_WS_CUSTOMIZED_PASSWORD"
+  printf "%16s %s\n" "server" "$C_WS_CUSTOMIZED_SERVER"
+  printf "%16s %d\n" "port" "$C_WS_CUSTOMIZED_PORT"
+  printf "%16s %d\n" "interval" "$C_WS_CUSTOMIZED_INTERVAL"
+  printf "%16s %d %s\n" "type" "$C_WS_CUSTOMIZED_TYPE" "$C_WS_CUSTOMIZED_TYPE_STATE"
+  printf "%16s %d %s\n" "enabled" "$C_WS_CUSTOMIZED_ENABLED" "$C_WS_CUSTOMIZED_ENABLED_STATE"
+  printf "%16s %s\n" "pathecowitt" "$C_WS_CUSTOMIZED_PATH_ECOWITT" 
+  printf "%16s %s\n" "pathwunderground" "$C_WS_CUSTOMIZED_PATH_WU" 
+ 
 }
 
 function printConfiguration {
@@ -946,6 +932,7 @@ function parseLivedata
   typeset fieldTypeDec
   typeset match
   typeset len
+  typeset liveline
 
  [ $DEBUG -eq 1 ] && >&2 echo parseLivedata "SPATTERN" "$SPATTERN"
 
@@ -996,21 +983,17 @@ function parseLivedata
         LIVEDATA[$fieldTypeDec]=$VALUE_SCALE10_FLOAT
      fi
 
-    if [ -n "$BASH_VERSION"  ]; then
-       eval 'if [[ ${LDFNAME,,} =~ ^${SPATTERN} || ${LDFDESC,,} =~ ${SPATTERN} || ${LDFDESC_RENAME,,} =~  ${SPATTERN} ]] ; then match=1; printLivedata "$fieldTypeDec"; fi' #eval prevent ksh parser syntax error
+    liveline="$LDFNAME $LDFDESC $LDFDESC_RENAME"
+    toLowercase "$liveline"
+    liveline=$lowercase
+
+
+    if [ "$SHELL_SUPPORT_TILDE_REGEX" -eq 1 ]; then
+       eval 'if [[ "$liveline" =~  ${SPATTERN} ]] ; then match=1; printLivedata "$fieldTypeDec"; fi' #eval prevent ksh parser syntax error
       # ^ line starts with, ,,=to lowercase
-    elif [ -n "$ZSH_VERSION" ]; then
-        eval 'if [[ ${LDFNAME:l} =~ ^${SPATTERN} || ${LDFDESC:l} =~ ${SPATTERN} || ${LDFDESC_RENAME:l} =~  ${SPATTERN} ]] ; then match=1; printLivedata "$fieldTypeDec"; fi'
-    elif [ "${KSH_VERSION:7}" = "Version" ]; then 
-       toLowercase "$LDFNAME"
-       LDFNAME=$lowercase
-       toLowercase "$LDFDESC"
-       LDFDESC=$lowercase
-       toLowercase "$LDFDESC_RENAME"
-       LDFDESC_RENAME=$lowercase
-       eval 'if [[ "$LDFNAME" =~ ^${SPATTERN} || "$LDFDESC" =~ ${SPATTERN} || "$LDFDESC_RENAME" =~  ${SPATTERN} ]] ; then match=1; printLivedata "$fieldTypeDec"; fi'
-     elif  echo "$LDFNAME" | grep -i -q -E "$SPATTERN" || echo "$LDFDESC" | grep -i -q -E "$SPATTERN" || echo "$LDFDESC_RENAME" | grep -i -q -E "$SPATTERN"; then
-        match=1; printLivedata "$fieldTypeDec";
+     elif echo "$liveline" | grep -i -q -E "$SPATTERN"; then
+        match=1 
+        printLivedata "$fieldTypeDec"
     fi
 
   done
@@ -1155,22 +1138,20 @@ function parseSensor
          # zshv=$ZSH_VERSION
          # unset BASH_VERSION KSH_VERSON ZSH_VERSION
           SLINE="$STYPE $SNAME $SID_HEX $SID_STATE $SBATTERY $SBATTERY_STATE $SSIGNAL $SINTERVAL_MIN $SDESC"
+          toLowercase "$SLINE"
+          SLINE=$lowercase
+          
           [ $DEBUG -eq 1 ] && >&2 echo SLINE "$SLINE"
-          if [ -n "$BASH_VERSION" ]; then
-            eval 'if [[ ${SLINE,,} = $SPATTERN; then match=1; fi' #eval prevent ksh parser syntax error
+          
+          if [ "$SHELL_SUPPORT_TILDE_REGEX" -eq 1 ]; then
+               eval 'if [[ ${SLINE,,} =~ $SPATTERN ]]; then match=1; fi' #eval prevent ksh parser syntax error
                 # ^ line starts with, ,,=to lowercase
-          elif [ -n "$ZSH_VERSION" ]; then
-             #:l - to lowercase
-             eval 'if [[ ${SLINE:l} =~ $SPATTERN  ]] ; then match=1; fi'
-          else
-              toLowercase "$SLINE"
-              SLINE=$lowercase
-              if expr "$KSH_VERSION" : "Version" >/dev/null; then 
-                eval 'if [[ ${SLINE} =~ $SPATTERN ]] ; then match=1; fi'
-              elif echo "$SLINE"   | grep -i -q -E "$SPATTERN"; then
+          elif  echo "$SLINE"   | grep -i -q -E "$SPATTERN"; then
+               #-w option to search for word or "\<word\>" search pattern
+                #https://www.networkworld.com/article/2764489/unix-tip-grepping-on-whole-words.html
                 match=1
-              fi
           fi
+          
           #BASH_VERSION=$bashv
           #KSH_VERSION=$kshv
           #ZSH_VERSION=$zshv
@@ -1353,10 +1334,18 @@ function setConfiguration
   [ $DEBUG -eq 1 ] && >&2 echo "Indexes with values ${CONFIGURATION_INDEX[*]}"
 }
 
+function printSystem
+{
+     printf "%15s %s %s\n" "frequency" "$C_SYSTEM_FREQUENCY" "$C_SYSTEM_FREQUENCY_STATE" 
+     printf "%15s %s %s\n" "sensortype" "$C_SYSTEM_SENSORTYPE" "$C_SYSTEM_SENSORTYPE_STATE"
+     printf "%15s %s %s\n" "UTC" "$C_SYSTEM_UTC" "$C_SYSTEM_UTC_STATE"
+     printf "%15s %s %s\n" "tzindex" "$C_SYSTEM_TIMEZONE_INDEX" "$C_SYSTEM_TIMEZONE_INDEX_STATE"
+     printf "%15s %d dst %s auto %s\n" "timezone" "$C_SYSTEM_DST_STATUS" "$C_SYSTEM_DST_STATUS_STATE" "$C_SYSTEM_TIMEZONE_AUTO_STATE" 
+}
+
 function parsePacket {
   typeset -i cmd
   RX_POS=4 # current read position/after packet length byte for indexing PACKET_RX_OD[1] - ASCII string from od utility
-
 
   cmd=$(( 0x${PACKET_RX[2]} ))
 
@@ -1390,144 +1379,185 @@ function parsePacket {
 
   elif [  "$cmd" -eq $CMD_read_mac ]; then
 
-    setConfiguration $CONF_mac "$(printf "%02X:%02X:%02X:%02X:%02X:%02X" 0x"${PACKET_RX[4]}" 0x"${PACKET_RX[5]}" 0x"${PACKET_RX[6]}" 0x"${PACKET_RX[7]}" 0x"${PACKET_RX[8]}" 0x"${PACKET_RX[9]}")"
-    echo "${CONFIGURATION[$CONF_mac]}"
+    #setConfiguration $CONF_mac "$(printf "%02X:%02X:%02X:%02X:%02X:%02X" 0x"${PACKET_RX[4]}" 0x"${PACKET_RX[5]}" 0x"${PACKET_RX[6]}" 0x"${PACKET_RX[7]}" 0x"${PACKET_RX[8]}" 0x"${PACKET_RX[9]}")"
+    C_MAC="$(printf "%02X:%02X:%02X:%02X:%02X:%02X" 0x"${PACKET_RX[4]}" 0x"${PACKET_RX[5]}" 0x"${PACKET_RX[6]}" 0x"${PACKET_RX[7]}" 0x"${PACKET_RX[8]}" 0x"${PACKET_RX[9]}")"
+
+    echo "$C_MAC"
 
   elif [  "$cmd" -eq $CMD_read_version ]; then
 
     readString
-    setConfiguration $CONF_version "$VALUE_STRING"
+    #setConfiguration $CONF_version "$VALUE_STRING"
+    C_VERSION=$VALUE_STRING
    
-    echo "${CONFIGURATION[$CONF_version]}"
+    echo "$C_VERSION"
 
   elif [  "$cmd" -eq $CMD_read_system ]; then
   
      readUInt8
-     setConfiguration $CONF_system_frequency "$VALUE_UINT8"
-     if [ "${CONFIGURATION[$CONF_system_frequency]}"  -eq $SYSTEM_FREQUENCY_RFM433M ]; then
-       setConfiguration $CONF_system_frequency_state "433MHz"
-     elif [ "${CONFIGURATION[$CONF_system_frequency]}"  -eq $SYSTEM_FREQUENCY_RFM868M ]; then
-       setConfiguration $CONF_system_frequency_state "868MHz"
-     elif [ "${CONFIGURATION[$CONF_system_frequency]}"  -eq $SYSTEM_FREQUENCY_RFM915M ]; then
-       setConfiguration $CONF_system_frequency_state "915MHz"
-     elif [ "${CONFIGURATION[$CONF_system_frequency]}"  -eq $SYSTEM_FREQUENCY_RFM920M ]; then
-       setConfiguration $CONF_system_frequency_state "920MHz"
+     #setConfiguration $CONF_system_frequency "$VALUE_UINT8"
+     C_SYSTEM_FREQUENCY=$VALUE_UINT8
+     if [ "$C_SYSTEM_FREQUENCY" -eq $SYSTEM_FREQUENCY_RFM433M ]; then
+      # setConfiguration $CONF_system_frequency_state "433MHz"
+       C_SYSTEM_FREQUENCY_STATE="433MHz"
+     elif [ "$C_SYSTEM_FREQUENCY"  -eq $SYSTEM_FREQUENCY_RFM868M ]; then
+       #setConfiguration $CONF_system_frequency_state "868MHz"
+       C_SYSTEM_FREQUENCY_STATE="868MHz"
+     elif [ "$C_SYSTEM_FREQUENCY" -eq $SYSTEM_FREQUENCY_RFM915M ]; then
+       #setConfiguration $CONF_system_frequency_state "915MHz"
+       C_SYSTEM_FREQUENCY_STATE="915MHz"
+     elif [ "$C_SYSTEM_FREQUENCY" -eq $SYSTEM_FREQUENCY_RFM920M ]; then
+       #setConfiguration $CONF_system_frequency_state "920MHz"
+       C_SYSTEM_FREQUENCY_STATE="920MHz"
      fi
-     echo System Frequency "${CONFIGURATION[$CONF_system_frequency]}" "${CONFIGURATION[$CONF_system_frequency_state]}"
 
      readUInt8
-     setConfiguration $CONF_system_sensor_type $VALUE_UINT8 # 0=WH24, 1=WH65
-
-     if [ "${CONFIGURATION[$CONF_system_sensor_type]}" -eq $SYSTEM_SENSOR_TYPE_WH24 ]; then
-       setConfiguration $CONF_system_sensor_type_state "WH24"
+     #setConfiguration $CONF_system_sensor_type $VALUE_UINT8 # 0=WH24, 1=WH65
+     C_SYSTEM_SENSORTYPE=$VALUE_UINT8
+     if [ "$C_SYSTEM_SENSORTYPE" -eq $SYSTEM_SENSOR_TYPE_WH24 ]; then
+       #setConfiguration $CONF_system_sensor_type_state "WH24"
        SENSOR_TYPE[WH24_type]="WH24:Outdoor Weather Sensor:16.0:" # overwrite default WH65_type=0
-     elif [  "${CONFIGURATION[$CONF_system_sensor_type]}" -eq $SYSTEM_SENSOR_TYPE_WH65 ]; then
-       setConfiguration $CONF_system_sensor_type_state "WH65"
-      
+      C_SYSTEM_SENSORTYPE_STATE="WH24"
+     elif [ "$C_SYSTEM_SENSORTYPE" -eq $SYSTEM_SENSOR_TYPE_WH65 ]; then
+       #setConfiguration $CONF_system_sensor_type_state "WH65"
+      C_SYSTEM_SENSORTYPE_STATE="WH65"
      fi
 
-     echo System type "${CONFIGURATION[$CONF_system_sensor_type]}" "${CONFIGURATION[$CONF_system_sensor_type_state]}"
 
      readUInt32BE
-     setConfiguration $CONF_system_utc $VALUE_UINT32BE # UTC time (seconds)
-     setConfiguration $CONF_system_utc_state "$(date -u -d @"$VALUE_UINT32BE" +'%F %T')"
-     echo "${CONFIGURATION[$CONF_system_utc_state]}" System utc "$VALUE_UINT32BE" 
+     #setConfiguration $CONF_system_utc $VALUE_UINT32BE # UTC time (seconds)
+     C_SYSTEM_UTC=$VALUE_UINT32BE
+     #setConfiguration $CONF_system_utc_state "$(date -u -d @"$VALUE_UINT32BE" +'%F %T')"
+     C_SYSTEM_UTC_STATE="$(date -u -d @"$VALUE_UINT32BE" +'%F %T')"
      #while true; do time ./gw  -h 192.168.3.80 -c system | grep utc; date -u; sleep 0.6; done #see time difference between machine time and device time
 
      readUInt8
-     setConfiguration $CONF_system_timezone_index $VALUE_UINT8 # 39 = UTC
+     #setConfiguration $CONF_system_timezone_index $VALUE_UINT8 # 39 = UTC
+     C_SYSTEM_TIMEZONE_INDEX=$VALUE_UINT8
      initTimezones
-     setConfiguration $CONF_system_timezone_index_state "${SYSTEM_TIMEZONE[CONFIGURATION[$CONF_system_timezone_index]]}"
-     echo System timezone index "${CONFIGURATION[$CONF_system_timezone_index]}" "${CONFIGURATION[$CONF_system_timezone_index_state]}" 
+     #setConfiguration $CONF_system_timezone_index_state "${SYSTEM_TIMEZONE[CONFIGURATION[$CONF_system_timezone_index]]}"
+      C_SYSTEM_TIMEZONE_INDEX_STATE=${SYSTEM_TIMEZONE[$C_SYSTEM_TIMEZONE_INDEX]}
 
      readUInt8
-     setConfiguration $CONF_system_dst_status $VALUE_UINT8
-     setConfiguration $CONF_system_dst_status_bit "$(( ${CONFIGURATION[$CONF_system_dst_status]} & 0x1 ))"
-     if [ "${CONFIGURATION[$CONF_system_dst_status_bit]}" -eq 1 ]; then
-        setConfiguration $CONF_system_dst_status_state "on";
-      elif [ "${CONFIGURATION[$CONF_system_dst_status_bit]}" -eq 0 ]; then
-        setConfiguration $CONF_system_dst_status_state "off"
+     #setConfiguration $CONF_system_dst_status $VALUE_UINT8
+     C_SYSTEM_DST_STATUS=$VALUE_UINT8
+     #setConfiguration $CONF_system_dst_status_bit "$(( ${CONFIGURATION[$CONF_system_dst_status]} & 0x1 ))"
+     C_SYSTEM_DST_STATUS_BIT=$(( C_SYSTEM_DST_STATUS & 0x01 ))
+     if [ "$C_SYSTEM_DST_STATUS_BIT" -eq 1 ]; then
+        #setConfiguration $CONF_system_dst_status_state "on";
+        C_SYSTEM_DST_STATUS_STATE="on"
+      elif [ "$C_SYSTEM_DST_STATUS_BIT" -eq 0 ]; then
+        #setConfiguration $CONF_system_dst_status_state "off"
+        C_SYSTEM_DST_STATUS_STATE="off"
      fi  
-     setConfiguration $CONF_system_timezone_auto_bit $(( ( ${CONFIGURATION[$CONF_system_dst_status]} & 0x2 ) >> 1 )) # bit 2 1= off, 0=on ?
-     if [  "${CONFIGURATION[$CONF_system_timezone_auto_bit]}" -eq 0 ]; then
-        setConfiguration $CONF_system_timezone_auto_state "on";
+     
+     #setConfiguration $CONF_system_timezone_auto_bit $(( ( ${CONFIGURATION[$CONF_system_dst_status]} & 0x2 ) >> 1 )) # bit 2 1= off, 0=on ?
+     C_SYSTEM_TIMEZONE_AUTO_BIT=$(( (C_SYSTEM_DST_STATUS & 0x2 ) >> 1 )) # bit 2 1= off, 0=on ?
+     if [ "$C_SYSTEM_TIMEZONE_AUTO_BIT" -eq 0 ]; then
+        #setConfiguration $CONF_system_timezone_auto_state "on";
+        C_SYSTEM_TIMEZONE_AUTO_STATE="on"
       elif [  "${CONFIGURATION[$CONF_system_timezone_auto_bit]}" -eq 1 ]; then
-        setConfiguration $CONF_system_timezone_auto_state "off"
+        #setConfiguration $CONF_system_timezone_auto_state "off"
+         C_SYSTEM_TIMEZONE_AUTO_STATE="off"
      fi
 
-     echo System DST status "$VALUE_UINT8" dst "${CONFIGURATION[$CONF_system_dst_status_state]}" auto timezone "${CONFIGURATION[$CONF_system_timezone_auto_state]}"
+     printSystem
 
   elif [ "$cmd" -eq $CMD_read_ecowitt_interval ]; then
 
     readUInt8
-    setConfiguration $CONF_ecowitt_interval "$VALUE_UINT8"
-    echo "ecowitt_interval ${CONFIGURATION[$CONF_ecowitt_interval]} minutes"
+    #setConfiguration $CONF_ecowitt_interval "$VALUE_UINT8"
+    C_WS_ECOWITT_INTERVAL=$VALUE_UINT8
+    echo $C_WS_ECOWITT_INTERVAL
 
   elif [  "$cmd" -eq $CMD_read_wunderground ]; then
 
     readString
-    setConfiguration $CONF_wunderground_id "$VALUE_STRING"
-    
+    #setConfiguration $CONF_wunderground_id "$VALUE_STRING"
+    C_WS_WUNDERGROUND_ID=$VALUE_STRING
     readString
-    setConfiguration $CONF_wunderground_password "$VALUE_STRING"
+    #setConfiguration $CONF_wunderground_password "$VALUE_STRING"
+    C_WS_WUNDERGROUND_PASSWORD=$VALUE_STRING
 
-    echo "wunderground_id ${CONFIGURATION[$CONF_wunderground_id]}"
-    echo "wunderground_password ${CONFIGURATION[$CONF_wunderground_password]}"
-  
+    echo "$C_WS_WUNDERGROUND_ID $C_WS_WUNDERGROUND_PASSWORD" 
+    
   elif [  "$cmd" -eq $CMD_read_wow ]; then
 
     readString
-    setConfiguration $CONF_wow_id "$VALUE_STRING"
+    #setConfiguration $CONF_wow_id "$VALUE_STRING"
+    C_WS_WOW_ID=$VALUE_STRING
 
     readString
-    setConfiguration $CONF_wow_password "$VALUE_STRING"
+    #setConfiguration $CONF_wow_password "$VALUE_STRING"
+    C_WS_WOW_PASSWORD=$VALUE_STRING
 
-    echo "wow_id ${CONFIGURATION[$CONF_wow_id]}"
-    echo "wow_password ${CONFIGURATION[$CONF_wow_password]}"
-
+    echo "$C_WS_WOW_ID $C_WS_WOW_PASSWORD"
+   
   elif [  "$cmd" -eq $CMD_read_weathercloud ]; then
 
     readString
-    setConfiguration $CONF_weathercloud_id "$VALUE_STRING"
+    #setConfiguration $CONF_weathercloud_id "$VALUE_STRING"
+    C_WS_WC_ID=$VALUE_STRING
     
     readString
-    setConfiguration $CONF_weathercloud_password "$VALUE_STRING"
+    #setConfiguration $CONF_weathercloud_password "$VALUE_STRING"
+    C_WS_WC_PASSWORD=$VALUE_STRING
+    echo "$C_WS_WC_ID $C_WS_WC_PASSWORD"
     
-    echo "weathercloud_id ${CONFIGURATION[$CONF_weathercloud_id]}"
-    echo "weathercloud_password ${CONFIGURATION[$CONF_weathercloud_password]}"
-  
   elif [  "$cmd" -eq $CMD_read_customized ]; then
 
     readString
-    setConfiguration $CONF_customized_id "$VALUE_STRING"
+    #setConfiguration $CONF_customized_id "$VALUE_STRING"
+    C_WS_CUSTOMIZED_ID=$VALUE_STRING
 
     readString
-    setConfiguration $CONF_customized_password "$VALUE_STRING"
+    #setConfiguration $CONF_customized_password "$VALUE_STRING"
+    C_WS_CUSTOMIZED_PASSWORD=$VALUE_STRING
 
     readString
-    setConfiguration $CONF_customized_server "$VALUE_STRING"
+    #setConfiguration $CONF_customized_server "$VALUE_STRING"
+    C_WS_CUSTOMIZED_SERVER=$VALUE_STRING
 
     readUInt16BE
-    setConfiguration $CONF_customized_port "$VALUE_UINT16BE"
+    #setConfiguration $CONF_customized_port "$VALUE_UINT16BE"
+    C_WS_CUSTOMIZED_PORT=$VALUE_UINT16BE
 
     readUInt16BE
-    setConfiguration $CONF_customized_interval "$VALUE_UINT16BE"
-
-    readUInt8
-    setConfiguration $CONF_customized_type "$VALUE_UINT8"
+    #setConfiguration $CONF_customized_interval "$VALUE_UINT16BE"
+    C_WS_CUSTOMIZED_INTERVAL=$VALUE_UINT16BE
     
     readUInt8
-    setConfiguration $CONF_customized_enabled "$VALUE_UINT8"
+    #setConfiguration $CONF_customized_type "$VALUE_UINT8"
+    C_WS_CUSTOMIZED_TYPE=$VALUE_UINT8
 
+    if [ "$C_WS_CUSTOMIZED_TYPE" -eq 1 ]; then
+      C_WS_CUSTOMIZED_TYPE_STATE="wunderground"
+    elif [ "$C_WS_CUSTOMIZED_TYPE" -eq 0 ]; then
+      C_WS_CUSTOMIZED_TYPE_STATE="ecowitt"
+    fi
+    
+    readUInt8
+    #setConfiguration $CONF_customized_enabled "$VALUE_UINT8"
+    
+    C_WS_CUSTOMIZED_ENABLED=$VALUE_UINT8
+    if [ "$C_WS_CUSTOMIZED_ENABLED" -eq 1 ]; then
+       C_WS_CUSTOMIZED_ENABLED_STATE="on"
+    elif [ "$C_WS_CUSTOMIZED_ENABLED" -eq 0 ]; then
+       C_WS_CUSTOMIZED_ENABLED_STATE="off"
+    fi
+    
     printCustomized
 
   elif [  "$cmd" -eq $CMD_read_path ]; then
 
     readString
-    setConfiguration $CONF_customized_ecowitt_path "$VALUE_STRING"
+    #setConfiguration $CONF_customized_ecowitt_path "$VALUE_STRING"
+    C_WS_CUSTOMIZED_PATH_ECOWITT=$VALUE_STRING
+    
     readString
-    setConfiguration $CONF_customized_wunderground_path "$VALUE_STRING"
-  
+    #setConfiguration $CONF_customized_wunderground_path "$VALUE_STRING"
+    C_WS_CUSTOMIZED_PATH_WU=$VALUE_STRING
+
   elif [  "$cmd" -eq $CMD_broadcast ]; then
     #this is the station MAC/ip on local network, when device is reset its annoncing hotspot accesspoint/AP with first byte of MAC changed
     # shellcheck disable=SC2102
@@ -1625,13 +1655,15 @@ function newPacketBody {
   unset PACKET_BODY
   decToHex  $(( cmd ))
   PACKET_BODY+=("$VALUE_HEX" "0x00")
-  [ $DEBUG -eq 1 ] && >&2 echo PACKET BODY "${PACKET_BODY[@]}"
   
   if [ "$cmd" -eq $CMD_broadcast ] || [ "$cmd" -eq $CMD_write_ssid ]; then  
    # WSVIEW sends 2 byte field for size
     PACKET_BODY+=("0x00")
-    [ $DEBUG -eq 1 ] && echo >&2 appending 0x00 for 2-byte packet length PACKET BODY "${PACKET_BODY[@]}"
+#    [ $DEBUG -eq 1 ] && echo >&2 appending 0x00 for 2-byte packet length PACKET BODY "${PACKET_BODY[@]}"
   fi 
+
+ #[ $DEBUG -eq 1 ] && >&2 echo PACKET BODY "${PACKET_BODY[@]}"
+ 
 }
 
 function printPacketBody
@@ -1669,14 +1701,12 @@ function createPacketTX {
 
   checksum
 
-  PACKET_TX=(0xff 0xff "${PACKET_BODY[@]}" "$CHECKSUM")
+  PACKET_TX=(0xff 0xff "${PACKET_BODY[@]}" "$PACKET_CHECKSUM")
   PACKET_TX_COMMAND=$(( PACKET_TX[2] )) # convert to decimal/integer for comparison in sendPacket
 
   #workaround for @(#)MIRBSD KSH R58 2020/03/27, assign array to ptx, complains about "bad subtitution"
-  [ $DEBUG -eq 1 ] && { typeset ptx; ptx="${PACKET_TX[*]}"; echo >&2 PACKET_TX "${ptx//0x/''}"; }
-
-  unset PACKET_TX_ECHO
-  
+ 
+  PACKET_TX_ECHO=""
   n=0
  # for n in "${!PACKET_TX[@]}"; do
   while [ "$n" -lt "${#PACKET_TX[@]}" ]; do
@@ -1686,7 +1716,7 @@ function createPacketTX {
   
   PACKET_TX_ECHO=${PACKET_TX_ECHO//0x/'\x'}
 
-  [ $DEBUG -eq 1 ] && echo >&2 PACKET_TX_ECHO "$PACKET_TX_ECHO"
+   [ $DEBUG -eq 1 ] && { typeset ptx; ptx="${PACKET_TX[*]}"; echo >&2 PACKET_TX "${ptx//0x/''}" PACKET_TX_ECHO "$PACKET_TX_ECHO"; }
 
 }
 
@@ -1763,7 +1793,7 @@ function sendPacketnc
 #$1 - command
 #$2 - host
 {
-  typeset ncUDPOpt 
+  typeset ncUDPOpt # UDP (-u) or TCP
   typeset ncIdleOpt
   typeset port
   typeset ncStatus
@@ -1811,9 +1841,8 @@ function sendPacketnc
   # shellcheck disable=SC2059
   printf "$PACKET_TX_ECHO" >"$FILENAME_tx" #print to file for debuggging purpose
   
-  rm "$FILENAME_nc_hex" 2>/dev/null
 
- #{ cat "$FILENAME_tx"; sleep 0.175; } |  nc  $ncUDPOpt $ncIdleOpt -w 500ms -x "$FILENAME_nc_hex" -4 "$host" "$port"  >"$FILENAME_rx" # wait 0.1s to disable READ KILL of nc on stdin
+ #{ cat "$FILENAME_tx"; sleep 0.175; } |  $NC_CMD  $ncUDPOpt $ncIdleOpt -w 500ms  -4 "$host" "$port"  >"$FILENAME_rx" # wait 0.1s to disable READ KILL of nc on stdin
   
   # if timeout is too small, ICMP port unreachable is generated when doing udp port 46000 probing/broadcast
   # udp debugging in wireshark : udp.dstport == 46000 || udp.srcport == 46000
@@ -1821,22 +1850,23 @@ function sendPacketnc
     if [ $NC_VERSION -eq $NC_OPENBSD  ]; then
 
        if [ "$ncUDPOpt" != "-u" ]; then
-          { cat "$FILENAME_tx"; sleep $timeout_nc; } | nc -4 -N "$host" "$port" >"$FILENAME_rx" #-N shutdown socket after EOF on stdin
+          { cat "$FILENAME_tx"; sleep $timeout_nc; } | $NC_CMD -4 -N "$host" "$port" >"$FILENAME_rx" #-N shutdown socket after EOF on stdin
            ncStatus=$?
     
         elif [ "$ncUDPOpt" = "-u" ]; then
-            nc -4 -u "$host" "$port" <"$FILENAME_tx" >"$FILENAME_rx" & #-w only allow >=1s timeout, too slow, must move process to background and kill
+             nc -4 -u "$host" "$port" <"$FILENAME_tx" >"$FILENAME_rx" &
+             #-w only allow >=1s timeout, too slow, must move process to background and kill
             sleep $timeout_nc
             #jobs
             kill %1
         fi
     elif [ $NC_VERSION -eq $NC_NMAP ]; then
 
-          { cat "$FILENAME_tx"; sleep $timeout_nc; } | nc -4  $ncUDPOpt $ncIdleOpt "$host" "$port" >"$FILENAME_rx" 
+          { cat "$FILENAME_tx"; sleep $timeout_nc; } | $NC_CMD -4  $ncUDPOpt $ncIdleOpt "$host" "$port" >"$FILENAME_rx" 
            ncStatus=$?
     elif [ $NC_VERSION -eq $NC_TOYBOX ]; then
 
-          { cat "$FILENAME_tx"; sleep $timeout_nc; } | nc -4  $ncUDPOpt "$host" "$port" >"$FILENAME_rx" 
+          { cat "$FILENAME_tx"; sleep $timeout_nc; } | $NC_CMD -4  $ncUDPOpt "$host" "$port" >"$FILENAME_rx" 
            ncStatus=$?
     fi
 
@@ -1854,7 +1884,7 @@ function sendPacketnc
         fi
 
   else
-    [ $DEBUG -eq 1 ] &&  >&2 echo Error nc failed to receive response or empty response for command "${CMD_NAME["$PACKET_TX_COMMAND"]}" in "$timeout_nc" s, nc error code $ncStatus, "$FILENAME_rx"
+    [ $DEBUG -eq 1 ] &&  >&2 echo Error nc failed to receive response or empty response for command "${CMD_NAME["$PACKET_TX_COMMAND"]}" in "$timeout_nc" s
   fi
 
   #cleanup files
@@ -1942,7 +1972,7 @@ function discovery_udp_client
 typeset host
 host=1;
 while [ $host -le 254 ]; do
-  [ $DEBUG -eq 1 ] && >&2 echo Sending broadcast to "$1.$host"
+  [ $DEBUG -eq 1 ] && >&2 echo Discovery sending broadcast command to "$1.$host"
    sendPacket $CMD_broadcast "$1.$host"
    host=$(( host + 1 ))
 done
@@ -1973,9 +2003,9 @@ function discovery_nc
         
           if  scan_result=$(n=0; while [ $n -lt $SCAN_MAX_ITERATIONS ]; do 
                                       if [ "$NC_VERSION" -eq $NC_NMAP ]; then 
-                                              nc  -4 -u -i $SCAN_NC_IDLE_TIMEOUT -l $PORT_udp_discovery_server 2>/dev/null | od -A n -w64 -t x1 
+                                              $NC_CMD -4 -u -i $SCAN_NC_IDLE_TIMEOUT -l $PORT_udp_discovery_server 2>/dev/null | od -A n -w64 -t x1 
                                       else
-                                              { timeout $SCAN_NC_TIMEOUT nc -4 -u -l $PORT_udp_discovery_server 2>/dev/null; } | od -A n -w64 -t x1 
+                                              { timeout $SCAN_NC_TIMEOUT "$NC_CMD" -4 -u -l $PORT_udp_discovery_server 2>/dev/null; } | od -A n -w64 -t x1 
                                       fi    
                                       n=$(( n + 1 ))
                               done | sort -u); then #"A Brief POSIX Advocacy: Shell Script Portability" https://www.usenix.org/system/files/login/articles/login_spring16_09_tomei.pdf
@@ -2038,7 +2068,7 @@ function discovery_socat {
   printf "%s" "$rxscan_sorted" >"$FILENAME_discovery_sorted"
 
   while read -r line; do # loop through all received broadcasts and parse them
-    if expr "$line" : "ff ff 12"; then
+    if [ "${line:0:8}" = "ff ff 12" ]; then
       hex_escape=""
       n=0
       while [ "$n" -lt  ${#line} ]; do
@@ -2058,19 +2088,19 @@ function checksum {
   typeset n
   #caller 0
 
-  CHECKSUM=0
-  [ $DEBUG -eq 1 ] && echo >&2 checksum start PACKET_BODY "${PACKET_BODY[@]}"
+  PACKET_CHECKSUM=0
+ # [ $DEBUG -eq 1 ] && echo >&2 checksum start PACKET_BODY "${PACKET_BODY[@]}"
   #http://mywiki.wooledge.org/BashGuide/Arrays
   #for ((n = 0; n < ${#PACKET_BODY[@]}; n++)); do
   #for n in "${!PACKET_BODY[@]}"; do
    n=0;
    while [ "$n" -lt "${#PACKET_BODY[@]}" ]; do
-    CHECKSUM=$(( (CHECKSUM + ${PACKET_BODY[$n]}) & 0xff ))
+    PACKET_CHECKSUM=$(( (PACKET_CHECKSUM + ${PACKET_BODY[$n]}) & 0xff ))
     n=$(( n + 1))
    done
-  decToHex $CHECKSUM
-  CHECKSUM=$VALUE_HEX
-  [ $DEBUG -eq 1 ] && echo >&2 CHECKSUM "$CHECKSUM"
+  decToHex $PACKET_CHECKSUM
+  PACKET_CHECKSUM=$VALUE_HEX
+  #[ $DEBUG -eq 1 ] && echo >&2 PACKET_CHECKSUM "$PACKET_CHECKSUM"
 }
 
 function writeString {
@@ -2133,19 +2163,19 @@ function decToHex {
 
 function newCustomizedPacket {
   newPacketBody $CMD_write_customized
-  writeString   "${CONFIGURATION[$CONF_customized_id]}"
-  writeString   "${CONFIGURATION[$CONF_customized_password]}"
-  writeString   "${CONFIGURATION[$CONF_customized_server]}"
-  writeUInt16BE "${CONFIGURATION[$CONF_customized_port]}"
-  writeUInt16BE "${CONFIGURATION[$CONF_customized_interval]}"
-  writeUInt8    "${CONFIGURATION[$CONF_customized_type]}"
-  writeUInt8    "${CONFIGURATION[$CONF_customized_enabled]}"
+  writeString   "$C_WS_CUSTOMIZED_ID"
+  writeString   "$C_WS_CUSTOMIZED_PASSWORD"
+  writeString   "$C_WS_CUSTOMIZED_SERVER"
+  writeUInt16BE "$C_WS_CUSTOMIZED_PORT"
+  writeUInt16BE "$C_WS_CUSTOMIZED_INTERVAL"
+  writeUInt8    "$C_WS_CUSTOMIZED_TYPE"
+  writeUInt8    "$C_WS_CUSTOMIZED_ENABLED"
 }
 
 function newPathPacket {
   newPacketBody $CMD_write_path
-  writeString "${CONFIGURATION[$CONF_customized_wunderground_path]}"
-  writeString "${CONFIGURATION[$CONF_customized_ecowitt_path]}"
+  writeString "$C_WS_CUSTOMIZED_PATH_WU"
+  writeString "$C_WS_CUSTOMIZED_PATH_ECOWITT"
 }
 
 function sendSystem
@@ -2269,137 +2299,143 @@ function sendCustomized {
   newPathPacket
   sendPacket
 
-  if [ $DEBUG -eq 1 ]; then
-    echo >&2 "Sending customized settings"
-    printCustomized >&2
-  fi
 }
 
 function updateCustomized {
-  typeset needUpdate
-  typeset key_value
   typeset value
   typeset key
   typeset n
 
-  newPacketBody $CMD_read_path
-  sendPacket
-
-  newPacketBody $CMD_read_customized # read previous configuration
-  sendPacket
-
-  #format enabled=1,port=8000,server=test.no
+  #format: enabled=1,port=8000,server=test.no
   IFS=","
-  read -r -a OPTION_CUSTOMIZED <<< "$1"
+  read -r "$READARRAY_OPTION" OPTION_CUSTOMIZED <<< "$1" # first parse , expressions
   #readarray -d ',' -t OPTION_CUSTOMIZED < <(echo -n "$1") # <<< HERE string appends 0x0a -> using process substitution
 
-  [ $DEBUG -eq 1 ] && echo >&2 "${FUNCNAME[0]} OPTION_CUSTOMIZED" "${OPTION_CUSTOMIZED[@]}" "${#OPTION_CUSTOMIZED[@]}"
+  [ $DEBUG -eq 1 ] && echo >&2 "${FUNCNAME[0]} OPTION_CUSTOMIZED" "${OPTION_CUSTOMIZED[@]}" len "${#OPTION_CUSTOMIZED[@]}"
 
-  for n in "${!OPTION_CUSTOMIZED[@]}"; do
+  n=0
+  while [ "$n" -lt "${#OPTION_CUSTOMIZED[@]}" ]; do
 
     [ $DEBUG -eq 1 ] && echo >&2 "${FUNCNAME[0]} OPTION_CUSTOMIZED LOOP " "${OPTION_CUSTOMIZED[$n]} n=$n"
 
     IFS='='
-    read -r -a key_value <<< "${OPTION_CUSTOMIZED[$n]}"
+    read -r  key value <<< "${OPTION_CUSTOMIZED[$n]}" # second parse = expressions
     #readarray -d '=' -t key_value < <(echo -n "${OPTION_CUSTOMIZED[$n]}")
-
-    key=${key_value[0]}
-    value=${key_value[1]}
 
     [ $DEBUG -eq 1 ] && echo >&2 "${FUNCNAME[0]} KEY $key len ${#key} VALUE $value len ${#value}"
 
     case "$key" in
 
-    id)
-      if [ "${CONFIGURATION[$CONF_customized_id]}" != "$value" ]; then
-        [ $DEBUG -eq 1 ] && echo >&2 Update customized_id from "${CONFIGURATION[$CONF_customized_id]} to $value"
-        CONFIGURATION[$CONF_customized_id]=$value
-        needUpdate=1
-      fi
-      ;;
-    password)
-      if [ "${CONFIGURATION[$CONF_customized_password]}" != "$value" ]; then
-        [ $DEBUG -eq 1 ] && echo >&2 Update customized_password from "${CONFIGURATION[$CONF_customized_password]} to $value"
-        CONFIGURATION[$CONF_customized_password]=$value
-        needUpdate=1
-      fi
-      ;;
+          id)
+              [ $DEBUG -eq 1 ] && echo >&2 Update customized_id from "$C_WS_CUSTOMIZED_ID to $value"
+              C_WS_CUSTOMIZED_ID=$value
+            ;;
+          
+          password|pw)
+          
+              [ $DEBUG -eq 1 ] && echo >&2 Update customized_password from "${C_WS_CUSTOMIZED_PASSWORD} to $value"
+              C_WS_CUSTOMIZED_PASSWORD=$value
+            ;;
 
-    server)
-      if [ "${CONFIGURATION[$CONF_customized_server]}" != "$value" ]; then
-        [ $DEBUG -eq 1 ] && echo >&2 Update customized_server from "${CONFIGURATION[$CONF_customized_server]} to $value"
-        CONFIGURATION[$CONF_customized_server]=$value
-        needUpdate=1
-      fi
-      ;;
+          server|s)
+          
+              [ $DEBUG -eq 1 ] && echo >&2 Update customized_server from "$C_WS_CUSTOMIZED_SERVER to $value"
+              C_WS_CUSTOMIZED_SERVER=$value
+            
+            ;;
 
-    port)
+          port|p)
+              if ! isNumber "$value" ; then
+                 echo >&2 Error NaN cannot set customized port to $(( value )) from "$value"
+              else
+                C_WS_CUSTOMIZED_PORT=$(( value ))
+                [ $DEBUG -eq 1 ] && echo >&2 Update customized_port from "$C_WS_CUSTOMIZED_PORT to $value"
+              fi
 
-      if [ "${CONFIGURATION[$CONF_customized_port]}" != "$value" ]; then
-        [ $DEBUG -eq 1 ] && echo >&2 Update customized_type from "${CONFIGURATION[$CONF_customized_port]} to $value"
-        CONFIGURATION[$CONF_customized_port]=$value
-        needUpdate=1
-      fi
-      ;;
+            ;;
 
-    type)
-      if [ "${CONFIGURATION[$CONF_customized_type]}" != "$value" ]; then
-        [ $DEBUG -eq 1 ] && echo >&2 Update customized_type from "${CONFIGURATION[$CONF_customized_type]} to $value"
-        CONFIGURATION[$CONF_customized_type]=$value
-        needUpdate=1
-      fi
-      ;;
+          type|t)
+          
+             case $value in
 
-    enabled)
-      if [ "${CONFIGURATION[$CONF_customized_enabled]}" != "$value" ]; then
-        [ $DEBUG -eq 1 ] && echo >&2 Update customized_enabled from "${CONFIGURATION[$CONF_customized_enabled]} to $value"
-        CONFIGURATION[$CONF_customized_enabled]=$value
-        needUpdate=1
-      fi
-      ;;
+                wunderground|wu|w|1)
+                   value=$(( 1 ))
+                ;;
+             
+                ecowitt|ec|e|0)
+                   value=$(( 0 ))
+                ;;
 
-    interval)
-      if [ "${CONFIGURATION[$CONF_customized_interval]}" != "$value" ]; then
-        [ $DEBUG -eq 1 ] && echo >&2 Update customized_interval from "${CONFIGURATION[$CONF_customized_interval]} to $value"
-        CONFIGURATION[$CONF_customized_interval]=$value
-        needUpdate=1
-      fi
-      ;;
-    wunderground_path)
-      if [ "${CONFIGURATION[$CONF_customized_wunderground_path]}" != "$value" ]; then
-        [ $DEBUG -eq 1 ] && echo >&2 Update customized_wunderground_path from "${CONFIGURATION[$CONF_customized_wunderground_path]} to $value"
-        CONFIGURATION[$CONF_customized_wunderground_path]=$value
-        needUpdate=1
-      fi
-      ;;
-    ecowitt_path)
-      if [ "${CONFIGURATION[$CONF_customized_ecowitt_path]}" != "$value" ]; then
-        [ $DEBUG -eq 1 ] && echo >&2 Update customized_ecowitt_path from "${CONFIGURATION[$CONF_customized_ecowitt_path]} to $value"
-        CONFIGURATION[$CONF_customized_ecowitt_path]=$value
-        needUpdate=1
-      fi
-      ;;
+             esac
+            
+              if ! isNumber "$value"  ; then
+                 echo >&2 Error NaN cannot set customized type to "$value"
+              else
+                 C_WS_CUSTOMIZED_TYPE=$(( value ))
+                 [ $DEBUG -eq 1 ] && echo >&2 Update customized_type from "$C_WS_CUSTOMIZED_TYPE to $value"
+              fi
 
-    *)
-      echo updateCustomized: unknown key "$key" value: "$value"
-      ;;
+            ;;
+
+          enabled|e)
+
+             case $value in
+                 on|1)
+                 value=$(( 1 ))
+                 ;;
+                 off|0)
+                 value=$(( 0 ))
+                 ;;
+             esac
+          
+            if ! isNumber "$value"; then
+                  echo >&2 Error Cannot set customized enabled to "$value"
+            else
+              [ $DEBUG -eq 1 ] && echo >&2 Update customized_enabled from "$C_WS_CUSTOMIZED_ENABLED to $value"
+              C_WS_CUSTOMIZED_ENABLED=$value
+            fi
+
+            ;;
+
+          interval|i)
+          
+               if ! isNumber "$value"  ; then
+                 echo >&2 Error NaN cannot set customized interval to "$value"
+              else
+                 [ $DEBUG -eq 1 ] && echo >&2 Update customized_interval from $C_WS_CUSTOMIZED_INTERVAL to "$value"
+                   C_WS_CUSTOMIZED_INTERVAL=$(( value ))
+              
+              fi
+            
+            ;;
+          
+          path_wunderground|path_wu|pwu)
+          
+              [ $DEBUG -eq 1 ] && echo >&2 Update customized_path_wu from "$C_WS_CUSTOMIZED_PATH_WU to $value"
+              C_WS_CUSTOMIZED_PATH_WU=$value
+            
+            ;;
+          
+          path_ecowitt|path_ec|pec)
+
+              [ $DEBUG -eq 1 ] && echo >&2 Update customized_ecowitt_path from "$C_WS_CUSTOMIZED_PATH_ECOWITT to $value"
+              C_WS_CUSTOMIZED_PATH_ECOWITT=$value
+
+            ;;
+
+          *)
+            echo >&2 Skipped updateCustomized: unknown key "$key" value: "$value"
+            ;;
     esac
+
+    n=$(( n + 1 ))
 
   done
 
   #https://stackoverflow.com/questions/18668556/how-can-i-compare-numbers-in-bash
-  if [ $needUpdate -eq 1 ]; then
-    newCustomizedPacket
-    sendPacket
 
-    newPathPacket
-    sendPacket
-
-    printCustomized
-
-  else
-    echo >&2 Warning: no update needed for customized "$1"
-  fi
+    [ $DEBUG -eq  1 ] && >&2 printCustomized
+    sendCustomized
 
 }
 
@@ -2431,28 +2467,48 @@ function initnc
 {
   typeset nc_ver
   typeset nc_ver_header
+  typeset nc_status
+  typeset nc_exec
+  typeset ncat_exec
 
-  if nc_ver=$(nc --version 2>&1 ); then
-     if [[ $nc_ver == *nmap* ]]; then
-       NC_VERSION=$NC_NMAP
-    elif [[ $nc_ver == *toybox* ]]; then
-       NC_VERSION=$NC_TOYBOX
-    fi
-    NC_VERSION_STR=$nc_ver
-  else
-     read -r nc_ver_header <<<  "$nc_ver"
-     if [[ $nc_ver_header == "nc: invalid option --"* ]]; then
-       NC_VERSION=$NC_OPENBSD
-       NC_VERSION_STR="nc openbsd (probably)"
-     else
-        >&2 echo "Error Unknown nc version header $nc_ver" 
-        NC_VERSION=$NC_OPENBSD
-        NC_VERSION_STR="nc unknown"
+  nc_exec=$(which nc 2>/dev/null)
+  if [ -z "$nc_exec" ]; then
+     ncat_exec=$(which ncat 2>/dev/null) # try ncat, if nc not availale
+     if [ -n "$ncat_exec" ]; then
+       NC_CMD=ncat
      fi
+  else
+    NC_CMD=nc
   fi
+    
+  if [ -n "$NC_CMD" ]; then 
+        nc_ver=$($NC_CMD --version 2>&1 )
+        nc_status=$?
+        if [ "$nc_status" -eq 0 ]; then
+          if [[ $nc_ver = *nmap* ]]; then
+            NC_VERSION=$NC_NMAP
+          elif [[ $nc_ver = *toybox* ]]; then
+            NC_VERSION=$NC_TOYBOX
+          fi
+          NC_VERSION_STR=$nc_ver
+        else
+          read -r nc_ver_header <<<  "$nc_ver"
+          if [[ $nc_ver_header == "nc: invalid option --"* ]]; then
+            NC_VERSION=$NC_OPENBSD
+            NC_VERSION_STR="nc openbsd (probably)"
+          else
+              >&2 echo "Error Unknown nc version header $nc_ver" 
+              NC_VERSION=$NC_OPENBSD
+              NC_VERSION_STR="nc unknown"
+          fi
+        fi
 
-  [ "$DEBUG" -eq 1 ] && >&2 "echo nc version detection $NC_VERSION_STR"
-  
+        [ "$DEBUG" -eq 1 ] && >&2 "echo nc version detection $NC_VERSION_STR"
+
+        return 0
+  else
+    return $ERROR_NO_NC
+  fi
 }
 
 function initConfigDir {
@@ -2469,7 +2525,6 @@ function initConfigDir {
   FILENAME_discovery_sorted=$DIR/"rxsocat_sorted-$SHELLPID"
   FILENAME_udp_server="$FILENAME_discovery"_UDP_"$PORT_udp_discovery_server"-$SHELLPID
   FILENAME_udp_client="$FILENAME_discovery"_UDP_"$PORT_udp_discovery_client"-$SHELLPID
-  FILENAME_nc_hex=$DIR/"nc_hex-$SHELLPID.txt"
   FILENAME_livedata_description=$DIR/'livedata-description.txt'
   FILENAME_od_hex=$DIR/"rxpacket-od-hex-$SHELLPID.txt"
 
@@ -2487,7 +2542,7 @@ function initLivedataFieldDescriptionRenaming
   
   IFS='='
   while read -r LDFTYPE LDNAME; do
-    if [ -z "$LDFTYPE" ] || expr "$LDFTYPE" : "#" >/dev/null; then #skip comments
+    if [ -z "$LDFTYPE" ] || [[ "$LDFTYPE" = *#* ]] ; then #skip comments
       continue;
     fi
      LIVEDATA_FIELDRENAME[$LDFTYPE]=$LDNAME
@@ -2645,6 +2700,15 @@ function sendSensorId
   sendPacket
 }
 
+function getReadArrayOption
+{
+  if [ -n "$BASH_VERSION" ]; then
+         READARRAY_OPTION="-a"
+      elif [ -n "$ZSH_VERSION" ] || [ -n "$KSH_VERSION" ]; then
+       READARRAY_OPTION="-A"
+      fi
+}
+
 function connectGW {
   typeset lan_mac
   typeset lan_mac_lc #lowercase
@@ -2700,11 +2764,7 @@ function connectGW {
      
       [ $DEBUG -eq 1 ] && echo >&2 AP scan "$ap_scan"
      
-      if [ -n "$BASH_VERSION" ]; then
-         readarray -d':' nmcli_result <<< "$ap_scan"
-      elif [ -n "$ZSH_VERSION" ] || [ -n "$KSH_VERSION" ]; then
-       read -r -A  -d':' nmcli_result <<< "$ap_scan"
-      fi
+       read -r $READARRAY_OPTION  -d':' nmcli_result <<< "$ap_scan"
      
       in_use=${nmcli_result[7]}
       ap_mac=${nmcli_result[0]}${nmcli_result[1]}${nmcli_result[2]}${nmcli_result[3]}${nmcli_result[4]}${nmcli_result[5]}
@@ -2735,7 +2795,7 @@ function connectGW {
 function initSearchPatternForCommand
 {
      SPATTERN=$1
-     if [ -z "$SPATTERN" ] || [ "$SPATTERN" == "*" ]; then
+     if [ -z "$SPATTERN" ] || [ "$SPATTERN" = "*" ] || [ "${SPATTERN:0:1}" = "-" ]; then
         SPATTERN='.*' #add default search for any pattern
      fi
      toLowercase "$SPATTERN"
@@ -2748,10 +2808,21 @@ function argEmptyOrOption
   [ -z "$1" ]  ||  [ "${1:0:1}" = "-" ]
 }
 
+function printCommands
+{
+  echo reset reboot mac system "ecowitt|ec wunderground|wu weathercloud|wc wow customized|c|cust broadcast|b rain|r livedata|ld sensor_id sensor_id_new|sid|sensor|s calibration|cal"  
+}
+
 function processCommand {
 #$1 - field pattern for livedata/sensor id
 
+ shift # remove {command} (to -c option) -> all args to {command} starts at $1
+
   case $COMMAND in
+
+       "")
+          printCommands
+       ;;
 
         reset)
           
@@ -2771,15 +2842,15 @@ function processCommand {
 
         reboot)
           
-          sendPacket "$CMD_reboot"
+          sendPacket $CMD_reboot
           ;;
 
         mac)
           
-          sendPacket "$CMD_read_mac"
+          sendPacket $CMD_read_mac
           ;;
 
-        version)
+        version|ver)
           
           sendPacket $CMD_read_version
           ;;
@@ -2797,17 +2868,16 @@ function processCommand {
           fi
           ;;
 
-        ecowitt)
+        ecowitt|ec|e)
            
           if argEmptyOrOption "$1"; then
             sendPacket $CMD_read_ecowitt_interval
           else
-          
            sendEcowittInterval "$1"
           fi
           ;;
 
-        wunderground)
+        wunderground|wu)
 
             if argEmptyOrOption "$1"; then
               sendPacket $CMD_read_wunderground;
@@ -2834,7 +2904,7 @@ function processCommand {
           fi
           ;;
 
-        weathercloud)
+        weathercloud|wc)
 
           if argEmptyOrOption "$1"; then
             sendPacket $CMD_read_weathercloud
@@ -2847,17 +2917,23 @@ function processCommand {
           fi
           ;;
 
-        customized)
-          
-          sendPacket $CMD_read_path
-          sendPacket $CMD_read_customized
+        customized|c|cust)
+
+          if argEmptyOrOption "$1"; then 
+            sendPacket $CMD_read_path
+            sendPacket $CMD_read_customized
+          else
+            sendPacket $CMD_read_path >/dev/null
+            sendPacket $CMD_read_customized >/dev/null
+            updateCustomized "$1"
+          fi
           ;;
 
-        broadcast)
+        broadcast|b)
           sendPacket $CMD_broadcast $FD_UDP
           ;;
 
-        rain)
+        rain|r)
 
           if argEmptyOrOption "$1"; then
             sendPacket $CMD_read_raindata
@@ -2873,7 +2949,7 @@ function processCommand {
             
           ;;
 
-        livedata)
+        livedata|ld|live|l)
           
           initSearchPatternForCommand "$1"
           sendPacket $CMD_livedata
@@ -2885,25 +2961,20 @@ function processCommand {
           sendPacket $CMD_read_sensor_id
           ;;
 
-        sensor_id_new) # for new SENSOR_TYPE types
-        
-            if expr "$1" : "-"; then # probably new option - or --
-              initSearchPatternForCommand
-            else
-              initSearchPatternForCommand "$1"
-            fi
-            
-              sendPacket $CMD_read_sensor_id_new
-              ;;
+        sensor_id_new|sid|sensor|s) # for new SENSOR_TYPE types
+    
+          initSearchPatternForCommand "$1"
+          sendPacket $CMD_read_sensor_id_new
+          ;;
 
-        calibration)
+        calibration|cal)
 
           sendPacket $CMD_read_calibration
           ;;
 
         *)
               
-              echo >&2 Error Unkown command "$COMMAND"
+              echo >&2 Error Unknown command "$COMMAND" "$@"
               return 1
               ;;
   esac
@@ -2913,14 +2984,11 @@ function processCommand {
 
 function isNumber
 {
-#https://www.grymoire.com/Unix/Bourne.html#uh-84
-  typeset number
-  number=$(expr "$1" : "\([0-9]*\)") # number is extracted when using parentheses
-  if [ "$number" != "$1" ]; then
-    return 1  
-  else
-    return 0 
-  fi
+    #https://stackoverflow.com/questions/806906/how-do-i-test-if-a-variable-is-a-number-in-bash?page=1&tab=votes#tab-top
+    case $1 in
+      ''|*[!0-9]*) return 1 ;;
+                *) return 0 ;;
+    esac
 }
 
 function getConfigurationIndexFromName
@@ -2937,6 +3005,17 @@ function getConfigurationIndexFromName
   done
 }
 
+function initShell
+{
+        #shellcheck disable=2050
+  if [[ a =~ a ]] 2>/dev/null; then
+   SHELL_SUPPORT_TILDE_REGEX=1
+  else
+   SHELL_SUPPORT_TILDE_REGEX=0
+  fi
+
+}
+
 #read -r -u 0 -t 0 STDIN
 
 #if [ -n "$STDIN" ]; then
@@ -2946,20 +3025,25 @@ function getConfigurationIndexFromName
 
 #fi
 
+getReadArrayOption #-a/-A for read command based on shell
+initShell
 initConfigDir
-initnc
+if ! initnc; then
+  echo >&2 Error nc/ncat not found
+  exit $ERROR_NO_NC
+fi
 initLivedataFieldDescriptionRenaming
 
 #https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
 unset POSITIONAL
 
 while [ $# -gt 0 ]; do
+
   key="$1"
 
   case $key in
 
   -b | --backup)
-
 
     sendPacket $CMD_read_mac >/dev/null
     sendPacket $CMD_read_version >/dev/null
@@ -2985,30 +3069,21 @@ while [ $# -gt 0 ]; do
     ;;
   
   -c | --command)
+
     toLowercase "$2"
     COMMAND=$lowercase
-    shift 2 # remove -c {commmand}
+    shift 1 # remove -c 
     
-    if processCommand "$@"; then # $3 pass field pattern to livedata/sensor_id_new
+    processCommand "$@" 
 
-     for param in "$@"; do #remove param which is not an option 
-       if [ "${param:0:1}" != "-" ]; then
-         (( DEBUG)) && >&2 echo Shift param "$@" "$param"
-         shift
-        else
-          break
-       fi
-
-     done
- #     echo AFTER "$@"
-        #if [[ ($COMMAND == "livedata" || $COMMAND == "sensor_id_new"  || $COMMAND == "sensor_id" ) && -n "$3" && ! "$3" =~ ^"-" ]]; then # ^"-" don't shift 3 for following new options
-        #    shift 3
-        #  else
-        #    shift 2
-        #fi
-    #else
-    #  shift 1
-    fi
+    for param in "$@"; do #remove params to command (until new - option) 
+        if [ "${param:0:1}" != "-" ]; then
+            [ $DEBUG -eq 1 ] && >&2 echo Shift param "$@" "$param"
+          shift
+          else
+            break #breakout to process new - option
+        fi
+    done
 
     unset COMMAND
     ;;
@@ -3049,7 +3124,7 @@ while [ $# -gt 0 ]; do
  
   -l | --listen)
     echo >&2 Listening for http request on port "$2"
-    eval 'mapfile HTTP_REQUEST < <(nc -l "$2")'
+    eval 'mapfile HTTP_REQUEST < <($NC_CMD -l "$2")'
     n=0
     while [ "$n" -lt  ${#HTTP_REQUEST[@]} ]; do
       echo "${HTTP_REQUEST[$n]}"

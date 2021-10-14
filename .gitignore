@@ -8,3 +8,5 @@ test/sensor_id.txt
 test/itsraining.wav
 test/prod/gw
 test/cmd-broadcast
+test/test-isnumber.sh
+test/test-expr.sh
