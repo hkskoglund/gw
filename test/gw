@@ -258,7 +258,6 @@ LIVEDATA_FIELD[0x62]="LIGHTNING_POWER:lightning power::4:0"
 typeset -i LDF_SENSOR_CO2=$(( 0x70 ))
 LIVEDATA_FIELD[LDF_SENSOR_CO2]="CO2:co2 pm2.5 pm10 temperature::16:0" #  parsing of livedata for this sensor 32 hexdigits
 
-
 LDFT_WH43=0x2A
 LDFT_WH43_24AVG=0x4D
 LDFT_WH51=0x2B
@@ -743,24 +742,25 @@ function printRain {
   typeset rw
   typeset rm
   typeset ry
-  convertScale10ToFloat "${CONFIGURATION[$CONF_rainrate]}"
+  convertScale10ToFloat "$C_RAINRATE"
   rr=$VALUE_SCALE10_FLOAT
-  convertScale10ToFloat "${CONFIGURATION[$CONF_raindaily]}"
+  convertScale10ToFloat "$C_RAINDAILY"
   rd=$VALUE_SCALE10_FLOAT
-  convertScale10ToFloat "${CONFIGURATION[$CONF_rainweek]}"
+  convertScale10ToFloat "$C_RAINWEEK"
   rw=$VALUE_SCALE10_FLOAT
-  convertScale10ToFloat "${CONFIGURATION[$CONF_rainmonth]}"
+  convertScale10ToFloat "$C_RAINMONTH"
   rm=$VALUE_SCALE10_FLOAT
-  convertScale10ToFloat "${CONFIGURATION[$CONF_rainyear]}"
+  convertScale10ToFloat "$C_RAINYEAR"
   ry=$VALUE_SCALE10_FLOAT
-  #echo rainrate "${CONFIGURATION[$CONF_rainrate]} "
-  #echo rainday "${CONFIGURATION[$CONF_raindaily]} "
-  #echo rainweek "${CONFIGURATION[$CONF_rainweek]} "
-  #echo rainmonth "${CONFIGURATION[$CONF_rainmonth]} "
-  #echo  rainyear "${CONFIGURATION[$CONF_rainyear]}"
+  
+  printf "%9s %7s\n" rainrate  "$rr"
+  printf "%9s %7s\n" raindaily "$rd"
+  printf "%9s %7s\n" rainweek  "$rw"
+  printf "%9s %7s\n" rainmonth "$rm"
+  printf "%9s %7s\n" rainyear  "$ry"
   #echo "rainrate $rr rainday $rd rainweek $rw rainmonth $rm rainyear $ry"
-  printf "%9s %9s %9s %9s %9s\n" rainrate rainday rainweek rainmonth rainyear
-  printf "%9s %9s %9s %9s %9s\n" "$rr" "$rd" "$rw" "$rm" "$ry"
+ # printf "%9s %9s %9s %9s %9s\n" rainrate rainday rainweek rainmonth rainyear
+  #printf "%9s %9s %9s %9s %9s\n" "$rr" "$rd" "$rw" "$rm" "$ry"
 }
 
 function convertWindDirectionToCompassDirection
@@ -1586,19 +1586,24 @@ function parsePacket {
 
     # echo "${PACKET_RX_HEX}" "$RX_POS_HEX"
     readUInt32BE
-    setConfiguration $CONF_rainrate "$VALUE_UINT32BE"
+    #setConfiguration $CONF_rainrate "$VALUE_UINT32BE"
+    C_RAINRATE=$VALUE_UINT32BE
 
     readUInt32BE
-    setConfiguration $CONF_raindaily "$VALUE_UINT32BE"
+    #setConfiguration $CONF_raindaily "$VALUE_UINT32BE"
+    C_RAINDAILY=$VALUE_UINT32BE
     
     readUInt32BE
-    setConfiguration $CONF_rainweek "$VALUE_UINT32BE"
-    
+    #setConfiguration $CONF_rainweek "$VALUE_UINT32BE"
+    C_RAINWEEK=$VALUE_UINT32BE
+
     readUInt32BE
-    setConfiguration $CONF_rainmonth "$VALUE_UINT32BE"
-    
+    #setConfiguration $CONF_rainmonth "$VALUE_UINT32BE"
+    C_RAINMONTH=$VALUE_UINT32BE
+
     readUInt32BE
-    setConfiguration $CONF_rainyear "$VALUE_UINT32BE"
+    #setConfiguration $CONF_rainyear "$VALUE_UINT32BE"
+    C_RAINYEAR=$VALUE_UINT32BE
 
     printRain
 
@@ -2304,25 +2309,33 @@ function sendCustomized {
 function updateCustomized {
   typeset value
   typeset key
-  typeset n
-
-  #format: enabled=1,port=8000,server=test.no
-  IFS=","
-  read -r "$READARRAY_OPTION" OPTION_CUSTOMIZED <<< "$1" # first parse , expressions
+ 
   #readarray -d ',' -t OPTION_CUSTOMIZED < <(echo -n "$1") # <<< HERE string appends 0x0a -> using process substitution
 
-  [ $DEBUG -eq 1 ] && echo >&2 "${FUNCNAME[0]} OPTION_CUSTOMIZED" "${OPTION_CUSTOMIZED[@]}" len "${#OPTION_CUSTOMIZED[@]}"
+  [ $DEBUG -eq 1 ] && echo >&2 "${FUNCNAME[0]} $1"
 
-  n=0
-  while [ "$n" -lt "${#OPTION_CUSTOMIZED[@]}" ]; do
+  OPTION_CURRENT=$1
 
-    [ $DEBUG -eq 1 ] && echo >&2 "${FUNCNAME[0]} OPTION_CUSTOMIZED LOOP " "${OPTION_CUSTOMIZED[$n]} n=$n"
+  while [ -n  "$OPTION_CURRENT" ]; do
 
+        # first parse , expressions format: enabled=1,port=8000,server=test.no
+      IFS=,
+      read -r OPTION_CUSTOMIZED NEXT_OPTIONS << EOF
+$OPTION_CURRENT
+EOF
+
+    [ $DEBUG -eq 1 ] && echo >&2 "${FUNCNAME[0]} OPTION_CUSTOMIZED $OPTION_CUSTOMIZED $NEXT_OPTIONS"
+
+# second parse = expressions
     IFS='='
-    read -r  key value <<< "${OPTION_CUSTOMIZED[$n]}" # second parse = expressions
+    read -r  key value << EOF
+$OPTION_CUSTOMIZED
+EOF
+
     #readarray -d '=' -t key_value < <(echo -n "${OPTION_CUSTOMIZED[$n]}")
 
-    [ $DEBUG -eq 1 ] && echo >&2 "${FUNCNAME[0]} KEY $key len ${#key} VALUE $value len ${#value}"
+    #[ $DEBUG -eq 1 ] && 
+    echo >&2 "${FUNCNAME[0]} KEY $key len ${#key} VALUE $value len ${#value}"
 
     case "$key" in
 
@@ -2428,14 +2441,14 @@ function updateCustomized {
             ;;
     esac
 
-    n=$(( n + 1 ))
+    OPTION_CURRENT=$NEXT_OPTIONS
 
   done
 
   #https://stackoverflow.com/questions/18668556/how-can-i-compare-numbers-in-bash
 
     [ $DEBUG -eq  1 ] && >&2 printCustomized
-    sendCustomized
+  #  sendCustomized
 
 }
 
