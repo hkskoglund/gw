@@ -953,7 +953,9 @@ function parseLivedata
 
      LDF_DISCOVERED+=( "$fieldTypeDec" ) # keep track of discovered fields
 
-   read -r LDFNAME LDFDESC LDFUNIT LDFBYTES LDFSCALE LDFSIGNEDINT <<< "${LIVEDATA_FIELD[$fieldTypeDec]}"
+   read -r LDFNAME LDFDESC LDFUNIT LDFBYTES LDFSCALE LDFSIGNEDINT << EOF
+${LIVEDATA_FIELD[$fieldTypeDec]}
+EOF
     
     unset LDFDESC_RENAME
     if [ -n "${LIVEDATA_FIELDRENAME[$fieldTypeDec]}" ]; then #rename sensor description
@@ -1069,7 +1071,9 @@ function parseSensor
 
               STYPE=$VALUE_UINT8
     # shellcheck disable=SC2034
-              read -r SNAME SDESC SINTERVAL_MIN DISCARD <<< "${SENSOR_TYPE[STYPE]}"
+              read -r SNAME SDESC SINTERVAL_MIN DISCARD << EOF
+${SENSOR_TYPE[STYPE]}
+EOF
               [ -z "$SNAME" ] && [ $DEBUG -eq 1 ] && echo >&2 "Unknown SENSOR_TYPE $STYPE"
 
               readUInt32BE
@@ -1423,7 +1427,6 @@ function parsePacket {
       C_SYSTEM_SENSORTYPE_STATE="WH65"
      fi
 
-
      readUInt32BE
      #setConfiguration $CONF_system_utc $VALUE_UINT32BE # UTC time (seconds)
      C_SYSTEM_UTC=$VALUE_UINT32BE
@@ -1572,7 +1575,7 @@ function parsePacket {
     #        IFS=' '; read -r ssid version <<< "${PACKET_RX_OD[1]:(( $pos + 1)):0x${PACKET_RX[$pos]}}" # ssid appends space+version
     readString
     IFS=' '
-    read -r ssid version <<<"$VALUE_STRING" # ssid appends space+version
+    read -r ssid version <<< "$VALUE_STRING" # ssid appends space+version
 
     setConfiguration $CONF_broadcast_ssid "$ssid"
     setConfiguration $CONF_broadcast_version "$version"
@@ -2318,7 +2321,7 @@ function updateCustomized {
 
   while [ -n  "$OPTION_CURRENT" ]; do
 
-        # first parse , expressions format: enabled=1,port=8000,server=test.no
+# first parse , expressions format: enabled=1,port=8000,server=test.no
       IFS=,
       read -r OPTION_CUSTOMIZED NEXT_OPTIONS << EOF
 $OPTION_CURRENT
@@ -2332,10 +2335,7 @@ EOF
 $OPTION_CUSTOMIZED
 EOF
 
-    #readarray -d '=' -t key_value < <(echo -n "${OPTION_CUSTOMIZED[$n]}")
-
-    #[ $DEBUG -eq 1 ] && 
-    echo >&2 "${FUNCNAME[0]} KEY $key len ${#key} VALUE $value len ${#value}"
+    [ $DEBUG -eq 1 ] && echo >&2 "${FUNCNAME[0]} KEY $key len ${#key} VALUE $value len ${#value}"
 
     case "$key" in
 
@@ -2393,9 +2393,11 @@ EOF
           enabled|e)
 
              case $value in
+                 
                  on|1)
                  value=$(( 1 ))
                  ;;
+
                  off|0)
                  value=$(( 0 ))
                  ;;
@@ -2448,7 +2450,8 @@ EOF
   #https://stackoverflow.com/questions/18668556/how-can-i-compare-numbers-in-bash
 
     [ $DEBUG -eq  1 ] && >&2 printCustomized
-  #  sendCustomized
+  
+    sendCustomized
 
 }
 
@@ -2816,7 +2819,7 @@ function initSearchPatternForCommand
 }
 
 
-function argEmptyOrOption
+function nextArgEmptyOrOption
 {
   [ -z "$1" ]  ||  [ "${1:0:1}" = "-" ]
 }
@@ -2870,7 +2873,7 @@ function processCommand {
 
         system)
           
-          if argEmptyOrOption "$1"; then 
+          if nextArgEmptyOrOption "$1"; then 
             sendPacket $CMD_read_system
           else
             if [ $# -lt  4 ]; then
@@ -2883,7 +2886,7 @@ function processCommand {
 
         ecowitt|ec|e)
            
-          if argEmptyOrOption "$1"; then
+          if nextArgEmptyOrOption "$1"; then
             sendPacket $CMD_read_ecowitt_interval
           else
            sendEcowittInterval "$1"
@@ -2892,7 +2895,7 @@ function processCommand {
 
         wunderground|wu)
 
-            if argEmptyOrOption "$1"; then
+            if nextArgEmptyOrOption "$1"; then
               sendPacket $CMD_read_wunderground;
             else
               if [ $# -lt 2 ]; then
@@ -2906,7 +2909,7 @@ function processCommand {
 
         wow)
           
-          if argEmptyOrOption "$1"; then
+          if nextArgEmptyOrOption "$1"; then
             sendPacket $CMD_read_wow
           else
             if [ $# -lt 2 ]; then
@@ -2919,7 +2922,7 @@ function processCommand {
 
         weathercloud|wc)
 
-          if argEmptyOrOption "$1"; then
+          if nextArgEmptyOrOption "$1"; then
             sendPacket $CMD_read_weathercloud
           else
                 if [ $# -lt 2 ]; then
@@ -2932,7 +2935,7 @@ function processCommand {
 
         customized|c|cust)
 
-          if argEmptyOrOption "$1"; then 
+          if nextArgEmptyOrOption "$1"; then 
             sendPacket $CMD_read_path
             sendPacket $CMD_read_customized
           else
@@ -2948,7 +2951,7 @@ function processCommand {
 
         rain|r)
 
-          if argEmptyOrOption "$1"; then
+          if nextArgEmptyOrOption "$1"; then
             sendPacket $CMD_read_raindata
           else
 

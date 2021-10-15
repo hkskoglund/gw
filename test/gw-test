@@ -1,168 +1,262 @@
 #!/bin/bash
 [ -n "$ZSH_VERSION" ] && emulate ksh
 
-HOST=192.168.3.80
-
-function test_ws_ecowitt
+test_ws_ecowitt ()
 {
-    typeset pec
-    pec=$(./gw -h $HOST -c ecowitt)
-    typeset testv
+    typeset pec 2>/dev/null || local pec
+    pec=$(./gw -h "$HOST" -c ecowitt)
+
+    typeset testv 2>/dev/null || local testv
     testv=1
-    typeset testec
-    testec=$(./gw -h $HOST -c ec $testv -c ec )
-    printTestHeader "Ecowitt interval"  
+    typeset testec 2>/dev/null || local testec
+
+    testec=$(./gw -h "$HOST" -c ecowitt $testv -c ecowitt )
+    
+    ./gw -h "$HOST" -c ec "$pec" 
+
+    printTestHeader "r/w" "ecowitt interval"  
     if [ "$testec" -eq "$testv" ]; then
       echo "SUCCESS "
     else
       echo "FAIL - wrote $testv, read $testec"
     fi
 
-    ./gw -h $HOST -c ec "$pec" 
 }
 
-function test_ws
+test_ws ()
 #$1 - weather service
 {
-    typeset pwuid
-    typeset pwupw
-    read -r pwuid pwupw <<< "$(./gw -h $HOST -c "$1" )"
-    typeset testid
-    testid=wuid
-    typeset testpw
-    testpw=wupw 
-    ./gw -h $HOST -c "$1" $testid $testpw 
-    read -r wuid wupw <<< "$(./gw -h $HOST -c "$1")"
+    typeset pwuid 2>/dev/null || local pwuid
+    typeset pwupw 2>/dev/null || local pwupw
+    typeset testid 2>/dev/null || local testid
+    typeset testpw 2>/dev/null || local testpw
 
-    printTestHeader "$1"
+    read -r pwuid pwupw << EOF
+$(./gw -h "$HOST" -c "$1" )
+EOF
+    testid=wuid
+    testpw=wupw 
+
+    ./gw -h "$HOST" -c "$1" $testid $testpw 
+
+    read -r wuid wupw << EOF
+$(./gw -h "$HOST" -c "$1")
+EOF
+
+    printTestHeader "r/w" "$1"
     if [ "$wuid" = "$testid" ] && [ "$wupw" = "$testpw" ]; then
       echo "SUCCESS"
     else
       echo "FAIL - wrote id $testid pw $testpw, read id $wuid pw $wupw"
     fi
 
-    ./gw -h $HOST -c "$1" "$pwuid" "$pwupw" 
+    ./gw -h "$HOST" -c "$1" "$pwuid" "$pwupw" 
 }
 
-function updateCustomized 
+updateCustomized () 
 {
  # set -x
- ./gw  -h $HOST -c c id="${CUSTOMIZED[0]}",password="${CUSTOMIZED[1]}",server="${CUSTOMIZED[2]}",port="${CUSTOMIZED[3]}",interval="${CUSTOMIZED[4]}",type="${CUSTOMIZED[5]}",enabled="${CUSTOMIZED[6]}",path_wu="${CUSTOMIZED[7]}",path_ec="${CUSTOMIZED[8]}" -c c
+ ./gw  -h "$HOST" -c customized id="$1",password="$2",server="$3",port="$4",interval="$5",type="$6",enabled="$7",path_wu="$8",path_ec="$9" -c customized
  # set +x
 }
 
-function copyRestoredToCustomized
-{
-  typeset n
-  n=0;
-  while [ "$n" -lt "${#RESTORE_CUSTOMIZED[@]}" ]; do
-    CUSTOMIZED[n]=${RESTORE_CUSTOMIZED[n]}
-    n=$(( n + 1 ))
-  done
-}
-
-function restoreCustomized 
+restoreCustomized () 
+#$1 customized settings
 #read only reads one line
 #can use readarray/mapfile in bash, but not available in zsh/mksh
 {
-  typeset n
-  typeset oifs
-  oifs=$IFS
-  n=0
-  #format: id {idvalue} - printCustomized function
-  while read -r KEY VALUE; do 
-    if [ "$n" -eq 4 ] || [ "$n" -eq 5 ] || [ "$n" -eq 6 ] || [ "$n" -eq 7 ]; then #read only first value
-       read -r V DISCARD <<< "$VALUE"
-       RESTORE_CUSTOMIZED[$n]=$V
-    else
-       RESTORE_CUSTOMIZED[$n]=$VALUE #keep space
-    fi 
-    # echo  RESTORE "${RESTORE_CUSTOMIZED[$n]}" n "$n"
-     n=$(( n + 1 ))
-  done  <<< "$1"
-  IFS=$oifs
-  
-}
+   typeset key 2>/dev/null | local key
+  typeset value 2>/dev/null | local value
 
-function printTestHeader
-{
-  printf "%16s Test r/w " "$1"
-}
-
-function test_customized
-{
-  typeset prev_customized
-  prev_customized="$(./gw -h $HOST -c c)"
-  CUSTOMIZED=(idtest "pwtest space" server.tst 8082 17 0 1 /pathwu /pathec )
-
-  typeset customized
-  # echo UPDATING CUSTOMIZED "${CUSTOMIZED[@]}"
-  customized=$( updateCustomized )
-  restoreCustomized "$customized"
- 
-  typeset fail
-
-  n=0;
- fail=0;
-  while [ "$n" -lt "${#RESTORE_CUSTOMIZED[@]}" ]; do
- # echo RESTORE "${RESTORE_CUSTOMIZED[n]}" CUSTOMIZED "${CUSTOMIZED[n]}" n "$n"
-    if [ "${RESTORE_CUSTOMIZED[n]}" != "${CUSTOMIZED[n]}" ]; then
-     fail=1
-     break;
+  RESTORED_SETTING=1
+  while [ "$RESTORED_SETTING" -le 9 ] ; do
+    #shellcheck disable=2034
+    read -r key value
+    
+    #echo RESTORED_SETTING= "$RESTORED_SETTING" key= "$key" value= "$value"
+    
+    if [ "$RESTORED_SETTING" -eq 1 ]; then
+      RESTORE_ID=$value
+    elif [ "$RESTORED_SETTING" -eq 2 ]; then
+      RESTORE_PASSWORD=$value
+    elif [ "$RESTORED_SETTING" -eq 3 ]; then
+      RESTORE_SERVER=$value;
+    elif [ "$RESTORED_SETTING" -eq 4 ]; then
+      RESTORE_PORT=$value;
+    elif [ "$RESTORED_SETTING" -eq 5 ]; then
+      RESTORE_INTERVAL=$value;
+    elif [ "$RESTORED_SETTING" -eq 6 ]; then
+      #just need value, not protocol description
+      read -r value discard << EOF
+$value
+EOF
+      RESTORE_TYPE=$value;
+    elif [ "$RESTORED_SETTING" -eq 7 ]; then
+        #shellcheck disable=2034
+      read -r value discard << EOF
+$value
+EOF
+      RESTORE_ENABLED=$value
+    elif [ "$RESTORED_SETTING" -eq 8 ]; then
+      RESTORE_PATH_EC=$value;
+    elif [ "$RESTORED_SETTING" -eq 9 ]; then
+      RESTORE_PATH_WU=$value
     fi
-    n=$(( n + 1 )) 
-  done
 
-  printTestHeader "Customized"
-  if [ $fail -eq 0 ]; then 
-     echo SUCCESS
-     
+    RESTORED_SETTING=$(( RESTORED_SETTING + 1 ))
+ 
+  done << EOF
+$1
+EOF
+
+  RESTORED_SETTING=$(( RESTORED_SETTING - 1 ))
+ 
+}
+
+ printTestHeader ()
+#$1 - r/w mode
+#$2
+{
+  printf "Test %3s %16s " "$1" "$2"
+}
+
+test_customized ()
+{
+  typeset prev_customized 2>/dev/null || local prev_customized
+  typeset customized 2>/dev/null || local customized
+  typeset fail 2>/dev/null | local fail
+
+  prev_customized="$(./gw -h "$HOST" -c customized)"
+
+  CUSTOMIZED_ID=idtest
+  CUSTOMIZED_PASSWORD="pwtest space"
+  CUSTOMIZED_SERVER="server.tst"
+  CUSTOMIZED_PORT=8082
+  CUSTOMIZED_INTERVAL=17
+  CUSTOMIZED_TYPE=0
+  CUSTOMIZED_ENABLED=1
+  CUSTOMIZED_PATH_EC=/pathec
+  CUSTOMIZED_PATH_WU=/pathwu
+
+  customized=$( updateCustomized "$CUSTOMIZED_ID" "$CUSTOMIZED_PASSWORD" "$CUSTOMIZED_SERVER" "$CUSTOMIZED_PORT" "$CUSTOMIZED_INTERVAL" "$CUSTOMIZED_TYPE" "$CUSTOMIZED_ENABLED" "$CUSTOMIZED_PATH_EC" "$CUSTOMIZED_PATH_WU" )  # we're getting customized settings from printCustomized
+#              id testid
+#        password testpw
+#          server server.tst
+#            port 8081
+#        interval 16
+#            type 0 ecowitt
+#         enabled 1 on
+#     pathecowitt /pwu
+#pathwunderground /pec
+
+ restoreCustomized "$customized"
+
+  fail=0
+  if [ $RESTORED_SETTING -ne 9 ]; then
+    fail=1
   else
-    echo FAILED CUSTOMIZED "${CUSTOMIZED[@]}" RESTORED "${RESTORED[@]}"
+    if [ "$RESTORE_ID" != "$CUSTOMIZED_ID" ]; then
+      fail=1
+      echo >&2 "Customized id failed $RESTORE_ID != $CUSTOMIZED_ID" 
+    elif  [ "$RESTORE_PASSWORD" != "$CUSTOMIZED_PASSWORD" ]; then
+        fail=1
+      echo >&2 "Customized password failed $RESTORE_PASSWORD != $CUSTOMIZED_PASSWORD" 
+    elif [ "$RESTORE_SERVER" != "$CUSTOMIZED_SERVER" ]; then
+      fail=1
+      echo >&2 "Customized server failed $RESTORE_SERVER != $CUSTOMIZED_SERVER" 
+    elif [ "$RESTORE_PORT" -ne "$CUSTOMIZED_PORT" ]; then
+      fail=1
+      echo >&2 "Customized port failed $RESTORE_PORT != $CUSTOMIZED_PORT" 
+    elif [ "$RESTORE_INTERVAL" -ne "$CUSTOMIZED_INTERVAL" ]; then
+        fail=1
+      echo >&2 "Customized interval failed $RESTORE_INTERVAL != $CUSTOMIZED_INTERVAL" 
+    elif  [ "$RESTORE_TYPE" -ne "$CUSTOMIZED_TYPE" ]; then
+      fail=1
+      echo >&2 "Customized type failed $RESTORE_TYPE != $CUSTOMIZED_TYPE" 
+    elif  [ "$RESTORE_ENABLED" -ne "$CUSTOMIZED_ENABLED" ]; then
+      fail=1
+      echo >&2 "Customized enabled failed $RESTORE_ENABLED != $CUSTOMIZED_ENABLED"
+    elif  [ "$RESTORE_PATH_EC" != "$CUSTOMIZED_PATH_EC" ]; then
+      fail=1
+      echo >&2 "Customized path ecowitt failed $RESTORE_ENABLED != $CUSTOMIZED_ENABLED"
+    elif  [ "$RESTORE_PATH_WU" != "$CUSTOMIZED_PATH_WU" ]; then
+      fail=1
+      echo >&2 "Customized path ecowitt failed $RESTORE_ENABLED != $CUSTOMIZED_ENABLED"
+    fi
   fi
 
   restoreCustomized "$prev_customized"
-  copyRestoredToCustomized
-  updateCustomized >/dev/null 
+  updateCustomized "$RESTORE_ID" "$RESTORE_PASSWORD" "$RESTORE_SERVER" "$RESTORE_PORT" "$RESTORE_INTERVAL" "$RESTORE_TYPE" "$RESTORE_ENABLED" "$RESTORE_PATH_EC" "$RESTORE_PATH_WU" >/dev/null 
 
-
+  printTestHeader "r/w" "customized"
+  if [ $fail -eq 0 ]; then 
+     echo SUCCESS
+  else
+    echo FAILED 
+  fi
 }
 
-function test_ws_all
+test_ws_all ()
 {
+    typeset services 2>/dev/null || local services
+
    test_ws_ecowitt
-     typeset services
      services="wunderground weathercloud wow"
      for ws in $services; do
        test_ws "$ws"
      done
 }
 
-function test
+test_string ()
+{
+  typeset str 2>/dev/null || local str
+  str=$(./gw -h "$HOST" -c "$1")
+  printTestHeader "r" "$1"
+  if [ -n "$str" ]; then
+    echo "SUCCESS"
+    return 0
+  else
+    echo "FAILED"
+    return 1
+  fi
+    
+}
+
+test ()
 {
   if [ "$1" = "1" ]; then
      test_ws_all
   elif [ "$1" = "2" ]; then
     test_customized
+  elif [ "$1" = "3" ]; then
+     test_string version
+  elif [ "$1" = "4" ]; then
+     test_string mac
   elif [ "$1" = "a" ]; then
      test_ws_all
      test_customized
+     test_string version
+     test_string mac
   else
      echo >&2 Error unknown test "$1"
   fi
 }
 
-function printUsage
+ printUsage ()
 {
-    echo "Usage: gw-test {test}"
+  echo "Usage: gw-test -h {host} {test}"
   echo    "   1 = weather service ecowitt/wunderground/wow/weathercloud"
   echo    "   2 = customized"
+  echo    "   3 = version"
+  echo    "   4 = mac"
   echo    "   a = all"
-    echo "Append 2>/dev/null to mute packet write result messages"
-    echo "Example"
-    echo " test 1 - n - gw-test {1..n}"
-    echo " test 2     - gw-test 2"
-    #https://www.gnu.org/software/bash/manual/html_node/Brace-Expansion.html
+  echo ""  
+  echo "Append 2>/dev/null to mute packet write result messages"
+  echo ""
+  echo "Example"
+  echo " test 1 - n - gw-test {1..n}"
+  echo " test 2     - gw-test 2"
+  #https://www.gnu.org/software/bash/manual/html_node/Brace-Expansion.html
 }
 
 if [ $# -eq 0 ]; then
@@ -173,7 +267,12 @@ while [ $# -gt 0 ]; do
 
     case $1 in
 
-      -h|--help) 
+      -h|--host)
+        HOST=$2
+        shift 2
+        ;;
+
+      -\?|--help) 
           printUsage
           shift
           ;;
@@ -184,7 +283,11 @@ while [ $# -gt 0 ]; do
         ;;
 
       *)
-        test "$1"
+        if [ -n "$HOST" ]; then
+           test "$1"
+        else
+          echo >&2 Error host must be specificed with -h option
+        fi
         shift
           ;;
     esac
