@@ -443,14 +443,14 @@ CONFIGURATION_NAME[CONF_calibration_outhumidityoffset]="calibration_outhumidityo
 CONFIGURATION_NAME[CONF_calibration_windiroffset]="calibration_windiroffset"
 
 
-#function getCommandName
+# getCommandName ()
 #$1 - cmd
 # {
 #  if [$(( $cmd)) -eq $CMD_read_version ]; then
 #   CMD_NAME="read version"
 #}
 
-function listLivedataFieldsAndDescription
+ listLivedataFieldsAndDescription ()
 # $1 - if non-zero list only active fields found during parsing of livedata, else list all known fields
 {
   typeset fn #using typeset instead of local which isnt available in ksh https://stackoverflow.com/questions/12000949/scope-of-variables-in-ksh
@@ -478,7 +478,7 @@ function listLivedataFieldsAndDescription
   done
 }
 
-function connect {
+ connect () {
   # Info  from https://www.xmodulo.com/tcp-udp-socket-bash-shell.html
   typeset host
   host="$1"
@@ -511,7 +511,7 @@ function connect {
 
 }
 
-function disconnect {
+ disconnect () {
   #https://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
   #close sockets
   if [ -v FD_UDP ]; then
@@ -531,7 +531,7 @@ function disconnect {
   fi
 }
 
-function parseResultPacket {
+ parseResultPacket () {
   typeset -i cmd
   cmd=$(( 0x${PACKET_RX[2]} ))
   typeset -i result
@@ -548,11 +548,13 @@ function parseResultPacket {
   fi
 }
 
-function printStack {
-  echo "${FUNCNAME[@]}"
+ printStack () {
+  if [ -n "$BASH_VERSION" ]; then 
+    echo "${FUNCNAME[@]}"
+  fi
 }
 
-function printCustomized {
+ printCustomized () {
   printf "%16s %s\n" "id" "$C_WS_CUSTOMIZED_ID"
   printf "%16s %s\n" "password" "$C_WS_CUSTOMIZED_PASSWORD"
   printf "%16s %s\n" "server" "$C_WS_CUSTOMIZED_SERVER"
@@ -565,7 +567,7 @@ function printCustomized {
  
 }
 
-function printConfiguration {
+ printConfiguration () {
 typeset K
 #typeset -i n
  #bash  for K in "${!CONFIGURATION[@]}"; do
@@ -590,14 +592,14 @@ typeset K
 
 }
 
-function readUInt8 {
+ readUInt8 () {
   #VALUE_UINT8_HEX="0x${PACKET_RX_HEX:(($RX_POS * 2)):2}"
   VALUE_UINT8=$(( 0x${PACKET_RX[$RX_POS ]} ))
 
   RX_POS=$(( RX_POS + 1 ))
 }
 
-function readInt8
+ readInt8 ()
 #$1 - decimal
 {
   typeset hexstr
@@ -615,14 +617,14 @@ function readInt8
   fi
 }
 
-function readUInt16BE {
+ readUInt16BE () {
   #VALUE_UINT16BE_HEX="0x${PACKET_RX_HEX:(($RX_POS * 2)):4}"
   VALUE_UINT16BE=$(( (0x${PACKET_RX[$RX_POS]} << 8) |  0x${PACKET_RX[$RX_POS + 1]} ))
  
   RX_POS=$(( RX_POS + 2 ))
 }
 
-function readInt16BE 
+ readInt16BE ()
 #$1 - decimal
 #2's complement big endian
 #msb is the sign bit
@@ -644,14 +646,14 @@ function readInt16BE
   fi
 }
 
-function readUInt32BE {
+ readUInt32BE () {
   VALUE_UINT32BE_HEX="0x${PACKET_RX_HEX:(($RX_POS * 2)):8}"
   VALUE_UINT32BE=$(( (0x${PACKET_RX[$RX_POS ]} << 24) | (0x${PACKET_RX[$RX_POS + 1 ]} << 16)  | (0x${PACKET_RX[$RX_POS + 2 ]} << 8) |  0x${PACKET_RX[$RX_POS + 3]} ))
   RX_POS=$(( RX_POS + 4 ))
 }
 
 
-function readInt32BE 
+ readInt32BE ()
 #$1 decimal
 #2's complement big endian
 #msb is the sign bit
@@ -670,7 +672,7 @@ function readInt32BE
   fi
 }
 
-function readString {
+ readString () {
   typeset -i len
   len=0x${PACKET_RX[$RX_POS]}
   typeset n
@@ -687,7 +689,7 @@ function readString {
   RX_POS=$(( RX_POS + len + 1 ))
 }
 
-function readHex
+ readHex ()
 #$1 - length in bytes
 {
   # PACKET_RX_HEX : string of hex bytes ffff...<checksum>
@@ -695,7 +697,7 @@ function readHex
   RX_POS=$(( RX_POS + $1 + 1))
 }
 
-function printCalibration
+ printCalibration ()
 #for sensor array
 {
   typeset intempoffset
@@ -736,7 +738,7 @@ function printCalibration
   printf "%12s %16s %12s %12s %12s %12s %12s\n" "$intempoffset" "$inhumidityoffset" "$absoffset" "$reloffset" "$outtempoffset" "$outhumidityoffset" "$windiroffset"
 }
 
-function printRain {
+ printRain () {
   typeset rr
   typeset rd
   typeset rw
@@ -763,7 +765,7 @@ function printRain {
   #printf "%9s %9s %9s %9s %9s\n" "$rr" "$rd" "$rw" "$rm" "$ry"
 }
 
-function convertWindDirectionToCompassDirection
+ convertWindDirectionToCompassDirection ()
 #$1 - direction in degrees
 #http://snowfence.umn.edu/Components/winddirectionanddegrees.htm
 {
@@ -803,7 +805,7 @@ function convertWindDirectionToCompassDirection
   fi
 }
 
-function getBatteryLevelState
+ getBatteryLevelState ()
 # $1 - battery level 0-6, 6 = dc, <=1 low
 {
   typeset -i max_battery_level
@@ -831,7 +833,7 @@ function getBatteryLevelState
     fi
 }
 
-function getBatteryState
+ getBatteryState ()
 {
   unset SBATTERY_STATE
   if [ "$1" -eq 0 ]; then
@@ -841,7 +843,7 @@ function getBatteryState
   fi
 }
 
-function parseLivedata_C02_sensor
+ parseLivedata_C02_sensor ()
 #$1 - hex string
 {
   typeset ld_temp_co2
@@ -891,7 +893,7 @@ function parseLivedata_C02_sensor
   
 }
 
-function printLivedata
+ printLivedata ()
 #$1 field type in decimal
 {
     if [ -n "${LDFDESC_RENAME}" ]; then
@@ -925,7 +927,7 @@ function printLivedata
 
 }
 
-function parseLivedata
+ parseLivedata ()
 # $1 -pattern to match
 #https://unix.stackexchange.com/questions/306111/what-is-the-difference-between-the-bash-operators-vs-vs-vs [[ [ ((
 {
@@ -1009,12 +1011,12 @@ EOF
   fi
 }
 
-function printSensorHeader
+ printSensorHeader ()
 {
    printf "%4s %5s %8s %10s %7s %13s %6s %12s %s\n" type name id id_state battery battery_state signal interval_min description
 }
 
-function printSensorLine
+ printSensorLine ()
 {
   case "$KSH_VERSION" in 
    *MIRBSD*)
@@ -1027,7 +1029,7 @@ function printSensorLine
   esac
 }
 
-function toLowercase
+ toLowercase ()
 {
   typeset -l lowcasestr # -l option -> lowercase on assignment/or ignored
   if [ -n "$BASH_VERSION" ]; then
@@ -1044,7 +1046,7 @@ function toLowercase
  
 }
 
-function parseSensor
+ parseSensor ()
 {
   typeset match # flag when pattern matches fields
   typeset printSensorHeaderFlag
@@ -1177,7 +1179,7 @@ EOF
      
 }
 
-function initTimezones
+ initTimezones ()
 {
   #zsh read -A assigns to array, #bash -a assigns to array ?! -> do a while loop over heredoc
   #https://stackoverflow.com/questions/2337616/can-i-read-line-from-a-heredoc-in-bash
@@ -1298,7 +1300,7 @@ while read -r line; do
 EOF
 }
 
-function printTimezones
+ printTimezones ()
 {
   typeset n
   n=0
@@ -1311,7 +1313,7 @@ function printTimezones
   done
 }
 
-function setConfiguration
+ setConfiguration ()
 #$1 - index to configuration element
 #$2 - value
 {
@@ -1338,7 +1340,7 @@ function setConfiguration
   [ $DEBUG -eq 1 ] && >&2 echo "Indexes with values ${CONFIGURATION_INDEX[*]}"
 }
 
-function printSystem
+ printSystem ()
 {
      printf "%15s %s %s\n" "frequency" "$C_SYSTEM_FREQUENCY" "$C_SYSTEM_FREQUENCY_STATE" 
      printf "%15s %s %s\n" "sensortype" "$C_SYSTEM_SENSORTYPE" "$C_SYSTEM_SENSORTYPE_STATE"
@@ -1347,7 +1349,7 @@ function printSystem
      printf "%15s %d dst %s auto %s\n" "timezone" "$C_SYSTEM_DST_STATUS" "$C_SYSTEM_DST_STATUS_STATE" "$C_SYSTEM_TIMEZONE_AUTO_STATE" 
 }
 
-function parsePacket {
+ parsePacket () {
   typeset -i cmd
   RX_POS=4 # current read position/after packet length byte for indexing PACKET_RX_OD[1] - ASCII string from od utility
 
@@ -1649,7 +1651,7 @@ function parsePacket {
   fi
 }
 
-function newPacketBody {
+ newPacketBody () {
   # PACKET BODY STARTING AT BYTE 2 (from 0 index, first 0xff 0xff)
   typeset -i cmd
   cmd=$1
@@ -1674,7 +1676,7 @@ function newPacketBody {
  
 }
 
-function printPacketBody
+ printPacketBody ()
 {
   echo -------------------------- PACKET_BODY_LENGTH "${#PACKET_BODY[@]}"
   typeset n
@@ -1684,7 +1686,7 @@ function printPacketBody
      n=$(( n + 1))
   done
 }
-function createPacketTX {
+ createPacketTX () {
   typeset packetLengthLSB
   typeset packetLengthMSB
   typeset n
@@ -1728,7 +1730,7 @@ function createPacketTX {
 
 }
 
-function readResponseCat {
+ readResponseCat () {
   typeset timeoutCat
   timeoutCat=0.025 # Wireshark [Time delta from previous captured frame: 0.013166760 seconds]
   #   [ $DEBUG -eq 1 ] && timeoutOptions='-v'
@@ -1741,7 +1743,7 @@ function readResponseCat {
   kill %1
 }
 
-function readResponseDD {
+ readResponseDD () {
   typeset dd_result
   [ $DEBUG -eq 1 ] && unset "DEBUG_OPTIONS_dd"
   # shellcheck disable=SC2086
@@ -1755,7 +1757,7 @@ function readResponseDD {
 
 }
 
-function readHexASCII {
+ readHexASCII () {
   unset PACKET_RX_HEX # compact hex string without spaces ffff
   od -A n -t x1 -v -w"$(stat -c %s "$1")"  "$1" >"$FILENAME_od_hex"; 
   read -r  PACKET_RX_OD_HEX <"$FILENAME_od_hex" 
@@ -1768,7 +1770,7 @@ function readHexASCII {
 
 }
 
-function convert_od_hexStringToArray 
+ convert_od_hexStringToArray ()
 {
   typeset hexCode
  IFS=' '
@@ -1778,13 +1780,13 @@ function convert_od_hexStringToArray
  done
 }
 
-function sendPacket
+ sendPacket ()
 {
   sendPacketnc "$@"
   #sendPacketdd "$@"
 }
 
-function parse_od_hex_packet
+ parse_od_hex_packet ()
 #$1 od hex string
 {
       PACKET_RX_HEX=${1// /}                                 # strip off all spaces, just hex
@@ -1797,7 +1799,7 @@ function parse_od_hex_packet
       fi
 }
 
-function sendPacketnc
+ sendPacketnc ()
 #$1 - command
 #$2 - host
 {
@@ -1906,7 +1908,7 @@ function sendPacketnc
 }
 
 #including checksum byte
-function sendPacketdd {
+ sendPacketdd () {
   #takes two arguments $1 - command, $2 is udp broadcast request
   typeset FD
   FD=$FD_TCP # default TCP command port
@@ -1951,7 +1953,7 @@ function sendPacketdd {
 
 }
 
-function discovery
+ discovery ()
 {
   if which nc >/dev/null; then
     discovery_nc "$@"
@@ -1967,7 +1969,7 @@ function discovery
   
 }
 
-function discovery_udp_client
+ discovery_udp_client ()
 #$1 - subnet, for example 192.168.3
 #issue: nc fails to read when sending to subnet broadcast address 192.168.3.255
 #host reply with ICMP host/port unreachable or broadcast response
@@ -1986,7 +1988,7 @@ while [ $host -le 254 ]; do
 done
 }
 
-function discovery_nc
+ discovery_nc ()
 #$1 - subnet for udp scan
 {
   typeset -i SCAN_MAX_ITERATIONS
@@ -2033,7 +2035,7 @@ function discovery_nc
 
 }
 
-function discovery_socat {
+ discovery_socat () {
   typeset TIMEOUT_SCAN
   TIMEOUT_SCAN=2 #seconds
   typeset rxscan
@@ -2092,7 +2094,7 @@ function discovery_socat {
 
 }
 
-function checksum {
+ checksum () {
   typeset n
   #caller 0
 
@@ -2111,7 +2113,7 @@ function checksum {
   #[ $DEBUG -eq 1 ] && echo >&2 PACKET_CHECKSUM "$PACKET_CHECKSUM"
 }
 
-function writeString {
+ writeString  () {
   typeset n
 
   [ $DEBUG -eq 1 ] && echo >&2 "${FUNCNAME[0]} $1 len ${#1}"
@@ -2125,18 +2127,18 @@ function writeString {
   done
 }
 
-function writeUInt32BE {
+ writeUInt32BE () {
   writeUInt 32 "$1"
 }
-function writeUInt16BE {
+ writeUInt16BE () {
   writeUInt 16 "$1"
 }
 
-function writeUInt8 {
+ writeUInt8 () {
   writeUInt 8 "$1"
 }
 
-function writeUInt {
+ writeUInt () {
   typeset hex
 
   case $1 in
@@ -2164,12 +2166,12 @@ function writeUInt {
   done
 }
 
-function decToHex {
+ decToHex () {
   VALUE_HEX=$( printf "0x%02x" "$1" ) 
     
 }
 
-function newCustomizedPacket {
+ newCustomizedPacket () {
   newPacketBody $CMD_write_customized
   writeString   "$C_WS_CUSTOMIZED_ID"
   writeString   "$C_WS_CUSTOMIZED_PASSWORD"
@@ -2180,13 +2182,13 @@ function newCustomizedPacket {
   writeUInt8    "$C_WS_CUSTOMIZED_ENABLED"
 }
 
-function newPathPacket {
+ newPathPacket () {
   newPacketBody $CMD_write_path
   writeString "$C_WS_CUSTOMIZED_PATH_WU"
   writeString "$C_WS_CUSTOMIZED_PATH_ECOWITT"
 }
 
-function sendSystem
+ sendSystem ()
 {
  
   typeset dst
@@ -2234,7 +2236,7 @@ function sendSystem
   sendPacket
 }
 
-function sendRaindata {
+ sendRaindata () {
  # if ! [[ "$1" =~ ^[0-9]+$ ]] || ! [[ "$2" =~ ^[0-9]+$ ]] || ! [[ "$3" =~ ^[0-9]+$ ]] || ! [[ "$4" =~ ^[0-9]+$ ]]; then
  if ! isNumber "$1" || ! isNumber "$2" || ! isNumber "$3" || ! isNumber "$4"; then
     echo Error: Raindata has "element(s)" which is not a number
@@ -2252,7 +2254,7 @@ function sendRaindata {
   sendPacket
 }
 
-function sendCalibration
+ sendCalibration ()
 {
   newPacketBody $CMD_write_calibration
   writeUInt16BE "$1" #intempoffset
@@ -2268,7 +2270,7 @@ function sendCalibration
 
 }
 
-function sendEcowittInterval {
+ sendEcowittInterval () {
 # observation: GW1000 red-wifi led blinks slowly if not sending data to ecowitt when 0=off
   if [ "$1" -ge 0 ] && [ "$1" -le 5 ]; then
       newPacketBody $CMD_write_ecowitt_interval
@@ -2280,7 +2282,7 @@ function sendEcowittInterval {
   fi
 }
 
-function sendWeatherservice {
+ sendWeatherservice () {
 
   newPacketBody "$1"
   writeString "$2"
@@ -2300,7 +2302,7 @@ function sendWeatherservice {
   sendPacket
 }
 
-function sendCustomized {
+ sendCustomized () {
   newCustomizedPacket
   sendPacket
 
@@ -2309,7 +2311,7 @@ function sendCustomized {
 
 }
 
-function updateCustomized {
+ updateCustomized () {
   typeset value
   typeset key
  
@@ -2455,7 +2457,7 @@ EOF
 
 }
 
-function convertScale10ToFloat {
+ convertScale10ToFloat () {
 # $1 - number to convert
   typeset -i int
   typeset -i frac
@@ -2479,7 +2481,7 @@ function convertScale10ToFloat {
   fi
 }
 
-function initnc
+ initnc ()
 {
   typeset nc_ver
   typeset nc_ver_header
@@ -2527,7 +2529,7 @@ function initnc
   fi
 }
 
-function initConfigDir {
+ initConfigDir () {
 
   DIR=$HOME'/.config/gw' # .config subdirectory used for configuration on gnome/linux
   [ -n "$EXTERNAL_STORAGE" ] && DIR=$EXTERNAL_STORAGE # testing in Android 11 adb shell
@@ -2546,7 +2548,7 @@ function initConfigDir {
 
 }
 
-function initLivedataFieldDescriptionRenaming
+ initLivedataFieldDescriptionRenaming ()
 {
   if [ ! -s "$FILENAME_livedata_description" ]; then
      [ "$DEBUG" -eq 1 ] && >&2 echo Warning "$FILENAME_livedata_description" is empty or does not exists, using default names for livedata field descriptions
@@ -2568,7 +2570,7 @@ function initLivedataFieldDescriptionRenaming
 }
 
 
-function showRainInfoMessage {
+ showRainInfoMessage () {
   which notify-send >/dev/null && notify-send -t 3000 -i dialog-warning "gw script" "$1" &
   #https://www.shell-tips.com/linux/how-to-format-date-and-time-in-linux-macos-and-bash/
   printf "%s %s\n" "$(date)" "$1" # may add bell \a
@@ -2577,7 +2579,7 @@ function showRainInfoMessage {
   fi
 }
 
-function runRainNotification { 
+ runRainNotification () { 
   # $1 - number of seconds between each rain probe
   # $2 - show start/stop messages only (1 on, 0 off)
   typeset rr
@@ -2629,7 +2631,7 @@ function runRainNotification {
   done
 }
 
-function updateSensorIdRange
+ updateSensorIdRange ()
 #$1 - search or disable
 {
   typeset r
@@ -2641,7 +2643,7 @@ function updateSensorIdRange
   done
 }
 
-function setConfigurationSensor
+ setConfigurationSensor ()
 #$1 - STYPE sensor type
 #$2 - SID sensor id
 {
@@ -2682,7 +2684,7 @@ typeset updated
   [ $DEBUG -eq 1 ] && >&2 echo "Indexes with values ${CONFIGURATION_INDEX[*]}"
 }
 
-function setSensorId_decprecate
+ setSensorId_decprecate ()
 #$1 - STYPE sensor type
 #$2 - SID sensor id
 {
@@ -2693,7 +2695,7 @@ function setSensorId_decprecate
   CONFIGURATION_SENSOR_UPDATE_INDEX+=( "$1" )
 }
 
-function sendSensorId
+ sendSensorId ()
 {
   typeset type
   #debug : WSVIEW sensor overview is updated periodically to reflect current state
@@ -2716,7 +2718,7 @@ function sendSensorId
   sendPacket
 }
 
-function getReadArrayOption
+ getReadArrayOption ()
 {
   if [ -n "$BASH_VERSION" ]; then
          READARRAY_OPTION="-a"
@@ -2725,7 +2727,7 @@ function getReadArrayOption
       fi
 }
 
-function connectGW {
+ connectGW () {
   typeset lan_mac
   typeset lan_mac_lc #lowercase
   typeset ap_mac
@@ -2808,7 +2810,7 @@ function connectGW {
 
 }
 
-function initSearchPatternForCommand
+ initSearchPatternForCommand ()
 {
      SPATTERN=$1
      if [ -z "$SPATTERN" ] || [ "$SPATTERN" = "*" ] || [ "${SPATTERN:0:1}" = "-" ]; then
@@ -2819,17 +2821,17 @@ function initSearchPatternForCommand
 }
 
 
-function nextArgEmptyOrOption
+ nextArgEmptyOrOption ()
 {
   [ -z "$1" ]  ||  [ "${1:0:1}" = "-" ]
 }
 
-function printCommands
+ printCommands ()
 {
-  echo reset reboot mac system "ecowitt|ec wunderground|wu weathercloud|wc wow customized|c|cust broadcast|b rain|r livedata|ld sensor_id sensor_id_new|sid|sensor|s calibration|cal"  
+  echo reset reboot mac "system|sys ecowitt|ec wunderground|wu weathercloud|wc wow customized|c|cust broadcast|b rain|r livedata|ld sensor_id sensor_id_new|sid|sensor|s calibration|cal"  
 }
 
-function processCommand {
+ processCommand () {
 #$1 - field pattern for livedata/sensor id
 
  shift # remove {command} (to -c option) -> all args to {command} starts at $1
@@ -2871,7 +2873,7 @@ function processCommand {
           sendPacket $CMD_read_version
           ;;
 
-        system)
+        system|sys)
           
           if nextArgEmptyOrOption "$1"; then 
             sendPacket $CMD_read_system
@@ -2998,7 +3000,7 @@ function processCommand {
   return 0
 }
 
-function isNumber
+ isNumber ()
 {
     #https://stackoverflow.com/questions/806906/how-do-i-test-if-a-variable-is-a-number-in-bash?page=1&tab=votes#tab-top
     case $1 in
@@ -3007,7 +3009,7 @@ function isNumber
     esac
 }
 
-function getConfigurationIndexFromName
+ getConfigurationIndexFromName ()
 {
   typeset -i i
 
@@ -3021,7 +3023,7 @@ function getConfigurationIndexFromName
   done
 }
 
-function initShell
+ initShell ()
 {
         #shellcheck disable=2050
   if [[ a =~ a ]] 2>/dev/null; then
