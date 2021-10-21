@@ -10,3 +10,5 @@ test/prod/gw
 test/cmd-broadcast
 test/test-isnumber.sh
 test/test-expr.sh
+test/test-checksum
+test/test-typeset.sh
