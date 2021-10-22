@@ -12,3 +12,9 @@ test/test-isnumber.sh
 test/test-expr.sh
 test/test-checksum
 test/test-typeset.sh
+test/test-typeset-2.sh
+test/test-typeset2.sh
+test/strace-log
+test/test-heredoc.sh
+strace-log
+test/test-readUInt8.sh
