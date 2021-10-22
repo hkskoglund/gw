@@ -370,14 +370,14 @@ EOF
 VALUE_UINT16BE=$(( 0x$B1$B2 ))
 }
 
-printODBuffer ()
-{
-    echo OD_BUFFER "$OD_BUFFER"
-}
-
 readUInt8new ()
 {
-    local prefixDeleteSubstring
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+        #shellcheck disable=SC3044
+        typeset prefixDeleteSubstring
+    else
+       local prefixDeleteSubstring
+    fi
 
     unset VALUE_UINT8
     unset VALUE_UINT8_HEX
@@ -395,17 +395,27 @@ readUInt8new ()
 
 readUInt16BEnew ()
 {
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+        #shellcheck disable=SC3044
+        {
+        typeset b1
+        typeset b2
+        }
+    else
+        local b1
+        local b2
+    fi
+
     unset VALUE_UINT16BE
 
     if [ ${#OD_BUFFER} -ge 5 ]; then # 5 - length of two hex bytes + space
 
-        prefixDeleteSubstring=${OD_BUFFER#?? ??}                      # # = shortest prefix delete by pattern
-        b1b2=${OD_BUFFER%%$prefixDeleteSubstring}                     # %% = largest suffix delete by pattern
-        OD_BUFFER=${prefixDeleteSubstring# }
-        B2=${b1b2#?? }
-        B1=${b1b2%% ??}
         #VALUE_UINT16BE_HEX=$B1$B2
-        VALUE_UINT16BE=$(( 0x$B1$B2 ))
+        readUInt8new
+        b1=$B1
+        readUInt8new
+        b2=$B1
+        VALUE_UINT16BE=$(( 0x$b1$b2 ))
     else
       return "$ERROR_EOF_OD_BUFFER"
     fi
@@ -413,24 +423,49 @@ readUInt16BEnew ()
 
 readUInt32BEnew ()
 {
-    IFS=' ' read -r B1 B2 B3 B4 OD_BUFFER << EOF
-$OD_BUFFER
-EOF
-VALUE_UINT32BE=$(( 0x$B1$B2$B3$B4 ))
+     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+        #shellcheck disable=SC3044
+        {
+        typeset b1
+        typeset b2
+        typeset b3
+        typeset b4
+        }
+    else
+        local b1
+        local b2
+        local b3
+        local b4
+    fi
+
+    unset VALUE_UINT32BE
+
+    if [ ${#OD_BUFFER} -ge 11 ]; then 
+        readUInt8new
+        b1=$B1
+        readUInt8new
+        b2=$B1
+        readUInt8new
+        b3=$B1
+        readUInt8new
+        b4=$B1
+        VALUE_UINT32BE=$(( 0x$b1$b2$b3$b4 ))
+    else
+      return "$ERROR_EOF_OD_BUFFER"
+    fi
+        
 }
 
 readInt16BEnew ()
 #2's complement big endian
 #msb is the sign bit
-#test cmd: n=0; while [ "$n" -lt $(( 1 << 16 )) ]; do readInt16BE $(printf "%x" $n); echo $n $VALUE_INT16BE; n=$(( n + 1 )); done
 {
-    IFS=' ' read -r B1 B2  OD_BUFFER << EOF
-$OD_BUFFER
-EOF
     #VALUE_INT16BE_HEX=$hexstr
     #Converting from two's complement representation https://en.wikipedia.org/wiki/Two%27s_complement
 
-    VALUE_INT16BE=$(( -1* ( 0x$B1$B2 >> 15) * 0x8000 +  ( 0x$B1$B2 & 0x7fff ) ))
+    readUInt16BEnew
+
+    VALUE_INT16BE=$(( -1* ( VALUE_UINT16BE >> 15) * 0x8000 +  ( VALUE_UINT16BE & 0x7fff ) ))
 }
 
 readStringnew()
