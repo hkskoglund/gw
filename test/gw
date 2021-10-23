@@ -31,8 +31,8 @@
 
 DEBUG=0 # 1 will enable additional debug information, -d option to enable
 
-ERROR_CONNECTION=1
-ERROR_NO_NMCLI=2
+#ERROR_CONNECTION=1
+#ERROR_NO_NMCLI=2
 ERROR_NC_UDP_SCAN_UNAVAILABLE=3
 ERROR_RAINDATA_NOTSPECIFIED=4
 ERROR_SYSTEMPARAM_NOTSPECIFIED=5
@@ -323,71 +323,27 @@ readSlice ()
 #$1 - number of bytes n to read
 #read bytes available in $B1..$Bn
 {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-    #shellcheck disable=SC3044
-     typeset n
-       #shellcheck disable=SC3044
-     typeset readstr
-    else
-      local n
-      local readstr
-    fi
-
-    n=1
-
-    #if [ "$1" -eq 6 ]; then
-    #  readstr='B1 B2 B3 B4 B5 B6'
-    #else
-      while [ "$n" -le "$1" ]; do
-        readstr=$readstr"B$n "
-        n=$(( n + 1 ))
-      done
-    #fi
- eval 'IFS=" " read -r $readstr OD_BUFFER << EOB
-$OD_BUFFER
-EOB'
-}
-
-
-readUInt8old ()
-{
-    local prefix
-
- # IFS=' ' read -r B1 OD_BUFFER << EOB
-#$OD_BUFFER
-#EOB
-prefix=${OD_BUFFER#?? }
-B1=${OD_BUFFER%% $prefix}
-    VALUE_UINT8_HEX=$B1
-    VALUE_UINT8=$(( 0x$B1 ))
-}
-
-readUInt16BEold ()
-{
-    IFS=' ' read -r B1 B2 OD_BUFFER << EOF
-$OD_BUFFER
-EOF
-VALUE_UINT16BE=$(( 0x$B1$B2 ))
+    N=1
+    while [ "$N" -le "$1" ]; do
+       readUInt8new
+       eval "B$n=$VALUE_UINT8_HEX"
+       N=$(( N + 1 ))
+    done
 }
 
 readUInt8new ()
 {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset prefixDeleteSubstring
-    else
-       local prefixDeleteSubstring
-    fi
-
     unset VALUE_UINT8
     unset VALUE_UINT8_HEX
 
     if [ ${#OD_BUFFER} -ge 2 ]; then 
-        prefixDeleteSubstring=${OD_BUFFER#??} # '?? ' - first byte pattern
-        B1=${OD_BUFFER%%$prefixDeleteSubstring}
-        OD_BUFFER=${prefixDeleteSubstring# }
-        VALUE_UINT8_HEX=$B1
-        VALUE_UINT8=$(( 0x$B1 ))
+      
+       for BYTE in $OD_BUFFER; do
+            VALUE_UINT8_HEX=$BYTE
+            VALUE_UINT8=$(( 0x$BYTE ))
+            OD_BUFFER=${OD_BUFFER##"$BYTE "} #  ## - remove largest prefix
+            break;
+        done
     else
       return "$ERROR_EOF_OD_BUFFER"
     fi
@@ -395,27 +351,17 @@ readUInt8new ()
 
 readUInt16BEnew ()
 {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        {
-        typeset b1
-        typeset b2
-        }
-    else
-        local b1
-        local b2
-    fi
-
     unset VALUE_UINT16BE
+    unset VALUE_UINT16BE_HEX
 
     if [ ${#OD_BUFFER} -ge 5 ]; then # 5 - length of two hex bytes + space
 
         #VALUE_UINT16BE_HEX=$B1$B2
         readUInt8new
-        b1=$B1
+        VALUE_UINT16BE_HEX=$VALUE_UINT8_HEX
         readUInt8new
-        b2=$B1
-        VALUE_UINT16BE=$(( 0x$b1$b2 ))
+        VALUE_UINT16BE_HEX=$VALUE_UINT16BE_HEX$VALUE_UINT8_HEX
+        VALUE_UINT16BE=$(( 0x$VALUE_UINT16BE_HEX ))
     else
       return "$ERROR_EOF_OD_BUFFER"
     fi
@@ -423,33 +369,19 @@ readUInt16BEnew ()
 
 readUInt32BEnew ()
 {
-     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        {
-        typeset b1
-        typeset b2
-        typeset b3
-        typeset b4
-        }
-    else
-        local b1
-        local b2
-        local b3
-        local b4
-    fi
-
     unset VALUE_UINT32BE
+    unset VALUE_UINT32BE_HEX
 
     if [ ${#OD_BUFFER} -ge 11 ]; then 
         readUInt8new
-        b1=$B1
+        VALUE_UINT32BE_HEX=$VALUE_UINT8_HEX
         readUInt8new
-        b2=$B1
+        VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX
         readUInt8new
-        b3=$B1
+        VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX
         readUInt8new
-        b4=$B1
-        VALUE_UINT32BE=$(( 0x$b1$b2$b3$b4 ))
+        VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX
+        VALUE_UINT32BE=$(( 0x$VALUE_UINT32BE_HEX ))
     else
       return "$ERROR_EOF_OD_BUFFER"
     fi
@@ -475,11 +407,8 @@ readStringnew()
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
     typeset len_uint8
-    #shellcheck disable=SC3044
-    typeset -i n
     else
       local len_uint8
-      local n
     fi
 
     readUInt8new
@@ -487,11 +416,11 @@ readStringnew()
     len_uint8=$VALUE_UINT8
     [ $DEBUG -eq 1 ] && >&2 echo  "String length $len_uint8"
     unset VALUE_STRING
-    n=1
-    while [ "$n" -le "$len_uint8" ]; do
+    N=1
+    while [ "$N" -le "$len_uint8" ]; do
        readUInt8new
         VALUE_STRING=$VALUE_STRING"\\$(printf "%o" "$VALUE_UINT8")"
-        n=$(( n + 1 ))
+        N=$(( N + 1 ))
     done
     #shellcheck disable=SC2059
     VALUE_STRING=$(printf "$VALUE_STRING")
@@ -968,13 +897,6 @@ EOS
 
 printLivedatanew ()
 {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-     #shellcheck disable=SC3044
-    typeset n
-    else
-      local n
-    fi
-
     printf "%-25s %7.1f %3s\n" "$LIVEDATA_INTEMP_HEADER"  "$LIVEDATA_INTEMP" "$UNIT_TEMP"
     printf "%-25s %5.0f %5s\n" "Indoor humidity" "$LIVEDATA_INHUMI" "%"
     printf "%-25s %7.1f %3s\n" "Absolute pressure" "$LIVEDATA_ABSBARO" "$UNIT_PRESSURE"
@@ -999,42 +921,42 @@ printLivedatanew ()
     [ -n "$LIVEDATA_RAINMONTH" ] &&      printf "%-25s %7.1f %3s\n" "Rain month" "$LIVEDATA_RAINMONTH" "$UNIT_RAIN"
     [ -n "$LIVEDATA_RAINYEAR" ] &&       printf "%-25s %7.1f %3s\n" "Rain year" "$LIVEDATA_RAINYEAR" "$UNIT_RAIN"
 
-    n=1
-    while [ "$n" -le "$SOILMOISTURE_WH51_max_ch" ]; do
-      eval "[ -n ''"\$LIVEDATA_SOILMOISTURE$n" ] && printf  \"%-25s %5.0f %5s\n\" \"Soil moisture CH $n\" \"\$LIVEDATA_SOILMOISTURE$n\" \"$UNIT_TEMP\""
-        n=$(( n + 1 ))
+    N=1
+    while [ "$N" -le "$SOILMOISTURE_WH51_max_ch" ]; do
+      eval "[ -n ''"\$LIVEDATA_SOILMOISTURE$N" ] && printf  \"%-25s %5.0f %5s\n\" \"Soil moisture CH $N\" \"\$LIVEDATA_SOILMOISTURE$N\" \"$UNIT_TEMP\""
+        N=$(( N + 1))
     done
 
-    n=1
-    while [ "$n" -le "$SOILTEMP_WH34_max_ch" ]; do
-      eval "[ -n ''"\$LIVEDATA_SOILTEMP$n" ] && printf \"%-25s %7.1f %3s\n\" \"Soil temperature CH $n\" \"\$LIVEDATA_SOILTEMP$n\" \"%\""
-      n=$(( n + 1 ))
+    N=1
+    while [ "$N" -le "$SOILTEMP_WH34_max_ch" ]; do
+      eval "[ -n ''"\$LIVEDATA_SOILTEMP$N" ] && printf \"%-25s %7.1f %3s\n\" \"Soil temperature CH $N\" \"\$LIVEDATA_SOILTEMP$N\" \"%\""
+      N=$(( N + 1))
     done
 
-    n=1
-    while [ "$n" -le "$TEMP_WH31_max_ch" ]; do
-      eval "[ -n ''"\$LIVEDATA_TEMP$n" ] && printf \"%-25s %7.1f %3s\n\" \"Temperature CH $n\" \"\$LIVEDATA_TEMP$n\" \"\$UNIT_TEMP\""
-      eval "[ -n ''"\$LIVEDATA_HUMI$n" ] && printf \"%-25s %5.0f %5s\n\" \"Humidity CH $n\" \"\$LIVEDATA_HUMI$n\" \"%\""
-      n=$(( n + 1 ))
+    N=1
+    while [ "$N" -le "$TEMP_WH31_max_ch" ]; do
+      eval "[ -n ''"\$LIVEDATA_TEMP$N" ] && printf \"%-25s %7.1f %3s\n\" \"Temperature CH $N\" \"\$LIVEDATA_TEMP$N\" \"\$UNIT_TEMP\""
+      eval "[ -n ''"\$LIVEDATA_HUMI$N" ] && printf \"%-25s %5.0f %5s\n\" \"Humidity CH $N\" \"\$LIVEDATA_HUMI$N\" \"%\""
+      N=$(( N + 1))
     done
 
-    n=1
-    while [ "$n" -le "$LEAK_WH55_max_ch" ]; do
-      eval "[ -n ''"\$LIVEDATA_LEAK_CH$n" ] && printf  \"%-25s %5.0f %s\n\" \"Leak CH $n\" \"\$LIVEDATA_LEAK_CH$n\""
-      n=$(( n + 1 ))
+    N=1
+    while [ "$N" -le "$LEAK_WH55_max_ch" ]; do
+      eval "[ -n ''"\$LIVEDATA_LEAK_CH$N" ] && printf  \"%-25s %5.0f %s\n\" \"Leak CH $N\" \"\$LIVEDATA_LEAK_CH$N\""
+      N=$(( N + 1))
     done
 
     [ -n "$LIVEDATA_PM25_CH1" ] && printf "%-25s %7.1f %3s\n" "PM 2.5 CH 1" "$LIVEDATA_PM25_CH1" "$UNIT_PM25"
-    n=2
-    while [ "$n" -le "$PM25_WH43_max_ch" ]; do
-        eval "[ -n ''"\$LIVEDATA_PM25_CH$n" ] && printf \"%-25s %7.1f %3s\n\" \"PM 2.5 CH $n\" \"\$LIVEDATA_PM25_CH$n\" \"\$UNIT_PM25\""
-        n=$(( n + 1 ))
+    N=2
+    while [ "$N" -le "$PM25_WH43_max_ch" ]; do
+        eval "[ -n ''"\$LIVEDATA_PM25_CH$N" ] && printf \"%-25s %7.1f %3s\n\" \"PM 2.5 CH $N\" \"\$LIVEDATA_PM25_CH$N\" \"\$UNIT_PM25\""
+        N=$(( N + 1))
     done
 
-    n=1
-    while [ "$n" -le "$PM25_WH43_max_ch" ]; do
-        eval "[ -n ''"\$LIVEDATA_PM25_24HAVG$n" ] && printf \"%-25s %7.1f %3s\n\" \"PM 2.5 CH $n 24h avg.\" \"\$LIVEDATA_PM25_24HAVG$n\" \"\$UNIT_PM25\""
-        n=$(( n + 1 ))
+    N=1
+    while [ "$N" -le "$PM25_WH43_max_ch" ]; do
+        eval "[ -n ''"\$LIVEDATA_PM25_24HAVG$N" ] && printf \"%-25s %7.1f %3s\n\" \"PM 2.5 CH $N 24h avg.\" \"\$LIVEDATA_PM25_24HAVG$N\" \"\$UNIT_PM25\""
+        N=$(( N + 1))
     done
 
     [ -n "$LIVEDATA_CO2_TEMPF" ] && printf "%-25s %7.1f %3s\n" "Temperature" "$LIVEDATA_CO2_TEMPF" "$UNIT_TEMP"
@@ -1408,7 +1330,7 @@ createPacketTXnew ()
         PACKET_TX_BODY="$PACKET_TX_CMD $PACKET_TX_LENGTH"
     fi
 
-    checksumnew "$PACKET_TX_BODY"
+    checksumnew
 
     PACKET_TX_BODY="$PACKET_TX_BODY $PACKET_TX_BODY_CHECKSUM"
 
@@ -1426,11 +1348,9 @@ createPacketTXnew ()
 convertBufferFromHexToOctal ()
 #convert from ff ff .. .. {checksum} to \0377\0377 .. ..
 {
-     OD_BUFFER=$1
      unset VALUE_OCTAL_BUFFER
-      while [ -n "$OD_BUFFER" ]; do
-       readUInt8new
-       VALUE_OCTAL_BUFFER="$VALUE_OCTAL_BUFFER$( printf "\\%04o" "0x$B1")"
+     for BYTE in $1; do
+       VALUE_OCTAL_BUFFER="$VALUE_OCTAL_BUFFER$( printf "\\%04o" "0x$BYTE")"
       done
 
       [ $DEBUG -eq 1 ] && >&2 echo "Octal buffer $VALUE_OCTAL_BUFFER"
@@ -1670,15 +1590,12 @@ done
 }
 
 checksumnew ()
-#$1 - packet body string (after ff ff header), format ff ff 50 00 .. .. .. {checksum}
 {
-    OD_BUFFER=$1
     PACKET_TX_BODY_CHECKSUM=0
 
-    while [ -n "$OD_BUFFER" ]; do
-      readUInt8new
-     [ $DEBUG -eq 1 ] && >&2 echo "read $B1"
-      PACKET_TX_BODY_CHECKSUM=$(( ( PACKET_TX_BODY_CHECKSUM + 0x$B1 ) & 0xff ))
+    for BYTE in $PACKET_TX_BODY; do
+     [ $DEBUG -eq 1 ] && >&2 echo "checksum read $BYTE"
+      PACKET_TX_BODY_CHECKSUM=$(( ( PACKET_TX_BODY_CHECKSUM + 0x$BYTE ) & 0xff ))
     done
 
  [ $DEBUG -eq 1 ] && >&2 echo "checksum $PACKET_TX_BODY_CHECKSUM"
@@ -2062,32 +1979,32 @@ EOF
 if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
     {
-    typeset -i int
-    typeset -i frac
-    typeset -i number
-    typeset sign
+        typeset -i int
+        typeset -i frac
+        typeset -i number
+        typeset sign
     }
     else
-      local int
-      local frac
-     local number
-     local sign
+        local int
+        local frac
+        local number
+        local sign
     fi
 
     number=$(( $1 ))
     if [ "$number" -lt 0 ]; then
-     number=$(( number * - 1))
-     sign="-"
+        number=$(( number * - 1))
+        sign="-"
     fi
 
     if [ "$number" -lt  10 ]; then
-      #printf -v VALUE_SCALE10_FLOAT "%s" "0.$1" 2>/dev/null ||
-       VALUE_SCALE10_FLOAT=$sign"0.$number"
+        #printf -v VALUE_SCALE10_FLOAT "%s" "0.$1" 2>/dev/null ||
+        VALUE_SCALE10_FLOAT=$sign"0.$number"
     else
-      int=$(( number / 10))
-      frac=$(( number - int * 10))
-      #printf -v VALUE_SCALE10_FLOAT "%u.%u" $int $frac 2>/dev/null ||
-       VALUE_SCALE10_FLOAT=$sign"$int.$frac"
+        int=$(( number / 10))
+        frac=$(( number - int * 10))
+        #printf -v VALUE_SCALE10_FLOAT "%u.%u" $int $frac 2>/dev/null ||
+        VALUE_SCALE10_FLOAT=$sign"$int.$frac"
     fi
 }
 
@@ -2096,18 +2013,18 @@ if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
     {
-      typeset nc_ver
-      typeset nc_ver_header
-      typeset nc_status
-      typeset nc_exec
-      typeset ncat_exec
+        typeset nc_ver
+        typeset nc_ver_header
+        typeset nc_status
+        typeset nc_exec
+        typeset ncat_exec
     }
     else
-       local nc_ver
-       local nc_ver_header
-       local nc_status
-       local nc_exec
-      local ncat_exec
+        local nc_ver
+        local nc_ver_header
+        local nc_status
+        local nc_exec
+        local ncat_exec
     fi
 
     nc_exec=$(which nc 2>/dev/null)
@@ -2525,7 +2442,7 @@ while [ $# -gt 0 ]; do
       ;;
 
     -h | --host)
-      HOST_PREV=$HOST
+
       HOST="$2" # this arg must come first to open socketsopen file descriptors to UDP/TCP port on HOST
 
       #if ! connect "$2"; then

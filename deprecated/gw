@@ -2120,3 +2120,46 @@ printCalibration ()
   done < "$FILENAME_livedata_description"
 
 }
+
+
+readUInt16BEold ()
+{
+    local prefixDeleteSubstring
+    local b1b2
+
+    unset VALUE_UINT16BE
+
+    if [ ${#OD_BUFFER} -ge 5 ]; then # 5 - length of two hex bytes + space
+
+        prefixDeleteSubstring=${OD_BUFFER#?? ??}                      # # = shortest prefix delete by pattern
+        b1b2=${OD_BUFFER%%$prefixDeleteSubstring}                     # %% = largest suffix delete by pattern
+        OD_BUFFER=${prefixDeleteSubstring# }
+        B2=${b1b2#?? }
+        B1=${b1b2%% ??}
+        #VALUE_UINT16BE_HEX=$B1$B2
+        VALUE_UINT16BE=$(( 0x$B1$B2 ))
+    else
+      return "$ERROR_EOF_OD_BUFFER"
+    fi
+}
+
+readUInt8old ()
+{
+    local prefix
+
+ # IFS=' ' read -r B1 OD_BUFFER << EOB
+#$OD_BUFFER
+#EOB
+prefix=${OD_BUFFER#?? }
+B1=${OD_BUFFER%% $prefix}
+    VALUE_UINT8_HEX=$B1
+    VALUE_UINT8=$(( 0x$B1 ))
+}
+
+readUInt16BEold ()
+{
+    IFS=' ' read -r B1 B2 OD_BUFFER << EOF
+$OD_BUFFER
+EOF
+VALUE_UINT16BE=$(( 0x$B1$B2 ))
+}
