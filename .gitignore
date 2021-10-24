@@ -18,3 +18,11 @@ test/strace-log
 test/test-heredoc.sh
 strace-log
 test/test-readUInt8.sh
+test/strace-log-overview
+test/strace-log-bash
+test/strace-log-dash
+.gitignore
+test/strace-log-ksh
+test/strace-log-zsh
+test/strace-log-overview2
+test/test-converthexoct.sh

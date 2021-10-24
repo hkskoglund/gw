@@ -1,6 +1,6 @@
 #!/usr/bin/dash
 #!/bin/bash
-#! use dash in shellcheck for checking portability
+#! use dash as first line for portability testing
 
 # Utility for configuration of GW-1000
 # Only for firmware v1.6.5 or later - for intepretation of battery levels/sensor id new command
@@ -28,6 +28,11 @@
 # printf "%s" $(echo "25.4*13.043" | bc)
 #farenheit to celcius
 # printf "%s" $(echo "(58.64-32)/1.8" | bc)
+
+#set -x # enable for tracing in strace -f -c dash .c './gw -h 192.168.3.80 -c livedata'
+#for s in bash dash ksh zsh; do strace -f -c $s -c './gw -h 192.168.3.80 -c livedata' 2>strace-log-$s; done
+#not much to gain in time by avoiding subshell, but number of system calls is less. Try not to overoptimize.
+CONVERT_HEXANDOCT_USING_SUBSHELL=0 # 1 - using $( printf "%02x" )
 
 DEBUG=0 # 1 will enable additional debug information, -d option to enable
 
@@ -106,9 +111,7 @@ eval "CMDNAME_$CMD_write_ecowitt_interval='write ecowitt interval'"
 
 eval "CMDNAME_$CMD_livedata='livedata'"
 
-set -x
 [ -z "$LIVEDATA_INTEMP_HEADER" ] && export LIVEDATA_INTEMP_HEADER="Indoor temperature"
-set +x
 
 #livedata fields from specification
 
@@ -299,11 +302,12 @@ fi
     cmdname=$(eval "echo \$CMDNAME_$1")
 
     if [ -z "$cmdname" ]; then
-      echo '{commandname missing}' "$1"
+      COMMAND_NAME='{commandname missing}' "$1"
       return 1
     else
-      echo "$cmdname"
+      COMMAND_NAME="$cmdname"
     fi
+
 }
 
  printCustomized () {
@@ -321,13 +325,19 @@ fi
 
 readSlice ()
 #$1 - number of bytes n to read
-#read bytes available in $B1..$Bn
+#read bytes available in $B1,...,$Bn
 {
-    N=1
-    while [ "$N" -le "$1" ]; do
+     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+    #shellcheck disable=SC3044
+    typeset n
+    else
+      local n
+    fi
+    n=1
+    while [ "$n" -le "$1" ]; do
        readUInt8new
        eval "B$n=$VALUE_UINT8_HEX"
-       N=$(( N + 1 ))
+       n=$(( n + 1 ))
     done
 }
 
@@ -341,7 +351,7 @@ readUInt8new ()
        for BYTE in $OD_BUFFER; do
             VALUE_UINT8_HEX=$BYTE
             VALUE_UINT8=$(( 0x$BYTE ))
-            OD_BUFFER=${OD_BUFFER##"$BYTE "} #  ## - remove largest prefix
+            OD_BUFFER=${OD_BUFFER##" $BYTE"} #  ## - remove largest prefix
             break;
         done
     else
@@ -400,30 +410,46 @@ readInt16BEnew ()
     VALUE_INT16BE=$(( -1* ( VALUE_UINT16BE >> 15) * 0x8000 +  ( VALUE_UINT16BE & 0x7fff ) ))
 }
 
+
 readStringnew()
 #https://bugs.launchpad.net/ubuntu/+source/dash/+bug/1499473
 #\x formatted printf not supported in dash -> must use \nnn-octal
 {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
+    {
     typeset len_uint8
+    typeset n
+    }
     else
       local len_uint8
+      local n
     fi
 
     readUInt8new
-
     len_uint8=$VALUE_UINT8
     [ $DEBUG -eq 1 ] && >&2 echo  "String length $len_uint8"
+
+    unset VALUE_STRING_ESCAPE
     unset VALUE_STRING
-    N=1
-    while [ "$N" -le "$len_uint8" ]; do
+
+    n=1
+    while [ "$n" -le "$len_uint8" ]; do
+
        readUInt8new
-        VALUE_STRING=$VALUE_STRING"\\$(printf "%o" "$VALUE_UINT8")"
-        N=$(( N + 1 ))
+
+       if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
+           VALUE_STRING_ESCAPE=$VALUE_STRING_ESCAPE"\\$(printf "%o" "$VALUE_UINT8")" # create octal format string
+       else
+           convertHexToOctal "0x$VALUE_UINT8_HEX"
+           VALUE_STRING_ESCAPE="$VALUE_STRING_ESCAPE\\$VALUE_OCTAL"
+       fi        
+       
+        n=$(( n + 1 ))
+    
     done
     #shellcheck disable=SC2059
-    VALUE_STRING=$(printf "$VALUE_STRING")
+    VALUE_STRING=$(printf "$VALUE_STRING_ESCAPE") # convert to string
 }
 
  printRain () {
@@ -842,7 +868,8 @@ parseResult ()
     readUInt8new
     write_result=$VALUE_UINT8
 
-    >&2 printf "%s" "$(getCommandName "$PRX_CMD_UINT8")"
+   getCommandName "$PRX_CMD_UINT8"
+    >&2 printf "%s" "$COMMAND_NAME"
 
     if [ "$write_result" -eq 0 ]; then
       >&2  echo " OK"
@@ -871,7 +898,7 @@ isWriteCommand ()
 
 printBroadcast ()
 {
-      printf "%15s %s\n%15s %s\n%15s %d\n%15s %s\n%15s %s\n" "mac" "$C_broadcast_mac" "ip" "$C_broadcast_ip" "port" "$C_broadcast_port" "ssid" "$C_broadcast_ssid" "version" "$C_broadcast_version"
+    printf "%-15s %s\n%-15s %s\n%-15s %d\n%-15s %s\n%-15s %s\n" "mac" "$C_broadcast_mac" "ip" "$C_broadcast_ip" "port" "$C_broadcast_port" "ssid" "$C_broadcast_ssid" "version" "$C_broadcast_version"
 
 }
 
@@ -887,16 +914,23 @@ parseBroadcast ()
     C_broadcast_port="$(printf "%u" 0x"$B11$B12")"
 
     readStringnew
-
-    IFS=' ' read -r C_broadcast_ssid C_broadcast_version << EOS
-$VALUE_STRING
-EOS
+#https://stackoverflow.com/questions/1469849/how-to-split-one-string-into-multiple-strings-separated-by-at-least-one-space-in
+#shellcheck disable=SC2086
+    set -- $VALUE_STRING # -- assign words to positional parameters
+    C_broadcast_ssid=$1
+    C_broadcast_version=$2
 
  printBroadcast
 }
 
 printLivedatanew ()
 {
+     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+    #shellcheck disable=SC3044
+    typeset n
+    else
+      local n
+    fi
     printf "%-25s %7.1f %3s\n" "$LIVEDATA_INTEMP_HEADER"  "$LIVEDATA_INTEMP" "$UNIT_TEMP"
     printf "%-25s %5.0f %5s\n" "Indoor humidity" "$LIVEDATA_INHUMI" "%"
     printf "%-25s %7.1f %3s\n" "Absolute pressure" "$LIVEDATA_ABSBARO" "$UNIT_PRESSURE"
@@ -921,42 +955,42 @@ printLivedatanew ()
     [ -n "$LIVEDATA_RAINMONTH" ] &&      printf "%-25s %7.1f %3s\n" "Rain month" "$LIVEDATA_RAINMONTH" "$UNIT_RAIN"
     [ -n "$LIVEDATA_RAINYEAR" ] &&       printf "%-25s %7.1f %3s\n" "Rain year" "$LIVEDATA_RAINYEAR" "$UNIT_RAIN"
 
-    N=1
-    while [ "$N" -le "$SOILMOISTURE_WH51_max_ch" ]; do
-      eval "[ -n ''"\$LIVEDATA_SOILMOISTURE$N" ] && printf  \"%-25s %5.0f %5s\n\" \"Soil moisture CH $N\" \"\$LIVEDATA_SOILMOISTURE$N\" \"$UNIT_TEMP\""
-        N=$(( N + 1))
+    n=1
+    while [ "$n" -le "$SOILMOISTURE_WH51_max_ch" ]; do
+      eval "[ -n ''"\$LIVEDATA_SOILMOISTURE$n" ] && printf  \"%-25s %5.0f %5s\n\" \"Soil moisture CH $n\" \"\$LIVEDATA_SOILMOISTURE$n\" \"$UNIT_TEMP\""
+        n=$(( n + 1))
     done
 
-    N=1
-    while [ "$N" -le "$SOILTEMP_WH34_max_ch" ]; do
-      eval "[ -n ''"\$LIVEDATA_SOILTEMP$N" ] && printf \"%-25s %7.1f %3s\n\" \"Soil temperature CH $N\" \"\$LIVEDATA_SOILTEMP$N\" \"%\""
-      N=$(( N + 1))
+    n=1
+    while [ "$n" -le "$SOILTEMP_WH34_max_ch" ]; do
+      eval "[ -n ''"\$LIVEDATA_SOILTEMP$n" ] && printf \"%-25s %7.1f %3s\n\" \"Soil temperature CH $n\" \"\$LIVEDATA_SOILTEMP$n\" \"%\""
+      n=$(( n + 1))
     done
 
-    N=1
-    while [ "$N" -le "$TEMP_WH31_max_ch" ]; do
-      eval "[ -n ''"\$LIVEDATA_TEMP$N" ] && printf \"%-25s %7.1f %3s\n\" \"Temperature CH $N\" \"\$LIVEDATA_TEMP$N\" \"\$UNIT_TEMP\""
-      eval "[ -n ''"\$LIVEDATA_HUMI$N" ] && printf \"%-25s %5.0f %5s\n\" \"Humidity CH $N\" \"\$LIVEDATA_HUMI$N\" \"%\""
-      N=$(( N + 1))
+    n=1
+    while [ "$n" -le "$TEMP_WH31_max_ch" ]; do
+      eval "[ -n ''"\$LIVEDATA_TEMP$n" ] && printf \"%-25s %7.1f %3s\n\" \"Temperature CH $n\" \"\$LIVEDATA_TEMP$n\" \"\$UNIT_TEMP\""
+      eval "[ -n ''"\$LIVEDATA_HUMI$n" ] && printf \"%-25s %5.0f %5s\n\" \"Humidity CH $n\" \"\$LIVEDATA_HUMI$n\" \"%\""
+      n=$(( n + 1))
     done
 
-    N=1
-    while [ "$N" -le "$LEAK_WH55_max_ch" ]; do
-      eval "[ -n ''"\$LIVEDATA_LEAK_CH$N" ] && printf  \"%-25s %5.0f %s\n\" \"Leak CH $N\" \"\$LIVEDATA_LEAK_CH$N\""
-      N=$(( N + 1))
+    n=1
+    while [ "$n" -le "$LEAK_WH55_max_ch" ]; do
+      eval "[ -n ''"\$LIVEDATA_LEAK_CH$n" ] && printf  \"%-25s %5.0f %s\n\" \"Leak CH $n\" \"\$LIVEDATA_LEAK_CH$n\""
+      n=$(( n + 1))
     done
 
     [ -n "$LIVEDATA_PM25_CH1" ] && printf "%-25s %7.1f %3s\n" "PM 2.5 CH 1" "$LIVEDATA_PM25_CH1" "$UNIT_PM25"
-    N=2
-    while [ "$N" -le "$PM25_WH43_max_ch" ]; do
-        eval "[ -n ''"\$LIVEDATA_PM25_CH$N" ] && printf \"%-25s %7.1f %3s\n\" \"PM 2.5 CH $N\" \"\$LIVEDATA_PM25_CH$N\" \"\$UNIT_PM25\""
-        N=$(( N + 1))
+    n=2
+    while [ "$n" -le "$PM25_WH43_max_ch" ]; do
+        eval "[ -n ''"\$LIVEDATA_PM25_CH$n" ] && printf \"%-25s %7.1f %3s\n\" \"PM 2.5 CH $n\" \"\$LIVEDATA_PM25_CH$n\" \"\$UNIT_PM25\""
+        n=$(( n + 1))
     done
 
-    N=1
-    while [ "$N" -le "$PM25_WH43_max_ch" ]; do
-        eval "[ -n ''"\$LIVEDATA_PM25_24HAVG$N" ] && printf \"%-25s %7.1f %3s\n\" \"PM 2.5 CH $N 24h avg.\" \"\$LIVEDATA_PM25_24HAVG$N\" \"\$UNIT_PM25\""
-        N=$(( N + 1))
+    n=1
+    while [ "$n" -le "$PM25_WH43_max_ch" ]; do
+        eval "[ -n ''"\$LIVEDATA_PM25_24HAVG$n" ] && printf \"%-25s %7.1f %3s\n\" \"PM 2.5 CH $n 24h avg.\" \"\$LIVEDATA_PM25_24HAVG$n\" \"\$UNIT_PM25\""
+        n=$(( n + 1))
     done
 
     [ -n "$LIVEDATA_CO2_TEMPF" ] && printf "%-25s %7.1f %3s\n" "Temperature" "$LIVEDATA_CO2_TEMPF" "$UNIT_TEMP"
@@ -977,19 +1011,19 @@ parseLivedata ()
      if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
      #shellcheck disable=SC3044
       {
-        typeset ldf
-      typeset channel
-      typeset checksum
+       typeset ldf
+       typeset channel
+       typeset checksum
       }
     else
-      local ldf
-      local channel
+       local ldf
+       local channel
        local checksum
     fi
 
-    while [ "${#OD_BUFFER}" -gt 2  ]; do
+    while [ "${#OD_BUFFER}" -gt 3  ]; do
 
-      [ "$DEBUG" -eq 1 ] && >&2 echo Unparsed "$OD_BUFFER" length "${#OD_BUFFER}"
+      [ "$DEBUG" -eq 1 ] &&  >&2 echo Unparsed "$OD_BUFFER" length "${#OD_BUFFER}" 
 
       readUInt8new
       ldf=$VALUE_UINT8
@@ -1235,23 +1269,23 @@ parsePacketnew ()
 {
 
     >&2 echo  "Parsing $1"
-    IFS=' ' read -r PRX_FF1 PRX_FF2 PRX_CMD PRX_LEN OD_BUFFER << EOF
-$1
-EOF
+    OD_BUFFER=$1
 
-    PACKET_HEADER="$PRX_FF1$PRX_FF2"
+    readSlice 4
+
+    PACKET_HEADER="$B1$B2"
     if [ "$PACKET_HEADER" != "ffff" ]; then
       return "$ERROR_PACKET_HEADER"
     fi
 
-    PRX_CMD_UINT8=$(( 0x$PRX_CMD ))
+    PRX_CMD_UINT8=$(( 0x$B3 ))
 
     #Packet length
     if [ "$PRX_CMD_UINT8" -eq  $CMD_broadcast ] || [ "$PRX_CMD_UINT8" -eq $CMD_livedata ] || [ "$PRX_CMD_UINT8" -eq $CMD_read_sensor_id_new ]; then
       readUInt8new
-      PACKET_RX_LENGTH=$((  0x$PRX_LEN$VALUE_UINT8_HEX ))
+      PACKET_RX_LENGTH=$((  0x$B4$VALUE_UINT8_HEX ))
     else
-     PACKET_RX_LENGTH=$(( 0x$PRX_LEN ))
+     PACKET_RX_LENGTH=$(( 0x$B4 ))
     fi
 
     [ $DEBUG -eq 1 ] && >&2 echo  "RX PACKET LENGTH $PACKET_RX_LENGTH"
@@ -1277,15 +1311,66 @@ EOF
     [ $DEBUG -eq 1 ] && >&2 echo  "Received command $PRX_CMD integer cmd $PRX_CMD_UINT8"
 }
 
+getHexDigit()
+{
+    unset VALUE_HEX_DIGIT
+
+    if [ "$1" -ge 0 ] && [ "$1" -le 9 ]; then
+      VALUE_HEX_DIGIT=$1
+    elif [ "$1" -eq 10 ]; then 
+      VALUE_HEX_DIGIT='a'
+    elif [ "$1" -eq 11 ]; then
+     VALUE_HEX_DIGIT='b'
+      elif [ "$1" -eq 12 ]; then
+     VALUE_HEX_DIGIT='c'
+      elif [ "$1" -eq 13 ]; then
+     VALUE_HEX_DIGIT='d'
+      elif [ "$1" -eq 14 ]; then
+     VALUE_HEX_DIGIT='e'
+      elif [ "$1" -eq 15 ]; then
+     VALUE_HEX_DIGIT='f'
+     fi
+}
+
+convertDecimalToHex ()
+{
+  if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+  #shellcheck disable=SC3044
+  {
+    typeset lsb
+    typeset lsb_hexdigit
+    typeset msb
+  }
+  else
+    local lsb
+    local lsb_hexdigit
+    local msb
+  fi
+    lsb=$(( $1 & 0xf ))
+    getHexDigit "$lsb"
+    lsb_hexdigit=$VALUE_HEX_DIGIT
+    if [ "$1" -gt 15 ]; then
+      msb=$(( $1 >> 4 ))
+      getHexDigit "$msb"
+      VALUE_HEX=$VALUE_HEX_DIGIT$lsb_hexdigit
+    else
+      VALUE_HEX=0$VALUE_HEX_DIGIT
+    fi
+
+}
+
 newPacketBodynew ()
 {
-
     if [ -z "$1" ]; then
         >&2 echo Error no command given to newPacketBody
         return 1
     fi
 
-    decToHexnew  $(( $1 ))
+    if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
+        decToHexnew  $(( $1 ))
+    else
+        convertDecimalToHex "$(( $1 ))"
+    fi
     PACKET_TX_CMD=$VALUE_HEX
 
     PACKET_HEADER="ff ff"
@@ -1320,7 +1405,14 @@ createPacketTXnew ()
         PACKET_TX_LENGTH=$(printf "%02x %02x" $packetLengthMSB $packetLengthLSB )
 
     else
-       PACKET_TX_LENGTH=$(printf "%02x" $(( PACKET_BODY_LENGTH + 1 )) )
+
+       if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
+         PACKET_TX_LENGTH=$(printf "%02x" $(( PACKET_BODY_LENGTH + 1 )) )
+       else
+           convertDecimalToHex "$(( PACKET_BODY_LENGTH + 1 ))"
+            PACKET_TX_LENGTH=$VALUE_HEX
+        fi
+
     fi
 
     if [ -n "$PACKET_TX_BODY" ]; then 
@@ -1338,22 +1430,59 @@ createPacketTXnew ()
 
     PACKET_TX="$PACKET_HEADER $PACKET_TX_BODY"
 
-    convertBufferFromHexToOctal "$PACKET_TX"
-    PACKET_TX_ECHO=$VALUE_OCTAL_BUFFER
+    convertBufferFromHexToOctalEscape "$PACKET_TX"
+    PACKET_TX_ECHO=$VALUE_OCTAL_BUFFER_ESCAPE
 
     [ $DEBUG -eq 1 ] && >&2 echo "PACKET_TX_ECHO $PACKET_TX_ECHO PACKET_TX $PACKET_TX"
 
 }
 
-convertBufferFromHexToOctal ()
-#convert from ff ff .. .. {checksum} to \0377\0377 .. ..
+convertHexToOctal ()
+#$1 - 0xff format
 {
-     unset VALUE_OCTAL_BUFFER
-     for BYTE in $1; do
-       VALUE_OCTAL_BUFFER="$VALUE_OCTAL_BUFFER$( printf "\\%04o" "0x$BYTE")"
-      done
+  if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+#shellcheck disable=SC3044
+ {
+    typeset dec
+    typeset lsb
+    typeset msb
+    typeset middle
+ }
+ else
+    local dec
+    local lsb
+    local msb
+    local middle
+  fi
+    dec=$(( $1 ))
 
-      [ $DEBUG -eq 1 ] && >&2 echo "Octal buffer $VALUE_OCTAL_BUFFER"
+    lsb=$(( dec & 7 )) #least significant 3-bit sequence
+    middle=$(( (dec >> 3) & 7 ))
+    msb=$(( dec >> 6 ))
+    VALUE_OCTAL=$msb$middle$lsb
+    
+    [ $DEBUG -eq 1 ] && >&2 echo Converting hex "$1" to octal "$VALUE_OCTAL"
+
+}
+
+convertBufferFromHexToOctalEscape ()
+#convert from ff ff to \377\377 
+#strace: each $( printf ) creates a new process (strace: Process nnnn attached )
+{
+    unset VALUE_OCTAL_BUFFER_ESCAPE
+
+    for BYTE in $1; do
+
+        if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
+            VALUE_OCTAL_BUFFER_ESCAPE="$VALUE_OCTAL_BUFFER_ESCAPE$( printf "\\%04o" "0x$BYTE")"
+        else
+            convertHexToOctal "0x$BYTE"
+            VALUE_OCTAL_BUFFER_ESCAPE="$VALUE_OCTAL_BUFFER_ESCAPE\\$VALUE_OCTAL"
+        fi
+
+    done
+
+    [ $DEBUG -eq 1 ] && >&2 echo "Octal buffer $VALUE_OCTAL_BUFFER_ESCAPE"
 }
 
  sendPacket ()
@@ -1368,23 +1497,22 @@ sendPacketnc ()
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
     {
-      typeset ncUDPOpt  # UDP (-u) or TCP
-      typeset ncIdleOpt
-      typeset port
-      typeset ncStatus
-      typeset host
-      typeset timeout_udp_broadcast
-      typeset timeout_nc
+        typeset ncUDPOpt  # UDP (-u) or TCP
+        typeset ncIdleOpt
+        typeset port
+        typeset ncStatus
+        typeset host
+        typeset timeout_udp_broadcast
+        typeset timeout_nc
       }
     else
-      local ncUDPOpt # UDP (-u) or TCP
-      local ncIdleOpt
-      local port
-      local ncStatus
-      local host
-      local timeout_udp_broadcast
-      local timeout_nc
-      timeout_nc=0.05
+        local ncUDPOpt # UDP (-u) or TCP
+        local ncIdleOpt
+        local port
+        local ncStatus
+        local host
+        local timeout_udp_broadcast
+        local timeout_nc
     fi
 
     host=$2
@@ -1392,24 +1520,24 @@ sendPacketnc ()
     timeout_udp_broadcast=0.236 # timeout selected based on udp port scanning 254 hosts in 60s (60s/254=0.236s)
 
     if [ -n "$TIMEOUT_READ" ]; then # allow override via -x option
-      timeout_nc=$TIMEOUT_READ
+        timeout_nc=$TIMEOUT_READ
     fi
 
     if [ -z "$host" ]; then
-       host=$HOST #use default host, specfied using -h option
+        host=$HOST #use default host, specfied using -h option
     fi
 
     #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
     if [ $# -ge 1 ]; then
-      newPacketBodynew "$1"
+        newPacketBodynew "$1"
     fi
 
     createPacketTXnew
 
     if [ $PACKET_TX_CMD_INT -eq  $CMD_broadcast ]; then
-              ncUDPOpt='-u'
-              port=$PORT_GW_UDP #change to UDP from TCP default
-              timeout_nc=$timeout_udp_broadcast
+        ncUDPOpt='-u'
+        port=$PORT_GW_UDP #change to UDP from TCP default
+        timeout_nc=$timeout_udp_broadcast
     elif [ "$PACKET_TX_CMD_INT" -eq $CMD_write_reset ] || [ "$PACKET_TX_CMD_INT" -eq $CMD_write_ssid ]; then
          # some commands needs idle timeout
            #https://www.gnu.org/software/bash/manual/bash.html#Pattern-Matching
@@ -1429,7 +1557,9 @@ sendPacketnc ()
     fi
 
     # TEST %b: for shell in dash mksh zsh bash; do printf "%10s %b\n" "$shell" "\0100"; done
+   # set -x
     printf "%b" "$PACKET_TX_ECHO" >"$FILENAME_tx" #print to file for debuggging purpose
+    #set +x
 
  #{ cat "$FILENAME_tx"; sleep 0.175; } |  $NC_CMD  $ncUDPOpt $ncIdleOpt -w 500ms  -4 "$host" "$port"  >"$FILENAME_rx" # wait 0.1s to disable READ KILL of nc on stdin
 
@@ -1439,20 +1569,27 @@ sendPacketnc ()
       if [ $NC_VERSION -eq $NC_OPENBSD  ]; then
 
          if [ "$ncUDPOpt" != "-u" ]; then
+
+#set -x
             { cat "$FILENAME_tx"; sleep $timeout_nc; } | $NC_CMD -4 -N "$host" "$port" >"$FILENAME_rx" #-N shutdown socket after EOF on stdin
              ncStatus=$?
+#set +x
 
-          elif [ "$ncUDPOpt" = "-u" ]; then
+         elif [ "$ncUDPOpt" = "-u" ]; then
+              # set -x
                nc -4 -u "$host" "$port" <"$FILENAME_tx" >"$FILENAME_rx" &
+              # set +x
+              # jobs
                #-w only allow >=1s timeout, too slow, must move process to background and kill
               sleep $timeout_nc
-              #jobs
-              kill %1
+              kill %1 2>/dev/null
           fi
+
       elif [ $NC_VERSION -eq $NC_NMAP ]; then
 
             { cat "$FILENAME_tx"; sleep $timeout_nc; } | $NC_CMD -4  $ncUDPOpt $ncIdleOpt "$host" "$port" >"$FILENAME_rx"
              ncStatus=$?
+
       elif [ $NC_VERSION -eq $NC_TOYBOX ]; then
 
             { cat "$FILENAME_tx"; sleep $timeout_nc; } | $NC_CMD -4  $ncUDPOpt "$host" "$port" >"$FILENAME_rx"
@@ -1464,8 +1601,8 @@ sendPacketnc ()
 
     if [ -s "$FILENAME_rx" ] ; then # -s file exists and not empty
 
-          if od -A n -t x1 -v -w"$(stat -c %s "$FILENAME_rx")" "$FILENAME_rx" >"$FILENAME_od_hex"; then
-              read -r PACKET_RX_OD_HEX <"$FILENAME_od_hex"
+          if PACKET_RX_OD_HEX=$(od -A n -t x1 -v -w"$(stat -c %s "$FILENAME_rx")" "$FILENAME_rx"); then
+             # read -r PACKET_RX_OD_HEX <"$FILENAME_od_hex"
              [ $DEBUG -eq 1 ] &&  >&2 echo  OD HEX "$PACKET_RX_OD_HEX" length "${#PACKET_RX_OD_HEX}"
              parsePacketnew "$PACKET_RX_OD_HEX"
               #parse_od_hex_packet "$PACKET_RX_OD_HEX"
@@ -1475,15 +1612,14 @@ sendPacketnc ()
 
     else
       #[ $DEBUG -eq 1 ] &&
-      >&2 echo Error nc failed to receive response or empty response for command "$(getCommandName "$PACKET_TX_CMD_INT")"  in "$timeout_nc" s
+      getCommandName "$PACKET_TX_CMD_INT"
+      >&2 echo Error nc failed to receive response or empty response for command "$COMMAND_NAME"  in "$timeout_nc" s
     fi
 
     #cleanup files
 
     if [ $DEBUG -eq 0 ]; then
-        rm "$FILENAME_tx" 2>/dev/null
-        rm "$FILENAME_rx" 2>/dev/null
-        rm "$FILENAME_od_hex" 2>/dev/null
+        rm "$FILENAME_tx" "$FILENAME_rx" "$FILENAME_od_hex" 2>/dev/null
     fi
 
 }
@@ -1599,8 +1735,14 @@ checksumnew ()
     done
 
  [ $DEBUG -eq 1 ] && >&2 echo "checksum $PACKET_TX_BODY_CHECKSUM"
-
+  
+  if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
     PACKET_TX_BODY_CHECKSUM=$(printf "%02x" $PACKET_TX_BODY_CHECKSUM)
+  else
+    convertDecimalToHex "$PACKET_TX_BODY_CHECKSUM"
+    PACKET_TX_BODY_CHECKSUM=$VALUE_HEX
+  fi
+ 
 }
 
 writeUInt32BEnew ()
@@ -1842,17 +1984,26 @@ decToHexnew ()
 
 # first parse , expressions format: enabled=1,port=8000,server=test.no
 
-        IFS=',' read -r OPTION_CUSTOMIZED NEXT_OPTIONS << EOF
-$OPTION_CURRENT
-EOF
+##        IFS=',' read -r OPTION_CUSTOMIZED NEXT_OPTIONS << EOF
+#$OPTION_CURRENT
+#EOF
+       IFS=','
+       set -- $OPTION_CURRENT
+       OPTION_CUSTOMIZED=$1
+       NEXT_OPTIONS=$2
 
       [ $DEBUG -eq 1 ] && >&2 echo  "updateCustomized OPTION_CUSTOMIZED $OPTION_CUSTOMIZED $NEXT_OPTIONS"
 
 # second parse = expressions
 
-      IFS='=' read -r  key value << EOF
-$OPTION_CUSTOMIZED
-EOF
+#      IFS='=' read -r  key value << EOF
+#$OPTION_CUSTOMIZED
+#EOF
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $OPTION_CUSTOMIZED
+    key=$1
+    value=$2
 
       [ $DEBUG -eq 1 ] && >&2 echo  "updateCustomized KEY $key len ${#key} VALUE $value len ${#value}"
 
@@ -2029,10 +2180,10 @@ if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
 
     nc_exec=$(which nc 2>/dev/null)
     if [ -z "$nc_exec" ]; then
-       ncat_exec=$(which ncat 2>/dev/null) # try ncat, if nc not availale
-       if [ -n "$ncat_exec" ]; then
-         NC_CMD=ncat
-       fi
+        ncat_exec=$(which ncat 2>/dev/null) # try ncat, if nc not availale
+        if [ -n "$ncat_exec" ]; then
+            NC_CMD=ncat
+        fi
     else
       NC_CMD=nc
     fi
@@ -2055,9 +2206,13 @@ if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
 
             NC_VERSION_STR=$nc_ver
           else
-            IFS=' ' read -r nc_ver_header << EOL
-$nc_ver
-EOL
+#            IFS=' ' read -r nc_ver_header << EOL
+#$nc_ver
+#EOL
+             IFS=' '
+             set -- "$nc_ver"
+             nc_ver_header=$1
+
             case "$nc_ver_header" in
 
                 nc:\ invalid\ option*)
