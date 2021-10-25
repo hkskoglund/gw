@@ -2165,3 +2165,171 @@ VALUE_UINT16BE=$(( 0x$B1$B2 ))
 }
 
 
+sendPacketnc ()
+#$1 - command
+#$2 - host
+{
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+    #shellcheck disable=SC3044
+    {
+        typeset ncUDPOpt  # UDP (-u) or TCP
+        typeset ncIdleOpt
+        typeset port
+        typeset ncStatus
+        typeset host
+        typeset timeout_udp_broadcast
+        typeset timeout_nc
+      }
+    else
+        local ncUDPOpt # UDP (-u) or TCP
+        local ncIdleOpt
+        local port
+        local ncStatus
+        local host
+        local timeout_udp_broadcast
+        local timeout_nc
+    fi
+
+    host=$2
+    timeout_nc=0.05
+    timeout_udp_broadcast=0.236 # timeout selected based on udp port scanning 254 hosts in 60s (60s/254=0.236s)
+
+    if [ -n "$TIMEOUT_READ" ]; then # allow override via -x option
+        timeout_nc=$TIMEOUT_READ
+    fi
+
+    if [ -z "$host" ]; then
+        host=$HOST #use default host, specfied using -h option
+    fi
+
+    #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
+    if [ $# -ge 1 ]; then
+        newPacketBodynew "$1"
+    fi
+
+    createPacketTXnew
+
+    if [ $PACKET_TX_CMD_INT -eq  $CMD_broadcast ]; then
+        ncUDPOpt='-u'
+        port=$PORT_GW_UDP #change to UDP from TCP default
+        timeout_nc=$timeout_udp_broadcast
+    elif [ "$PACKET_TX_CMD_INT" -eq $CMD_write_reset ] || [ "$PACKET_TX_CMD_INT" -eq $CMD_write_ssid ]; then
+         # some commands needs idle timeout
+           #https://www.gnu.org/software/bash/manual/bash.html#Pattern-Matching
+           # man bash "When  the == and != operators are used, the string to the right of the operator
+           #     is considered a pattern and matched according to the rules described below  un‐
+           #     der Pattern Matching, as if the extglob shell option were enabled."
+          # if ! [[ $KSH_VERSION == *Android* ]]; then
+          #    ncIdleOpt='-i 100ms'
+          #    [ $DEBUG -eq 1 ] && >&2 echo "${CMD_NAME["$PACKET_TX_CMD_INT"]}" Setting device idle timeout option for nc "$ncIdleOpt"
+          # fi
+          :
+    else
+       unset ncUDPOpt
+       #1>&2 echo ncUDPOpt $ncUDPOpt
+       port=$PORT_GW_TCP
+
+    fi
+
+    # TEST %b: for shell in dash mksh zsh bash; do printf "%10s %b\n" "$shell" "\0100"; done
+   # set -x
+   # printf "%b" "$PACKET_TX_ECHO" >"$FILENAME_tx" #print to file for debuggging purpose
+    #set +x
+
+ # { cat "$FILENAME_tx"; sleep 0.175; } |  $NC_CMD  $ncUDPOpt $ncIdleOpt -w 500ms  -4 "$host" "$port"  >"$FILENAME_rx" # wait 0.1s to disable READ KILL of nc on stdin
+
+    # if timeout is too small, ICMP port unreachable is generated when doing udp port 46000 probing/broadcast
+    # udp debugging in wireshark : udp.dstport == 46000 || udp.srcport == 46000
+      # shellcheck disable=SC2086
+      if [ $NC_VERSION -eq $NC_OPENBSD  ]; then
+
+          PACKET_RX_OD_HEX=$(printf "%b" "$PACKET_TX_ECHO" | timeout $timeout_nc $NC_CMD -4 -N "$host" "$port" | od -A n -t x1 -w$MAX_16BIT_UINT) 
+
+ #        if [ "$ncUDPOpt" != "-u" ]; then
+
+#set -x
+#            { cat "$FILENAME_tx"; sleep $timeout_nc; } | $NC_CMD -4 -N "$host" "$port" >"$FILENAME_rx" #-N shutdown socket after EOF on stdin
+#             ncStatus=$?
+#set +x
+
+#         elif [ "$ncUDPOpt" = "-u" ]; then
+#              # set -x
+#               nc -4 -u "$host" "$port" <"$FILENAME_tx" >"$FILENAME_rx" &
+              # set +x
+              # jobs
+               #-w only allow >=1s timeout, too slow, must move process to background and kill
+#              sleep $timeout_nc
+#              kill %1 2>/dev/null
+#          fi
+
+      elif [ $NC_VERSION -eq $NC_NMAP ]; then
+
+            { cat "$FILENAME_tx"; sleep $timeout_nc; } | $NC_CMD -4  $ncUDPOpt $ncIdleOpt "$host" "$port" >"$FILENAME_rx"
+             ncStatus=$?
+
+      elif [ $NC_VERSION -eq $NC_TOYBOX ]; then
+
+            { cat "$FILENAME_tx"; sleep $timeout_nc; } | $NC_CMD -4  $ncUDPOpt "$host" "$port" >"$FILENAME_rx"
+             ncStatus=$?
+      fi
+
+    # Fedora 35: use --no-shutdown to continue even if receving EOF on stdin
+    # Android : -q Quit SECONDS after EOF on stdin, even if stdout hasn't closed yet" (from nc --help)
+
+#    if [ -s "$FILENAME_rx" ] ; then # -s file exists and not empty
+
+#          if PACKET_RX_OD_HEX=$(od -A n -t x1 -v -w"$(stat -c %s "$FILENAME_rx")" "$FILENAME_rx"); then
+             # read -r PACKET_RX_OD_HEX <"$FILENAME_od_hex"
+             [ $DEBUG -eq 1 ] &&  >&2 echo  OD HEX "$PACKET_RX_OD_HEX" length "${#PACKET_RX_OD_HEX}"
+             parsePacketnew "$PACKET_RX_OD_HEX"
+              #parse_od_hex_packet "$PACKET_RX_OD_HEX"
+#          else
+#            >&2 echo  Error od failed to create hex decoding for packet, error code $?
+#          fi
+
+ #   else
+ #     #[ $DEBUG -eq 1 ] &&
+ #     getCommandName "$PACKET_TX_CMD_INT"
+ #     >&2 echo Error nc failed to receive response or empty response for command "$COMMAND_NAME"  in "$timeout_nc" s
+ #   fi
+
+    #cleanup files
+
+ #   if [ $DEBUG -eq 0 ]; then
+ #       rm "$FILENAME_tx" "$FILENAME_rx" "$FILENAME_od_hex" 2>/dev/null
+ #   fi
+
+}
+
+initConfigDir () {
+
+    DIR=$HOME'/.config/gw' # .config subdirectory used for configuration on gnome/linux
+    [ -n "$EXTERNAL_STORAGE" ] && DIR=$EXTERNAL_STORAGE # testing in Android 11 adb shell
+    [ ! -d "$DIR" ] && mkdir -p -v "$DIR" 1>&2
+    [ "$DEBUG" -eq 1 ] && >&2 echo  Configuration directory "$DIR"
+
+    SHELLPID=$$
+    FILENAME_tx=$DIR"/txpacket-$SHELLPID"
+    FILENAME_rx=$DIR"/rxpacket-$SHELLPID"
+    FILENAME_livedata_description=$DIR/'livedata-description.txt'
+    FILENAME_od_hex=$DIR/"rxpacket-od-hex-$SHELLPID.txt"
+
+}
+
+
+ getReadArrayOption ()
+{
+    if [ -n "$BASH_VERSION" ]; then
+           READARRAY_OPTION="-a"
+        elif [ -n "$ZSH_VERSION" ] || [ -n "$KSH_VERSION" ]; then
+         READARRAY_OPTION="-A"
+        fi
+}
+
+
+ #if which socat >/dev/null; then
+    #    discovery_socat
+    #  else
+    #    >&2 echo  Error socat not found, cannot scan for devices
+    #    return "$ERROR_NO_SOCAT"
+    #  fi

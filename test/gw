@@ -36,6 +36,8 @@ CONVERT_HEXANDOCT_USING_SUBSHELL=0 # 1 - using $( printf "%02x" )
 
 DEBUG=0 # 1 will enable additional debug information, -d option to enable
 
+MAX_16BIT_UINT=$(( ( 2 << 16) - 1))
+
 #ERROR_CONNECTION=1
 #ERROR_NO_NMCLI=2
 ERROR_NC_UDP_SCAN_UNAVAILABLE=3
@@ -59,6 +61,7 @@ UNIT_CO2="ppm"
 NC_NMAP=0
 NC_OPENBSD=1
 NC_TOYBOX=2
+NC_BUSYBOX=3
 
 PORT_GW_TCP=45000
 PORT_GW_UDP=46000
@@ -310,7 +313,7 @@ fi
 
 }
 
- printCustomized () {
+printCustomized () {
     printf "%16s %s\n" "id" "$C_WS_CUSTOMIZED_ID"
     printf "%16s %s\n" "password" "$C_WS_CUSTOMIZED_PASSWORD"
     printf "%16s %s\n" "server" "$C_WS_CUSTOMIZED_SERVER"
@@ -321,6 +324,24 @@ fi
     printf "%16s %s\n" "pathecowitt" "$C_WS_CUSTOMIZED_PATH_ECOWITT"
     printf "%16s %s\n" "pathwunderground" "$C_WS_CUSTOMIZED_PATH_WU"
 
+}
+
+writeUInt32BE ()
+{
+    PACKET_TX_BODY="$PACKET_TX_BODY $(printf "%02x" $(( $1 >> 24 ))) $(printf "%02x" $(( ($1 & 0xff0000 ) >> 16 )) ) $(printf  "%02x" $(( ( $1  & 0xff00 ) >> 8 )) ) $(printf  "%02x" $(( $1  & 0xff )) )"
+    PACKET_BODY_LENGTH=$(( PACKET_BODY_LENGTH + 4 ))
+}
+
+writeUInt16BE ()
+{
+    PACKET_TX_BODY="$PACKET_TX_BODY $(printf "%02x" $(( $1  >> 8 )) ) $(printf "%02x" $(( $1  & 0xff )) )"
+    PACKET_BODY_LENGTH=$(( PACKET_BODY_LENGTH + 2 ))
+}
+
+writeUInt8 ()
+{
+    PACKET_TX_BODY="$PACKET_TX_BODY $(printf "%02x" "$1")"
+    PACKET_BODY_LENGTH=$(( PACKET_BODY_LENGTH + 1 ))
 }
 
 readSlice ()
@@ -335,13 +356,13 @@ readSlice ()
     fi
     n=1
     while [ "$n" -le "$1" ]; do
-       readUInt8new
+       readUInt8
        eval "B$n=$VALUE_UINT8_HEX"
        n=$(( n + 1 ))
     done
 }
 
-readUInt8new ()
+readUInt8 ()
 {
     unset VALUE_UINT8
     unset VALUE_UINT8_HEX
@@ -359,7 +380,7 @@ readUInt8new ()
     fi
 }
 
-readUInt16BEnew ()
+readUInt16BE ()
 {
     unset VALUE_UINT16BE
     unset VALUE_UINT16BE_HEX
@@ -367,9 +388,9 @@ readUInt16BEnew ()
     if [ ${#OD_BUFFER} -ge 5 ]; then # 5 - length of two hex bytes + space
 
         #VALUE_UINT16BE_HEX=$B1$B2
-        readUInt8new
+        readUInt8
         VALUE_UINT16BE_HEX=$VALUE_UINT8_HEX
-        readUInt8new
+        readUInt8
         VALUE_UINT16BE_HEX=$VALUE_UINT16BE_HEX$VALUE_UINT8_HEX
         VALUE_UINT16BE=$(( 0x$VALUE_UINT16BE_HEX ))
     else
@@ -377,19 +398,19 @@ readUInt16BEnew ()
     fi
 }
 
-readUInt32BEnew ()
+readUInt32BE ()
 {
     unset VALUE_UINT32BE
     unset VALUE_UINT32BE_HEX
 
     if [ ${#OD_BUFFER} -ge 11 ]; then 
-        readUInt8new
+        readUInt8
         VALUE_UINT32BE_HEX=$VALUE_UINT8_HEX
-        readUInt8new
+        readUInt8
         VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX
-        readUInt8new
+        readUInt8
         VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX
-        readUInt8new
+        readUInt8
         VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX
         VALUE_UINT32BE=$(( 0x$VALUE_UINT32BE_HEX ))
     else
@@ -398,20 +419,19 @@ readUInt32BEnew ()
         
 }
 
-readInt16BEnew ()
+readInt16BE ()
 #2's complement big endian
 #msb is the sign bit
 {
     #VALUE_INT16BE_HEX=$hexstr
     #Converting from two's complement representation https://en.wikipedia.org/wiki/Two%27s_complement
 
-    readUInt16BEnew
+    readUInt16BE
 
     VALUE_INT16BE=$(( -1* ( VALUE_UINT16BE >> 15) * 0x8000 +  ( VALUE_UINT16BE & 0x7fff ) ))
 }
 
-
-readStringnew()
+readString()
 #https://bugs.launchpad.net/ubuntu/+source/dash/+bug/1499473
 #\x formatted printf not supported in dash -> must use \nnn-octal
 {
@@ -426,7 +446,7 @@ readStringnew()
       local n
     fi
 
-    readUInt8new
+    readUInt8
     len_uint8=$VALUE_UINT8
     [ $DEBUG -eq 1 ] && >&2 echo  "String length $len_uint8"
 
@@ -436,7 +456,7 @@ readStringnew()
     n=1
     while [ "$n" -le "$len_uint8" ]; do
 
-       readUInt8new
+       readUInt8
 
        if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
            VALUE_STRING_ESCAPE=$VALUE_STRING_ESCAPE"\\$(printf "%o" "$VALUE_UINT8")" # create octal format string
@@ -452,7 +472,7 @@ readStringnew()
     VALUE_STRING=$(printf "$VALUE_STRING_ESCAPE") # convert to string
 }
 
- printRain () {
+printRain () {
      if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
     {
@@ -491,7 +511,7 @@ readStringnew()
     #printf "%9s %9s %9s %9s %9s\n" "$rr" "$rd" "$rw" "$rm" "$ry"
 }
 
- convertWindDirectionToCompassDirection ()
+convertWindDirectionToCompassDirection ()
 #$1 - direction in degrees
 #http://snowfence.umn.edu/Components/winddirectionanddegrees.htm
 {
@@ -547,7 +567,7 @@ readStringnew()
     fi
 }
 
- getBatteryLevelState ()
+getBatteryLevelState ()
 # $1 - battery level 0-6, 6 = dc, <=1 low
 {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
@@ -584,7 +604,7 @@ readStringnew()
       fi
 }
 
- getBatteryState ()
+getBatteryState ()
 {
     unset SBATTERY_STATE
     if [ "$1" -eq 0 ]; then
@@ -594,7 +614,7 @@ readStringnew()
     fi
 }
 
- toLowercase ()
+toLowercase ()
 {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
@@ -618,7 +638,7 @@ readStringnew()
 
 }
 
- initTimezones ()
+initTimezones ()
 {
     #dash: read only 1 byte each time from pipe/here document, not entire line
     #bash: creates /tmp/sh-thd file
@@ -752,7 +772,7 @@ readStringnew()
 #EOF
 }
 
- printSystem ()
+printSystem ()
 {
     printf "%15s %s %s\n" "frequency" "$C_SYSTEM_FREQUENCY" "$C_SYSTEM_FREQUENCY_STATE"
     printf "%15s %s %s\n" "sensortype" "$C_SYSTEM_SENSORTYPE" "$C_SYSTEM_SENSORTYPE_STATE"
@@ -763,7 +783,7 @@ readStringnew()
 
 parseSystem ()
 {
-    readUInt8new
+    readUInt8
 
     C_SYSTEM_FREQUENCY=$VALUE_UINT8
     if [ "$C_SYSTEM_FREQUENCY" -eq $SYSTEM_FREQUENCY_RFM433M ]; then
@@ -776,7 +796,7 @@ parseSystem ()
       C_SYSTEM_FREQUENCY_STATE="920MHz"
     fi
 
-    readUInt8new
+    readUInt8
 
     C_SYSTEM_SENSORTYPE=$VALUE_UINT8
     if [ "$C_SYSTEM_SENSORTYPE" -eq $SYSTEM_SENSOR_TYPE_WH24 ]; then
@@ -786,18 +806,18 @@ parseSystem ()
     C_SYSTEM_SENSORTYPE_STATE="WH65"
     fi
 
-    readUInt32BEnew
+    readUInt32BE
 
     C_SYSTEM_UTC=$VALUE_UINT32BE
     C_SYSTEM_UTC_STATE="$(date -u -d @"$VALUE_UINT32BE" +'%F %T')"
 
-    readUInt8new
+    readUInt8
 
     C_SYSTEM_TIMEZONE_INDEX=$VALUE_UINT8
 
     eval "C_SYSTEM_TIMEZONE_INDEX_STATE=\$SYSTEM_TIMEZONE_$C_SYSTEM_TIMEZONE_INDEX" # set from SYSTEM_TIMEZONE "array" variable with index
 
-    readUInt8new
+    readUInt8
 
     C_SYSTEM_DST_STATUS=$VALUE_UINT8
     C_SYSTEM_DST_STATUS_BIT=$(( C_SYSTEM_DST_STATUS & 0x01 ))
@@ -832,7 +852,7 @@ printEcowittInterval ()
 parseEcowittInterval ()
 {
 
-    readUInt8new
+    readUInt8
     C_WS_ECOWITT_INTERVAL=$VALUE_UINT8
     printEcowittInterval
 }
@@ -844,7 +864,7 @@ printKeyValue ()
 
 parseVersion ()
 {
-    readStringnew
+    readString
     C_VERSION="$VALUE_STRING"
     printKeyValue version "$C_VERSION"
 }
@@ -865,7 +885,7 @@ parseResult ()
       local write_result
     fi
 
-    readUInt8new
+    readUInt8
     write_result=$VALUE_UINT8
 
    getCommandName "$PRX_CMD_UINT8"
@@ -913,7 +933,7 @@ parseBroadcast ()
     C_broadcast_ip="$(printf "%u.%u.%u.%u" 0x"$B7" 0x"$B8" 0x"$B9" 0x"$B10" )"
     C_broadcast_port="$(printf "%u" 0x"$B11$B12")"
 
-    readStringnew
+    readString
 #https://stackoverflow.com/questions/1469849/how-to-split-one-string-into-multiple-strings-separated-by-at-least-one-space-in
 #shellcheck disable=SC2086
     set -- $VALUE_STRING # -- assign words to positional parameters
@@ -957,13 +977,13 @@ printLivedatanew ()
 
     n=1
     while [ "$n" -le "$SOILMOISTURE_WH51_max_ch" ]; do
-      eval "[ -n ''"\$LIVEDATA_SOILMOISTURE$n" ] && printf  \"%-25s %5.0f %5s\n\" \"Soil moisture CH $n\" \"\$LIVEDATA_SOILMOISTURE$n\" \"$UNIT_TEMP\""
+      eval "[ -n ''"\$LIVEDATA_SOILMOISTURE$n" ] && printf  \"%-25s %5.0f %5s\n\" \"Soil moisture CH $n\" \"\$LIVEDATA_SOILMOISTURE$n\" \"%\""
         n=$(( n + 1))
     done
 
     n=1
     while [ "$n" -le "$SOILTEMP_WH34_max_ch" ]; do
-      eval "[ -n ''"\$LIVEDATA_SOILTEMP$n" ] && printf \"%-25s %7.1f %3s\n\" \"Soil temperature CH $n\" \"\$LIVEDATA_SOILTEMP$n\" \"%\""
+      eval "[ -n ''"\$LIVEDATA_SOILTEMP$n" ] && printf \"%-25s %7.1f %3s\n\" \"Soil temperature CH $n\" \"\$LIVEDATA_SOILTEMP$n\" \"$UNIT_TEMP\""
       n=$(( n + 1))
     done
 
@@ -1025,84 +1045,84 @@ parseLivedata ()
 
       [ "$DEBUG" -eq 1 ] &&  >&2 echo Unparsed "$OD_BUFFER" length "${#OD_BUFFER}" 
 
-      readUInt8new
+      readUInt8
       ldf=$VALUE_UINT8
       [ "$DEBUG" -eq 1 ] && >&2 echo Parsing livedata field "$(printf "%02x" "$ldf")"
 
       if [ "$ldf" -eq $LDF_INTEMP ]; then
 
-        readInt16BEnew
+        readInt16BE
         convertScale10ToFloat "$VALUE_INT16BE"
         LIVEDATA_INTEMP=$VALUE_SCALE10_FLOAT #maybe export
 
       elif [ "$ldf" -eq $LDF_INHUMI ]; then
 
-        readUInt8new
+        readUInt8
         LIVEDATA_INHUMI=$VALUE_UINT8
 
       elif [ "$ldf" -eq $LDF_ABSBARO ]; then
 
-        readUInt16BEnew
+        readUInt16BE
         convertScale10ToFloat "$VALUE_UINT16BE"
         LIVEDATA_ABSBARO=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_RELBARO ]; then
 
-        readUInt16BEnew
+        readUInt16BE
         convertScale10ToFloat "$VALUE_UINT16BE"
         LIVEDATA_RELBARO=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_OUTTEMP ]; then
 
-        readInt16BEnew
+        readInt16BE
         convertScale10ToFloat "$VALUE_INT16BE"
         LIVEDATA_OUTTEMP=$VALUE_SCALE10_FLOAT
 
        elif [ "$ldf" -eq $LDF_OUTHUMI ]; then
 
-        readUInt8new
+        readUInt8
         LIVEDATA_OUTHUMI=$VALUE_UINT8
 
       elif [ "$ldf" -eq $LDF_WINDDIRECTION ]; then
 
-        readUInt16BEnew
+        readUInt16BE
         LIVEDATA_WINDDIRECTION=$VALUE_UINT16BE
         convertWindDirectionToCompassDirection "$LIVEDATA_WINDDIRECTION"
         LIVEDATA_WINDDIRECTION_COMPASS=$VALUE_COMPASS_DIRECTION
 
       elif [ "$ldf" -eq $LDF_WINDSPEED ]; then
 
-        readUInt16BEnew
+        readUInt16BE
         convertScale10ToFloat "$VALUE_UINT16BE"
         LIVEDATA_WINDSPEED=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_WINDGUSTSPPED ]; then
 
-        readUInt16BEnew
+        readUInt16BE
         convertScale10ToFloat "$VALUE_UINT16BE"
         LIVEDATA_WINDGUSTSPEED=$VALUE_SCALE10_FLOAT
 
        elif [ "$ldf" -eq $LDF_DAYLWINDMAX ]; then
 
-        readUInt16BEnew
+        readUInt16BE
         convertScale10ToFloat "$VALUE_UINT16BE"
         LIVEDATA_DAILYWINDMAX=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_LIGHT ]; then
 
-        readUInt32BEnew
+        readUInt32BE
         convertScale10ToFloat "$VALUE_UINT32BE"
         LIVEDATA_LIGHT=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_UV ]; then
 
-        readUInt16BEnew
+        readUInt16BE
         convertScale10ToFloat "$VALUE_UINT16BE"
         LIVEDATA_UV=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_UVI ]; then
 
-        readUInt8new
+        readUInt8
         LIVEDATA_UVI=$VALUE_UINT8
 
       elif [ "$ldf" -eq $LDF_SOILMOISTURE1 ] || [ "$ldf" -eq $LDF_SOILMOISTURE2 ] ||
@@ -1110,7 +1130,7 @@ parseLivedata ()
            [ "$ldf" -eq $LDF_SOILMOISTURE5 ] || [ "$ldf" -eq $LDF_SOILMOISTURE6 ] ||
            [ "$ldf" -eq $LDF_SOILMOISTURE7 ] || [ "$ldf" -eq $LDF_SOILMOISTURE8 ]; then #is 16 channels supported?
 
-        readUInt8new
+        readUInt8
         channel=$(( ( ( ldf - LDF_SOILMOISTURE1 ) / 2 ) + 1 ))
         eval "LIVEDATA_SOILMOISTURE$channel=$VALUE_UINT8"
 
@@ -1119,13 +1139,13 @@ parseLivedata ()
            [ "$ldf" -eq $LDF_SOILTEMP5 ] || [ "$ldf" -eq $LDF_SOILTEMP6 ] ||
            [ "$ldf" -eq $LDF_SOILTEMP7 ] || [ "$ldf" -eq $LDF_SOILTEMP8 ]; then
 
-        readUInt8new
+        readUInt8
         channel=$(( ( ( ldf - LDF_SOILTEMP1 ) / 2 ) + 1 ))
         eval "LIVEDATA_SOILTEMPE$channel=$VALUE_UINT8"
 
       elif [ "$ldf" -ge $LDF_TEMP1 ] && [ "$ldf" -le $LDF_TEMP8 ] ; then
 
-        readInt16BEnew
+        readInt16BE
         convertScale10ToFloat "$VALUE_INT16BE"
 
         channel=$(( ldf - LDF_TEMP1 + 1 ))
@@ -1133,7 +1153,7 @@ parseLivedata ()
 
       elif [ "$ldf" -ge $LDF_HUMI1 ] && [ "$ldf" -le $LDF_HUMI8 ]; then
 
-        readUInt8new
+        readUInt8
 
         channel=$(( ldf - LDF_HUMI1 + 1 ))
         eval "LIVEDATA_HUMI$channel=$VALUE_UINT8"
@@ -1141,56 +1161,56 @@ parseLivedata ()
 
       elif [ "$ldf" -eq $LDF_RAINMONTH ]; then
 
-        readUInt32BEnew
+        readUInt32BE
         convertScale10ToFloat "$VALUE_UINT32BE"
         LIVEDATA_RAINMONTH=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_RAINYEAR ]; then
 
-        readUInt32BEnew
+        readUInt32BE
         convertScale10ToFloat "$VALUE_UINT32BE"
         LIVEDATA_RAINYEAR=$VALUE_SCALE10_FLOAT
 
        elif [ "$ldf" -eq $LDF_RAINWEEK ]; then
 
-        readUInt16BEnew
+        readUInt16BE
         convertScale10ToFloat "$VALUE_UINT16BE"
         LIVEDATA_RAINWEEK=$VALUE_SCALE10_FLOAT
 
        elif [ "$ldf" -eq $LDF_RAINDAY ]; then
 
-        readUInt16BEnew
+        readUInt16BE
         convertScale10ToFloat "$VALUE_UINT16BE"
         LIVEDATA_RAINDAY=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_RAINEVENT ]; then
 
-      readUInt16BEnew
+      readUInt16BE
       convertScale10ToFloat "$VALUE_UINT16BE"
       LIVEDATA_RAINEVENT=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_RAINRATE ]; then
 
-      readUInt16BEnew
+      readUInt16BE
       convertScale10ToFloat "$VALUE_UINT16BE"
       LIVEDATA_RAINRATE=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -ge $LDF_LEAK_CH1 ] && [ "$ldf" -le $LDF_LEAK_CH4 ]; then
 
-        readUInt8new
+        readUInt8
 
         channel=$(( ldf - LDF_LEAK_CH1 + 1 ))
         eval "LIVEDATA_LEAK_CH$channel=$VALUE_UINT8"
 
       elif [ "$ldf" -eq $LDF_PM25_CH1 ]; then
 
-       readUInt16BEnew
+       readUInt16BE
        convertScale10ToFloat "$VALUE_UINT16BE"
        LIVEDATA_PM25_CH1=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -ge $LDF_PM25_CH2 ] && [ "$ldf" -le $LDF_PM25_CH4 ]; then
 
-        readUInt16BEnew
+        readUInt16BE
         convertScale10ToFloat "$VALUE_UINT16BE"
 
         channel=$(( ldf - LDF_PM25_CH1 + 1 ))
@@ -1198,7 +1218,7 @@ parseLivedata ()
 
      elif [ "$ldf" -ge $LDF_PM25_24HAVG1 ] && [ "$ldf" -le $LDF_PM25_24HAVG4 ]; then
 
-        readUInt16BEnew
+        readUInt16BE
         convertScale10ToFloat "$VALUE_UINT16BE"
 
         channel=$(( ldf - LDF_PM25_24HAVG1 + 1 ))
@@ -1256,7 +1276,7 @@ parseLivedata ()
  done
 
  if [ ${#OD_BUFFER} -eq 2 ] && [ "$DEBUG" -eq 1 ]; then
-      readUInt8new
+      readUInt8
       checksum=$VALUE_UINT8
       >&2 echo checksum "$(printf "%02x" $checksum)"
  fi
@@ -1265,8 +1285,13 @@ parseLivedata ()
 
 }
 
-parsePacketnew ()
+parsePacket ()
 {
+
+   if [ -z "$1" ]; then
+     [ "$DEBUG" -eq 1 ] && >&2 echo Empty od buffer
+     return "$ERROR_EOF_OD_BUFFER"
+   fi
 
     >&2 echo  "Parsing $1"
     OD_BUFFER=$1
@@ -1282,7 +1307,7 @@ parsePacketnew ()
 
     #Packet length
     if [ "$PRX_CMD_UINT8" -eq  $CMD_broadcast ] || [ "$PRX_CMD_UINT8" -eq $CMD_livedata ] || [ "$PRX_CMD_UINT8" -eq $CMD_read_sensor_id_new ]; then
-      readUInt8new
+      readUInt8
       PACKET_RX_LENGTH=$((  0x$B4$VALUE_UINT8_HEX ))
     else
      PACKET_RX_LENGTH=$(( 0x$B4 ))
@@ -1380,29 +1405,15 @@ newPacketBodynew ()
 
 }
 
-createPacketTXnew ()
+checksumPacketTX ()
 {
-
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-    #shellcheck disable=SC3044
-     {
-        typeset packetLengthLSB
-       typeset packetLengthMSB
-     }
-    else
-     local packetLengthLSB
-     local packetLengthMSB
-    fi
-
     PACKET_TX_CMD_INT=$(( 0x$PACKET_TX_CMD )) # convert to decimal/integer for comparison in sendPacket
 
     PACKET_BODY_LENGTH=$(( PACKET_BODY_LENGTH + 1 )) # at least 1 byte for length field
 
     if [  "$PACKET_TX_CMD_INT" -eq  "$CMD_broadcast" ] || [ "$PACKET_TX_CMD_INT" -eq $CMD_write_ssid ]; then
         PACKET_BODY_LENGTH=$((  PACKET_BODY_LENGTH + 1 ))
-        packetLengthLSB=$((   ( PACKET_BODY_LENGTH + 1) & 0xff ))
-        packetLengthMSB=$(( ( ( PACKET_BODY_LENGTH + 1) & 0xff00 ) >> 8 ))
-        PACKET_TX_LENGTH=$(printf "%02x %02x" $packetLengthMSB $packetLengthLSB )
+        PACKET_TX_LENGTH=$(printf "%02x %02x" $(( ( ( PACKET_BODY_LENGTH + 1) & 0xff00 ) >> 8 )) $((   ( PACKET_BODY_LENGTH + 1) & 0xff )) )
 
     else
 
@@ -1422,19 +1433,12 @@ createPacketTXnew ()
         PACKET_TX_BODY="$PACKET_TX_CMD $PACKET_TX_LENGTH"
     fi
 
-    checksumnew
+    checksum "$PACKET_TX_BODY"
 
-    PACKET_TX_BODY="$PACKET_TX_BODY $PACKET_TX_BODY_CHECKSUM"
-
-    [ $DEBUG -eq 1 ] && >&2 echo PACKET BODY "$PACKET_TX_BODY"
-
+    PACKET_TX_BODY="$PACKET_TX_BODY $VALUE_CHECKSUM"
     PACKET_TX="$PACKET_HEADER $PACKET_TX_BODY"
 
-    convertBufferFromHexToOctalEscape "$PACKET_TX"
-    PACKET_TX_ECHO=$VALUE_OCTAL_BUFFER_ESCAPE
-
-    [ $DEBUG -eq 1 ] && >&2 echo "PACKET_TX_ECHO $PACKET_TX_ECHO PACKET_TX $PACKET_TX"
-
+    [ $DEBUG -eq 1 ] && >&2 echo "PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
 }
 
 convertHexToOctal ()
@@ -1477,7 +1481,7 @@ convertBufferFromHexToOctalEscape ()
             VALUE_OCTAL_BUFFER_ESCAPE="$VALUE_OCTAL_BUFFER_ESCAPE$( printf "\\%04o" "0x$BYTE")"
         else
             convertHexToOctal "0x$BYTE"
-            VALUE_OCTAL_BUFFER_ESCAPE="$VALUE_OCTAL_BUFFER_ESCAPE\\$VALUE_OCTAL"
+            VALUE_OCTAL_BUFFER_ESCAPE="$VALUE_OCTAL_BUFFER_ESCAPE\\0$VALUE_OCTAL"
         fi
 
     done
@@ -1485,7 +1489,7 @@ convertBufferFromHexToOctalEscape ()
     [ $DEBUG -eq 1 ] && >&2 echo "Octal buffer $VALUE_OCTAL_BUFFER_ESCAPE"
 }
 
- sendPacket ()
+sendPacket ()
 {
     sendPacketnc "$@" # $@ each arg expands to a separate word
 }
@@ -1500,147 +1504,96 @@ sendPacketnc ()
         typeset ncUDPOpt  # UDP (-u) or TCP
         typeset ncIdleOpt
         typeset port
-        typeset ncStatus
         typeset host
         typeset timeout_udp_broadcast
         typeset timeout_nc
+        typeset od_hex
       }
     else
         local ncUDPOpt # UDP (-u) or TCP
         local ncIdleOpt
         local port
-        local ncStatus
         local host
         local timeout_udp_broadcast
         local timeout_nc
+        local useTimeout
+        local od_hex
     fi
 
-    host=$2
     timeout_nc=0.05
     timeout_udp_broadcast=0.236 # timeout selected based on udp port scanning 254 hosts in 60s (60s/254=0.236s)
-
-    if [ -n "$TIMEOUT_READ" ]; then # allow override via -x option
-        timeout_nc=$TIMEOUT_READ
-    fi
-
-    if [ -z "$host" ]; then
-        host=$HOST #use default host, specfied using -h option
-    fi
+    useTimeout=0
 
     #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
     if [ $# -ge 1 ]; then
         newPacketBodynew "$1"
     fi
 
-    createPacketTXnew
+    if [ -n "$2" ]; then
+      host="$2" # for udp broadcast probing on subnet
+    else
+      host="$C_host" # -h option
+    fi
+
+    checksumPacketTX
+
+    convertBufferFromHexToOctalEscape "$PACKET_TX" # \0377 \0377 \0nnn 
+    PACKET_TX_ESCAPE=$VALUE_OCTAL_BUFFER_ESCAPE
+    port=$PORT_GW_TCP
 
     if [ $PACKET_TX_CMD_INT -eq  $CMD_broadcast ]; then
         ncUDPOpt='-u'
-        port=$PORT_GW_UDP #change to UDP from TCP default
+        port=$PORT_GW_UDP
         timeout_nc=$timeout_udp_broadcast
+        useTimeout=1
     elif [ "$PACKET_TX_CMD_INT" -eq $CMD_write_reset ] || [ "$PACKET_TX_CMD_INT" -eq $CMD_write_ssid ]; then
-         # some commands needs idle timeout
-           #https://www.gnu.org/software/bash/manual/bash.html#Pattern-Matching
-           # man bash "When  the == and != operators are used, the string to the right of the operator
-           #     is considered a pattern and matched according to the rules described below  un‐
-           #     der Pattern Matching, as if the extglob shell option were enabled."
-          # if ! [[ $KSH_VERSION == *Android* ]]; then
-          #    ncIdleOpt='-i 100ms'
-          #    [ $DEBUG -eq 1 ] && >&2 echo "${CMD_NAME["$PACKET_TX_CMD_INT"]}" Setting device idle timeout option for nc "$ncIdleOpt"
-          # fi
           :
+    fi
+           
+    # change between openbsd/nmap ncat in WSL2/ubuntu - sudo update-alternatives --config nc
+    
+    if [ "$NC_VERSION" -eq $NC_OPENBSD  ]; then
+
+        # -N shutdown(2) the network socket after EOF on the input / from man nc - otherwise nc hangs
+
+        if [ "$useTimeout" -eq 0 ]; then
+            od_hex="$(printf "%b" "$PACKET_TX_ESCAPE" | "$NC_CMD" -4 -N $ncUDPOpt "$host" "$port" | od -A n -t x1 -w$MAX_16BIT_UINT)"
+        elif [ "$useTimeout" -eq 1 ]; then
+            od_hex="$(printf "%b" "$PACKET_TX_ESCAPE" | timeout $timeout_nc "$NC_CMD" -4 -N $ncUDPOpt "$host" "$port" | od -A n -t x1 -w$MAX_16BIT_UINT)"
+        fi
+
+    elif [ "$NC_VERSION" -eq $NC_NMAP ]; then
+
+           #sleep to disable immediate EOF and shutdown of ncat -> which leads to data not received from udp socket
+             od_hex="$( { printf "%b" "$PACKET_TX_ESCAPE"; sleep $timeout_nc; } | "$NC_CMD" -4 $ncUDPOpt "$host" "$port" | od -A n -t x1 -w$MAX_16BIT_UINT)"
+
+    elif [ "$NC_VERSION" -eq $NC_TOYBOX ]; then
+      :
+    elif [ "$NC_VERSION" -eq $NC_BUSYBOX ]; then
+           
+           if [ -z "$ncUDPOpt" ]; then 
+              od_hex="$(printf "%b" "$PACKET_TX_ESCAPE" | "$NC_CMD" nc "$host" "$port" | od -A n -t x1 -w$MAX_16BIT_UINT)"
+           else
+                echo >&2 Busybox nc does not support UDP
+            fi
     else
-       unset ncUDPOpt
-       #1>&2 echo ncUDPOpt $ncUDPOpt
-       port=$PORT_GW_TCP
-
+      >&2 echo "Error nc not found in sendPacketnc $ERROR_NO_NC"
     fi
 
-    # TEST %b: for shell in dash mksh zsh bash; do printf "%10s %b\n" "$shell" "\0100"; done
-   # set -x
-    printf "%b" "$PACKET_TX_ECHO" >"$FILENAME_tx" #print to file for debuggging purpose
-    #set +x
-
- #{ cat "$FILENAME_tx"; sleep 0.175; } |  $NC_CMD  $ncUDPOpt $ncIdleOpt -w 500ms  -4 "$host" "$port"  >"$FILENAME_rx" # wait 0.1s to disable READ KILL of nc on stdin
-
-    # if timeout is too small, ICMP port unreachable is generated when doing udp port 46000 probing/broadcast
-    # udp debugging in wireshark : udp.dstport == 46000 || udp.srcport == 46000
-      # shellcheck disable=SC2086
-      if [ $NC_VERSION -eq $NC_OPENBSD  ]; then
-
-         if [ "$ncUDPOpt" != "-u" ]; then
-
-#set -x
-            { cat "$FILENAME_tx"; sleep $timeout_nc; } | $NC_CMD -4 -N "$host" "$port" >"$FILENAME_rx" #-N shutdown socket after EOF on stdin
-             ncStatus=$?
-#set +x
-
-         elif [ "$ncUDPOpt" = "-u" ]; then
-              # set -x
-               nc -4 -u "$host" "$port" <"$FILENAME_tx" >"$FILENAME_rx" &
-              # set +x
-              # jobs
-               #-w only allow >=1s timeout, too slow, must move process to background and kill
-              sleep $timeout_nc
-              kill %1 2>/dev/null
-          fi
-
-      elif [ $NC_VERSION -eq $NC_NMAP ]; then
-
-            { cat "$FILENAME_tx"; sleep $timeout_nc; } | $NC_CMD -4  $ncUDPOpt $ncIdleOpt "$host" "$port" >"$FILENAME_rx"
-             ncStatus=$?
-
-      elif [ $NC_VERSION -eq $NC_TOYBOX ]; then
-
-            { cat "$FILENAME_tx"; sleep $timeout_nc; } | $NC_CMD -4  $ncUDPOpt "$host" "$port" >"$FILENAME_rx"
-             ncStatus=$?
-      fi
-
-    # Fedora 35: use --no-shutdown to continue even if receving EOF on stdin
-    # Android : -q Quit SECONDS after EOF on stdin, even if stdout hasn't closed yet" (from nc --help)
-
-    if [ -s "$FILENAME_rx" ] ; then # -s file exists and not empty
-
-          if PACKET_RX_OD_HEX=$(od -A n -t x1 -v -w"$(stat -c %s "$FILENAME_rx")" "$FILENAME_rx"); then
-             # read -r PACKET_RX_OD_HEX <"$FILENAME_od_hex"
-             [ $DEBUG -eq 1 ] &&  >&2 echo  OD HEX "$PACKET_RX_OD_HEX" length "${#PACKET_RX_OD_HEX}"
-             parsePacketnew "$PACKET_RX_OD_HEX"
-              #parse_od_hex_packet "$PACKET_RX_OD_HEX"
-          else
-            >&2 echo  Error od failed to create hex decoding for packet, error code $?
-          fi
-
-    else
-      #[ $DEBUG -eq 1 ] &&
-      getCommandName "$PACKET_TX_CMD_INT"
-      >&2 echo Error nc failed to receive response or empty response for command "$COMMAND_NAME"  in "$timeout_nc" s
-    fi
-
-    #cleanup files
-
-    if [ $DEBUG -eq 0 ]; then
-        rm "$FILENAME_tx" "$FILENAME_rx" "$FILENAME_od_hex" 2>/dev/null
-    fi
-
+    parsePacket "$od_hex"
 }
 
- discovery ()
+discovery ()
 {
-    if which nc >/dev/null; then
+    if [ -n "$NC_VERSION" ]; then
       discovery_nc "$@"
     else
       >&2 echo  Error nc not found, cannot scan for devices
     fi
-    #if which socat >/dev/null; then
-    #    discovery_socat
-    #  else
-    #    >&2 echo  Error socat not found, cannot scan for devices
-    #    return "$ERROR_NO_SOCAT"
-    #  fi
 
 }
 
- discovery_udp_client ()
+discovery_udp_client ()
 #$1 - subnet, for example 192.168.3
 #issue: nc fails to read when sending to subnet broadcast address 192.168.3.255
 #host reply with ICMP host/port unreachable or broadcast response
@@ -1652,19 +1605,19 @@ sendPacketnc ()
 {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
-    typeset host
-else
-    local host
-fi
-host=1;
-while [ $host -le 254 ]; do
-    [ $DEBUG -eq 1 ] && >&2 echo Discovery sending broadcast command to "$1.$host"
-     sendPacket $CMD_broadcast "$1.$host"
-     host=$(( host + 1 ))
-done
+        typeset host
+    else
+        local host
+    fi
+    host=1;
+    while [ $host -le 254 ]; do
+        [ $DEBUG -eq 1 ] && >&2 echo Discovery sending broadcast command to "$1.$host"
+        sendPacket $CMD_broadcast "$1.$host"
+        host=$(( host + 1 ))
+    done
 }
 
- discovery_nc ()
+discovery_nc ()
 #$1 - subnet for udp scan
 {
 
@@ -1672,19 +1625,19 @@ done
     #shellcheck disable=SC3044
       {
         typeset -i scan_max_iterations
-      typeset  scan_nc_idle_timeout
-      typeset -i n
-      typeset broadcast
+        typeset  scan_nc_idle_timeout
+        typeset -i n
+        typeset broadcast
       }
     else
-    local scan_max_iterations
-      local scan_nc_idle_timeout
-     local n
-     local broadcast
+        local scan_max_iterations
+        local scan_nc_idle_timeout
+        local n
+        local broadcast
     fi
 
     scan_max_iterations=10
-      scan_nc_idle_timeout=0.005 # 5ms
+    scan_nc_idle_timeout=0.005 # 5ms
 
     case  "$KSH_VERSION" in
      *Android*)
@@ -1696,108 +1649,58 @@ done
 
     if [ -z "$1" ]; then # set up server on 59387 port
 
-          if [ "$NC_VERSION" -ne $NC_NMAP ]; then
-            scan_max_iterations=30
-            SCAN_NC_TIMEOUT=0.1
-          fi
+        if [ "$NC_VERSION" -ne $NC_NMAP ]; then
+        scan_max_iterations=30
+        SCAN_NC_TIMEOUT=0.1
+        fi
 
-            if  scan_result=$(n=0; while [ $n -lt $scan_max_iterations ]; do
-                                        if [ "$NC_VERSION" -eq $NC_NMAP ]; then
-                                                $NC_CMD -4 -u -i $scan_nc_idle_timeout -l $PORT_CLIENT_UDP 2>/dev/null | od -A n -w64 -t x1
-                                        else
-                                                { timeout $SCAN_NC_TIMEOUT "$NC_CMD" -4 -u -l $PORT_CLIENT_UDP 2>/dev/null; } | od -A n -w64 -t x1
-                                        fi
-                                        n=$(( n + 1 ))
-                                done | sort -u); then #"A Brief POSIX Advocacy: Shell Script Portability" https://www.usenix.org/system/files/login/articles/login_spring16_09_tomei.pdf
+        if  scan_result=$(n=0; while [ $n -lt $scan_max_iterations ]; do
+                                    if [ "$NC_VERSION" -eq $NC_NMAP ]; then
+                                            $NC_CMD -4 -u -i $scan_nc_idle_timeout -l $PORT_CLIENT_UDP 2>/dev/null | od -A n -w64 -t x1
+                                    else
+                                            timeout $SCAN_NC_TIMEOUT "$NC_CMD" -4 -u -l $PORT_CLIENT_UDP 2>/dev/null | od -A n -w64 -t x1
+                                    fi
+                                    n=$(( n + 1 ))
+                            done | sort -u); then #"A Brief POSIX Advocacy: Shell Script Portability" https://www.usenix.org/system/files/login/articles/login_spring16_09_tomei.pdf
 
-                      if [ -n "$scan_result" ]; then
-                          IFS=$(printf "\n\b") # #https://stackoverflow.com/questions/16831429/when-setting-ifs-to-split-on-newlines-why-is-it-necessary-to-include-a-backspac
-                          for broadcast in $scan_result; do
-                            parse_od_hex_packet "$broadcast"
-                          done
-                      fi
-            else
-                >&2 echo  Error failed to obtain scan result while listening on UDP port $PORT_CLIENT_UDP, error code $?
-            fi
+                    if [ -n "$scan_result" ]; then
+                        IFS=$(printf "\n\b") # #https://stackoverflow.com/questions/16831429/when-setting-ifs-to-split-on-newlines-why-is-it-necessary-to-include-a-backspac
+                        for broadcast in $scan_result; do
+                        parse_od_hex_packet "$broadcast"
+                        done
+                    fi
+        else
+            >&2 echo  Error failed to obtain scan result while listening on UDP port $PORT_CLIENT_UDP, error code $?
+        fi
     else
-      discovery_udp_client "$1"
+       discovery_udp_client "$1"
     fi
-
 }
 
-checksumnew ()
-{
-    PACKET_TX_BODY_CHECKSUM=0
-
-    for BYTE in $PACKET_TX_BODY; do
-     [ $DEBUG -eq 1 ] && >&2 echo "checksum read $BYTE"
-      PACKET_TX_BODY_CHECKSUM=$(( ( PACKET_TX_BODY_CHECKSUM + 0x$BYTE ) & 0xff ))
-    done
-
- [ $DEBUG -eq 1 ] && >&2 echo "checksum $PACKET_TX_BODY_CHECKSUM"
-  
-  if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
-    PACKET_TX_BODY_CHECKSUM=$(printf "%02x" $PACKET_TX_BODY_CHECKSUM)
-  else
-    convertDecimalToHex "$PACKET_TX_BODY_CHECKSUM"
-    PACKET_TX_BODY_CHECKSUM=$VALUE_HEX
-  fi
- 
-}
-
-writeUInt32BEnew ()
-{
-     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-    #shellcheck disable=SC3044
-      {
-    typeset lsb
-    typeset msb
-    typeset msb2
-    typeset lsb2
-      }
-      else
-        local lsb
-        local msb
-        local msb2
-        local lsb2
-      fi
-    msb=$(printf  "%02x" $(( ( $1  & 0xff00 ) >> 8 )) )
-    lsb=$(printf  "%02x" $(( $1  & 0xff )) )
-    msb2=$(printf "%02x" $(( $1 >> 24 )))
-    lsb2=$(printf "%02x" $(( ($1 & 0xff0000 ) >> 16 )) )
-
-    PACKET_TX_BODY="$PACKET_TX_BODY $msb2 $lsb2 $msb $lsb"
-
-    PACKET_BODY_LENGTH=$(( PACKET_BODY_LENGTH + 4 ))
-
-}
-
-writeUInt16BEnew ()
+checksum ()
 {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
-      {
-    typeset lsb
-    typeset msb
-      }
+        typeset sum
     else
-      local lsb
-      local msb
+        local sum
     fi
+  
+    sum=0
 
-    msb=$(printf "%02x" $(( $1  >> 8 )) )
-    lsb=$(printf "%02x" $(( $1  & 0xff )) )
+    for BYTE in $1; do
+        [ $DEBUG -eq 1 ] && >&2 echo "checksum read $BYTE"
+        sum=$(( ( sum + 0x$BYTE ) & 0xff ))
+    done
 
-
-     PACKET_TX_BODY="$PACKET_TX_BODY $msb $lsb"
-    PACKET_BODY_LENGTH=$(( PACKET_BODY_LENGTH + 2 ))
-
-}
-
-writeUInt8new ()
-{
-    PACKET_TX_BODY="$PACKET_TX_BODY $(printf "%02x" "$1")"
-    PACKET_BODY_LENGTH=$(( PACKET_BODY_LENGTH + 1 ))
+    [ $DEBUG -eq 1 ] && >&2 echo "checksum $sum"
+    
+    if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
+            VALUE_CHECKSUM=$(printf "%02x" $sum)
+    else
+            convertDecimalToHex "$sum"
+            VALUE_CHECKSUM=$VALUE_HEX
+    fi
 }
 
 decToHexnew ()
@@ -1805,7 +1708,7 @@ decToHexnew ()
     VALUE_HEX=$( printf "%02x" "$1" )
 }
 
- newCustomizedPacket () {
+newCustomizedPacket () {
     newPacketBody $CMD_write_customized
     writeString   "$C_WS_CUSTOMIZED_ID"
     writeString   "$C_WS_CUSTOMIZED_PASSWORD"
@@ -1816,13 +1719,13 @@ decToHexnew ()
     writeUInt8    "$C_WS_CUSTOMIZED_ENABLED"
 }
 
- newPathPacket () {
+newPathPacket () {
     newPacketBody $CMD_write_path
     writeString "$C_WS_CUSTOMIZED_PATH_WU"
     writeString "$C_WS_CUSTOMIZED_PATH_ECOWITT"
 }
 
- sendSystem ()
+sendSystem ()
 {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
@@ -1875,7 +1778,7 @@ decToHexnew ()
     sendPacket
 }
 
- sendRaindata () {
+sendRaindata () {
  # if ! [[ "$1" =~ ^[0-9]+$ ]] || ! [[ "$2" =~ ^[0-9]+$ ]] || ! [[ "$3" =~ ^[0-9]+$ ]] || ! [[ "$4" =~ ^[0-9]+$ ]]; then
  if ! isNumber "$1" || ! isNumber "$2" || ! isNumber "$3" || ! isNumber "$4"; then
       echo Error: Raindata has "element(s)" which is not a number
@@ -1893,7 +1796,7 @@ decToHexnew ()
     sendPacket
 }
 
- sendCalibration ()
+sendCalibration ()
 {
     newPacketBody $CMD_write_calibration
     writeUInt16BE "$1" #intempoffset
@@ -1909,11 +1812,11 @@ decToHexnew ()
 
 }
 
- sendEcowittIntervalnew () {
+sendEcowittIntervalnew () {
 # observation: GW1000 red-wifi led blinks slowly if not sending data to ecowitt when 0=off
     if [ "$1" -ge 0 ] && [ "$1" -le 5 ]; then
         newPacketBodynew $CMD_write_ecowitt_interval
-        writeUInt8new "$1" #interval
+        writeUInt8 "$1" #interval
         [ $DEBUG -eq 1 ] && >&2 echo  Sending ecowitt interval "$1"
         sendPacket
     else
@@ -1921,7 +1824,7 @@ decToHexnew ()
     fi
 }
 
- sendEcowittInterval () {
+sendEcowittInterval () {
 # observation: GW1000 red-wifi led blinks slowly if not sending data to ecowitt when 0=off
     if [ "$1" -ge 0 ] && [ "$1" -le 5 ]; then
         newPacketBody $CMD_write_ecowitt_interval
@@ -1933,7 +1836,7 @@ decToHexnew ()
     fi
 }
 
- sendWeatherservice () {
+sendWeatherservice () {
 
     newPacketBody "$1"
     writeString "$2"
@@ -1953,7 +1856,7 @@ decToHexnew ()
     sendPacket
 }
 
- sendCustomized () {
+sendCustomized () {
     newCustomizedPacket
     sendPacket
 
@@ -1962,7 +1865,7 @@ decToHexnew ()
 
 }
 
- updateCustomized () {
+updateCustomized () {
      if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
      #shellcheck disable=SC3044
     {
@@ -2125,7 +2028,7 @@ decToHexnew ()
 
 }
 
- convertScale10ToFloat () {
+convertScale10ToFloat () {
 # $1 - number to convert
 if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
@@ -2159,7 +2062,7 @@ if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     fi
 }
 
- initnc ()
+initnc ()
 {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
@@ -2169,6 +2072,7 @@ if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         typeset nc_status
         typeset nc_exec
         typeset ncat_exec
+        typeset busybox_exec
     }
     else
         local nc_ver
@@ -2176,19 +2080,28 @@ if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         local nc_status
         local nc_exec
         local ncat_exec
+        local busybox_exec
     fi
 
     nc_exec=$(which nc 2>/dev/null)
     if [ -z "$nc_exec" ]; then
         ncat_exec=$(which ncat 2>/dev/null) # try ncat, if nc not availale
         if [ -n "$ncat_exec" ]; then
-            NC_CMD=ncat
+            NC_CMD=$ncat_exec
+        else
+          busybox_exec=$(which busybox 2>/dev/null) # test busybox nc
+          if [ -n "$busybox_exec" ]; then
+            NC_CMD="$busybox_exec"
+            NC_VERSION=$NC_BUSYBOX
+            NC_VERSION_STR="nc busybox"
+            return 0
+          fi
         fi
     else
-      NC_CMD=nc
+      NC_CMD=$nc_exec
     fi
 
-    if [ -n "$NC_CMD" ]; then
+    if [ -n "$NC_CMD" ] && [ -z $NC_VERSION ]; then
 
           nc_ver=$($NC_CMD --version 2>&1 )
           nc_status=$?
@@ -2216,8 +2129,9 @@ if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
             case "$nc_ver_header" in
 
                 nc:\ invalid\ option*)
-                  NC_VERSION=$NC_OPENBSD
-                  NC_VERSION_STR="nc openbsd (probably)"
+
+                    NC_VERSION=$NC_OPENBSD
+                    NC_VERSION_STR="nc openbsd (probably)"
                   ;;
 
                 *)
@@ -2229,7 +2143,7 @@ if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
 
           fi
 
-          [ "$DEBUG" -eq 1 ] && >&2 "echo nc version detection $NC_VERSION_STR"
+          [ "$DEBUG" -eq 1 ] && >&2 echo "nc version detection $NC_VERSION_STR"
 
           return 0
     else
@@ -2237,33 +2151,18 @@ if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     fi
 }
 
- initConfigDir () {
+initConfigDir () {
 
     DIR=$HOME'/.config/gw' # .config subdirectory used for configuration on gnome/linux
     [ -n "$EXTERNAL_STORAGE" ] && DIR=$EXTERNAL_STORAGE # testing in Android 11 adb shell
     [ ! -d "$DIR" ] && mkdir -p -v "$DIR" 1>&2
     [ "$DEBUG" -eq 1 ] && >&2 echo  Configuration directory "$DIR"
 
-    SHELLPID=$$
-    FILENAME_tx=$DIR"/txpacket-$SHELLPID"
-    FILENAME_rx=$DIR"/rxpacket-$SHELLPID"
-    FILENAME_livedata_description=$DIR/'livedata-description.txt'
-    FILENAME_od_hex=$DIR/"rxpacket-od-hex-$SHELLPID.txt"
+   #SHELLPID=$$
 
 }
 
-
-
- getReadArrayOption ()
-{
-    if [ -n "$BASH_VERSION" ]; then
-           READARRAY_OPTION="-a"
-        elif [ -n "$ZSH_VERSION" ] || [ -n "$KSH_VERSION" ]; then
-         READARRAY_OPTION="-A"
-        fi
-}
-
- initSearchPatternForCommand ()
+initSearchPatternForCommand ()
 {
        if argEmptyOrOption "$1" || [ "$1" = "*" ] ; then
           SPATTERN='.*' #add default search for any pattern
@@ -2274,7 +2173,7 @@ if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
 }
 
 
- argEmptyOrOption ()
+argEmptyOrOption ()
 {
     if [ -z "$1" ]; then
       return 0
@@ -2290,12 +2189,12 @@ if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     fi
 }
 
- printCommands ()
+printCommands ()
 {
     echo reset reboot mac "system|sys ecowitt|ec wunderground|wu weathercloud|wc wow customized|c|cust broadcast|b rain|r livedata|ld sensor_id sensor_id_new|sid|sensor|s calibration|cal"
 }
 
- processCommand () {
+processCommand () {
 #$1 - field pattern for livedata/sensor id
 
  shift # remove {command} (to -c option) -> all args to {command} starts at $1
@@ -2466,7 +2365,7 @@ if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     return 0
 }
 
- isNumber ()
+isNumber ()
 {
       #https://stackoverflow.com/questions/806906/how-do-i-test-if-a-variable-is-a-number-in-bash?page=1&tab=votes#tab-top
       case $1 in
@@ -2477,7 +2376,7 @@ if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
 
 
 
- initShell ()
+initShell ()
 {
     #shellcheck disable=SC3010,SC2050
     if type [[ >/dev/null && [[ a =~ a ]] 2>/dev/null; then
@@ -2504,7 +2403,6 @@ if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
 
 #fi
 
-getReadArrayOption #-a/-A for read command based on shell
 initShell
 initConfigDir
 if ! initnc; then
@@ -2598,14 +2496,12 @@ while [ $# -gt 0 ]; do
 
     -h | --host)
 
-      HOST="$2" # this arg must come first to open socketsopen file descriptors to UDP/TCP port on HOST
-
       #if ! connect "$2"; then
       #  >&2 echo  "$HOST" "Error Failed to connect host $2, exiting"
       #  disconnect
       #  exit $ERROR_CONNECTION
       #fi
-      C_host="$HOST"
+      C_host="$2"
       #sendPacket "$CMD_read_mac" >/dev/null
       sendPacket "$CMD_read_version" >/dev/null
       sendPacket "$CMD_read_system" >/dev/null  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
@@ -2710,12 +2606,12 @@ while [ $# -gt 0 ]; do
 
     -s | --scan)
 
-        if ! argEmptyOrOption ; then
-          discovery "$2"
-          shift 2
+        if argEmptyOrOption "$2" ; then
+            discovery
+            shift 1
         else
-          discovery
-          shift 1
+            discovery "$2"
+            shift 2
         fi
 
       ;;
@@ -2723,12 +2619,6 @@ while [ $# -gt 0 ]; do
     -t | --timezones)
         printTimezones
         ;;
-
-    -x | --read-timeout)
-
-       TIMEOUT_READ="$2"
-       shift 2
-       ;;
 
     -z | --customized)
 
