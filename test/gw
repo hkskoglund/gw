@@ -200,6 +200,8 @@ LDF_LEAK_CH4=$(( 0x5B )) # Leak_ch4 1
 LDF_LIGHTNING=$(( 0x60 ))  # lightning distance （1~40KM） 1
 LDF_LIGHTNING_TIME=$(( 0x61 )) # lightning happened time(UTC) 4
 LDF_LIGHTNING_POWER=$(( 0x62 )) # lightning counter for the ay 4
+#shellcheck disable=SC2034
+{
 LDF_TF_USR1=$(( 0x63 )) #Temperature(℃) 4
 LDF_TF_USR2=$(( 0x64 )) #Temperature(℃) 4
 LDF_TF_USR3=$(( 0x65 )) #Temperature(℃) 4
@@ -208,6 +210,7 @@ LDF_TF_USR5=$(( 0x67 )) #Temperature(℃) 4
 LDF_TF_USR6=$(( 0x68 )) #Temperature(℃) 4
 LDF_TF_USR7=$(( 0x69 )) #Temperature(℃) 4
 LDF_TF_USR8=$(( 0x6A )) #Temperature(℃) 4
+}
 LDF_SENSOR_CO2=$(( 0x70 )) #16
 LDF_PM25_AQI=$(( 0x71 )) #only for amb
 # LDF_PM25_AQI length(n*2)(1byte) 1-aqi_pm25 2-aqi_pm25_24h ... ... n-aqi
@@ -287,8 +290,8 @@ PM25_WH43_max_ch=4
 WH57_type=$(( 0x1a ))
 SOILTEMP_WH34_type=$(( 0x1f ))
 SOILTEMP_WH34_max_ch=8
-WH35_type=$(( 0x28 ))
-WH35_max_ch=8
+LEAF_WETNESS_WH35_type=$(( 0x28 ))
+LEAF_WETNESS_WH35_max_ch=8
 WH45_type=$(( 0x27 ))
 SENSORTYPE_MAX=47
 
@@ -328,20 +331,20 @@ printCustomized () {
 
 writeUInt32BE ()
 {
-    PACKET_TX_BODY="$PACKET_TX_BODY $(printf "%02x" $(( $1 >> 24 ))) $(printf "%02x" $(( ($1 & 0xff0000 ) >> 16 )) ) $(printf  "%02x" $(( ( $1  & 0xff00 ) >> 8 )) ) $(printf  "%02x" $(( $1  & 0xff )) )"
-    PACKET_BODY_LENGTH=$(( PACKET_BODY_LENGTH + 4 ))
+    PACKET_TX_BODY="$PACKET_TX_BODY $(( $1 >> 24 )) $(( ($1 & 0xff0000 ) >> 16 ))  $(( ( $1  & 0xff00 ) >> 8 ))  $(( $1  & 0xff ))"
+    PACKET_TX_BODY_LENGTH=$(( PACKET_TX_BODY_LENGTH + 4 ))
 }
 
 writeUInt16BE ()
 {
-    PACKET_TX_BODY="$PACKET_TX_BODY $(printf "%02x" $(( $1  >> 8 )) ) $(printf "%02x" $(( $1  & 0xff )) )"
-    PACKET_BODY_LENGTH=$(( PACKET_BODY_LENGTH + 2 ))
+    PACKET_TX_BODY="$PACKET_TX_BODY $(( $1  >> 8 )) )  $(( $1  & 0xff )) )"
+    PACKET_TX_BODY_LENGTH=$(( PACKET_TX_BODY_LENGTH + 2 ))
 }
 
 writeUInt8 ()
 {
-    PACKET_TX_BODY="$PACKET_TX_BODY $(printf "%02x" "$1")"
-    PACKET_BODY_LENGTH=$(( PACKET_BODY_LENGTH + 1 ))
+    PACKET_TX_BODY="$PACKET_TX_BODY $1"
+    PACKET_TX_BODY_LENGTH=$(( PACKET_TX_BODY_LENGTH + 1 ))
 }
 
 readSlice ()
@@ -943,14 +946,15 @@ parseBroadcast ()
  printBroadcast
 }
 
-printLivedatanew ()
+printLivedata ()
 {
-     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
-    typeset n
+        typeset n
     else
-      local n
+        local n
     fi
+
     printf "%-25s %7.1f %3s\n" "$LIVEDATA_INTEMP_HEADER"  "$LIVEDATA_INTEMP" "$UNIT_TEMP"
     printf "%-25s %5.0f %5s\n" "Indoor humidity" "$LIVEDATA_INHUMI" "%"
     printf "%-25s %7.1f %3s\n" "Absolute pressure" "$LIVEDATA_ABSBARO" "$UNIT_PRESSURE"
@@ -977,27 +981,33 @@ printLivedatanew ()
 
     n=1
     while [ "$n" -le "$SOILMOISTURE_WH51_max_ch" ]; do
-      eval "[ -n ''"\$LIVEDATA_SOILMOISTURE$n" ] && printf  \"%-25s %5.0f %5s\n\" \"Soil moisture CH $n\" \"\$LIVEDATA_SOILMOISTURE$n\" \"%\""
+        eval "[ -n ''"\$LIVEDATA_SOILMOISTURE$n" ] && printf  \"%-25s %5.0f %5s\n\" \"Soil moisture CH $n\" \"\$LIVEDATA_SOILMOISTURE$n\" \"%\""
         n=$(( n + 1))
     done
 
     n=1
     while [ "$n" -le "$SOILTEMP_WH34_max_ch" ]; do
-      eval "[ -n ''"\$LIVEDATA_SOILTEMP$n" ] && printf \"%-25s %7.1f %3s\n\" \"Soil temperature CH $n\" \"\$LIVEDATA_SOILTEMP$n\" \"$UNIT_TEMP\""
-      n=$(( n + 1))
+        eval "[ -n ''"\$LIVEDATA_SOILTEMP$n" ] && printf \"%-25s %7.1f %3s\n\" \"Soil temperature CH $n\" \"\$LIVEDATA_SOILTEMP$n\" \"$UNIT_TEMP\""
+        n=$(( n + 1))
     done
 
     n=1
     while [ "$n" -le "$TEMP_WH31_max_ch" ]; do
-      eval "[ -n ''"\$LIVEDATA_TEMP$n" ] && printf \"%-25s %7.1f %3s\n\" \"Temperature CH $n\" \"\$LIVEDATA_TEMP$n\" \"\$UNIT_TEMP\""
-      eval "[ -n ''"\$LIVEDATA_HUMI$n" ] && printf \"%-25s %5.0f %5s\n\" \"Humidity CH $n\" \"\$LIVEDATA_HUMI$n\" \"%\""
-      n=$(( n + 1))
+        eval "[ -n ''"\$LIVEDATA_TEMP$n" ] && printf \"%-25s %7.1f %3s\n\" \"Temperature CH $n\" \"\$LIVEDATA_TEMP$n\" \"\$UNIT_TEMP\""
+        eval "[ -n ''"\$LIVEDATA_HUMI$n" ] && printf \"%-25s %5.0f %5s\n\" \"Humidity CH $n\" \"\$LIVEDATA_HUMI$n\" \"%\""
+        n=$(( n + 1))
+    done
+
+    n=1
+    while [ "$n" -le "$TEMP_WH31_max_ch" ]; do
+       eval "[ -n ''"\$LIVEDATA_TF_USR$n" ] && printf \"%-25s %7.1f %3s\n\" \"Temperature USR $n\" \"\$LIVEDATA_TF_USR$n\" \"\$UNIT_TEMP\""
+       n=$(( n + 1))
     done
 
     n=1
     while [ "$n" -le "$LEAK_WH55_max_ch" ]; do
-      eval "[ -n ''"\$LIVEDATA_LEAK_CH$n" ] && printf  \"%-25s %5.0f %s\n\" \"Leak CH $n\" \"\$LIVEDATA_LEAK_CH$n\""
-      n=$(( n + 1))
+        eval "[ -n ''"\$LIVEDATA_LEAK_CH$n" ] && printf  \"%-25s %5.0f %s\n\" \"Leak CH $n\" \"\$LIVEDATA_LEAK_CH$n\""
+        n=$(( n + 1))
     done
 
     [ -n "$LIVEDATA_PM25_CH1" ] && printf "%-25s %7.1f %3s\n" "PM 2.5 CH 1" "$LIVEDATA_PM25_CH1" "$UNIT_PM25"
@@ -1023,6 +1033,15 @@ printLivedatanew ()
     [ -n "$LIVEDATA_CO2_CO2_24HAVG" ] && printf "%-25s %7.1f %3s\n" "CO2 24h avg." "$LIVEDATA_CO2_CO2_24HAVG" "$UNIT_CO2"
     [ -n "$LIVEDATA_CO2_CO2_BATTERYLEVEL" ] && printf "%-25s %5.0f %s\n" "CO2 batterylevel" "$LIVEDATA_CO2_CO2_BATTERYLEVEL" ""
 
+    [ -n "$LIVEDATA_LIGHTNING" ] && printf "%-25s %5.0f %s\n" "Lightning distance" "$LIVEDATA_LIGHTNING" "km"
+    [ -n "$LIVEDATA_LIGHTNING_TIME" ] && printf "%-25s %5.0f %s\n" "Lightning time utc " "$(date -u -d @"$LIVEDATA_LIGHTNING_TIME" +'%F %T')" ""
+    [ -n "$LIVEDATA_LIGHTNING_POWER" ] && printf "%-25s %5.0f %s\n" "Lightning power" "$LIVEDATA_LIGHTNING_POWER" ""
+
+    n=1
+    while [ "$n" -le "$LEAF_WETNESS_WH35_max_ch" ]; do
+        eval "[ -n ''"\$LIVEDATA_LEAF_WETNESS_CH$n" ] && printf \"%-25s %5.0f %5s\n\" \"Leaf wetness CH $n\" \"\$LIVEDATA_LEAF_WETNESS_CH$n\" \"%\""
+        n=$(( n + 1))
+    done
 }
 
 parseLivedata ()
@@ -1051,178 +1070,177 @@ parseLivedata ()
 
       if [ "$ldf" -eq $LDF_INTEMP ]; then
 
-        readInt16BE
-        convertScale10ToFloat "$VALUE_INT16BE"
-        LIVEDATA_INTEMP=$VALUE_SCALE10_FLOAT #maybe export
+          readInt16BE
+          convertScale10ToFloat "$VALUE_INT16BE"
+          LIVEDATA_INTEMP=$VALUE_SCALE10_FLOAT #maybe export
 
       elif [ "$ldf" -eq $LDF_INHUMI ]; then
 
-        readUInt8
-        LIVEDATA_INHUMI=$VALUE_UINT8
+          readUInt8
+          LIVEDATA_INHUMI=$VALUE_UINT8
 
       elif [ "$ldf" -eq $LDF_ABSBARO ]; then
 
-        readUInt16BE
-        convertScale10ToFloat "$VALUE_UINT16BE"
-        LIVEDATA_ABSBARO=$VALUE_SCALE10_FLOAT
+          readUInt16BE
+          convertScale10ToFloat "$VALUE_UINT16BE"
+          LIVEDATA_ABSBARO=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_RELBARO ]; then
 
-        readUInt16BE
-        convertScale10ToFloat "$VALUE_UINT16BE"
-        LIVEDATA_RELBARO=$VALUE_SCALE10_FLOAT
+          readUInt16BE
+          convertScale10ToFloat "$VALUE_UINT16BE"
+          LIVEDATA_RELBARO=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_OUTTEMP ]; then
 
-        readInt16BE
-        convertScale10ToFloat "$VALUE_INT16BE"
-        LIVEDATA_OUTTEMP=$VALUE_SCALE10_FLOAT
+          readInt16BE
+          convertScale10ToFloat "$VALUE_INT16BE"
+          LIVEDATA_OUTTEMP=$VALUE_SCALE10_FLOAT
 
        elif [ "$ldf" -eq $LDF_OUTHUMI ]; then
 
-        readUInt8
-        LIVEDATA_OUTHUMI=$VALUE_UINT8
+          readUInt8
+          LIVEDATA_OUTHUMI=$VALUE_UINT8
 
       elif [ "$ldf" -eq $LDF_WINDDIRECTION ]; then
 
-        readUInt16BE
-        LIVEDATA_WINDDIRECTION=$VALUE_UINT16BE
-        convertWindDirectionToCompassDirection "$LIVEDATA_WINDDIRECTION"
-        LIVEDATA_WINDDIRECTION_COMPASS=$VALUE_COMPASS_DIRECTION
+          readUInt16BE
+          LIVEDATA_WINDDIRECTION=$VALUE_UINT16BE
+          convertWindDirectionToCompassDirection "$LIVEDATA_WINDDIRECTION"
+          LIVEDATA_WINDDIRECTION_COMPASS=$VALUE_COMPASS_DIRECTION
 
       elif [ "$ldf" -eq $LDF_WINDSPEED ]; then
 
-        readUInt16BE
-        convertScale10ToFloat "$VALUE_UINT16BE"
-        LIVEDATA_WINDSPEED=$VALUE_SCALE10_FLOAT
+          readUInt16BE
+          convertScale10ToFloat "$VALUE_UINT16BE"
+          LIVEDATA_WINDSPEED=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_WINDGUSTSPPED ]; then
 
-        readUInt16BE
-        convertScale10ToFloat "$VALUE_UINT16BE"
-        LIVEDATA_WINDGUSTSPEED=$VALUE_SCALE10_FLOAT
+          readUInt16BE
+          convertScale10ToFloat "$VALUE_UINT16BE"
+          LIVEDATA_WINDGUSTSPEED=$VALUE_SCALE10_FLOAT
 
        elif [ "$ldf" -eq $LDF_DAYLWINDMAX ]; then
 
-        readUInt16BE
-        convertScale10ToFloat "$VALUE_UINT16BE"
-        LIVEDATA_DAILYWINDMAX=$VALUE_SCALE10_FLOAT
+          readUInt16BE
+          convertScale10ToFloat "$VALUE_UINT16BE"
+          LIVEDATA_DAILYWINDMAX=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_LIGHT ]; then
 
-        readUInt32BE
-        convertScale10ToFloat "$VALUE_UINT32BE"
-        LIVEDATA_LIGHT=$VALUE_SCALE10_FLOAT
+          readUInt32BE
+          convertScale10ToFloat "$VALUE_UINT32BE"
+          LIVEDATA_LIGHT=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_UV ]; then
 
-        readUInt16BE
-        convertScale10ToFloat "$VALUE_UINT16BE"
-        LIVEDATA_UV=$VALUE_SCALE10_FLOAT
+          readUInt16BE
+          convertScale10ToFloat "$VALUE_UINT16BE"
+          LIVEDATA_UV=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_UVI ]; then
 
-        readUInt8
-        LIVEDATA_UVI=$VALUE_UINT8
+          readUInt8
+          LIVEDATA_UVI=$VALUE_UINT8
 
       elif [ "$ldf" -eq $LDF_SOILMOISTURE1 ] || [ "$ldf" -eq $LDF_SOILMOISTURE2 ] ||
            [ "$ldf" -eq $LDF_SOILMOISTURE3 ] || [ "$ldf" -eq $LDF_SOILMOISTURE4 ] ||
            [ "$ldf" -eq $LDF_SOILMOISTURE5 ] || [ "$ldf" -eq $LDF_SOILMOISTURE6 ] ||
            [ "$ldf" -eq $LDF_SOILMOISTURE7 ] || [ "$ldf" -eq $LDF_SOILMOISTURE8 ]; then #is 16 channels supported?
 
-        readUInt8
-        channel=$(( ( ( ldf - LDF_SOILMOISTURE1 ) / 2 ) + 1 ))
-        eval "LIVEDATA_SOILMOISTURE$channel=$VALUE_UINT8"
+          readUInt8
+          channel=$(( ( ( ldf - LDF_SOILMOISTURE1 ) / 2 ) + 1 ))
+          eval "LIVEDATA_SOILMOISTURE$channel=$VALUE_UINT8"
 
       elif [ "$ldf" -eq $LDF_SOILTEMP1 ] || [ "$ldf" -eq $LDF_SOILTEMP2 ] ||
            [ "$ldf" -eq $LDF_SOILTEMP3 ] || [ "$ldf" -eq $LDF_SOILTEMP4 ] ||
            [ "$ldf" -eq $LDF_SOILTEMP5 ] || [ "$ldf" -eq $LDF_SOILTEMP6 ] ||
            [ "$ldf" -eq $LDF_SOILTEMP7 ] || [ "$ldf" -eq $LDF_SOILTEMP8 ]; then
 
-        readUInt8
-        channel=$(( ( ( ldf - LDF_SOILTEMP1 ) / 2 ) + 1 ))
-        eval "LIVEDATA_SOILTEMPE$channel=$VALUE_UINT8"
+          readUInt8
+          channel=$(( ( ( ldf - LDF_SOILTEMP1 ) / 2 ) + 1 ))
+          eval "LIVEDATA_SOILTEMPE$channel=$VALUE_UINT8"
 
       elif [ "$ldf" -ge $LDF_TEMP1 ] && [ "$ldf" -le $LDF_TEMP8 ] ; then
 
-        readInt16BE
-        convertScale10ToFloat "$VALUE_INT16BE"
+          readInt16BE
+          convertScale10ToFloat "$VALUE_INT16BE"
 
-        channel=$(( ldf - LDF_TEMP1 + 1 ))
-        eval "LIVEDATA_TEMP$channel=$VALUE_SCALE10_FLOAT"
+          channel=$(( ldf - LDF_TEMP1 + 1 ))
+          eval "LIVEDATA_TEMP$channel=$VALUE_SCALE10_FLOAT"
 
       elif [ "$ldf" -ge $LDF_HUMI1 ] && [ "$ldf" -le $LDF_HUMI8 ]; then
 
-        readUInt8
+          readUInt8
 
-        channel=$(( ldf - LDF_HUMI1 + 1 ))
-        eval "LIVEDATA_HUMI$channel=$VALUE_UINT8"
-
+          channel=$(( ldf - LDF_HUMI1 + 1 ))
+          eval "LIVEDATA_HUMI$channel=$VALUE_UINT8"
 
       elif [ "$ldf" -eq $LDF_RAINMONTH ]; then
 
-        readUInt32BE
-        convertScale10ToFloat "$VALUE_UINT32BE"
-        LIVEDATA_RAINMONTH=$VALUE_SCALE10_FLOAT
+          readUInt32BE
+          convertScale10ToFloat "$VALUE_UINT32BE"
+          LIVEDATA_RAINMONTH=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_RAINYEAR ]; then
 
-        readUInt32BE
-        convertScale10ToFloat "$VALUE_UINT32BE"
-        LIVEDATA_RAINYEAR=$VALUE_SCALE10_FLOAT
+          readUInt32BE
+          convertScale10ToFloat "$VALUE_UINT32BE"
+          LIVEDATA_RAINYEAR=$VALUE_SCALE10_FLOAT
 
        elif [ "$ldf" -eq $LDF_RAINWEEK ]; then
 
-        readUInt16BE
-        convertScale10ToFloat "$VALUE_UINT16BE"
-        LIVEDATA_RAINWEEK=$VALUE_SCALE10_FLOAT
+          readUInt16BE
+          convertScale10ToFloat "$VALUE_UINT16BE"
+          LIVEDATA_RAINWEEK=$VALUE_SCALE10_FLOAT
 
        elif [ "$ldf" -eq $LDF_RAINDAY ]; then
 
-        readUInt16BE
-        convertScale10ToFloat "$VALUE_UINT16BE"
-        LIVEDATA_RAINDAY=$VALUE_SCALE10_FLOAT
+          readUInt16BE
+          convertScale10ToFloat "$VALUE_UINT16BE"
+          LIVEDATA_RAINDAY=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_RAINEVENT ]; then
 
-      readUInt16BE
-      convertScale10ToFloat "$VALUE_UINT16BE"
-      LIVEDATA_RAINEVENT=$VALUE_SCALE10_FLOAT
+          readUInt16BE
+          convertScale10ToFloat "$VALUE_UINT16BE"
+          LIVEDATA_RAINEVENT=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -eq $LDF_RAINRATE ]; then
 
-      readUInt16BE
-      convertScale10ToFloat "$VALUE_UINT16BE"
-      LIVEDATA_RAINRATE=$VALUE_SCALE10_FLOAT
+          readUInt16BE
+          convertScale10ToFloat "$VALUE_UINT16BE"
+          LIVEDATA_RAINRATE=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -ge $LDF_LEAK_CH1 ] && [ "$ldf" -le $LDF_LEAK_CH4 ]; then
 
-        readUInt8
+          readUInt8
 
-        channel=$(( ldf - LDF_LEAK_CH1 + 1 ))
-        eval "LIVEDATA_LEAK_CH$channel=$VALUE_UINT8"
+          channel=$(( ldf - LDF_LEAK_CH1 + 1 ))
+          eval "LIVEDATA_LEAK_CH$channel=$VALUE_UINT8"
 
       elif [ "$ldf" -eq $LDF_PM25_CH1 ]; then
 
-       readUInt16BE
-       convertScale10ToFloat "$VALUE_UINT16BE"
-       LIVEDATA_PM25_CH1=$VALUE_SCALE10_FLOAT
+          readUInt16BE
+          convertScale10ToFloat "$VALUE_UINT16BE"
+          LIVEDATA_PM25_CH1=$VALUE_SCALE10_FLOAT
 
       elif [ "$ldf" -ge $LDF_PM25_CH2 ] && [ "$ldf" -le $LDF_PM25_CH4 ]; then
 
-        readUInt16BE
-        convertScale10ToFloat "$VALUE_UINT16BE"
+          readUInt16BE
+          convertScale10ToFloat "$VALUE_UINT16BE"
 
-        channel=$(( ldf - LDF_PM25_CH1 + 1 ))
-        eval "LIVEDATA_PM25_CH$channel=$VALUE_SCALE10_FLOAT"
+          channel=$(( ldf - LDF_PM25_CH1 + 1 ))
+          eval "LIVEDATA_PM25_CH$channel=$VALUE_SCALE10_FLOAT"
 
      elif [ "$ldf" -ge $LDF_PM25_24HAVG1 ] && [ "$ldf" -le $LDF_PM25_24HAVG4 ]; then
 
-        readUInt16BE
-        convertScale10ToFloat "$VALUE_UINT16BE"
+          readUInt16BE
+          convertScale10ToFloat "$VALUE_UINT16BE"
 
-        channel=$(( ldf - LDF_PM25_24HAVG1 + 1 ))
-        eval "LIVEDATA_PM25_24HAVG$channel=$VALUE_SCALE10_FLOAT"
+          channel=$(( ldf - LDF_PM25_24HAVG1 + 1 ))
+          eval "LIVEDATA_PM25_24HAVG$channel=$VALUE_SCALE10_FLOAT"
 
      elif [ "$ldf" -eq $LDF_SENSOR_CO2 ]; then
 
@@ -1237,41 +1255,74 @@ parseLivedata ()
 # 8 co2_24h       unsigned short ppm
 # 9 co2_batt      u8 (0~5)
 
-      readInt16BE
-      convertScale10ToFloat "$VALUE_INT16BE"
-      LIVEDATA_CO2_TEMPF=$VALUE_SCALE10_FLOAT
+        readInt16BE
+        convertScale10ToFloat "$VALUE_INT16BE"
+        LIVEDATA_CO2_TEMPF=$VALUE_SCALE10_FLOAT
 
-      readUInt8
-      LIVEDATA_CO2_HUMI=$VALUE_UINT8
+        readUInt8
+        LIVEDATA_CO2_HUMI=$VALUE_UINT8
 
-      readUInt16BE
-      convertScale10ToFloat "$VALUE_UINT16BE"
-      LIVEDATA_CO2_PM10=$VALUE_SCALE10_FLOAT
+        readUInt16BE
+        convertScale10ToFloat "$VALUE_UINT16BE"
+        LIVEDATA_CO2_PM10=$VALUE_SCALE10_FLOAT
 
-      readUInt16BE
-      convertScale10ToFloat "$VALUE_UINT16BE"
-      LIVEDATA_CO2_PM10_24HAVG=$VALUE_SCALE10_FLOAT
+        readUInt16BE
+        convertScale10ToFloat "$VALUE_UINT16BE"
+        LIVEDATA_CO2_PM10_24HAVG=$VALUE_SCALE10_FLOAT
 
-      readUInt16BE
-      convertScale10ToFloat "$VALUE_UINT16BE"
-      LIVEDATA_CO2_PM25=$VALUE_SCALE10_FLOAT
+        readUInt16BE
+        convertScale10ToFloat "$VALUE_UINT16BE"
+        LIVEDATA_CO2_PM25=$VALUE_SCALE10_FLOAT
 
-      readUInt16BE
-      convertScale10ToFloat "$VALUE_UINT16BE"
-      LIVEDATA_CO2_PM25_24HAVG=$VALUE_SCALE10_FLOAT
+        readUInt16BE
+        convertScale10ToFloat "$VALUE_UINT16BE"
+        LIVEDATA_CO2_PM25_24HAVG=$VALUE_SCALE10_FLOAT
 
-      readUInt16BE
-      LIVEDATA_CO2_CO2=$VALUE_UINT16BE
+        readUInt16BE
+        LIVEDATA_CO2_CO2=$VALUE_UINT16BE
 
-      readUInt16BE
-      LIVEDATA_CO2_CO2_24HAVG=$VALUE_UINT16BE
+        readUInt16BE
+        LIVEDATA_CO2_CO2_24HAVG=$VALUE_UINT16BE
 
-      readUInt8
-      LIVEDATA_CO2_CO2_BATTERYLEVEL=$VALUE_UINT8
+        readUInt8
+        LIVEDATA_CO2_CO2_BATTERYLEVEL=$VALUE_UINT8
 
-      else
+    elif [ "$ldf" -ge $LDF_TF_USR1 ] && [ "$ldf" -le $LDF_TF_USR8 ] ; then
+
+        readInt16BE
+        convertScale10ToFloat "$VALUE_INT16BE"
+
+        channel=$(( ldf - LDF_TF_USR1 + 1 ))
+        eval "LIVEDATA_TF_USR$channel=$VALUE_SCALE10_FLOAT"
+
+        readUInt8
+        eval "LIVEDATA_TF_USR$channel_BATTERY=$VALUE_UINT8" #todo : scaling
+
+    elif [ "$ldf" -ge $LDF_LIGHTNING ]; then
+
+        readUInt8
+        LIVEDATA_LIGHTNING=$VALUE_UINT8 # 1-40km
+
+    elif  [ "$ldf" -ge $LDF_LIGHTNING_TIME ]; then
+        
+        readUInt32BE
+        LIVEDATA_LIGHTNING_TIME=$VALUE_UINT32BE
+
+    elif [ "$ldf" -ge $LDF_LIGHTNING_POWER ]; then
+        
+        readUInt32BE
+        LIVEDATA_LIGHTNING_POWER=$VALUE_UINT32BE
+ 
+    elif [ "$ldf" -ge $LDF_LEAF_WETNESS_CH1 ] && [ "$ldf" -le $LDF_LEAF_WETNESS_CH8 ] ; then
+
+        readUInt8
+        channel=$(( ldf - LDF_LEAF_WETNESS_CH1 + 1 ))
+
+        eval "LIVEDATA_LEAF_WETNESS_CH$channel=$VALUE_UINT8" 
+
+    else
         >&2 echo "ERROR Unable to parse livedata field $(printf "%x" $ldf)"
-      fi
+    fi
 
  done
 
@@ -1281,7 +1332,7 @@ parseLivedata ()
       >&2 echo checksum "$(printf "%02x" $checksum)"
  fi
 
- printLivedatanew
+ printLivedata
 
 }
 
@@ -1298,9 +1349,9 @@ parsePacket ()
 
     readSlice 4
 
-    PACKET_HEADER="$B1$B2"
-    if [ "$PACKET_HEADER" != "ffff" ]; then
-      return "$ERROR_PACKET_HEADER"
+    PRX_PREAMBLE="$B1$B2"
+    if [ "$PRX_PREAMBLE" != "ffff" ]; then
+      return "$ERROR_PRX_PREAMBLE"
     fi
 
     PRX_CMD_UINT8=$(( 0x$B3 ))
@@ -1357,7 +1408,7 @@ getHexDigit()
      fi
 }
 
-convertDecimalToHex ()
+convertUInt8ToHex ()
 {
   if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
   #shellcheck disable=SC3044
@@ -1391,39 +1442,38 @@ newPacketBodynew ()
         return 1
     fi
 
-    if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
-        decToHexnew  $(( $1 ))
-    else
-        convertDecimalToHex "$(( $1 ))"
-    fi
-    PACKET_TX_CMD=$VALUE_HEX
+   # if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
+   #     decToHexnew  $(( $1 ))
+   # else
+   #     convertUInt8ToHex "$(( $1 ))"
+   # fi
+   # PACKET_TX_CMD=$VALUE_HEX
 
-    PACKET_HEADER="ff ff"
+   PACKET_TX_CMD=$(( $1 ))
+
+    PACKET_TX_PREAMBLE="255 255"
     unset PACKET_TX_BODY
 
-    PACKET_BODY_LENGTH=1
+    PACKET_TX_BODY_LENGTH=1
 
 }
 
 checksumPacketTX ()
 {
-    PACKET_TX_CMD_INT=$(( 0x$PACKET_TX_CMD )) # convert to decimal/integer for comparison in sendPacket
+    PACKET_TX_BODY_LENGTH=$(( PACKET_TX_BODY_LENGTH + 1 )) # at least 1 byte for length field
 
-    PACKET_BODY_LENGTH=$(( PACKET_BODY_LENGTH + 1 )) # at least 1 byte for length field
-
-    if [  "$PACKET_TX_CMD_INT" -eq  "$CMD_broadcast" ] || [ "$PACKET_TX_CMD_INT" -eq $CMD_write_ssid ]; then
-        PACKET_BODY_LENGTH=$((  PACKET_BODY_LENGTH + 1 ))
-        PACKET_TX_LENGTH=$(printf "%02x %02x" $(( ( ( PACKET_BODY_LENGTH + 1) & 0xff00 ) >> 8 )) $((   ( PACKET_BODY_LENGTH + 1) & 0xff )) )
-
+    if [  "$PACKET_TX_CMD" -eq  "$CMD_broadcast" ] || [ "$PACKET_TX_CMD" -eq $CMD_write_ssid ]; then
+        PACKET_TX_BODY_LENGTH=$((  PACKET_TX_BODY_LENGTH + 1 ))
+        PACKET_TX_LENGTH=" $(( (( PACKET_TX_BODY_LENGTH + 1) & 0xff00 ) >> 8 )) $((   ( PACKET_TX_BODY_LENGTH + 1) & 0xff ))"
     else
 
-       if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
-         PACKET_TX_LENGTH=$(printf "%02x" $(( PACKET_BODY_LENGTH + 1 )) )
-       else
-           convertDecimalToHex "$(( PACKET_BODY_LENGTH + 1 ))"
-            PACKET_TX_LENGTH=$VALUE_HEX
-        fi
-
+       #if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
+       #  PACKET_TX_LENGTH=$(printf "%02x" $(( PACKET_TX_BODY_LENGTH + 1 )) )
+       #else
+       #    convertUInt8ToHex "$(( PACKET_TX_BODY_LENGTH + 1 ))"
+       #     PACKET_TX_LENGTH=$VALUE_HEX
+       # fi
+       PACKET_TX_LENGTH=$(( PACKET_TX_BODY_LENGTH + 1 ))
     fi
 
     if [ -n "$PACKET_TX_BODY" ]; then 
@@ -1436,7 +1486,7 @@ checksumPacketTX ()
     checksum "$PACKET_TX_BODY"
 
     PACKET_TX_BODY="$PACKET_TX_BODY $VALUE_CHECKSUM"
-    PACKET_TX="$PACKET_HEADER $PACKET_TX_BODY"
+    PACKET_TX="$PACKET_TX_PREAMBLE $PACKET_TX_BODY"
 
     [ $DEBUG -eq 1 ] && >&2 echo "PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
 }
@@ -1467,6 +1517,24 @@ convertHexToOctal ()
     
     [ $DEBUG -eq 1 ] && >&2 echo Converting hex "$1" to octal "$VALUE_OCTAL"
 
+}
+
+convertBufferFromDecToOctalEscape ()
+{
+    unset VALUE_OCTAL_BUFFER_ESCAPE
+
+    for BYTE in $1; do
+
+        if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
+            VALUE_OCTAL_BUFFER_ESCAPE="$VALUE_OCTAL_BUFFER_ESCAPE$( printf "\\%04o" "$BYTE")"
+        else
+            convertHexToOctal "$BYTE"
+            VALUE_OCTAL_BUFFER_ESCAPE="$VALUE_OCTAL_BUFFER_ESCAPE\\0$VALUE_OCTAL"
+        fi
+
+    done
+
+    [ $DEBUG -eq 1 ] && >&2 echo "Octal buffer $VALUE_OCTAL_BUFFER_ESCAPE"
 }
 
 convertBufferFromHexToOctalEscape ()
@@ -1537,16 +1605,17 @@ sendPacketnc ()
 
     checksumPacketTX
 
-    convertBufferFromHexToOctalEscape "$PACKET_TX" # \0377 \0377 \0nnn 
+    convertBufferFromDecToOctalEscape "$PACKET_TX" # \0377 \0377 \0nnn 
     PACKET_TX_ESCAPE=$VALUE_OCTAL_BUFFER_ESCAPE
+    [ $DEBUG -eq 1 ] && >&2 echo PACKET_TX_ESCAPE "PACKET_TX_ESCAPE"
     port=$PORT_GW_TCP
 
-    if [ $PACKET_TX_CMD_INT -eq  $CMD_broadcast ]; then
+    if [ $PACKET_TX_CMD -eq  $CMD_broadcast ]; then
         ncUDPOpt='-u'
         port=$PORT_GW_UDP
         timeout_nc=$timeout_udp_broadcast
         useTimeout=1
-    elif [ "$PACKET_TX_CMD_INT" -eq $CMD_write_reset ] || [ "$PACKET_TX_CMD_INT" -eq $CMD_write_ssid ]; then
+    elif [ "$PACKET_TX_CMD" -eq $CMD_write_reset ] || [ "$PACKET_TX_CMD" -eq $CMD_write_ssid ]; then
           :
     fi
            
@@ -1690,17 +1759,18 @@ checksum ()
 
     for BYTE in $1; do
         [ $DEBUG -eq 1 ] && >&2 echo "checksum read $BYTE"
-        sum=$(( ( sum + 0x$BYTE ) & 0xff ))
+        sum=$(( ( sum + BYTE ) & 255 ))
     done
 
     [ $DEBUG -eq 1 ] && >&2 echo "checksum $sum"
     
-    if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
-            VALUE_CHECKSUM=$(printf "%02x" $sum)
-    else
-            convertDecimalToHex "$sum"
-            VALUE_CHECKSUM=$VALUE_HEX
-    fi
+   # if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
+   #         VALUE_CHECKSUM=$(printf "%02x" $sum)
+   # else
+   #         convertUInt8ToHex "$sum"
+   #         VALUE_CHECKSUM=$VALUE_HEX
+   # fi
+   VALUE_CHECKSUM=$sum
 }
 
 decToHexnew ()
@@ -2128,7 +2198,7 @@ initnc ()
 
             case "$nc_ver_header" in
 
-                nc:\ invalid\ option*)
+                $nc_exec:\ invalid\ option*)
 
                     NC_VERSION=$NC_OPENBSD
                     NC_VERSION_STR="nc openbsd (probably)"
