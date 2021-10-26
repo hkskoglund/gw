@@ -2333,3 +2333,11 @@ initConfigDir () {
     #    >&2 echo  Error socat not found, cannot scan for devices
     #    return "$ERROR_NO_SOCAT"
     #  fi
+
+
+    decToHexnew ()
+{
+    VALUE_HEX=$( printf "%02x" "$1" )
+}
+
+CONVERT_HEXANDOCT_USING_SUBSHELL=0 # 1 - using $( printf "%02x" )

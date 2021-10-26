@@ -32,7 +32,6 @@
 #set -x # enable for tracing in strace -f -c dash .c './gw -h 192.168.3.80 -c livedata'
 #for s in bash dash ksh zsh; do strace -f -c $s -c './gw -h 192.168.3.80 -c livedata' 2>strace-log-$s; done
 #not much to gain in time by avoiding subshell, but number of system calls is less. Try not to overoptimize.
-CONVERT_HEXANDOCT_USING_SUBSHELL=0 # 1 - using $( printf "%02x" )
 
 DEBUG=0 # 1 will enable additional debug information, -d option to enable
 
@@ -44,7 +43,7 @@ ERROR_NC_UDP_SCAN_UNAVAILABLE=3
 ERROR_RAINDATA_NOTSPECIFIED=4
 ERROR_SYSTEMPARAM_NOTSPECIFIED=5
 ERROR_NO_NC=6
-ERROR_PACKET_HEADER=7
+ERROR_PRX_PREAMBLE=7
 ERROR_EOF_OD_BUFFER=8
 
 #to do: conversion
@@ -221,6 +220,8 @@ LDF_PM25_AQI=$(( 0x71 )) #only for amb
 #aqi_pm25_aqin AQI derived from PM25, AQIN sensor int
 #aqi_pm25_24h_aqin AQI derived from PM25, 24 hour running average, AQIN sensor int
 #.... n
+#shellcheck disable=SC2034
+{
 LDF_LEAF_WETNESS_CH1=$(( 0x72 )) # 1
 LDF_LEAF_WETNESS_CH2=$(( 0x73 )) # 1
 LDF_LEAF_WETNESS_CH3=$(( 0x74 )) # 1
@@ -229,7 +230,7 @@ LDF_LEAF_WETNESS_CH5=$(( 0x76 )) # 1
 LDF_LEAF_WETNESS_CH6=$(( 0x77 )) # 1
 LDF_LEAF_WETNESS_CH7=$(( 0x78 )) # 1
 LDF_LEAF_WETNESS_CH8=$(( 0x79 )) # 1
-
+}
 #to do: rest of names
 
 SYSTEM_FREQUENCY_RFM433M=0 # 433MHz
@@ -351,16 +352,19 @@ readSlice ()
 #$1 - number of bytes n to read
 #read bytes available in $B1,...,$Bn
 {
-     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-    #shellcheck disable=SC3044
-    typeset n
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+        #shellcheck disable=SC3044
+        typeset n
     else
-      local n
+        local n
     fi
+
     n=1
     while [ "$n" -le "$1" ]; do
        readUInt8
-       eval "B$n=$VALUE_UINT8_HEX"
+       eval "B$n=$VALUE_UINT8"
+       echo "B$n=$VALUE_UINT8"
+
        n=$(( n + 1 ))
     done
 }
@@ -368,14 +372,12 @@ readSlice ()
 readUInt8 ()
 {
     unset VALUE_UINT8
-    unset VALUE_UINT8_HEX
 
-    if [ ${#OD_BUFFER} -ge 2 ]; then 
+    if [ ${#OD_BUFFER} -ge 4 ]; then # 4 = max 3 spaces and 1 digit
       
        for BYTE in $OD_BUFFER; do
-            VALUE_UINT8_HEX=$BYTE
-            VALUE_UINT8=$(( 0x$BYTE ))
-            OD_BUFFER=${OD_BUFFER##" $BYTE"} #  ## - remove largest prefix
+            VALUE_UINT8=$(( BYTE ))
+            OD_BUFFER=${OD_BUFFER#*"$BYTE"} #  # - remove shortest prefix pattern
             break;
         done
     else
@@ -386,16 +388,21 @@ readUInt8 ()
 readUInt16BE ()
 {
     unset VALUE_UINT16BE
-    unset VALUE_UINT16BE_HEX
-
-    if [ ${#OD_BUFFER} -ge 5 ]; then # 5 - length of two hex bytes + space
+    
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+    #shellcheck disable=SC3044
+      typeset msb
+    else
+      local msb
+    fi
+    
+    if [ ${#OD_BUFFER} -ge 9 ]; then
 
         #VALUE_UINT16BE_HEX=$B1$B2
         readUInt8
-        VALUE_UINT16BE_HEX=$VALUE_UINT8_HEX
+        msb=$VALUE_UINT8
         readUInt8
-        VALUE_UINT16BE_HEX=$VALUE_UINT16BE_HEX$VALUE_UINT8_HEX
-        VALUE_UINT16BE=$(( 0x$VALUE_UINT16BE_HEX ))
+        VALUE_UINT16BE=$(( ( msb << 8 )  | VALUE_UINT8 ))
     else
       return "$ERROR_EOF_OD_BUFFER"
     fi
@@ -404,18 +411,33 @@ readUInt16BE ()
 readUInt32BE ()
 {
     unset VALUE_UINT32BE
-    unset VALUE_UINT32BE_HEX
 
-    if [ ${#OD_BUFFER} -ge 11 ]; then 
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+    #shellcheck disable=SC3044
+    {
+      typeset msb
+      typeset lsb
+      typeset msb2
+      typeset lsb2
+    }
+    else
+      local msb
+      local lsb
+      local msb2
+      local lsb2
+    fi
+
+    if [ ${#OD_BUFFER} -ge 19 ]; then 
         readUInt8
-        VALUE_UINT32BE_HEX=$VALUE_UINT8_HEX
+        msb=$VALUE_UINT8
         readUInt8
-        VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX
+        lsb=$VALUE_UINT8
         readUInt8
-        VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX
+        msb2=$VALUE_UINT8
         readUInt8
-        VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX
-        VALUE_UINT32BE=$(( 0x$VALUE_UINT32BE_HEX ))
+        lsb2=$VALUE_UINT8
+
+        VALUE_UINT32BE=$(( (msb << 24) | ( lsb << 16) | ( msb2 << 8) | lsb2))
     else
       return "$ERROR_EOF_OD_BUFFER"
     fi
@@ -431,7 +453,7 @@ readInt16BE ()
 
     readUInt16BE
 
-    VALUE_INT16BE=$(( -1* ( VALUE_UINT16BE >> 15) * 0x8000 +  ( VALUE_UINT16BE & 0x7fff ) ))
+    VALUE_INT16BE=$(( -1 * ( VALUE_UINT16BE >> 15) * 32768 +  ( VALUE_UINT16BE & 32767 ) ))
 }
 
 readString()
@@ -461,12 +483,8 @@ readString()
 
        readUInt8
 
-       if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
-           VALUE_STRING_ESCAPE=$VALUE_STRING_ESCAPE"\\$(printf "%o" "$VALUE_UINT8")" # create octal format string
-       else
-           convertHexToOctal "0x$VALUE_UINT8_HEX"
-           VALUE_STRING_ESCAPE="$VALUE_STRING_ESCAPE\\$VALUE_OCTAL"
-       fi        
+      convertHexToOctal "$VALUE_UINT8"
+      VALUE_STRING_ESCAPE="$VALUE_STRING_ESCAPE\\$VALUE_OCTAL"
        
         n=$(( n + 1 ))
     
@@ -874,8 +892,32 @@ parseVersion ()
 
 parseMAC ()
 {
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+      #shellcheck disable=SC3044
+      {
+      typeset b1
+      typeset b2
+      typeset b3
+      typeset b4
+      typeset b5
+      typeset b6
+      }
+    else
+      local b1
+      local b2
+      local b3
+      local b4
+      local b5
+      local b6
+    fi
+
      readSlice 6
-    C_MAC="$B1:$B2:$B3:$B4:$B5:$B6"
+     n=1
+     while [ "$n" -le 6 ]; do
+        eval "convertUInt8ToHex \"\$B$n\"; b$n=\$VALUE_HEX"
+        n=$(( n + 1))
+     done
+     C_MAC="$b1:$b2:$b3:$b4:$b5:$b6"
      printKeyValue mac "$C_MAC"
 }
 
@@ -1349,19 +1391,19 @@ parsePacket ()
 
     readSlice 4
 
-    PRX_PREAMBLE="$B1$B2"
-    if [ "$PRX_PREAMBLE" != "ffff" ]; then
+    PRX_PREAMBLE="$B1 $B2"
+    if [ "$PRX_PREAMBLE" != "255 255" ]; then
       return "$ERROR_PRX_PREAMBLE"
     fi
 
-    PRX_CMD_UINT8=$(( 0x$B3 ))
+    PRX_CMD_UINT8=$(( B3 ))
 
     #Packet length
     if [ "$PRX_CMD_UINT8" -eq  $CMD_broadcast ] || [ "$PRX_CMD_UINT8" -eq $CMD_livedata ] || [ "$PRX_CMD_UINT8" -eq $CMD_read_sensor_id_new ]; then
       readUInt8
-      PACKET_RX_LENGTH=$((  0x$B4$VALUE_UINT8_HEX ))
+      PACKET_RX_LENGTH=$((  ( B4 << 8 ) & VALUE_UINT8 ))
     else
-     PACKET_RX_LENGTH=$(( 0x$B4 ))
+     PACKET_RX_LENGTH=$(( B4 ))
     fi
 
     [ $DEBUG -eq 1 ] && >&2 echo  "RX PACKET LENGTH $PACKET_RX_LENGTH"
@@ -1392,19 +1434,19 @@ getHexDigit()
     unset VALUE_HEX_DIGIT
 
     if [ "$1" -ge 0 ] && [ "$1" -le 9 ]; then
-      VALUE_HEX_DIGIT=$1
+       VALUE_HEX_DIGIT=$1
     elif [ "$1" -eq 10 ]; then 
-      VALUE_HEX_DIGIT='a'
+       VALUE_HEX_DIGIT='a'
     elif [ "$1" -eq 11 ]; then
-     VALUE_HEX_DIGIT='b'
-      elif [ "$1" -eq 12 ]; then
-     VALUE_HEX_DIGIT='c'
-      elif [ "$1" -eq 13 ]; then
-     VALUE_HEX_DIGIT='d'
-      elif [ "$1" -eq 14 ]; then
-     VALUE_HEX_DIGIT='e'
-      elif [ "$1" -eq 15 ]; then
-     VALUE_HEX_DIGIT='f'
+       VALUE_HEX_DIGIT='b'
+    elif [ "$1" -eq 12 ]; then
+       VALUE_HEX_DIGIT='c'
+    elif [ "$1" -eq 13 ]; then
+       VALUE_HEX_DIGIT='d'
+    elif [ "$1" -eq 14 ]; then
+       VALUE_HEX_DIGIT='e'
+    elif [ "$1" -eq 15 ]; then
+       VALUE_HEX_DIGIT='f'
      fi
 }
 
@@ -1442,13 +1484,6 @@ newPacketBodynew ()
         return 1
     fi
 
-   # if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
-   #     decToHexnew  $(( $1 ))
-   # else
-   #     convertUInt8ToHex "$(( $1 ))"
-   # fi
-   # PACKET_TX_CMD=$VALUE_HEX
-
    PACKET_TX_CMD=$(( $1 ))
 
     PACKET_TX_PREAMBLE="255 255"
@@ -1467,12 +1502,6 @@ checksumPacketTX ()
         PACKET_TX_LENGTH=" $(( (( PACKET_TX_BODY_LENGTH + 1) & 0xff00 ) >> 8 )) $((   ( PACKET_TX_BODY_LENGTH + 1) & 0xff ))"
     else
 
-       #if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
-       #  PACKET_TX_LENGTH=$(printf "%02x" $(( PACKET_TX_BODY_LENGTH + 1 )) )
-       #else
-       #    convertUInt8ToHex "$(( PACKET_TX_BODY_LENGTH + 1 ))"
-       #     PACKET_TX_LENGTH=$VALUE_HEX
-       # fi
        PACKET_TX_LENGTH=$(( PACKET_TX_BODY_LENGTH + 1 ))
     fi
 
@@ -1524,14 +1553,8 @@ convertBufferFromDecToOctalEscape ()
     unset VALUE_OCTAL_BUFFER_ESCAPE
 
     for BYTE in $1; do
-
-        if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
-            VALUE_OCTAL_BUFFER_ESCAPE="$VALUE_OCTAL_BUFFER_ESCAPE$( printf "\\%04o" "$BYTE")"
-        else
-            convertHexToOctal "$BYTE"
-            VALUE_OCTAL_BUFFER_ESCAPE="$VALUE_OCTAL_BUFFER_ESCAPE\\0$VALUE_OCTAL"
-        fi
-
+        convertHexToOctal "$BYTE"
+        VALUE_OCTAL_BUFFER_ESCAPE="$VALUE_OCTAL_BUFFER_ESCAPE\\0$VALUE_OCTAL"
     done
 
     [ $DEBUG -eq 1 ] && >&2 echo "Octal buffer $VALUE_OCTAL_BUFFER_ESCAPE"
@@ -1544,13 +1567,8 @@ convertBufferFromHexToOctalEscape ()
     unset VALUE_OCTAL_BUFFER_ESCAPE
 
     for BYTE in $1; do
-
-        if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
-            VALUE_OCTAL_BUFFER_ESCAPE="$VALUE_OCTAL_BUFFER_ESCAPE$( printf "\\%04o" "0x$BYTE")"
-        else
-            convertHexToOctal "0x$BYTE"
-            VALUE_OCTAL_BUFFER_ESCAPE="$VALUE_OCTAL_BUFFER_ESCAPE\\0$VALUE_OCTAL"
-        fi
+      convertHexToOctal "0x$BYTE"
+      VALUE_OCTAL_BUFFER_ESCAPE="$VALUE_OCTAL_BUFFER_ESCAPE\\0$VALUE_OCTAL"
 
     done
 
@@ -1575,7 +1593,7 @@ sendPacketnc ()
         typeset host
         typeset timeout_udp_broadcast
         typeset timeout_nc
-        typeset od_hex
+        typeset od_buffer
       }
     else
         local ncUDPOpt # UDP (-u) or TCP
@@ -1585,7 +1603,7 @@ sendPacketnc ()
         local timeout_udp_broadcast
         local timeout_nc
         local useTimeout
-        local od_hex
+        local od_buffer
     fi
 
     timeout_nc=0.05
@@ -1626,22 +1644,22 @@ sendPacketnc ()
         # -N shutdown(2) the network socket after EOF on the input / from man nc - otherwise nc hangs
 
         if [ "$useTimeout" -eq 0 ]; then
-            od_hex="$(printf "%b" "$PACKET_TX_ESCAPE" | "$NC_CMD" -4 -N $ncUDPOpt "$host" "$port" | od -A n -t x1 -w$MAX_16BIT_UINT)"
+            od_buffer="$(printf "%b" "$PACKET_TX_ESCAPE" | "$NC_CMD" -4 -N $ncUDPOpt "$host" "$port" | od -A n -t u1 -w$MAX_16BIT_UINT)"
         elif [ "$useTimeout" -eq 1 ]; then
-            od_hex="$(printf "%b" "$PACKET_TX_ESCAPE" | timeout $timeout_nc "$NC_CMD" -4 -N $ncUDPOpt "$host" "$port" | od -A n -t x1 -w$MAX_16BIT_UINT)"
+            od_buffer="$(printf "%b" "$PACKET_TX_ESCAPE" | timeout $timeout_nc "$NC_CMD" -4 -N $ncUDPOpt "$host" "$port" | od -A n -t u1 -w$MAX_16BIT_UINT)"
         fi
 
     elif [ "$NC_VERSION" -eq $NC_NMAP ]; then
 
            #sleep to disable immediate EOF and shutdown of ncat -> which leads to data not received from udp socket
-             od_hex="$( { printf "%b" "$PACKET_TX_ESCAPE"; sleep $timeout_nc; } | "$NC_CMD" -4 $ncUDPOpt "$host" "$port" | od -A n -t x1 -w$MAX_16BIT_UINT)"
+             od_buffer="$( { printf "%b" "$PACKET_TX_ESCAPE"; sleep $timeout_nc; } | "$NC_CMD" -4 $ncUDPOpt "$host" "$port" | od -A n -t u1 -w$MAX_16BIT_UINT)"
 
     elif [ "$NC_VERSION" -eq $NC_TOYBOX ]; then
       :
     elif [ "$NC_VERSION" -eq $NC_BUSYBOX ]; then
            
            if [ -z "$ncUDPOpt" ]; then 
-              od_hex="$(printf "%b" "$PACKET_TX_ESCAPE" | "$NC_CMD" nc "$host" "$port" | od -A n -t x1 -w$MAX_16BIT_UINT)"
+              od_buffer="$(printf "%b" "$PACKET_TX_ESCAPE" | "$NC_CMD" nc "$host" "$port" | od -A n -t u1 -w$MAX_16BIT_UINT)"
            else
                 echo >&2 Busybox nc does not support UDP
             fi
@@ -1649,7 +1667,7 @@ sendPacketnc ()
       >&2 echo "Error nc not found in sendPacketnc $ERROR_NO_NC"
     fi
 
-    parsePacket "$od_hex"
+    parsePacket "$od_buffer"
 }
 
 discovery ()
@@ -1764,18 +1782,7 @@ checksum ()
 
     [ $DEBUG -eq 1 ] && >&2 echo "checksum $sum"
     
-   # if [ "$CONVERT_HEXANDOCT_USING_SUBSHELL" -eq 1 ]; then
-   #         VALUE_CHECKSUM=$(printf "%02x" $sum)
-   # else
-   #         convertUInt8ToHex "$sum"
-   #         VALUE_CHECKSUM=$VALUE_HEX
-   # fi
    VALUE_CHECKSUM=$sum
-}
-
-decToHexnew ()
-{
-    VALUE_HEX=$( printf "%02x" "$1" )
 }
 
 newCustomizedPacket () {
