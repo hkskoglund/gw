@@ -363,8 +363,6 @@ readSlice ()
     while [ "$n" -le "$1" ]; do
        readUInt8
        eval "B$n=$VALUE_UINT8"
-       echo "B$n=$VALUE_UINT8"
-
        n=$(( n + 1 ))
     done
 }
@@ -383,6 +381,13 @@ readUInt8 ()
     else
       return "$ERROR_EOF_OD_BUFFER"
     fi
+}
+
+readInt8 ()
+{
+  readUInt8
+  VALUE_INT8=$(( -1 * ( VALUE_UINT8 >> 7) * 0x80 + ( VALUE_UINT8 & 0x7f ) ))
+
 }
 
 readUInt16BE ()
@@ -456,6 +461,15 @@ readInt16BE ()
     VALUE_INT16BE=$(( -1 * ( VALUE_UINT16BE >> 15) * 32768 +  ( VALUE_UINT16BE & 32767 ) ))
 }
 
+readInt32BE ()
+#2's complement big endian
+#msb is the sign bit
+{
+   readUInt32BE
+  VALUE_INT32BE=$(( -1* ( VALUE_UINT32BE >> 31) * 0x80000000 +   ( VALUE_UINT32BE & 0x7fffffff ) ))
+ 
+}
+
 readString()
 #https://bugs.launchpad.net/ubuntu/+source/dash/+bug/1499473
 #\x formatted printf not supported in dash -> must use \nnn-octal
@@ -493,7 +507,17 @@ readString()
     VALUE_STRING=$(printf "$VALUE_STRING_ESCAPE") # convert to string
 }
 
-printRain () {
+printBuffer ()
+# print hex. buffer
+#$1 decimal buffer
+{
+  for BYTE in $1; do
+     printf " %02x" "$BYTE"
+  done
+  printf "\n"
+}
+
+printRaindata () {
      if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
     {
@@ -522,14 +546,11 @@ printRain () {
     convertScale10ToFloat "$C_RAINYEAR"
     ry=$VALUE_SCALE10_FLOAT
 
-    printf "%9s %7s\n" rainrate  "$rr"
-    printf "%9s %7s\n" raindaily "$rd"
-    printf "%9s %7s\n" rainweek  "$rw"
-    printf "%9s %7s\n" rainmonth "$rm"
-    printf "%9s %7s\n" rainyear  "$ry"
-    #echo "rainrate $rr rainday $rd rainweek $rw rainmonth $rm rainyear $ry"
- # printf "%9s %9s %9s %9s %9s\n" rainrate rainday rainweek rainmonth rainyear
-    #printf "%9s %9s %9s %9s %9s\n" "$rr" "$rd" "$rw" "$rm" "$ry"
+    printf "%-11s %7.1f\n" "Rain rate" "$rr"
+    printf "%-11s %7.1f\n" "Rain day" "$rd"
+    printf "%-11s %7.1f\n" "Rain week" "$rw"
+    printf "%-11s %7.1f\n" "Rain month" "$rm"
+    printf "%-11s %7.1f\n" "Rain year"  "$ry"
 }
 
 convertWindDirectionToCompassDirection ()
@@ -1378,6 +1399,70 @@ parseLivedata ()
 
 }
 
+parseRaindata ()
+{
+
+    readUInt32BE
+    C_RAINRATE=$VALUE_UINT32BE
+
+    readUInt32BE
+    C_RAINDAILY=$VALUE_UINT32BE
+    
+    readUInt32BE
+    C_RAINWEEK=$VALUE_UINT32BE
+
+    readUInt32BE
+    C_RAINMONTH=$VALUE_UINT32BE
+
+    readUInt32BE
+    C_RAINYEAR=$VALUE_UINT32BE
+
+    printRaindata
+}
+
+printCalibration ()
+{
+    printf "%-40s %7.1f\n" "Calibration in temperature offset" "$C_CALIBRATION_INTEMPOFFSET"
+    printf "%-40s %7.1f\n" "Calibration in humidity offset" "$C_CALIBRATION_INHUMIDITYOFFSET"
+    printf "%-40s %7.1f\n" "Calibration absolute pressure offset" "$C_CALIBRATION_ABSOFFSET"
+    printf "%-40s %7.1f\n" "Calibration relative pressure offset" "$C_CALIBRATION_RELOFFSET"
+    printf "%-40s %7.1f\n" "Calibration out temperature offset" "$C_CALIBRATION_OUTTEMPOFFSET"
+    printf "%-40s %7.1f\n" "Calibration out humidity offset" "$C_CALIBRATION_OUTHUMIDITYOFFSET"
+    printf "%-40s %7.1f\n" "Calibration wind direction offset" "$C_CALIBRATION_WINDIROFFSET"
+
+}
+
+parseCalibration ()
+{
+
+   readInt16BE
+   convertScale10ToFloat "$VALUE_INT16BE"
+   C_CALIBRATION_INTEMPOFFSET="$VALUE_SCALE10_FLOAT"
+   
+   readInt8 
+   C_CALIBRATION_INHUMIDITYOFFSET="$VALUE_INT8"
+
+   readInt32BE 
+   convertScale10ToFloat "$VALUE_INT32BE"
+   C_CALIBRATION_ABSOFFSET="$VALUE_SCALE10_FLOAT"
+
+   readInt32BE
+   convertScale10ToFloat "$VALUE_INT32BE"
+   C_CALIBRATION_RELOFFSET="$VALUE_SCALE10_FLOAT"
+
+   readInt16BE
+   convertScale10ToFloat "$VALUE_INT16BE"
+   C_CALIBRATION_OUTTEMPOFFSET="$VALUE_SCALE10_FLOAT"
+   
+   readInt8
+   C_CALIBRATION_OUTHUMIDITYOFFSET="$VALUE_INT8"
+
+   readInt16BE
+   C_CALIBRATION_WINDIROFFSET="$VALUE_INT16BE"
+
+   printCalibration
+}
+
 parsePacket ()
 {
 
@@ -1386,7 +1471,7 @@ parsePacket ()
      return "$ERROR_EOF_OD_BUFFER"
    fi
 
-    >&2 echo  "Parsing $1"
+    >&2 printBuffer "$1"
     OD_BUFFER=$1
 
     readSlice 4
@@ -1422,6 +1507,10 @@ parsePacket ()
       parseLivedata
     elif [ "$PRX_CMD_UINT8" -eq $CMD_broadcast ]; then
          parseBroadcast
+    elif [ "$PRX_CMD_UINT8" -eq $CMD_read_raindata ]; then
+         parseRaindata
+    elif [ "$PRX_CMD_UINT8" -eq $CMD_read_calibration ]; then
+         parseCalibration
     else
       >&2 echo ERROR Parsing of command "$PRX_CMD dec $PRX_CMD_UINT8" not supported
     fi
@@ -2658,7 +2747,7 @@ while [ $# -gt 0 ]; do
      #   sendRaindata "${CONFIGURATION[$CONF_raindaily]}" "${CONFIGURATION[$CONF_rainweek]}" \
      #                 "${CONFIGURATION[$CONF_rainmonth]}" "${CONFIGURATION[$CONF_rainyear]}"
      #   sendSensorId
-     #   sendCalibration "${CONFIGURATION[$CONF_calibration_intempoffset]}" "${CONFIGURATION[$CONF_calibration_inhumidityoffset]}" \
+     #   sendCalibration "${CONFIGURATION[$CONF_calibration_intempoffset]}" "${CONFIGURATION[$C_CALIBRATION_INHUMIDITYOFFSET]}" \
      #                   "${CONFIGURATION[$CONF_calibration_absoffset]}" "${CONFIGURATION[$CONF_calibration_reloffset]}" \
      #                   "${CONFIGURATION[$CONF_calibration_outtempoffset]}" "${CONFIGURATION[$CONF_calibration_outhumidityoffset]}" \
      #                   "${CONFIGURATION[$CONF_calibration_windiroffset]}"
