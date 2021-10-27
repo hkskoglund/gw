@@ -45,6 +45,7 @@ ERROR_SYSTEMPARAM_NOTSPECIFIED=5
 ERROR_NO_NC=6
 ERROR_PRX_PREAMBLE=7
 ERROR_EOF_OD_BUFFER=8
+ERROR_CONVERT=9
 
 #to do: conversion
 UNIT_TEMP="C"
@@ -101,6 +102,7 @@ CMD_write_system=$(( 0x31 ));
 CMD_read_calibration=$(( 0x38 ))
 CMD_write_calibration=$(( 0x39 ))
 
+#Command names mapping
 eval "CMDNAME_$CMD_read_version='read version'"
 eval "CMDNAME_$CMD_reboot='reboot'"
 eval "CMDNAME_$CMD_read_mac='read mac'"
@@ -110,8 +112,28 @@ eval "CMDNAME_$CMD_write_reset='write reset'"
 
 eval "CMDNAME_$CMD_read_ecowitt_interval='read ecowitt interval'"
 eval "CMDNAME_$CMD_write_ecowitt_interval='write ecowitt interval'"
+eval "CMDNAME_$CMD_read_wunderground='read wunderground'"
+eval "CMDNAME_$CMD_write_wunderground='write wunderground'"
+eval "CMDNAME_$CMD_read_wow='read wow'"
+eval "CMDNAME_$CMD_write_wow='write wow'"
+eval "CMDNAME_$CMD_read_weathercloud='read weathercloud'"
+eval "CMDNAME_$CMD_write_weathercloud='write weathercloud'"
 
+eval "CMDNAME_$CMD_read_customized='read customized'"
+eval "CMDNAME_$CMD_write_customized='write customized'"
+eval "CMDNAME_$CMD_read_path='read path'"
+eval "CMDNAME_$CMD_write_path='write path'"
+eval "CMDNAME_$CMD_read_raindata='read raindata'"
+eval "CMDNAME_$CMD_write_raindata='write raindata'"
 eval "CMDNAME_$CMD_livedata='livedata'"
+
+eval "CMDNAME_$CMD_read_sensor_id='read sensor id'"
+eval "CMDNAME_$CMD_write_sensor_id='write sensor id'"
+eval "CMDNAME_$CMD_read_sensor_id_new='read sensor id new'"
+eval "CMDNAME_$CMD_read_system='read system'"
+eval "CMDNAME_$CMD_write_system='write system'"
+eval "CMDNAME_$CMD_read_calibration='read calibration'"
+eval "CMDNAME_$CMD_write_calibration='write calibration'"
 
 [ -z "$LIVEDATA_INTEMP_HEADER" ] && export LIVEDATA_INTEMP_HEADER="Indoor temperature"
 
@@ -299,20 +321,11 @@ SENSORTYPE_MAX=47
 getCommandName ()
 #$1 -decimal command
 {
-if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-#shellcheck disable=SC3044
-    typeset cmdname
-else
-    local cmdname
-fi
+    eval "COMMAND_NAME=\$CMDNAME_$1"
 
-    cmdname=$(eval "echo \$CMDNAME_$1")
-
-    if [ -z "$cmdname" ]; then
-      COMMAND_NAME='{commandname missing}' "$1"
+    if [ -z "$COMMAND_NAME" ]; then
+      COMMAND_NAME="{cmdname missing} $1"
       return 1
-    else
-      COMMAND_NAME="$cmdname"
     fi
 
 }
@@ -328,6 +341,11 @@ printCustomized () {
     printf "%16s %s\n" "pathecowitt" "$C_WS_CUSTOMIZED_PATH_ECOWITT"
     printf "%16s %s\n" "pathwunderground" "$C_WS_CUSTOMIZED_PATH_WU"
 
+}
+
+newBuffer ()
+{
+  eval "$1=\"$2\""
 }
 
 writeUInt32BE ()
@@ -387,7 +405,6 @@ readInt8 ()
 {
   readUInt8
   VALUE_INT8=$(( -1 * ( VALUE_UINT8 >> 7) * 0x80 + ( VALUE_UINT8 & 0x7f ) ))
-
 }
 
 readUInt16BE ()
@@ -401,16 +418,10 @@ readUInt16BE ()
       local msb
     fi
     
-    if [ ${#OD_BUFFER} -ge 9 ]; then
-
-        #VALUE_UINT16BE_HEX=$B1$B2
-        readUInt8
-        msb=$VALUE_UINT8
-        readUInt8
-        VALUE_UINT16BE=$(( ( msb << 8 )  | VALUE_UINT8 ))
-    else
-      return "$ERROR_EOF_OD_BUFFER"
-    fi
+    readUInt8
+    msb=$VALUE_UINT8
+    readUInt8
+    VALUE_UINT16BE=$(( ( msb << 8 ) | VALUE_UINT8 ))
 }
 
 readUInt32BE ()
@@ -446,7 +457,6 @@ readUInt32BE ()
     else
       return "$ERROR_EOF_OD_BUFFER"
     fi
-        
 }
 
 readInt16BE ()
@@ -465,8 +475,9 @@ readInt32BE ()
 #2's complement big endian
 #msb is the sign bit
 {
-   readUInt32BE
-  VALUE_INT32BE=$(( -1* ( VALUE_UINT32BE >> 31) * 0x80000000 +   ( VALUE_UINT32BE & 0x7fffffff ) ))
+
+    readUInt32BE
+    VALUE_INT32BE=$(( -1* ( VALUE_UINT32BE >> 31) * 0x80000000 +   ( VALUE_UINT32BE & 0x7fffffff ) ))
  
 }
 
@@ -511,10 +522,10 @@ printBuffer ()
 # print hex. buffer
 #$1 decimal buffer
 {
-  for BYTE in $1; do
-     printf " %02x" "$BYTE"
-  done
-  printf "\n"
+    for BYTE in $1; do
+        printf " %02x" "$BYTE"
+    done
+    printf "\n"
 }
 
 printRaindata () {
@@ -954,7 +965,6 @@ parseResult ()
     readUInt8
     write_result=$VALUE_UINT8
 
-   getCommandName "$PRX_CMD_UINT8"
     >&2 printf "%s" "$COMMAND_NAME"
 
     if [ "$write_result" -eq 0 ]; then
@@ -1123,7 +1133,7 @@ parseLivedata ()
        local checksum
     fi
 
-    while [ "${#OD_BUFFER}" -gt 3  ]; do
+    while [ "${#OD_BUFFER}" -gt 4 ]; do
 
       [ "$DEBUG" -eq 1 ] &&  >&2 echo Unparsed "$OD_BUFFER" length "${#OD_BUFFER}" 
 
@@ -1352,6 +1362,8 @@ parseLivedata ()
 
     elif [ "$ldf" -ge $LDF_TF_USR1 ] && [ "$ldf" -le $LDF_TF_USR8 ] ; then
 
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        
         readInt16BE
         convertScale10ToFloat "$VALUE_INT16BE"
 
@@ -1422,13 +1434,13 @@ parseRaindata ()
 
 printCalibration ()
 {
-    printf "%-40s %7.1f\n" "Calibration in temperature offset" "$C_CALIBRATION_INTEMPOFFSET"
-    printf "%-40s %7.1f\n" "Calibration in humidity offset" "$C_CALIBRATION_INHUMIDITYOFFSET"
-    printf "%-40s %7.1f\n" "Calibration absolute pressure offset" "$C_CALIBRATION_ABSOFFSET"
-    printf "%-40s %7.1f\n" "Calibration relative pressure offset" "$C_CALIBRATION_RELOFFSET"
-    printf "%-40s %7.1f\n" "Calibration out temperature offset" "$C_CALIBRATION_OUTTEMPOFFSET"
-    printf "%-40s %7.1f\n" "Calibration out humidity offset" "$C_CALIBRATION_OUTHUMIDITYOFFSET"
-    printf "%-40s %7.1f\n" "Calibration wind direction offset" "$C_CALIBRATION_WINDIROFFSET"
+    printf "%-40s %7.1f %3s\n" "Calibration in temperature offset" "$C_CALIBRATION_INTEMPOFFSET" "$UNIT_TEMP"
+    printf "%-40s %5.0f %5s\n" "Calibration in humidity offset" "$C_CALIBRATION_INHUMIDITYOFFSET" "%"
+    printf "%-40s %7.1f %3s\n" "Calibration absolute pressure offset" "$C_CALIBRATION_ABSOFFSET" "$UNIT_PRESSURE"
+    printf "%-40s %7.1f %3s\n" "Calibration relative pressure offset" "$C_CALIBRATION_RELOFFSET" "$UNIT_PRESSURE"
+    printf "%-40s %7.1f %3s\n" "Calibration out temperature offset" "$C_CALIBRATION_OUTTEMPOFFSET" "$UNIT_TEMP"
+    printf "%-40s %5.0f %5s\n" "Calibration out humidity offset" "$C_CALIBRATION_OUTHUMIDITYOFFSET" "%"
+    printf "%-40s %5.0f %5s\n" "Calibration wind direction offset" "$C_CALIBRATION_WINDIROFFSET" ""
 
 }
 
@@ -1463,6 +1475,7 @@ parseCalibration ()
    printCalibration
 }
 
+
 parsePacket ()
 {
 
@@ -1471,8 +1484,8 @@ parsePacket ()
      return "$ERROR_EOF_OD_BUFFER"
    fi
 
-    >&2 printBuffer "$1"
-    OD_BUFFER=$1
+  
+    newBuffer "OD_BUFFER" "$1"
 
     readSlice 4
 
@@ -1482,6 +1495,8 @@ parsePacket ()
     fi
 
     PRX_CMD_UINT8=$(( B3 ))
+    getCommandName "$PRX_CMD_UINT8"
+      >&2 printf "< %-20s" "$COMMAND_NAME"; >&2 printBuffer "$1"
 
     #Packet length
     if [ "$PRX_CMD_UINT8" -eq  $CMD_broadcast ] || [ "$PRX_CMD_UINT8" -eq $CMD_livedata ] || [ "$PRX_CMD_UINT8" -eq $CMD_read_sensor_id_new ]; then
@@ -1512,7 +1527,7 @@ parsePacket ()
     elif [ "$PRX_CMD_UINT8" -eq $CMD_read_calibration ]; then
          parseCalibration
     else
-      >&2 echo ERROR Parsing of command "$PRX_CMD dec $PRX_CMD_UINT8" not supported
+      >&2 echo ERROR Parsing of command "$COMMAND_NAME" not supported
     fi
 
     [ $DEBUG -eq 1 ] && >&2 echo  "Received command $PRX_CMD integer cmd $PRX_CMD_UINT8"
@@ -1574,6 +1589,7 @@ newPacketBodynew ()
     fi
 
    PACKET_TX_CMD=$(( $1 ))
+   getCommandName "$PACKET_TX_CMD"
 
     PACKET_TX_PREAMBLE="255 255"
     unset PACKET_TX_BODY
@@ -1633,7 +1649,7 @@ convertHexToOctal ()
     msb=$(( dec >> 6 ))
     VALUE_OCTAL=$msb$middle$lsb
     
-    [ $DEBUG -eq 1 ] && >&2 echo Converting hex "$1" to octal "$VALUE_OCTAL"
+    [ $DEBUG -eq 1 ] && >&2 echo Converting "$1" to octal "$VALUE_OCTAL"
 
 }
 
@@ -1714,7 +1730,9 @@ sendPacketnc ()
 
     convertBufferFromDecToOctalEscape "$PACKET_TX" # \0377 \0377 \0nnn 
     PACKET_TX_ESCAPE=$VALUE_OCTAL_BUFFER_ESCAPE
-    [ $DEBUG -eq 1 ] && >&2 echo PACKET_TX_ESCAPE "PACKET_TX_ESCAPE"
+    #[ $DEBUG -eq 1 ] && 
+    { >&2 printf "> %-20s" "$COMMAND_NAME"; >&2 printBuffer "$PACKET_TX"; }
+    
     port=$PORT_GW_TCP
 
     if [ $PACKET_TX_CMD -eq  $CMD_broadcast ]; then
@@ -2211,6 +2229,13 @@ if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         local sign
     fi
 
+    unset VALUE_SCALE10_FLOAT
+
+   if [ -z "$1" ]; then
+    >&2 echo Error convertScale10ToFloat empty arg "$1"
+    return "$ERROR_CONVERT"
+   fi
+
     number=$(( $1 ))
     if [ "$number" -lt 0 ]; then
         number=$(( number * - 1))
@@ -2269,7 +2294,7 @@ initnc ()
 
     if [ -n "$NC_CMD" ] && [ -z $NC_VERSION ]; then
 
-          nc_ver=$($NC_CMD --version 2>&1 )
+          nc_ver=$("$NC_CMD" --version 2>&1 ) # ""-preserve space
           nc_status=$?
 
           if [ "$nc_status" -eq 0 ]; then
@@ -2539,8 +2564,6 @@ isNumber ()
                   *) return 0 ;;
       esac
 }
-
-
 
 initShell ()
 {

@@ -1,6 +1,0 @@
-{
-  "type": "module",
-  "dependencies": {
-    "promise-socket": "^7.0.0"
-  }
-}
