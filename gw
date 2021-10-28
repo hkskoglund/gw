@@ -360,6 +360,10 @@ readSlice() { #$1 - number of bytes n to read
     while [ "$n" -le "$1" ]; do
         readUInt8
         eval "B$n=$VALUE_UINT8"
+        if [ "$n" -le 6 ]; then # auto convert to hex for printing of MAC/broadcast command
+        #shellcheck disable=SC2027
+           eval "convertUInt8ToHex \"\$B$n\"; B"$n"HEX=\$VALUE_HEX"
+        fi
         n=$((n + 1))
     done
 }
@@ -750,11 +754,11 @@ initTimezones() {
 }
 
 printSystem() {
-    printf "%15s %s %s\n" "frequency" "$C_SYSTEM_FREQUENCY" "$C_SYSTEM_FREQUENCY_STATE"
-    printf "%15s %s %s\n" "sensortype" "$C_SYSTEM_SENSORTYPE" "$C_SYSTEM_SENSORTYPE_STATE"
-    printf "%15s %s %s\n" "utc" "$C_SYSTEM_UTC" "$C_SYSTEM_UTC_STATE"
-    printf "%15s %s %s\n" "tzindex" "$C_SYSTEM_TIMEZONE_INDEX" "$C_SYSTEM_TIMEZONE_INDEX_STATE"
-    printf "%15s %d dst %s auto %s\n" "timezone" "$C_SYSTEM_DST_STATUS" "$C_SYSTEM_DST_STATUS_STATE" "$C_SYSTEM_TIMEZONE_AUTO_STATE"
+    printKey "system frequency"; printf "%s %s\n"  "$C_SYSTEM_FREQUENCY" "$C_SYSTEM_FREQUENCY_STATE"
+    printKey "system sensortype"; printf "%s %s\n"  "$C_SYSTEM_SENSORTYPE" "$C_SYSTEM_SENSORTYPE_STATE"
+    printKey "system utc"; printf "%s %s\n"  "$C_SYSTEM_UTC" "$C_SYSTEM_UTC_STATE"
+    printKey "system tz index"; printf "%s %s\n" "$C_SYSTEM_TIMEZONE_INDEX" "$C_SYSTEM_TIMEZONE_INDEX_STATE"
+    printKey "system dst"; printf "%d dst %s auto %s\n"  "$C_SYSTEM_DST_STATUS" "$C_SYSTEM_DST_STATUS_STATE" "$C_SYSTEM_TIMEZONE_AUTO_STATE"
 }
 
 parseSystem() {
@@ -842,37 +846,15 @@ printKeyValue() {
 parseVersion() {
     readString
     C_VERSION="$VALUE_STRING"
-    printKeyValue version "$C_VERSION"
+    printKey "version"; printf "%s\n" "$C_VERSION"
 }
 
 parseMAC() {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        {
-            typeset b1
-            typeset b2
-            typeset b3
-            typeset b4
-            typeset b5
-            typeset b6
-        }
-    else
-        local b1
-        local b2
-        local b3
-        local b4
-        local b5
-        local b6
-    fi
-
+    
     readSlice 6
-    n=1
-    while [ "$n" -le 6 ]; do
-        eval "convertUInt8ToHex \"\$B$n\"; b$n=\$VALUE_HEX"
-        n=$((n + 1))
-    done
-    C_MAC="$b1:$b2:$b3:$b4:$b5:$b6"
-    printKeyValue mac "$C_MAC"
+   
+    C_MAC="$B1HEX:$B2HEX:$B3HEX:$B4HEX:$B5HEX:$B6HEX"
+    printKey "mac"; printf "%s\n" "$C_MAC"
 }
 
 parseResult() {
@@ -913,8 +895,11 @@ isWriteCommand() {
 }
 
 printBroadcast() {
-    printf "%-15s %s\n%-15s %s\n%-15s %d\n%-15s %s\n%-15s %s\n" "mac" "$C_broadcast_mac" "ip" "$C_broadcast_ip" "port" "$C_broadcast_port" "ssid" "$C_broadcast_ssid" "version" "$C_broadcast_version"
-
+    printKey "broadcast mac"; printf "%s\n" "$C_broadcast_mac"
+    printKey "broadcast ip"; printf "%s\n" "$C_broadcast_ip"
+    printKey "broadcast port"; printf "%d\n" "$C_broadcast_port"
+    printKey "broadcast ssid"; printf "%s\n" "$C_broadcast_ssid"
+    printKey "broadcast version"; printf "%s\n" "$C_broadcast_version"
 }
 
 parseBroadcast() {
@@ -923,9 +908,9 @@ parseBroadcast() {
     #this is the station MAC/ip on local network.
     #Observation: when device is reset its annoncing hotspot accesspoint/AP with first byte of MAC changed
 
-    C_broadcast_mac="$(printf "%02X:%02X:%02X:%02X:%02X:%02X" 0x"$B1" 0x"$B2" 0x"$B3" 0x"$B4" 0x"$B5" 0x"$B6")"
-    C_broadcast_ip="$(printf "%u.%u.%u.%u" 0x"$B7" 0x"$B8" 0x"$B9" 0x"$B10")"
-    C_broadcast_port="$(printf "%u" 0x"$B11$B12")"
+    C_broadcast_mac="$B1HEX:$B2HEX:$B3HEX:$B4HEX:$B5HEX:$B6HEX"
+    C_broadcast_ip="$B7.$B8.$B9.$B10"
+    C_broadcast_port="$(( (B11 << 8) | B12 ))"
 
     readString
     #https://stackoverflow.com/questions/1469849/how-to-split-one-string-into-multiple-strings-separated-by-at-least-one-space-in
@@ -2460,177 +2445,204 @@ argEmptyOrOption() {
 }
 
 printCommands() {
-    echo reset reboot mac "system|sys ecowitt|ec wunderground|wu weathercloud|wc wow customized|c|cust broadcast|b rain|r livedata|ld sensor_id sensor_id_new|sid|sensor|s calibration|cal"
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+    #shellcheck disable=SC3044
+    {
+      typeset cmd
+      typeset commands
+    }
+    else
+      local cmd
+      local commands
+    fi
+
+    commands="$CMDOPT_RESET reboot mac $CMDOPT_VERSION"
+
+    printf "Commands available -c:\n"
+    for cmd in $commands; do
+      printf "   %s\n" "$cmd"
+    done | sort | uniq 
+}
+
+initcoptCommands ()
+#-c option commands
+{
+    CMDOPT_RESET='reset'
+    CMDOPT_VERSION='version|ver'
 }
 
 processCommand() {
     #$1 - field pattern for livedata/sensor id
 
-    shift # remove {command} (to -c option) -> all args to {command} starts at $1
+    [ "$DEBUG" -eq 1 ] && >&2 echo ARGS to processCommand "$@" length "$#" COMMAND "$COMMAND"
+
+   if [ "$#" -ge 1 ]; then
+      shift # remove {command} (to -c option) -> all args to {command} starts at $1
+   fi
 
     case $COMMAND in
 
-    "")
-        printCommands
-        ;;
-
-    reset)
-
-        sendPacket $CMD_broadcast >/dev/null
-
-        echo "Reset $C_broadcast_mac $C_broadcast_ssid (Y/N)? "
-        read -r
-
-        case $REPLY in
-        Y)
-            sendPacket $CMD_write_reset # 3 blink in red LED
-            connectGW                   # assume user wants to reconnect for setting up new WIFI
+        "")
+            printCommands
             ;;
-        esac
 
-        ;;
+        "$CMDOPT_RESET")
 
-    reboot)
+            sendPacket $CMD_broadcast >/dev/null
 
-        sendPacket $CMD_reboot
-        ;;
+            echo "Reset $C_broadcast_mac $C_broadcast_ssid (Y/N)? "
+            read -r
 
-    mac)
+            case $REPLY in
+            Y)
+                sendPacket $CMD_write_reset # 3 blink in red LED
+                connectGW                   # assume user wants to reconnect for setting up new WIFI
+                ;;
+            esac
 
-        sendPacket $CMD_read_mac
-        ;;
+            ;;
 
-    version | ver)
+        reboot)
 
-        sendPacket $CMD_read_version
-        ;;
+            sendPacket $CMD_reboot
+            ;;
 
-    system | sys)
+        mac)
 
-        if argEmptyOrOption "$1"; then
-            sendPacket $CMD_read_system
-        else
-            if [ $# -lt 4 ]; then
-                echo >&2 "Error {sensortype} {timezoneindex} {dst} {autotimezone} must be specified"
+            sendPacket $CMD_read_mac
+            ;;
+
+        version|ver)
+
+            sendPacket $CMD_read_version
+            ;;
+
+        system | sys)
+
+            if argEmptyOrOption "$1"; then
+                sendPacket $CMD_read_system
             else
-                sendSystem "$1" "$2" "$3" "$4"
+                if [ $# -lt 4 ]; then
+                    echo >&2 "Error {sensortype} {timezoneindex} {dst} {autotimezone} must be specified"
+                else
+                    sendSystem "$1" "$2" "$3" "$4"
+                fi
             fi
-        fi
-        ;;
+            ;;
 
-    ecowitt | ec | e)
+        ecowitt | ec | e)
 
-        if argEmptyOrOption "$1"; then
-            sendPacket $CMD_read_ecowitt_interval
-        else
-            #sendEcowittInterval "$1"
-            sendEcowittIntervalnew "$1"
-        fi
-        ;;
-
-    wunderground | wu)
-
-        if argEmptyOrOption "$1"; then
-            sendPacket $CMD_read_wunderground
-        else
-            if [ $# -lt 2 ]; then
-                echo >&2 "Error {id} {password} must be specified"
+            if argEmptyOrOption "$1"; then
+                sendPacket $CMD_read_ecowitt_interval
             else
-                sendWeatherservice "$CMD_write_wunderground" "$1" "$2"
+                #sendEcowittInterval "$1"
+                sendEcowittIntervalnew "$1"
             fi
-        fi
+            ;;
 
-        ;;
+        wunderground | wu)
 
-    wow)
-
-        if argEmptyOrOption "$1"; then
-            sendPacket $CMD_read_wow
-        else
-            if [ $# -lt 2 ]; then
-                echo >&2 "Error {id} {password} must be specified"
+            if argEmptyOrOption "$1"; then
+                sendPacket $CMD_read_wunderground
             else
-                sendWeatherservice "$CMD_write_wow" "$1" "$2"
-            fi
-        fi
-        ;;
-
-    weathercloud | wc)
-
-        if argEmptyOrOption "$1"; then
-            sendPacket $CMD_read_weathercloud
-        else
-            if [ $# -lt 2 ]; then
-                echo >&2 "Error {id} {key} must be specified"
-            else
-                sendWeatherservice "$CMD_write_weathercloud" "$1" "$2"
-            fi
-        fi
-        ;;
-
-    customized | c | cust)
-
-        if argEmptyOrOption "$1"; then
-            sendPacket $CMD_read_path
-            sendPacket $CMD_read_customized
-        else
-            sendPacket $CMD_read_path >/dev/null
-            sendPacket $CMD_read_customized >/dev/null
-            updateCustomized "$1"
-        fi
-        ;;
-
-    broadcast | b)
-        sendPacket $CMD_broadcast
-        ;;
-
-    rain | r)
-
-        if argEmptyOrOption "$1"; then
-            sendPacket $CMD_read_raindata
-        else
-
-            if [ $# -lt 4 ]; then # validate rain input
-                echo >&2 "Error: {rainday} {week} {month} {year} parameters not specified"
-            else
-                sendRaindata "$1" "$2" "$3" "$4"
+                if [ $# -lt 2 ]; then
+                    echo >&2 "Error {id} {password} must be specified"
+                else
+                    sendWeatherservice "$CMD_write_wunderground" "$1" "$2"
+                fi
             fi
 
-        fi
+            ;;
 
-        ;;
+        wow)
 
-    livedata | ld | live | l)
+            if argEmptyOrOption "$1"; then
+                sendPacket $CMD_read_wow
+            else
+                if [ $# -lt 2 ]; then
+                    echo >&2 "Error {id} {password} must be specified"
+                else
+                    sendWeatherservice "$CMD_write_wow" "$1" "$2"
+                fi
+            fi
+            ;;
 
-        initSearchPatternForCommand "$1"
-        sendPacket $CMD_livedata
+        weathercloud | wc)
 
-        ;;
+            if argEmptyOrOption "$1"; then
+                sendPacket $CMD_read_weathercloud
+            else
+                if [ $# -lt 2 ]; then
+                    echo >&2 "Error {id} {key} must be specified"
+                else
+                    sendWeatherservice "$CMD_write_weathercloud" "$1" "$2"
+                fi
+            fi
+            ;;
 
-    sensor_id)
+        customized | c | cust)
 
-        initSearchPatternForCommand "$1"
-        sendPacket $CMD_read_sensor_id
-        ;;
+            if argEmptyOrOption "$1"; then
+                sendPacket $CMD_read_path
+                sendPacket $CMD_read_customized
+            else
+                sendPacket $CMD_read_path >/dev/null
+                sendPacket $CMD_read_customized >/dev/null
+                updateCustomized "$1"
+            fi
+            ;;
 
-    sensor_id_new | sid | sensor | s) # for new SENSOR_TYPE types
+        broadcast | b)
+            sendPacket $CMD_broadcast
+            ;;
 
-        initSearchPatternForCommand "$1"
-        sendPacket $CMD_read_sensor_id_new
-        ;;
+        rain | r)
 
-    calibration | cal)
+            if argEmptyOrOption "$1"; then
+                sendPacket $CMD_read_raindata
+            else
 
-        sendPacket $CMD_read_calibration
-        ;;
+                if [ $# -lt 4 ]; then # validate rain input
+                    echo >&2 "Error: {rainday} {week} {month} {year} parameters not specified"
+                else
+                    sendRaindata "$1" "$2" "$3" "$4"
+                fi
 
-    *)
+            fi
 
-        echo >&2 Error Unknown command "$COMMAND" "$@"
-        return 1
-        ;;
+            ;;
+
+        livedata | ld | live | l)
+
+            initSearchPatternForCommand "$1"
+            sendPacket $CMD_livedata
+
+            ;;
+
+        sensor_id)
+
+            initSearchPatternForCommand "$1"
+            sendPacket $CMD_read_sensor_id
+            ;;
+
+        sensor_id_new | sid | sensor | s) # for new SENSOR_TYPE types
+
+            initSearchPatternForCommand "$1"
+            sendPacket $CMD_read_sensor_id_new
+            ;;
+
+        calibration | cal)
+
+            sendPacket $CMD_read_calibration
+            ;;
+
+        *)
+
+            echo >&2 Error Unknown command "$COMMAND" "$@"
+            return 1
+            ;;
     esac
-
+set +x
     return 0
 }
 
@@ -2669,6 +2681,7 @@ initShell() {
 #fi
 
 initShell
+initcoptCommands
 initConfigDir
 if ! initnc; then
     echo >&2 Error nc/ncat not found
