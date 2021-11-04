@@ -2341,3 +2341,49 @@ initConfigDir () {
 }
 
 CONVERT_HEXANDOCT_USING_SUBSHELL=0 # 1 - using $( printf "%02x" )
+
+
+
+ #n=1
+            #listenport="$2"
+            #emptyLine=0
+            # nc -l -i 0.1 "$listenport" | while [ -z "$http_body" ]; do
+            #                                  eval "read -r http_line$n"
+            #                                  echo $?
+            #                                  if [ "$emptyLine" -eq 1 ]; then
+            #                                    eval "http_body=\"\$http_line$n\"" 
+            #                                  fi 
+            #                                  eval "[ \"\${#http_line$n}\"  -eq 1 ] && emptyLine=1" 
+            #                                  eval "echo \"\$http_line$n\""
+            #                                  eval "set -- \$http_line$n"
+            #                                  if [ "$n" -eq 1 ]; then #start line
+            #                                    set -x
+            #                                     http_method="$1"
+            #                                     http_path="$2"
+            #                                     http_version="${3##*/}"  # ## largest prefix pattern removed
+            #                                    # http_version="${http_version%%$'\r'}"
+            #                                     http_protocol="${3%%/*}" # %% largest suffix pattern removed  
+            #                                     set +x
+            #                                   fi
+            #                                     
+            #                                  n=$(( n + 1 ))
+            ##                                  #set
+            #                              done
+            #                           # set +x
+
+ # >&2 echo  Listening for http request on port "$2"
+            # eval 'mapfile HTTP_REQUEST < <($NC_CMD -l "$2")'
+            # n=0
+            # while [ "$n" -lt  ${#HTTP_REQUEST[@]} ]; do
+            #   echo "${HTTP_REQUEST[$n]}"
+            #   n=$(( n + 1))
+            # done
+            # shift 2
+
+#quick ecowitt parsing
+            #IFS='&' read -a data <<<$(nc  -l 8080 -i 0.1 | tail -n +7) && for f in "${data[@]}"; do echo $f; done
+            #set -x
+           
+
+
+            
