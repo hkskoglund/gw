@@ -2400,3 +2400,63 @@ convertBufferFromHexToOctalEscape() { #convert from ff ff to \377\377
 
     [ $DEBUG -eq 1 ] && echo >&2 "Octal buffer $VALUE_OCTAL_BUFFER_ESCAPE"
 }
+
+
+printKey() {
+# $1 - key, $2 - field size, negative for left justify, $3 - append newline
+
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+    #shellcheck disable=SC3044
+        typeset str whitespaceSize whitespaceStr nSpace strlen fsize ljustify
+    else
+        local str whitespaceSize whitespaceStr nSpace strlen fsize ljustify
+    fi
+
+    str="$1"
+    strlen=${#str}
+
+    if [ -n "$2" ]; then
+    
+       if  [ "$2" -lt 0 ]; then # left justify key
+          ljustify=1
+          fsize=$(( -1 * $2))
+       else
+        ljustify=0
+         fsize=$2
+        fi
+
+       FIELD_SIZE_KEY="$fsize" #allow specifying default field size in "$2"
+    else
+        ljustify=1
+        FIELD_SIZE_KEY=$(( strlen + 1 )) # use only 1 space after key
+    fi
+
+    #build padding string with spaces
+    nSpace=1
+    whitespaceSize=$(( FIELD_SIZE_KEY - strlen ))
+    while [ "$nSpace" -le "$whitespaceSize" ]; do
+        whitespaceStr="$whitespaceStr "
+        nSpace=$(( nSpace + 1 ))
+    done
+
+    if [ "$ljustify" -eq 1  ]; then 
+        str="$str$whitespaceStr"
+    else
+        str="$whitespaceStr$str"
+    fi
+
+    if [ -z "$3" ]; then
+       APPEND_STRING=$APPEND_STRING"$str"
+    else
+        echo "$APPEND_STRING"
+        unset APPEND_STRING
+    fi 
+    
+    #[ "$DEBUG" -eq 1 ] &&
+    # >&2 echo "${#str}" whitespacestr len "${#whitespaceStr}"
+
+     if [ -n "$KSH_VERSION" ]; then
+         unset str whitespaceSize whitespaceStr nSpace strlen fsize ljustify
+     fi
+
+}

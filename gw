@@ -20,6 +20,9 @@
 #https://en.wikipedia.org/wiki/Netcat
 #choosing which nc on fedora (openbsd/nmap)
 #sudo alternatives --config nc
+#ubuntu
+# sudo update-alternatives --config nc
+# sudo update-alternatives --query nc
 
 #testing in android shell
 #adb push gw /sdcard && adb shell "sh  /sdcard/gw -h 192.168.3.80 -c livedata"
@@ -829,64 +832,7 @@ parseSystem() {
 
 }
 
-printKey() {
-# $1 - key, $2 - field size, negative for left justify, $3 - append newline
 
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-    #shellcheck disable=SC3044
-        typeset str whitespaceSize whitespaceStr nSpace strlen fsize ljustify
-    else
-        local str whitespaceSize whitespaceStr nSpace strlen fsize ljustify
-    fi
-
-    str="$1"
-    strlen=${#str}
-
-    if [ -n "$2" ]; then
-    
-       if  [ "$2" -lt 0 ]; then # left justify key
-          ljustify=1
-          fsize=$(( -1 * $2))
-       else
-        ljustify=0
-         fsize=$2
-        fi
-
-       FIELD_SIZE_KEY="$fsize" #allow specifying default field size in "$2"
-    else
-        ljustify=1
-        FIELD_SIZE_KEY=$(( strlen + 1 )) # use only 1 space after key
-    fi
-
-    #build padding string with spaces
-    nSpace=1
-    whitespaceSize=$(( FIELD_SIZE_KEY - strlen ))
-    while [ "$nSpace" -le "$whitespaceSize" ]; do
-        whitespaceStr="$whitespaceStr "
-        nSpace=$(( nSpace + 1 ))
-    done
-
-    if [ "$ljustify" -eq 1  ]; then 
-        str="$str$whitespaceStr"
-    else
-        str="$whitespaceStr$str"
-    fi
-
-    if [ -z "$3" ]; then
-       APPEND_STRING=$APPEND_STRING"$str"
-    else
-        echo "$APPEND_STRING"
-        unset APPEND_STRING
-    fi 
-    
-    #[ "$DEBUG" -eq 1 ] &&
-    # >&2 echo "${#str}" whitespacestr len "${#whitespaceStr}"
-
-     if [ -n "$KSH_VERSION" ]; then
-         unset str whitespaceSize whitespaceStr nSpace strlen fsize ljustify
-     fi
-
-}
 
 printEcowittInterval() {
 
@@ -996,13 +942,14 @@ parseBroadcast() {
 
 printLivedataLine()
 {
-    if [ "$SHELL_SUPPORT_PRINTF" ]; then
+    #if [ "$SHELL_SUPPORT_PRINTF" -eq 1 ]; then
     #set -x
-       eval "printf \"%-25s %\$3s %\$5s\\n\" \"$1\" \"\$$2\" \"$4\""
-    #set +x
-    else
-       printKey "$1" -25 ; printKey "\$$2" "$3"; printKey "$4" " $5" "\n"
-    fi
+      # eval "printf \"%-25s %\$3s %\$5s\\n\" \"$1\" \"$2\" \"$4\""
+       APPEND_FORMAT=$APPEND_FORMAT"%-25s %$3s %$5s\n" #just use one printf call builtin/external -> builds up entire format and argument strings
+       APPEND_ARGS=$APPEND_ARGS"\"$1\" $2 \"$4\" "
+    #else
+    #   printKey "$1" -25 ; printKey "$2" "$3"; printKey "$4" " $5" "\n"
+    #fi
 
     if [ -n "$LOG_LIVEDATA"  ]; then
       eval "echo \"$2\"  >$DIR_LIVEDATA/\"$6\""
@@ -1019,7 +966,10 @@ printLivedata() {
         local n
     fi
 
-    printLivedataLine "$LIVEDATA_INTEMP_HEADER"  "LIVEDATA_INTEMP" 7 "$UNIT_TEMP" 2 'tempin'
+    unset APPEND_FORMAT
+    unset APPEND_ARGS
+
+    printLivedataLine "$LIVEDATA_INTEMP_HEADER"  "$LIVEDATA_INTEMP" 7 "$UNIT_TEMP" 2 'tempin'
     printLivedataLine "Indoor humidity" "$LIVEDATA_INHUMI" 5 "%" 4 'humidityin'
     printLivedataLine "Absolute pressure" "$LIVEDATA_ABSBARO" 7 "$UNIT_PRESSURE" 4 'baroabs'
     printLivedataLine "Relative pressure" "$LIVEDATA_RELBARO" 7 "$UNIT_PRESSURE" 4 'barorel'
@@ -1069,13 +1019,13 @@ $LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7
 
     n=1
     while [ "$n" -le "$SOILMOISTURE_WH51_max_ch" ]; do
-        eval "[ -n ''"\$LIVEDATA_SOILMOISTURE$n" ] && printLivedataLine  \"Soil moisture CH $n\" \"$LIVEDATA_SOILMOISTURE$n\" 5 \"%\" 4 \"soilmoisture$n\""
+        eval "[ -n ''"\$LIVEDATA_SOILMOISTURE$n" ] && printLivedataLine  \"Soil moisture CH $n\" \"\$LIVEDATA_SOILMOISTURE$n\" 5 \"%\" 4 \"soilmoisture$n\""
         n=$((n + 1))
     done
 
     n=1
     while [ "$n" -le "$SOILTEMP_WH34_max_ch" ]; do
-        eval "[ -n ''"\$LIVEDATA_SOILTEMP$n" ] && printLivedataLine \"Soil temperature CH $n\" \"$LIVEDATA_SOILTEMP$n\" 7 \"$UNIT_TEMP\" 2 \"soiltemperature$n\" "
+        eval "[ -n ''"\$LIVEDATA_SOILTEMP$n" ] && printLivedataLine \"Soil temperature CH $n\" \"\$LIVEDATA_SOILTEMP$n\" 7 \"$UNIT_TEMP\" 2 \"soiltemperature$n\" "
         n=$((n + 1))
     done
 
@@ -1083,21 +1033,21 @@ $LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7
     while [ "$n" -le "$TEMP_WH31_max_ch" ]; do
     #shellcheck disable=SC2153
     {
-        eval "[ -n ''"\$LIVEDATA_TEMP$n" ] && printLivedataLine \"Temperature CH $n\" \"$LIVEDATA_TEMP$n\" 7  \"\$UNIT_TEMP\" 2 \"temp$n\""
-        eval "[ -n ''"\$LIVEDATA_HUMI$n" ] && printLivedataLine \"Humidity CH $n\" \"$LIVEDATA_HUMI$n\" 5 \"%\" 4 \"humidity$n\""
+        eval "[ -n ''"\$LIVEDATA_TEMP$n" ] && printLivedataLine \"Temperature CH $n\" \"\$LIVEDATA_TEMP$n\" 7  \"\$UNIT_TEMP\" 2 \"temp$n\""
+        eval "[ -n ''"\$LIVEDATA_HUMI$n" ] && printLivedataLine \"Humidity CH $n\" \"\$LIVEDATA_HUMI$n\" 5 \"%\" 4 \"humidity$n\""
     }
         n=$((n + 1))
     done
 
     n=1
     while [ "$n" -le "$TEMP_WH31_max_ch" ]; do
-        eval "[ -n ''"\$LIVEDATA_TF_USR$n" ] && printLivedataLine \"Temperature USR $n\" \"$LIVEDATA_TF_USR$n\" 7 \"\$UNIT_TEMP\" 2 \"temp_usr$n\""
+        eval "[ -n ''"\$LIVEDATA_TF_USR$n" ] && printLivedataLine \"Temperature USR $n\" \"\$LIVEDATA_TF_USR$n\" 7 \"\$UNIT_TEMP\" 2 \"temp_usr$n\""
         n=$((n + 1))
     done
 
     n=1
     while [ "$n" -le "$LEAK_WH55_max_ch" ]; do
-        eval "[ -n ''"\$LIVEDATA_LEAK_CH$n" ] && printLivedataLine \"Leak CH $n\" \"$LIVEDATA_LEAK_CH$n\" 5 \"\" 4 \"leak_ch$n\""
+        eval "[ -n ''"\$LIVEDATA_LEAK_CH$n" ] && printLivedataLine \"Leak CH $n\" \"\$LIVEDATA_LEAK_CH$n\" 5 \"\" 4 \"leak_ch$n\""
         n=$((n + 1))
     done
 
@@ -1105,13 +1055,13 @@ $LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7
     n=2
     while [ "$n" -le "$PM25_WH43_max_ch" ]; do
         #shellcheck disable=SC2153
-        eval "[ -n ''"\$LIVEDATA_PM25_CH$n" ] && printLivedataLine \"PM 2.5 CH $n\" \"$LIVEDATA_PM25_CH$n\" 7 \"\$UNIT_PM25\" 7 \"pm25_ch$n\""
+        eval "[ -n ''"\$LIVEDATA_PM25_CH$n" ] && printLivedataLine \"PM 2.5 CH $n\" \"\$LIVEDATA_PM25_CH$n\" 7 \"\$UNIT_PM25\" 7 \"pm25_ch$n\""
         n=$((n + 1))
     done
 
     n=1
     while [ "$n" -le "$PM25_WH43_max_ch" ]; do
-        eval "[ -n ''"\$LIVEDATA_PM25_24HAVG$n" ] && printLivedataLine \"PM 2.5 CH $n 24h avg.\" \"$LIVEDATA_PM25_24HAVG$n\" 7 \"\$UNIT_PM25\" 7 \"pm25_avg_24h_ch$n\""
+        eval "[ -n ''"\$LIVEDATA_PM25_24HAVG$n" ] && printLivedataLine \"PM 2.5 CH $n 24h avg.\" \"\$LIVEDATA_PM25_24HAVG$n\" 7 \"\$UNIT_PM25\" 7 \"pm25_avg_24h_ch$n\""
         n=$((n + 1))
     done
 
@@ -1135,9 +1085,16 @@ $LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7
 
     n=1
     while [ "$n" -le "$LEAF_WETNESS_WH35_max_ch" ]; do
-        eval "[ -n ''"\$LIVEDATA_LEAF_WETNESS_CH$n" ] && printLivedataLine \"Leaf wetness CH $n\" \"$LIVEDATA_LEAF_WETNESS_CH$n\" 5 \"%\" 5 \"leaf_wetness_ch$n\""
+        eval "[ -n ''"\$LIVEDATA_LEAF_WETNESS_CH$n" ] && printLivedataLine \"Leaf wetness CH $n\" \"\$LIVEDATA_LEAF_WETNESS_CH$n\" 5 \"%\" 5 \"leaf_wetness_ch$n\""
         n=$((n + 1))
     done
+
+   if [ "$DEBUG" -eq 1 ]; then 
+    echo >&2 "APPEND_FORMAT $APPEND_FORMAT"
+    echo >&2 "APPEND_ARGS $APPEND_ARGS"
+   fi
+
+    eval printf \"$APPEND_FORMAT\" "$APPEND_ARGS"
 
     #unset local variables for ksh -> made global by using () function syntax without function keyword
     #https://www.unix.com/shell-programming-and-scripting/137435-ksh-different-syntax-function.html
@@ -2507,13 +2464,14 @@ initnc() {
 initConfigDir() {
 
     DIR_CONFIG=$HOME"/.config/gw"                              # .config subdirectory used for configuration on gnome/linux
-    DIR_LIVEDATA="/tmp/gw/livedata"
-    DIR_ECOWITT="/tmp/gw/ecowitt"
-    DIR_WUNDERGROUND="/tmp/gw/wunderground"
+    
 
     [ -n "$EXTERNAL_STORAGE" ] && DIR_CONFIG=$EXTERNAL_STORAGE # testing in Android 11 adb shell
+    DIR_LIVEDATA="$EXTERNAL_STORAGE/tmp/gw/livedata"
+    DIR_ECOWITT="$EXTERNAL_STORAGE/tmp/gw/ecowitt"
+    DIR_WUNDERGROUND="$EXTERNAL_STORAGE/tmp/gw/wunderground"
     [ ! -d "$DIR_CONFIG" ] || [ ! -d "$DIR_LIVEDATA" ] || [ ! -d "$DIR_ECOWITT" ] && mkdir -p -v "$DIR_CONFIG" "$DIR_LIVEDATA"  "$DIR_ECOWITT" "$DIR_WUNDERGROUND" 1>&2
-    [ "$DEBUG" -eq 1 ] && echo >&2 Directory config "$DIR_CONFIG" livedata "$DIR_LIVEDATA" ecowitt "$DIR_ECOWITT" wunderground "$DIR_WUNDERGROUND"
+    [ "$DEBUG" -eq 1 ] &&  echo >&2 Directory config "$DIR_CONFIG" livedata "$DIR_LIVEDATA" ecowitt "$DIR_ECOWITT" wunderground "$DIR_WUNDERGROUND"
 
     #SHELLPID=$$
 
@@ -2810,6 +2768,8 @@ initShell() {
             ;;
     esac
 
+    set +x
+
 }
 
 printWeatherServices () {
@@ -2823,22 +2783,19 @@ printWeatherServices () {
 cleanup()
 {
    
-    set -x
    if [ -n "$LOG_LIVEDATA" ]; then
         exec 1>&6 6>&- #copy backup fd 6 to stdout 1 and close 6
-        rm $DIR_LIVEDATA/* #dont use "*" otherwise pathname/globbing expansion doesnt work
+        rm "$DIR_LIVEDATA"/* #dont use "*" otherwise pathname/globbing expansion doesnt work
    fi
 
    if [ -n "$LOG_ECOWITT" ]; then
-      rm  $DIR_ECOWITT/*
+      rm  "$DIR_ECOWITT"/*
    fi
 
     if [ -n "$LOG_WUNDERGROUND" ]; then
-      rm  $DIR_WUNDERGROUND/*
+      rm  "$DIR_WUNDERGROUND"/*
     fi
-   set +x
     exit
-   # set +x
 }
 
 initTrap()
@@ -3006,49 +2963,59 @@ while [ $# -gt 0 ]; do
             #GET /wundergroundID=testid&PASSWORD=testpassword&tempf=63.0&humidity=82&dewptf=57.4&windchillf=63.0&winddir=355&windspeedmph=3.36&windgustmph=4.47&rainin=0.000&dailyrainin=0.020&weeklyrainin=0.051&monthlyrainin=0.311&yearlyrainin=4.811&solarradiation=206.87&UV=2&indoortempf=74.3&indoorhumidity=61&baromin=29.760&soilmoisture=16&lowbatt=0&dateutc=now&softwaretype=GW1000A_V1.6.8&action=updateraw&realtime=1&rtfreq=5 HTTP/1.0
             # Ecowitt
             #PASSKEY=976D09F15C.....................7&stationtype=GW1000A_V1.6.8&dateutc=2021-08-10+12:08:12&tempinf=74.1&humidityin=61&baromrelin=29.754&baromabsin=29.754&tempf=63.0&humidity=82&winddir=15&windspeedmph=3.80&windgustmph=4.47&maxdailygust=5.82&solarradiation=206.01&uv=2&rainratein=0.000&eventrainin=0.051&hourlyrainin=0.000&dailyrainin=0.020&weeklyrainin=0.051&monthlyrainin=0.311&yearlyrainin=4.811&totalrainin=4.811&temp1f=68.72&humidity1=67&temp2f=72.14&humidity2=63&temp3f=80.24&humidity3=48&soilmoisture1=16&wh65batt=0&batt1=0&batt2=0&batt3=0&soilbatt1=1.4&freq=868M&model=GW1000_Pro
-            
+            unset http_message
+
            if [ $NC_VERSION -eq $NC_NMAP ]; then 
-            http_message=$(nc -l -i 0.1 "$2" 2>/dev/null) # - idle timeout to exit early, not waiting for server to close/FIN
+                http_message=$(nc -l -i 0.1 "$2" 2>/dev/null) # - idle timeout to exit early, not waiting for server to close/FIN
+           elif [ $NC_VERSION -eq $NC_OPENBSD ]; then
+                http_message=$(nc -l -w 1 "$2" 2>/dev/null) # - -w to exit on idle for 1s
+            elif [ $NC_VERSION -eq $NC_TOYBOX ]; then 
+                  http_message=$(nc -p "$2" -W 1 -l  2>/dev/null) # - -W to exit on idle for 1s
+           else
+             echo >&2 Error unsupported nc version "$NC_VERSION"
            fi
 
-            [ "$DEBUG" -eq 1 ] && echo >&2 "$http_message"
-            
-            case "$http_message" in
+           if [ -n "$http_message" ]; then
+
+                [ "$DEBUG" -eq 1 ] && echo >&2 "$http_message"
                 
-                POST*)   LOG_ECOWITT=1 
-                
-                         http_body=$(echo "$http_message" | tail -n +7) # just skip headers
+                case "$http_message" in
+                    
+                    POST*)   LOG_ECOWITT=1 
+                    
+                            http_body=$(echo "$http_message" | tail -n +7) # just skip headers
+                            IFS='&'
+                            for f in $http_body; do
+                                value=${f##*=}
+                                key=${f%%=*}
+                                if [ "$key" != PASSKEY ]; then 
+                                        echo "$value" >"$DIR_ECOWITT/$key"
+                                fi
+                            done
+                            #https://stackoverflow.com/a/69836872/2076536
+
+                            ;;
+                    
+                    GET*)  LOG_WUNDERGROUND=1 
+                        #https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request
+                        http_body=$(echo "$http_message" | head -n 1)
+                        http_body=${http_body##GET*ID=} # remove method GET and directory prefix, assume qs always starts with ID=
+                        http_body=${http_body%% HTTP*} # remove HTTP/1.0 at end
+                        http_body="ID="$http_body
                         IFS='&'
                         for f in $http_body; do
-                             value=${f##*=}
-                             key=${f%%=*}
-                             if [ "$key" != PASSKEY ]; then 
-                                    echo "$value" >"$DIR_ECOWITT/$key"
-                             fi
+                                value=${f##*=}
+                                key=${f%%=*}
+                                if [ "$key" != PASSWORD ] && [  "$key" != ID ]; then #password is url encoded, for example space=%20 https://stackoverflow.com/questions/6250698/how-to-decode-url-encoded-string-in-shell
+                                    echo "$value" >"$DIR_WUNDERGROUND/$key"
+                                fi
                         done
-                        #https://stackoverflow.com/a/69836872/2076536
 
+                        #cd /tmp/gw/wunderground; watch -n 16 'for f in *; do read v < "$f"; printf "%-30s %s\n" "$f" "$v"; done'
+                        
                         ;;
-                
-                GET*)  LOG_WUNDERGROUND=1 
-                       #https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request
-                       http_body=$(echo "$http_message" | head -n 1)
-                       http_body=${http_body##GET*ID=} # remove method GET and directory prefix, assume qs always starts with ID=
-                       http_body=${http_body%% HTTP*} # remove HTTP/1.0 at end
-                       http_body="ID="$http_body
-                       IFS='&'
-                       for f in $http_body; do
-                            value=${f##*=}
-                            key=${f%%=*}
-                            if [ "$key" != PASSWORD ] && [  "$key" != ID ]; then #password is url encoded, for example space=%20 https://stackoverflow.com/questions/6250698/how-to-decode-url-encoded-string-in-shell
-                                echo "$value" >"$DIR_WUNDERGROUND/$key"
-                            fi
-                       done
-
-                       #cd /tmp/gw/wunderground; watch -n 16 'for f in *; do read v < "$f"; printf "%-30s %s\n" "$f" "$v"; done'
-                    
-                       ;;
-            esac
+                esac
+            fi
 
             ;;
 
