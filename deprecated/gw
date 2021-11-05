@@ -2386,4 +2386,17 @@ CONVERT_HEXANDOCT_USING_SUBSHELL=0 # 1 - using $( printf "%02x" )
            
 
 
-            
+
+
+convertBufferFromHexToOctalEscape() { #convert from ff ff to \377\377
+    #strace: each $( printf ) creates a new process (strace: Process nnnn attached )
+    unset VALUE_OCTAL_BUFFER_ESCAPE
+
+    for BYTE in $1; do
+        convertHexToOctal "0x$BYTE"
+        VALUE_OCTAL_BUFFER_ESCAPE="$VALUE_OCTAL_BUFFER_ESCAPE\\0$VALUE_OCTAL"
+
+    done
+
+    [ $DEBUG -eq 1 ] && echo >&2 "Octal buffer $VALUE_OCTAL_BUFFER_ESCAPE"
+}

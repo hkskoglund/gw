@@ -2,6 +2,7 @@
 #!/bin/bash
 #! use dash as first line for portability testing
 
+
 # Utility for configuration of GW-1000
 # Only for firmware v1.6.5 or later - for intepretation of battery levels/sensor id new command
 # example ./gw -s
@@ -410,17 +411,9 @@ readUInt32BE() {
 
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        {
-            typeset msb
-            typeset lsb
-            typeset msb2
-            typeset lsb2
-        }
+        typeset msb lsb msb2 lsb2
     else
-        local msb
-        local lsb
-        local msb2
-        local lsb2
+        local   msb lsb msb2 lsb2
     fi
 
     if [ ${#OD_BUFFER} -ge 19 ]; then
@@ -465,13 +458,9 @@ readString() { #https://bugs.launchpad.net/ubuntu/+source/dash/+bug/1499473
     #\x formatted printf not supported in dash -> must use \nnn-octal
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        {
-            typeset len_uint8
-            typeset n
-        }
+        typeset len_uint8 n
     else
-        local len_uint8
-        local n
+        local   len_uint8 n
     fi
 
     readUInt8
@@ -493,7 +482,12 @@ readString() { #https://bugs.launchpad.net/ubuntu/+source/dash/+bug/1499473
 
     done
 
-    VALUE_STRING=$(printf "%b" "$VALUE_STRING_ESCAPE") # convert to string
+    if [ "$SHELL_SUPPORT_PRINTF_VOPT" -eq 1 ]; then
+        #shellcheck disable=SC3045
+         printf -v VALUE_STRING "%b" "$VALUE_STRING_ESCAPE"
+    else
+       VALUE_STRING=$(printf "%b" "$VALUE_STRING_ESCAPE") # convert to string
+    fi
 
     if [ -n "$KSH_VERSION" ]; then
         unset len_uint8 n
@@ -569,13 +563,9 @@ convertWindDirectionToCompassDirection() { #$1 - direction in degrees
 getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        {
-            typeset -i max_battery_level
-            typeset -i l
-        }
+        typeset -i max_battery_level l
     else
-        local max_battery_level
-        local l
+        local      max_battery_level l
     fi
 
     max_battery_level=6
@@ -844,23 +834,9 @@ printKey() {
 
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
-    {
-        typeset str
-        typeset whitespaceSize
-        typeset whitespaceStr
-        typeset nSpace
-        typeset strlen
-        typeset fsize
-        typeset ljustify
-    }
+        typeset str whitespaceSize whitespaceStr nSpace strlen fsize ljustify
     else
-        local str
-        local whitespaceSize
-        local whitespaceStr
-        local nSpace
-        local strlen
-        local fsize
-        local ljustify
+        local str whitespaceSize whitespaceStr nSpace strlen fsize ljustify
     fi
 
     str="$1"
@@ -935,7 +911,7 @@ printKeyValue() {
 parseVersion() {
     readString
     C_VERSION="$VALUE_STRING"
-    echo "version $C_VERSION"
+    echo "$C_VERSION"
 }
 
 parseMAC() {
@@ -943,7 +919,7 @@ parseMAC() {
     readSlice 6
    
     C_MAC="$B1HEX:$B2HEX:$B3HEX:$B4HEX:$B5HEX:$B6HEX"
-    echo "mac $C_MAC"
+    echo "$C_MAC"
 }
 
 parseResult() {
@@ -1174,15 +1150,9 @@ $LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7
 parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 5d 0a 01 59 0b 00 00 0c 00 00 15 00 00 93 bc 16 00 20 17 00 2c 12 1a 00 87 22 32 1b 00 b0 23 27 1c 00 dd 24 31 58 00 19 00 47 0e 00 00 10 00 08 11 00 42 12 00 00 02 9a 13 00 00 0f 8b 0d 00 42 63
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        {
-            typeset ldf
-            typeset channel
-            typeset checksum
-        }
+            typeset ldf channel checksum
     else
-        local ldf
-        local channel
-        local checksum
+        local ldf channel checksum
     fi
 
     while [ "${#OD_BUFFER}" -gt 4 ]; do
@@ -1470,19 +1440,9 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 printRaindata() {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        {
-            typeset rr
-            typeset rd
-            typeset rw
-            typeset rm
-            typeset ry
-        }
+            typeset rr rd rw rm ry
     else
-        local rr
-        local rd
-        local rw
-        local rm
-        local ry
+        local rr rd rw rm ry
     fi
 
     convertScale10ToFloat "$C_RAINRATE"
@@ -1777,17 +1737,17 @@ getHexDigit() {
 
 convertUInt8ToHex() {
 #$1 - decimal value to convert to hex
+    if [ "$SHELL_SUPPORT_PRINTF_VOPT" -eq 1 ]; then
+    #shellcheck disable=SC3045
+        printf -v VALUE_HEX "%02x" "$1"
+        return
+    fi
+
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        {
-            typeset lsb
-            typeset lsb_hexdigit
-            typeset msb
-        }
+        typeset lsb lsb_hexdigit msb
     else
-        local lsb
-        local lsb_hexdigit
-        local msb
+        local lsb lsb_hexdigit msb
     fi
     lsb=$(($1 & 0xf))
     getHexDigit "$lsb"
@@ -1849,19 +1809,17 @@ checksumPacketTX() {
 }
 
 convertHexToOctal() { #$1 - 0xff format
+    if [ "$SHELL_SUPPORT_PRINTF_VOPT" -eq 1 ]; then
+    #shellcheck disable=SC3045
+       printf -v VALUE_OCTAL "%03o" "$1"
+       return
+    fi
+
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        {
-            typeset dec
-            typeset lsb
-            typeset msb
-            typeset middle
-        }
+        typeset dec lsb msb middle
     else
-        local dec
-        local lsb
-        local msb
-        local middle
+        local dec lsb msb middle
     fi
     dec=$(($1))
 
@@ -1888,19 +1846,6 @@ convertBufferFromDecToOctalEscape() {
     [ $DEBUG -eq 1 ] && echo >&2 "Octal buffer $VALUE_OCTAL_BUFFER_ESCAPE"
 }
 
-convertBufferFromHexToOctalEscape() { #convert from ff ff to \377\377
-    #strace: each $( printf ) creates a new process (strace: Process nnnn attached )
-    unset VALUE_OCTAL_BUFFER_ESCAPE
-
-    for BYTE in $1; do
-        convertHexToOctal "0x$BYTE"
-        VALUE_OCTAL_BUFFER_ESCAPE="$VALUE_OCTAL_BUFFER_ESCAPE\\0$VALUE_OCTAL"
-
-    done
-
-    [ $DEBUG -eq 1 ] && echo >&2 "Octal buffer $VALUE_OCTAL_BUFFER_ESCAPE"
-}
-
 sendPacket() {
     sendPacketnc "$@" # $@ each arg expands to a separate word
 }
@@ -1909,24 +1854,9 @@ sendPacketnc() { #$1 - command
     #$2 - host
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        {
-            typeset ncUDPOpt # UDP (-u) or TCP
-            typeset ncIdleOpt
-            typeset port
-            typeset host
-            typeset timeout_udp_broadcast
-            typeset timeout_nc
-            typeset od_buffer
-        }
+        typeset ncUDPOpt ncIdleOpt port host timeout_udp_broadcast timeout_nc od_buffer
     else
-        local ncUDPOpt # UDP (-u) or TCP
-        local ncIdleOpt
-        local port
-        local host
-        local timeout_udp_broadcast
-        local timeout_nc
-        local useTimeout
-        local od_buffer
+        local   ncUDPOpt ncIdleOpt port host timeout_udp_broadcast timeout_nc useTimeout od_buffer
     fi
 
     timeout_nc=0.05
@@ -2049,16 +1979,11 @@ discovery_nc() { #$1 - subnet for udp scan
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
         {
-            typeset -i scan_max_iterations
-            typeset scan_nc_idle_timeout
-            typeset -i n
-            typeset broadcast
+            typeset -i scan_max_iterations n
+            typeset scan_nc_idle_timeout  broadcast
         }
     else
-        local scan_max_iterations
-        local scan_nc_idle_timeout
-        local n
-        local broadcast
+        local scan_max_iterations scan_nc_idle_timeout n broadcast
     fi
 
     scan_max_iterations=10
@@ -2296,13 +2221,9 @@ sendCustomized() {
 updateCustomized() {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        {
-            typeset value
-            typeset key
-        }
+            typeset value key
     else
-        local value
-        local key
+        local value key
     fi
 
     #readarray -d ',' -t OPTION_CUSTOMIZED < <(echo -n "$1") # <<< HERE string appends 0x0a -> using process substitution
@@ -2466,16 +2387,11 @@ convertScale10ToFloat() {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
         {
-            typeset -i int
-            typeset -i frac
-            typeset -i number
+            typeset -i int frac number
             typeset sign
         }
     else
-        local int
-        local frac
-        local number
-        local sign
+        local int frac number sign
     fi
 
     unset VALUE_SCALE10_FLOAT
@@ -2508,20 +2424,10 @@ initnc() {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
         {
-            typeset nc_ver
-            typeset nc_ver_header
-            typeset nc_status
-            typeset nc_exec
-            typeset ncat_exec
-            typeset busybox_exec
+            typeset nc_ver nc_ver_header nc_status nc_exec ncat_exec busybox_exec
         }
     else
-        local nc_ver
-        local nc_ver_header
-        local nc_status
-        local nc_exec
-        local ncat_exec
-        local busybox_exec
+        local nc_ver nc_ver_header nc_status nc_exec ncat_exec busybox_exec
     fi
 
     nc_exec=$(which nc 2>/dev/null)
@@ -2642,13 +2548,9 @@ argEmptyOrOption() {
 printCommands() {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
-    {
-      typeset cmd
-      typeset commands
-    }
+      typeset cmd commands
     else
-      local cmd
-      local commands
+      local cmd commands
     fi
 
     commands="$CMDOPT_RESET reboot mac $CMDOPT_VERSION"
@@ -2885,11 +2787,27 @@ initShell() {
     #https://zsh.sourceforge.io/FAQ/zshfaq03.html
        setopt shwordsplit  #zsh compability for "1 2 3" -> split in 1 2 3
     fi
+
     case "$(type printf)" in 
+        
         *builtin) #mksh does not have printf bulitin -> printf calls clone a new process -> reduced performance -> prefer echo over printf unless formatting is absolutely required
-        SHELL_SUPPORT_PRINTF=1 ;;
+            
+            SHELL_SUPPORT_PRINTF=1 
+
+            #storing value in variable from printf
+            #shellcheck disable=SC3045
+            if printf -v SHELL_SUPPORT_PRINTF_VOPT "%s" "-v" 1>/dev/null 2>/dev/null && [ "$SHELL_SUPPORT_PRINTF_VOPT" = '-v' ]; then
+              SHELL_SUPPORT_PRINTF_VOPT=1
+            else
+              SHELL_SUPPORT_PRINTF_VOPT=0
+            fi
+
+            ;;
+        
         *)
-        SHELL_SUPPORT_PRINTF=0 ;;
+
+            SHELL_SUPPORT_PRINTF=0
+            ;;
     esac
 
 }
