@@ -338,18 +338,16 @@ newBuffer() {
 }
 
 writeUInt32BE() {
-    PACKET_TX_BODY="$PACKET_TX_BODY $(($1 >> 24)) $((($1 & 0xff0000) >> 16))  $((($1 & 0xff00) >> 8))  $(($1 & 0xff))"
-    PACKET_TX_BODY_LENGTH=$((PACKET_TX_BODY_LENGTH + 4))
+    PACKET_TX_BODY="$PACKET_TX_BODY $(($1 >> 24)) $((($1 & 0xff0000) >> 16))  $((($1 & 0xff00) >> 8))  $(($1 & 0xff)) "
 }
 
 writeUInt16BE() {
-    PACKET_TX_BODY="$PACKET_TX_BODY $(($1 >> 8)) )  $(($1 & 0xff)) )"
-    PACKET_TX_BODY_LENGTH=$((PACKET_TX_BODY_LENGTH + 2))
+    [ "$DEBUG" -eq 1 ] && >&2 echo writeUInt16BE "$1" 
+    PACKET_TX_BODY="$PACKET_TX_BODY $(($1 >> 8)) $(($1 & 0xff)) "
 }
 
 writeUInt8() {
-    PACKET_TX_BODY="$PACKET_TX_BODY $1"
-    PACKET_TX_BODY_LENGTH=$((PACKET_TX_BODY_LENGTH + 1))
+    PACKET_TX_BODY="$PACKET_TX_BODY $1 "
 }
 
 readSlice() { #$1 - number of bytes n to read
@@ -456,6 +454,61 @@ readInt32BE() { #2's complement big endian
     VALUE_INT32BE=$((-1 * (VALUE_UINT32BE >> 31) * 0x80000000 + (VALUE_UINT32BE & 0x7fffffff)))
 
 }
+
+writeString()
+{
+  # PACKET_TX_BODY="${#1} $(printf "%s" "$1" | od -A n -t u1)"
+
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+        #shellcheck disable=SC3044
+        typeset len str decstr n
+    else
+        local  len str decstr n
+    fi 
+
+    str=$1
+    len=${#str}
+
+    #[ "$DEBUG" -eq 1 ] && 
+    >&2 echo  "writeString $1 len $len"
+
+    PACKET_TX_BODY="$PACKET_TX_BODY $len"
+    unset APPEND_FORMAT APPEND_STRING
+
+    n=1
+    while [ -n "$str" ]; do
+        suffix=${str#?}
+        eval C$n='${str%%"$suffix"}'
+        APPEND_FORMAT=$APPEND_FORMAT'%d ' # wait with printf-processing until entire sting is built
+        APPEND_STRING=$APPEND_STRING'\"$'"C$n " # \'$var or \"$var - char to ascii conversion in printf bulitin/command argument
+        str=$suffix
+        n=$(( n + 1 ))
+    done
+
+    if [ "$SHELL_SUPPORT_PRINTF_VOPT" -eq  1 ]; then
+        eval printf -v decstr \""$APPEND_FORMAT"\" "$APPEND_STRING"
+        PACKET_TX_BODY="$PACKET_TX_BODY $decstr"
+    else
+        PACKET_TX_BODY="$PACKET_TX_BODY $(eval printf \""$APPEND_FORMAT"\" "$APPEND_STRING")" #ok, run in subshell
+    fi
+
+    #cleanup variables
+    n=1
+    while [ "$n" -le "$len" ]; do
+        unset C$n 
+        n=$(( n + 1 ))
+    done
+
+    if [ -n "$KSH_VERSION" ]; then
+        unset len str decstr n
+    fi
+
+    
+    #[ "$DEBUG" -eq 1 ] && 
+    >&2 echo  "writeString $PACKET_TX_BODY"
+
+}
+
 
 readString() { #https://bugs.launchpad.net/ubuntu/+source/dash/+bug/1499473
     #\x formatted printf not supported in dash -> must use \nnn-octal
@@ -912,11 +965,7 @@ printBroadcast() {
    #    printf "%-25s %s\n%-25s %s\n%-25s %s\n%-25s %s\n%-25s %s\n" "broadcast mac" "$C_broadcast_mac"\
    #    "broadcast ip" "$C_broadcast_ip" "broadcast port" "$C_broadcast_port" "broadcast ssid" "$C_broadcast_ssid" "broadcast version" "$C_broadcast_version"
    # else
-      echo "broadcast mac     $C_broadcast_mac
-broadcast ip      $C_broadcast_ip
-broadcast port    $C_broadcast_port
-broadcast ssid    $C_broadcast_ssid
-broadcast version $C_broadcast_version"
+      echo "$C_broadcast_mac $C_broadcast_ip $C_broadcast_port $C_broadcast_ssid $C_broadcast_version"
     #fi
 }
 
@@ -966,15 +1015,13 @@ printLivedata() {
         local n
     fi
 
-    unset APPEND_FORMAT
-    unset APPEND_ARGS
-
+    
     printLivedataLine "$LIVEDATA_INTEMP_HEADER"  "$LIVEDATA_INTEMP" 7 "$UNIT_TEMP" 2 'tempin'
-    printLivedataLine "Indoor humidity" "$LIVEDATA_INHUMI" 5 "%" 4 'humidityin'
-    printLivedataLine "Absolute pressure" "$LIVEDATA_ABSBARO" 7 "$UNIT_PRESSURE" 4 'baroabs'
-    printLivedataLine "Relative pressure" "$LIVEDATA_RELBARO" 7 "$UNIT_PRESSURE" 4 'barorel'
     printLivedataLine "Outdoor temperature" "$LIVEDATA_OUTTEMP" 7 "$UNIT_TEMP" 2 'temp'
+    printLivedataLine "Indoor humidity" "$LIVEDATA_INHUMI" 5 "%" 4 'humidityin'
     printLivedataLine "Outdoor humidity" "$LIVEDATA_OUTHUMI" 5 "%" 4 'humidity'
+    printLivedataLine "Relative pressure" "$LIVEDATA_RELBARO" 7 "$UNIT_PRESSURE" 4 'barorel'
+    printLivedataLine "Absolute pressure" "$LIVEDATA_ABSBARO" 7 "$UNIT_PRESSURE" 4 'baroabs'
 
     #aggregated livedata in , format
 
@@ -1011,7 +1058,7 @@ $LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7
     [ -n "$LIVEDATA_UVI" ] && printLivedataLine "Solar UV index" "$LIVEDATA_UVI" 7 "" 4 'uvi'
 
     [ -n "$LIVEDATA_RAINRATE" ] && printLivedataLine "Rain rate" "$LIVEDATA_RAINRATE" 7 "$UNIT_RAINRATE" 5 'rainrate'
-    [ -n "$LIVEDATA_RAINEVENT" ] && printLivedataLine "Rain year" "$LIVEDATA_RAINEVENT" 7 "$UNIT_RAIN" 3 'rainevent'
+    [ -n "$LIVEDATA_RAINEVENT" ] && printLivedataLine "Rain event" "$LIVEDATA_RAINEVENT" 7 "$UNIT_RAIN" 3 'rainevent'
     [ -n "$LIVEDATA_RAINDAY" ] && printLivedataLine "Rain daily" "$LIVEDATA_RAINDAY" 7 "$UNIT_RAIN" 3 'rainday'
     [ -n "$LIVEDATA_RAINWEEK" ] && printLivedataLine "Rain week" "$LIVEDATA_RAINWEEK" 7 "$UNIT_RAIN" 3 'rainweek'
     [ -n "$LIVEDATA_RAINMONTH" ] && printLivedataLine "Rain month" "$LIVEDATA_RAINMONTH" 7 "$UNIT_RAIN" 3 'rainmonth'
@@ -1034,6 +1081,14 @@ $LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7
     #shellcheck disable=SC2153
     {
         eval "[ -n ''"\$LIVEDATA_TEMP$n" ] && printLivedataLine \"Temperature CH $n\" \"\$LIVEDATA_TEMP$n\" 7  \"\$UNIT_TEMP\" 2 \"temp$n\""
+     }
+        n=$((n + 1))
+    done
+
+    n=1
+    while [ "$n" -le "$TEMP_WH31_max_ch" ]; do
+    #shellcheck disable=SC2153
+    {
         eval "[ -n ''"\$LIVEDATA_HUMI$n" ] && printLivedataLine \"Humidity CH $n\" \"\$LIVEDATA_HUMI$n\" 5 \"%\" 4 \"humidity$n\""
     }
         n=$((n + 1))
@@ -1094,7 +1149,10 @@ $LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7
     echo >&2 "APPEND_ARGS $APPEND_ARGS"
    fi
 
-    eval printf \"$APPEND_FORMAT\" "$APPEND_ARGS"
+    eval printf \""$APPEND_FORMAT"\" "$APPEND_ARGS"
+
+    unset APPEND_FORMAT
+    unset APPEND_ARGS
 
     #unset local variables for ksh -> made global by using () function syntax without function keyword
     #https://www.unix.com/shell-programming-and-scripting/137435-ksh-different-syntax-function.html
@@ -1723,7 +1781,7 @@ convertUInt8ToHex() {
 
 }
 
-newPacketBodynew() {
+newPacketBody() {
     if [ -z "$1" ]; then
         echo >&2 Error no command given to newPacketBody
         return 1
@@ -1735,19 +1793,30 @@ newPacketBodynew() {
     PACKET_TX_PREAMBLE="255 255"
     unset PACKET_TX_BODY
 
-    PACKET_TX_BODY_LENGTH=1
+}
 
+getLength()
+#get length of tx packet buffer
+#$1 string of uint8 integers with space
+{
+    IFS=' '
+    VALUE_LENGTH=0
+    for BYTE in $1; do
+      VALUE_LENGTH=$(( VALUE_LENGTH + 1 ))
+    done
 }
 
 checksumPacketTX() {
-    PACKET_TX_BODY_LENGTH=$((PACKET_TX_BODY_LENGTH + 1)) # at least 1 byte for length field
+    set -x
+    getLength "$PACKET_TX_BODY"
+    set +x
+    PACKET_TX_BODY_LENGTH=$((VALUE_LENGTH + 2)) # at least 2 byte for length + checksum bytes
 
-    if [ "$PACKET_TX_CMD" -eq "$CMD_BROADCAST" ] || [ "$PACKET_TX_CMD" -eq $CMD_WRITE_SSID ]; then
+    if [ "$PACKET_TX_CMD" -eq "$CMD_BROADCAST" ] || [ "$PACKET_TX_CMD" -eq $CMD_WRITE_SSID ]; then # 2 byte length 
         PACKET_TX_BODY_LENGTH=$(( PACKET_TX_BODY_LENGTH + 1 ))
         PACKET_TX_LENGTH=" $(( ((PACKET_TX_BODY_LENGTH + 1) & 0xff00) >> 8 )) $(( (PACKET_TX_BODY_LENGTH + 1) & 0xff ))"
     else
-
-        PACKET_TX_LENGTH=$((PACKET_TX_BODY_LENGTH + 1))
+        PACKET_TX_LENGTH=$((PACKET_TX_BODY_LENGTH + 1)) # add 1 byte for cmd field
     fi
 
     if [ -n "$PACKET_TX_BODY" ]; then
@@ -1822,7 +1891,7 @@ sendPacketnc() { #$1 - command
 
     #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
     if [ $# -ge 1 ]; then
-        newPacketBodynew "$1"
+        newPacketBody "$1"
     fi
 
     if [ -n "$2" ]; then
@@ -1835,7 +1904,7 @@ sendPacketnc() { #$1 - command
 
     convertBufferFromDecToOctalEscape "$PACKET_TX" # \0377 \0377 \0nnn
     PACKET_TX_ESCAPE=$VALUE_OCTAL_BUFFER_ESCAPE
-    { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_PRINT_OD_BUFFER" ] ; } &&
+  #  { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_PRINT_OD_BUFFER" ] ; } &&
     {
         printf >&2 "> %-20s" "$COMMAND_NAME"
         printBuffer >&2 "$PACKET_TX"
@@ -2003,12 +2072,14 @@ checksum() {
 
     [ "$DEBUG" -eq 1 ] && >&2 echo  "Running checksum on $1"
     
+    IFS=" "
     for BYTE in $1; do
-        [ $DEBUG -eq 1 ] && >&2 echo  "checksum read $BYTE"
+        #[ $DEBUG -eq 1 ] && 
+         >&2 echo  "checksum read $BYTE"
         sum=$(( (sum + BYTE) & 255 ))
     done
 
-    [ $DEBUG -eq 1 ] && >&2  echo "checksum $sum"
+    [ $DEBUG -eq 1 ] &&  >&2  echo "checksum $sum $(printf "%2x" $sum)"
 
     VALUE_CHECKSUM=$sum
 
@@ -2125,7 +2196,7 @@ sendCalibration() {
 sendEcowittIntervalnew() {
     # observation: GW1000 red-wifi led blinks slowly if not sending data to ecowitt when 0=off
     if [ "$1" -ge 0 ] && [ "$1" -le 5 ]; then
-        newPacketBodynew $CMD_WRITE_ECOWITT_INTERVAL
+        newPacketBody $CMD_WRITE_ECOWITT_INTERVAL
         writeUInt8 "$1" #interval
         [ $DEBUG -eq 1 ] && echo >&2 Sending ecowitt interval "$1"
         sendPacket
@@ -2176,6 +2247,7 @@ sendCustomized() {
 }
 
 updateCustomized() {
+
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
             typeset value key
@@ -2219,108 +2291,109 @@ updateCustomized() {
 
         case "$key" in
 
-        id)
-            [ $DEBUG -eq 1 ] && echo >&2 Update customized_id from "$C_WS_CUSTOMIZED_ID to $value"
-            C_WS_CUSTOMIZED_ID=$value
-            ;;
-
-        password | pw)
-
-            [ $DEBUG -eq 1 ] && echo >&2 Update customized_password from "${C_WS_CUSTOMIZED_PASSWORD} to $value"
-            C_WS_CUSTOMIZED_PASSWORD=$value
-            ;;
-
-        server | s)
-
-            [ $DEBUG -eq 1 ] && echo >&2 Update customized_server from "$C_WS_CUSTOMIZED_SERVER to $value"
-            C_WS_CUSTOMIZED_SERVER=$value
-
-            ;;
-
-        port | p)
-            if ! isNumber "$value"; then
-                echo >&2 Error NaN cannot set customized port to $((value)) from "$value"
-            else
-                C_WS_CUSTOMIZED_PORT=$((value))
-                [ $DEBUG -eq 1 ] && echo >&2 Update customized_port from "$C_WS_CUSTOMIZED_PORT to $value"
-            fi
-
-            ;;
-
-        type | t)
-
-            case $value in
-
-            wunderground | wu | w | 1)
-                value=$((1))
+            id)
+                [ $DEBUG -eq 1 ] && echo >&2 Update customized_id from "$C_WS_CUSTOMIZED_ID to $value"
+                C_WS_CUSTOMIZED_ID=$value
                 ;;
 
-            ecowitt | ec | e | 0)
-                value=$((0))
+            password | pw)
+
+                [ $DEBUG -eq 1 ] && echo >&2 Update customized_password from "${C_WS_CUSTOMIZED_PASSWORD} to $value"
+                C_WS_CUSTOMIZED_PASSWORD=$value
                 ;;
 
-            esac
+            server | s)
 
-            if ! isNumber "$value"; then
-                echo >&2 Error NaN cannot set customized type to "$value"
-            else
-                C_WS_CUSTOMIZED_TYPE=$((value))
-                [ $DEBUG -eq 1 ] && echo >&2 Update customized_type from "$C_WS_CUSTOMIZED_TYPE to $value"
-            fi
+                [ $DEBUG -eq 1 ] && echo >&2 Update customized_server from "$C_WS_CUSTOMIZED_SERVER to $value"
+                C_WS_CUSTOMIZED_SERVER=$value
 
-            ;;
-
-        enabled | e)
-
-            case $value in
-
-            on | 1)
-                value=$((1))
                 ;;
 
-            off | 0)
-                value=$((0))
+            port | p)
+
+                if ! isNumber "$value"; then
+                    echo >&2 Error NaN cannot set customized port to $((value)) from "$value"
+                else
+                    C_WS_CUSTOMIZED_PORT=$((value))
+                    [ $DEBUG -eq 1 ] && echo >&2 Update customized_port from "$C_WS_CUSTOMIZED_PORT to $value"
+                fi
+
                 ;;
-            esac
 
-            if ! isNumber "$value"; then
-                echo >&2 Error Cannot set customized enabled to "$value"
-            else
-                [ $DEBUG -eq 1 ] && echo >&2 Update customized_enabled from "$C_WS_CUSTOMIZED_ENABLED to $value"
-                C_WS_CUSTOMIZED_ENABLED=$value
-            fi
+            type | t)
 
-            ;;
+                case $value in
 
-        interval | i)
+                wunderground | wu | w | 1)
+                    value=$((1))
+                    ;;
 
-            if ! isNumber "$value"; then
-                echo >&2 Error NaN cannot set customized interval to "$value"
-            else
-                [ $DEBUG -eq 1 ] && echo >&2 "Update customized_interval from $C_WS_CUSTOMIZED_INTERVAL to $value"
-                C_WS_CUSTOMIZED_INTERVAL=$((value))
+                ecowitt | ec | e | 0)
+                    value=$((0))
+                    ;;
 
-            fi
+                esac
 
-            ;;
+                if ! isNumber "$value"; then
+                    echo >&2 Error NaN cannot set customized type to "$value"
+                else
+                    C_WS_CUSTOMIZED_TYPE=$((value))
+                    [ $DEBUG -eq 1 ] && echo >&2 Update customized_type from "$C_WS_CUSTOMIZED_TYPE to $value"
+                fi
 
-        path_wunderground | path_wu | pwu)
+                ;;
 
-            [ $DEBUG -eq 1 ] && echo >&2 Update customized_path_wu from "$C_WS_CUSTOMIZED_PATH_WU to $value"
-            C_WS_CUSTOMIZED_PATH_WU=$value
+            enabled | e)
 
-            ;;
+                case $value in
 
-        path_ecowitt | path_ec | pec)
+                    on | 1)
+                        value=$((1))
+                        ;;
 
-            [ $DEBUG -eq 1 ] && echo >&2 Update customized_ecowitt_path from "$C_WS_CUSTOMIZED_PATH_ECOWITT to $value"
-            C_WS_CUSTOMIZED_PATH_ECOWITT=$value
+                    off | 0)
+                        value=$((0))
+                        ;;
+                esac
 
-            ;;
+                if ! isNumber "$value"; then
+                    echo >&2 Error Cannot set customized enabled to "$value"
+                else
+                    [ $DEBUG -eq 1 ] && echo >&2 Update customized_enabled from "$C_WS_CUSTOMIZED_ENABLED to $value"
+                    C_WS_CUSTOMIZED_ENABLED=$value
+                fi
 
-        *)
-            echo >&2 Skipped updateCustomized: unknown key "$key" value: "$value"
-            ;;
+                ;;
+
+            interval | i)
+
+                if ! isNumber "$value"; then
+                    echo >&2 Error NaN cannot set customized interval to "$value"
+                else
+                    [ $DEBUG -eq 1 ] && echo >&2 "Update customized_interval from $C_WS_CUSTOMIZED_INTERVAL to $value"
+                    C_WS_CUSTOMIZED_INTERVAL=$((value))
+
+                fi
+
+                ;;
+
+            path_wunderground | path_wu | pwu)
+
+                [ $DEBUG -eq 1 ] && echo >&2 Update customized_path_wu from "$C_WS_CUSTOMIZED_PATH_WU to $value"
+                C_WS_CUSTOMIZED_PATH_WU=$value
+
+                ;;
+
+            path_ecowitt | path_ec | pec)
+
+                [ $DEBUG -eq 1 ] && echo >&2 Update customized_ecowitt_path from "$C_WS_CUSTOMIZED_PATH_ECOWITT to $value"
+                C_WS_CUSTOMIZED_PATH_ECOWITT=$value
+
+                ;;
+
+            *)
+                echo >&2 Skipped updateCustomized: unknown key "$key" value: "$value"
+                ;;
         esac
 
         OPTION_CURRENT=$NEXT_OPTIONS
@@ -2714,7 +2787,6 @@ processCommand() {
             return 1
             ;;
     esac
-set +x
     return 0
 }
 
@@ -2767,8 +2839,6 @@ initShell() {
             SHELL_SUPPORT_PRINTF=0
             ;;
     esac
-
-    set +x
 
 }
 
@@ -3096,12 +3166,6 @@ while [ $# -gt 0 ]; do
 
         -t | --timezones)
             printTimezones
-            ;;
-
-        -z | --customized)
-
-            updateCustomized "$2"
-            shift 2
             ;;
 
         -w | --wifi)
