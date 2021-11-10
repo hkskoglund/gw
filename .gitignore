@@ -4,3 +4,4 @@ test/
 /prod/gw
 backup.txt
 itsraining.wav
+.vscode/settings.json

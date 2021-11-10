@@ -53,6 +53,19 @@ ERROR_PRX_PREAMBLE=7
 ERROR_EOF_OD_BUFFER=8
 ERROR_CONVERT=9
 
+#ANSI esqape
+#disable with -E option
+#https://en.wikipedia.org/wiki/ANSI_escape_code
+SGI_NORMAL='\e[0m'
+SGI_INVERT='\e[7m'
+SGI_BLINK='\e[6m'
+TERM_ANSI_ESCAPE=1
+
+#Limits for triggering of ansi escape
+LIMIT_WIND=${LIMIT_WIND:=80}  # 8 m/s - set param if value unset/null
+LIMIT_RAINRATE=${LIMIT_RAINRATE:=10} # 1.0 mm/h
+LIMIT_RELBARO=${LIMIT_BAROREL:=9900} # 990 hpa
+
 #to do: conversion
 UNIT_TEMP="C"
 UNIT_PRESSURE="hPa"
@@ -994,7 +1007,12 @@ printLivedataLine()
     #if [ "$SHELL_SUPPORT_PRINTF" -eq 1 ]; then
     #set -x
       # eval "printf \"%-25s %\$3s %\$5s\\n\" \"$1\" \"$2\" \"$4\""
-       APPEND_FORMAT=$APPEND_FORMAT"%-25s %$3s %$5s\n" #just use one printf call builtin/external -> builds up entire format and argument strings
+      if [ "$TERM_ANSI_ESCAPE" -eq 1 ]; then
+         APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE%-25s %$3s %$5s$SGI_NORMAL\n" #just use one printf call builtin/external -> builds up entire format and argument strings
+         unset SGI_LIVE
+      else
+         APPEND_FORMAT=$APPEND_FORMAT"%-25s %$3s %$5s\n" #just use one printf call builtin/external -> builds up entire format and argument strings
+      fi
        APPEND_ARGS=$APPEND_ARGS"\"$1\" $2 \"$4\" "
     #else
     #   printKey "$1" -25 ; printKey "$2" "$3"; printKey "$4" " $5" "\n"
@@ -1010,9 +1028,9 @@ printLivedata() {
 #prefer filenaming the same as used in Ecowitt-protocol
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        typeset n
+        typeset n SGI_LIVE
     else
-        local n
+        local n SGI_LIVE
     fi
 
     
@@ -1020,6 +1038,11 @@ printLivedata() {
     printLivedataLine "Outdoor temperature" "$LIVEDATA_OUTTEMP" 7 "$UNIT_TEMP" 2 'temp'
     printLivedataLine "Indoor humidity" "$LIVEDATA_INHUMI" 5 "%" 4 'humidityin'
     printLivedataLine "Outdoor humidity" "$LIVEDATA_OUTHUMI" 5 "%" 4 'humidity'
+
+    if [ "$LIVEDATA_RELBARO_RAW" -lt "$LIMIT_RELBARO" ]; then
+      SGI_LIVE=$SGI_INVERT$SGI_BLINK
+    fi
+       
     printLivedataLine "Relative pressure" "$LIVEDATA_RELBARO" 7 "$UNIT_PRESSURE" 4 'barorel'
     printLivedataLine "Absolute pressure" "$LIVEDATA_ABSBARO" 7 "$UNIT_PRESSURE" 4 'baroabs'
 
@@ -1049,15 +1072,36 @@ $LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7
 
     [ -n "$LIVEDATA_WINDDIRECTION" ] && printLivedataLine  "Wind direction" "$LIVEDATA_WINDDIRECTION" 5 "" 6 'winddir'
     [ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ] && printLivedataLine "Wind compass direction" "$LIVEDATA_WINDDIRECTION_COMPASS" 5 "" 5 'winddir_compass'
-    [ -n "$LIVEDATA_WINDSPEED" ] && printLivedataLine "Wind speed" "$LIVEDATA_WINDSPEED" 7 "$UNIT_WIND" 4 'windspeed'
-    [ -n "$LIVEDATA_WINDGUSTSPEED" ] && printLivedataLine "Wind gust" "$LIVEDATA_WINDGUSTSPEED" 7 "$UNIT_WIND" 4 'windgust'
-    [ -n "$LIVEDATA_WINDDAILYMAX" ] && printLivedataLine "Wind daily max" "$LIVEDATA_WINDDAILYMAX" 7 "$UNIT_WIND" 4 'winddailymax'
-
+    [ -n "$LIVEDATA_WINDSPEED" ] && {
+        if [ "$LIVEDATA_WINDSPEED_RAW" -gt "$LIMIT_WIND" ]; then
+          SGI_LIVE=$SGI_INVERT$SGI_BLINK
+        fi
+        printLivedataLine "Wind speed" "$LIVEDATA_WINDSPEED" 7 "$UNIT_WIND" 4 'windspeed' 
+    }
+    [ -n "$LIVEDATA_WINDGUSTSPEED" ] && 
+    {
+        if [ "$LIVEDATA_WINDGUSTSPEED_RAW" -gt "$LIMIT_WIND" ]; then
+          SGI_LIVE=$SGI_INVERT$SGI_BLINK
+        fi
+        printLivedataLine "Wind gust" "$LIVEDATA_WINDGUSTSPEED" 7 "$UNIT_WIND" 4 'windgust' 
+    }
+    [ -n "$LIVEDATA_WINDDAILYMAX" ] && {
+        if [ "$LIVEDATA_WINDDAILYMAX_RAW" -gt "$LIMIT_WIND" ]; then
+          SGI_LIVE=$SGI_INVERT$SGI_BLINK
+        fi
+        printLivedataLine "Wind daily max" "$LIVEDATA_WINDDAILYMAX" 7 "$UNIT_WIND" 4 'winddailymax' 
+    }
     [ -n "$LIVEDATA_LIGHT" ] && printLivedataLine "Light" "$LIVEDATA_LIGHT" 7 "$UNIT_LIGHT" 4 'light'
     [ -n "$LIVEDATA_UV" ] && printLivedataLine "Solar radiation UV" "$LIVEDATA_UV" 7 "$UNIT_SOLAR_RADIATION" 7 'uv'
     [ -n "$LIVEDATA_UVI" ] && printLivedataLine "Solar UV index" "$LIVEDATA_UVI" 7 "" 4 'uvi'
 
-    [ -n "$LIVEDATA_RAINRATE" ] && printLivedataLine "Rain rate" "$LIVEDATA_RAINRATE" 7 "$UNIT_RAINRATE" 5 'rainrate'
+    [ -n "$LIVEDATA_RAINRATE" ] && {
+        if [ "$LIVEDATA_RAINRATE_RAW" -gt "$LIMIT_RAINRATE" ]; then
+         SGI_LIVE=$SGI_INVERT$SGI_BLINK
+        fi
+        printLivedataLine "Rain rate" "$LIVEDATA_RAINRATE" 7 "$UNIT_RAINRATE" 5 'rainrate' 
+    }
+
     [ -n "$LIVEDATA_RAINEVENT" ] && printLivedataLine "Rain event" "$LIVEDATA_RAINEVENT" 7 "$UNIT_RAIN" 3 'rainevent'
     [ -n "$LIVEDATA_RAINDAY" ] && printLivedataLine "Rain daily" "$LIVEDATA_RAINDAY" 7 "$UNIT_RAIN" 3 'rainday'
     [ -n "$LIVEDATA_RAINWEEK" ] && printLivedataLine "Rain week" "$LIVEDATA_RAINWEEK" 7 "$UNIT_RAIN" 3 'rainweek'
@@ -1158,7 +1202,7 @@ $LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7
     #https://www.unix.com/shell-programming-and-scripting/137435-ksh-different-syntax-function.html
     #man ksh93: ksh93 uses static scoping (one global scope, one local scope per function) and allows local variables only on Korn style functions
     if [ -n "$KSH_VERSION" ]; then
-     unset n
+     unset n SGI_LIVE
     fi
 }
 
@@ -1181,6 +1225,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         if [ "$ldf" -eq $LDF_INTEMP ]; then
 
             readInt16BE
+            LIVEDATA_INTEMP_RAW=$VALUE_INT16BE
             convertScale10ToFloat "$VALUE_INT16BE"
             LIVEDATA_INTEMP=$VALUE_SCALE10_FLOAT #maybe export
 
@@ -1192,18 +1237,21 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         elif [ "$ldf" -eq $LDF_ABSBARO ]; then
 
             readUInt16BE
+            LIVEDATA_ABSBARO_RAW=$VALUE_UINT16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
             LIVEDATA_ABSBARO=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_RELBARO ]; then
 
             readUInt16BE
+            LIVEDATA_RELBARO_RAW=$VALUE_UINT16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
             LIVEDATA_RELBARO=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_OUTTEMP ]; then
 
             readInt16BE
+            LIVEDATA_OUTTEMP_RAW=$VALUE_INT16BE
             convertScale10ToFloat "$VALUE_INT16BE"
             LIVEDATA_OUTTEMP=$VALUE_SCALE10_FLOAT
 
@@ -1222,18 +1270,21 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         elif [ "$ldf" -eq $LDF_WINDSPEED ]; then
 
             readUInt16BE
+            LIVEDATA_WINDSPEED_RAW=$VALUE_UINT16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
             LIVEDATA_WINDSPEED=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_WINDGUSTSPPED ]; then
 
             readUInt16BE
+            LIVEDATA_WINDGUSTSPEED_RAW=$VALUE_UINT16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
             LIVEDATA_WINDGUSTSPEED=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_DAYLWINDMAX ]; then
 
             readUInt16BE
+            LIVEDATA_WINDDAILYMAX_RAW=$VALUE_UINT16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
             LIVEDATA_WINDDAILYMAX=$VALUE_SCALE10_FLOAT
 
@@ -1320,6 +1371,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         elif [ "$ldf" -eq $LDF_RAINRATE ]; then
 
             readUInt16BE
+            LIVEDATA_RAINRATE_RAW=$VALUE_UINT16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
             LIVEDATA_RAINRATE=$VALUE_SCALE10_FLOAT
 
@@ -1807,9 +1859,7 @@ getLength()
 }
 
 checksumPacketTX() {
-    set -x
     getLength "$PACKET_TX_BODY"
-    set +x
     PACKET_TX_BODY_LENGTH=$((VALUE_LENGTH + 2)) # at least 2 byte for length + checksum bytes
 
     if [ "$PACKET_TX_CMD" -eq "$CMD_BROADCAST" ] || [ "$PACKET_TX_CMD" -eq $CMD_WRITE_SSID ]; then # 2 byte length 
@@ -1904,7 +1954,7 @@ sendPacketnc() { #$1 - command
 
     convertBufferFromDecToOctalEscape "$PACKET_TX" # \0377 \0377 \0nnn
     PACKET_TX_ESCAPE=$VALUE_OCTAL_BUFFER_ESCAPE
-  #  { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_PRINT_OD_BUFFER" ] ; } &&
+    { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_PRINT_OD_BUFFER" ] ; } &&
     {
         printf >&2 "> %-20s" "$COMMAND_NAME"
         printBuffer >&2 "$PACKET_TX"
@@ -2074,8 +2124,7 @@ checksum() {
     
     IFS=" "
     for BYTE in $1; do
-        #[ $DEBUG -eq 1 ] && 
-         >&2 echo  "checksum read $BYTE"
+        [ $DEBUG -eq 1 ] && >&2 echo  "checksum read $BYTE"
         sum=$(( (sum + BYTE) & 255 ))
     done
 
@@ -3180,6 +3229,12 @@ while [ $# -gt 0 ]; do
 
             shift 3
             ;;
+
+        -E | --ansi-escape-disable)
+
+           unset TERM_ANSI_ESCAPE
+           shift
+           ;;
 
         *)        # unknown option
             shift # past argument
