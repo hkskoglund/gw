@@ -46,6 +46,7 @@ ERROR_NO_NC=6
 ERROR_PRX_PREAMBLE=7
 ERROR_EOF_OD_BUFFER=8
 ERROR_CONVERT=9
+ERROR_HTTP_MESSSAGE_EMPTY=10
 
 #ANSI esqape
 #disable with -E option
@@ -60,6 +61,10 @@ SGI_LIMIT_LIVEDATA_OUTTEMP_LOW=${SGI_LIMIT_LIVEDATA_OUTTEMP_LOW:=$SGI_LIGHTBLUE_
 SGI_LIMIT_LIVEDATA_OUTTEMP_HIGH=${SGI_LIMIT_LIVEDATA_OUTTEMP_HIGH:=$SGI_BRIGHTRED_BLACK}
 SGI_LIMIT_LIVEDATA_INTEMP_LOW=${SGI_LIMIT_LIVEDATA_INTEMP_LOW:=$SGI_LIGHTBLUE_BLACK}
 SGI_LIMIT_LIVEDATA_INTEMP_HIGH=${SGI_LIMIT_LIVEDATA_INTEMP_HIGH:=$SGI_BRIGHTRED_BLACK}
+
+
+SGI_BATTERY_LOW=${SGI_BATTERY_LOW:=$SGI_BRIGHTRED_BLACK}
+SGI_LEAK=${SGI_LEAK:="\a"$SGI_BRIGHTRED_BLACK} # add alert/bell \a if leakage detected
 
 TERM_ANSI_ESCAPE=${TERM_ANSI_ESCAPE:=1}
 
@@ -77,9 +82,8 @@ LIMIT_LIVEDATA_INTEMP_HIGH=${LIMIT_LIVEDATA_INTEMP_HIGH:=230}
 
 
 #to do: conversion
-UNIT_WIND="m/s"
-UNIT_SOLAR_RADIATION="µW/m2"
 UNIT_LIGHT="lux"
+UNIT_UV="µW/m2"
 UNIT_PM25="µg/m3"
 UNIT_CO2="ppm"
 
@@ -94,6 +98,14 @@ UNIT_RAIN_IN=1
 
 UNIT_WIND_MPS=0
 UNIT_WIND_MPH=1
+
+UNIT_UV_MICROWM2=0 # used by Ecowitt protocol
+UNIT_UV_WATTM2=1
+
+BATTERY_NORMAL=0
+BATTERY_LOW=1
+BATTERY_LEVEL_LOW=1 # 1 or 0
+BATTERY_VOLTAGE_LOW=12 # scale x 10 <= 1.2V is low
 
 NC_NMAP=0
 NC_OPENBSD=1
@@ -330,28 +342,28 @@ case $KSH_VERSION in
     ;;
 esac
 
-WH24_type=$((0x00))
-WH65_type=$((0x00))
-WH68_type=$((0x01))
-WH80_type=$((0x02))
-WH40_type=$((0x03))
-WH32_type=$((0x05))
-TEMP_WH31_type=$((0x06))
-TEMP_WH31_max_ch=8
-SOILMOISTURE_WH51_type=$((0x0e))
-SOILMOISTURE_WH51_max_ch=8
+WH24_TYPE=$((0x00))
+WH65_TYPE=$((0x00))
+WH68_TYPE=$((0x01))
+WH80_TYPE=$((0x02))
+WH40_TYPE=$((0x03))
+WH32_TYPE=$((0x05))
+TEMP_WH31_TYPE=$((0x06))
+TEMP_WH31_MAX_CH=8
+SOILMOISTURE_WH51_TYPE=$((0x0e))
+SOILMOISTURE_WH51_MAX_CH=8
 
 #Probably: cmd sensor_id up to 0x1e sensors type, and sensor_id_new from 0x1f (31)
-LEAK_WH55_type=$((0x1b))
-LEAK_WH55_max_ch=4
-PM25_WH43_type=$((0x16))
-PM25_WH43_max_ch=4
-WH57_type=$((0x1a))
-SOILTEMP_WH34_type=$((0x1f))
-SOILTEMP_WH34_max_ch=8
-LEAF_WETNESS_WH35_type=$((0x28))
-LEAF_WETNESS_WH35_max_ch=8
-WH45_type=$((0x27))
+LEAK_WH55_TYPE=$((0x1b))
+LEAK_WH55_MAX_CH=4
+PM25_WH43_TYPE=$((0x16))
+PM25_WH43_MAX_CH=4
+WH57_TYPE=$((0x1a))
+SOILTEMP_WH34_TYPE=$((0x1f))
+SOILTEMP_WH34_MAX_CH=8
+LEAF_WETNESS_WH35_TYPE=$((0x28))
+LEAF_WETNESS_WH35_MAX_CH=8
+WH45_TYPE=$((0x27))
 SENSORTYPE_MAX=47
 
 getCommandName() { #$1 -decimal command
@@ -500,8 +512,7 @@ writeString()
     str=$1
     len=${#str}
 
-    #[ "$DEBUG" -eq 1 ] && 
-    >&2 echo  "writeString $1 len $len"
+    [ "$DEBUG" -eq 1 ] && >&2 echo  "writeString $1 len $len"
 
     PACKET_TX_BODY="$PACKET_TX_BODY $len"
     unset APPEND_FORMAT APPEND_STRING
@@ -535,8 +546,7 @@ writeString()
     fi
 
     
-    #[ "$DEBUG" -eq 1 ] && 
-    >&2 echo  "writeString $PACKET_TX_BODY"
+    [ "$DEBUG" -eq 1 ] && >&2 echo  "writeString $PACKET_TX_BODY"
 
 }
 
@@ -678,9 +688,9 @@ getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
 
 getBatteryState() {
     unset SBATTERY_STATE
-    if [ "$1" -eq 0 ]; then
+    if [ "$1" -eq $BATTERY_NORMAL ]; then
         SBATTERY_STATE="normal" #ok
-    elif [ "$1" -eq 1 ]; then
+    elif [ "$1" -eq $BATTERY_LOW ]; then
         SBATTERY_STATE="low"
     fi
 }
@@ -859,20 +869,21 @@ parseSystem() {
 
     C_SYSTEM_FREQUENCY=$VALUE_UINT8
     if [ "$C_SYSTEM_FREQUENCY" -eq $SYSTEM_FREQUENCY_RFM433M ]; then
-        C_SYSTEM_FREQUENCY_STATE="433MHz"
+        C_SYSTEM_FREQUENCY_STATE="433 MHz"
     elif [ "$C_SYSTEM_FREQUENCY" -eq $SYSTEM_FREQUENCY_RFM868M ]; then
-        C_SYSTEM_FREQUENCY_STATE="868MHz"
+        C_SYSTEM_FREQUENCY_STATE="868 MHz"
     elif [ "$C_SYSTEM_FREQUENCY" -eq $SYSTEM_FREQUENCY_RFM915M ]; then
-        C_SYSTEM_FREQUENCY_STATE="915MHz"
+        C_SYSTEM_FREQUENCY_STATE="915 MHz"
     elif [ "$C_SYSTEM_FREQUENCY" -eq $SYSTEM_FREQUENCY_RFM920M ]; then
-        C_SYSTEM_FREQUENCY_STATE="920MHz"
+        C_SYSTEM_FREQUENCY_STATE="920 MHz"
     fi
+    LIVEDATA_SYSTEM_FREQUENCY=$C_SYSTEM_FREQUENCY_STATE
 
     readUInt8
 
     C_SYSTEM_SENSORTYPE=$VALUE_UINT8
     if [ "$C_SYSTEM_SENSORTYPE" -eq $SYSTEM_SENSOR_TYPE_WH24 ]; then
-        #       SENSOR_TYPE[WH24_type]="WH24:Outdoor Weather Sensor:16.0:" # overwrite default WH65_type=0
+        #       SENSOR_TYPE[WH24_TYPE]="WH24:Outdoor Weather Sensor:16.0:" # overwrite default WH65_TYPE=0
         C_SYSTEM_SENSORTYPE_STATE="WH24"
     elif [ "$C_SYSTEM_SENSORTYPE" -eq $SYSTEM_SENSOR_TYPE_WH65 ]; then
         C_SYSTEM_SENSORTYPE_STATE="WH65"
@@ -882,6 +893,7 @@ parseSystem() {
 
     C_SYSTEM_UTC=$VALUE_UINT32BE
     C_SYSTEM_UTC_STATE="$(date -u -d @"$VALUE_UINT32BE" +'%F %T')"
+    LIVEDATA_SYSTEM_UTC=$C_SYSTEM_UTC_STATE
 
     readUInt8
 
@@ -958,7 +970,8 @@ parseResult() {
     write_result=$VALUE_UINT8
 
     if [ "$write_result" -eq 0 ]; then
-        echo >&2 "$COMMAND_NAME OK"
+    :
+     #   echo >&2 "$COMMAND_NAME OK"
     elif [ "$write_result" -eq 1 ]; then
         echo >&2 "$COMMAND_NAME FAIL"
     fi
@@ -1028,6 +1041,19 @@ setWindMode()
 
 }
 
+setUVMode()
+{
+    UNIT_UV_MODE=$1
+    if [ "$UNIT_UV_MODE" -eq $UNIT_UV_MICROWM2 ]; then
+      UNIT_UV="W/m2?" # documentation for livedata protocol: ITEM_UV uW/m2?
+    elif [ "$UNIT_UV_MODE" -eq $UNIT_UV_WATTM2 ]; then
+      UNIT_UV="W/m2"
+    fi
+
+    [ "$DEBUG" -eq 1 ] && >&2 echo Unit UV : $UNIT_UV
+
+}
+
 setTemperatureMode()
 #$1 - mode
 {
@@ -1079,12 +1105,12 @@ printLivedataLine()
     #set -x
       # eval "printf \"%-25s %\$3s %\$5s\\n\" \"$1\" \"$2\" \"$4\""
       if [ "$TERM_ANSI_ESCAPE" -eq 1 ]; then
-         APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE%-25s $3 %$5s$SGI_NORMAL\n" #just use one printf call builtin/external -> builds up entire format and argument strings
+         APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE%-27s $3 %$5s$SGI_NORMAL\n" #just use one printf call builtin/external -> builds up entire format and argument strings
          unset SGI_LIVE
       else
-         APPEND_FORMAT=$APPEND_FORMAT"%-25s %$3s %$5s\n" #just use one printf call builtin/external -> builds up entire format and argument strings
+         APPEND_FORMAT=$APPEND_FORMAT"%-27s %$3s %$5s\n" #just use one printf call builtin/external -> builds up entire format and argument strings
       fi
-       APPEND_ARGS=$APPEND_ARGS"\"$1\" $2 \"$4\" "
+       APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$2\" \"$4\" "
     #else
     #   printKey "$1" -25 ; printKey "$2" "$3"; printKey "$4" " $5" "\n"
     #fi
@@ -1123,7 +1149,15 @@ printLivedata() {
             SGI_LIVE=$SGI_LIMIT_LIVEDATA_OUTTEMP_HIGH
         fi
 
-        printLivedataLine "Outdoor temperature" "$LIVEDATA_OUTTEMP" "%7.1f" "$UNIT_TEMP" 2 'temp'
+        printLivedataLine "Outdoor temperature" "$LIVEDATA_OUTTEMP" "%7.1f" "$UNIT_TEMP" 2 'tempout'
+    fi
+    
+    if [ -n "$LIVEDATA_WINDCHILL" ]; then
+        printLivedataLine "Windchill temperature" "$LIVEDATA_WINDCHILL" "%7.1f" "$UNIT_TEMP" 2 'windchill'
+    fi
+
+    if [ -n "$LIVEDATA_DEWPOINT" ]; then
+        printLivedataLine "Dewpoint temperature" "$LIVEDATA_DEWPOINT" "%7.1f" "$UNIT_TEMP" 2 'dewpoint'
     fi
 
     [ -n "$LIVEDATA_INHUMI" ] && printLivedataLine "Indoor humidity" "$LIVEDATA_INHUMI" "%5s" "%" 4 'humidityin'
@@ -1142,30 +1176,6 @@ printLivedata() {
             printLivedataLine "Relative pressure" "$LIVEDATA_RELBARO" "%8.2f" "$UNIT_PRESSURE" 4 'barorel'
             [ -n "$LIVEDATA_ABSBARO" ] && printLivedataLine "Absolute pressure" "$LIVEDATA_ABSBARO" "%8.2f" "$UNIT_PRESSURE" 4 'baroabs'
         fi
-    fi
-
-    #aggregated livedata in , format
-
-    if [ -n "$LOG_LIVEDATA"  ]; then
-    #IFS=, read ....
-        echo "$LIVEDATA_INTEMP,$LIVEDATA_INHUMI,$LIVEDATA_ABSBARO,$LIVEDATA_RELBARO,$LIVEDATA_OUTTEMP,$LIVEDATA_OUTHUMI" > "$DIR_LIVEDATA/baro.csv"
-        echo "$LIVEDATA_WINDDIRECTION,$LIVEDATA_WINDDIRECTION_COMPASS,$LIVEDATA_WINDSPEED,$LIVEDATA_WINDGUSTSPEED,$LIVEDATA_WINDDAILYMAX"  > "$DIR_LIVEDATA/wind.csv"
-        echo "$LIVEDATA_RAINRATE,$LIVEDATA_RAINEVENT,$LIVEDATA_RAINDAY,$LIVEDATA_RAINWEEK,$LIVEDATA_RAINMONTH,$LIVEDATA_RAINYEAR"  > "$DIR_LIVEDATA/rain.csv"
-        echo "$LIVEDATA_LIGHT,$LIVEDATA_UV,$LIVEDATA_UVI" > "$DIR_LIVEDATA/solar.csv"
-        echo "$LIVEDATA_TEMP1,$LIVEDATA_HUMI1,$LIVEDATA_TEMP2,$LIVEDATA_HUMI2,$LIVEDATA_TEMP3,$LIVEDATA_HUMI3,$LIVEDATA_TEMP4,$LIVEDATA_HUMI4\
-$LIVEDATA_TEMP5,$LIVEDATA_HUMI5,$LIVEDATA_TEMP6,$LIVEDATA_HUMI6,$LIVEDATA_TEMP7,$LIVEDATA_HUMI7,$LIVEDATA_TEMP8,$LIVEDATA_HUMI8" > "$DIR_LIVEDATA/temp.csv"
-        echo "$LIVEDATA_SOILMOISTURE1,$LIVEDATA_SOILMOISTURE2,$LIVEDATA_SOILMOISTURE3,$LIVEDATA_SOILMOISTURE4\
-$LIVEDATA_SOILMOISTURE5,$LIVEDATA_SOILMOISTURE6,$LIVEDATA_SOILMOISTURE7,$LIVEDATA_SOILMOISTURE8" >"$DIR_LIVEDATA/soilmoisture.csv"
-        echo "$LIVEDATA_SOILTEMP1,$LIVEDATA_SOILTEMP2,$LIVEDATA_SOILTEMP3,$LIVEDATA_SOILTEMP4\
-$LIVEDATA_SOILTEMP5,$LIVEDATA_SOILTEMP6,$LIVEDATA_SOILTEMP7,$LIVEDATA_SOILTEMP8" >"$DIR_LIVEDATA/soiltemp.csv"
-        echo "$LIVEDATA_LEAK1,$LIVEDATA_LEAK2,$LIVEDATA_LEAK3,$LIVEDATA_LEAK4" >"$DIR_LIVEDATA/leak.csv"
-        #shellcheck disable=SC2153
-        echo "$LIVEDATA_PM25_CH1,$LIVEDATA_PM25_24HAVG1,$LIVEDATA_PM25_CH2,$LIVEDATA_PM25_24HAVG2,$LIVEDATA_PM25_CH3,$LIVEDATA_PM25_24HAVG3,$LIVEDATA_PM25_CH4,$LIVEDATA_PM25_24HAVG4" >"$DIR_LIVEDATA/pm25.csv"
-        echo "$LIVEDATA_CO2_TEMPF,$LIVEDATA_CO2_HUMI,$LIVEDATA_CO2_PM10,$LIVEDATA_CO2_PM10_24HAVG,$LIVEDATA_CO2_PM25,$LIVEDATA_CO2_PM25_24HAVG,$LIVEDATA_CO2_CO2,$LIVEDATA_CO2_CO2_BATTERYLEVEL" >"$DIR_LIVEDATA/co2.csv"
-        echo "$LIVEDATA_LIGHTNING_DISTANCE,$LIVEDATA_LIGHTNING_TIME,$LIVEDATA_LIGHTNING_TIME_UTC,$LIVEDATA_LIGHTNING_POWER" >"$DIR_LIVEDATA/lightning.csv" 
-         echo "$LIVEDATA_LEAF_WETNESS_CH1,$LIVEDATA_LEAF_WETNESS_CH2,$LIVEDATA_LEAF_WETNESS_CH3,$LIVEDATA_LEAF_WETNESS_CH4,\
-$LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7,$LIVEDATA_LEAF_WETNESS_CH8" >"$DIR_LIVEDATA/leaf_wetness.csv"
-   
     fi
 
     [ -n "$LIVEDATA_WINDDIRECTION" ] && printLivedataLine  "Wind direction" "$LIVEDATA_WINDDIRECTION" "%5u" "" 6 'winddir'
@@ -1190,7 +1200,7 @@ $LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7
         printLivedataLine "Wind daily max" "$LIVEDATA_WINDDAILYMAX" "%7.1f" "$UNIT_WIND" 4 'winddailymax' 
     }
     [ -n "$LIVEDATA_LIGHT" ] && printLivedataLine "Light" "$LIVEDATA_LIGHT" "%7.1f" "$UNIT_LIGHT" 4 'light'
-    [ -n "$LIVEDATA_UV" ] && printLivedataLine "Solar radiation UV" "$LIVEDATA_UV" "%7.1f" "$UNIT_SOLAR_RADIATION" 7 'uv'
+    [ -n "$LIVEDATA_UV" ] && printLivedataLine "Solar UV radiation" "$LIVEDATA_UV" "%7.1f" "$UNIT_UV" 5 'uv'
     [ -n "$LIVEDATA_UVI" ] && printLivedataLine "Solar UV index" "$LIVEDATA_UVI" "%7u" "" 4 'uvi'
 
     [ -n "$LIVEDATA_RAINRATE" ] && {
@@ -1241,19 +1251,19 @@ $LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7
     [ -n "$LIVEDATA_RAINYEAR" ] && printLivedataLine "Rain year" "$LIVEDATA_RAINYEAR" "%7.1f" "$UNIT_RAIN" 3 'rainyear'
 
     n=1
-    while [ "$n" -le "$SOILMOISTURE_WH51_max_ch" ]; do
+    while [ "$n" -le "$SOILMOISTURE_WH51_MAX_CH" ]; do
         eval "[ -n ''"\$LIVEDATA_SOILMOISTURE$n" ] && printLivedataLine  \"Soil moisture CH $n\" \"\$LIVEDATA_SOILMOISTURE$n\" \"%5u\" \"%\" 4 \"soilmoisture$n\""
         n=$((n + 1))
     done
 
     n=1
-    while [ "$n" -le "$SOILTEMP_WH34_max_ch" ]; do
+    while [ "$n" -le "$SOILTEMP_WH34_MAX_CH" ]; do
         eval "[ -n ''"\$LIVEDATA_SOILTEMP$n" ] && printLivedataLine \"Soil temperature CH $n\" \"\$LIVEDATA_SOILTEMP$n\" \"%7.1f\" \"$UNIT_TEMP\" 2 \"soiltemperature$n\" "
         n=$((n + 1))
     done
 
     n=1
-    while [ "$n" -le "$TEMP_WH31_max_ch" ]; do
+    while [ "$n" -le "$TEMP_WH31_MAX_CH" ]; do
     #shellcheck disable=SC2153
     {
         eval "[ -n ''"\$LIVEDATA_TEMP$n" ] && printLivedataLine \"Temperature CH $n\" \"\$LIVEDATA_TEMP$n\" \"%7.1f\"  \"\$UNIT_TEMP\" 2 \"temp$n\""
@@ -1262,7 +1272,7 @@ $LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7
     done
 
     n=1
-    while [ "$n" -le "$TEMP_WH31_max_ch" ]; do
+    while [ "$n" -le "$TEMP_WH31_MAX_CH" ]; do
     #shellcheck disable=SC2153
     {
         eval "[ -n ''"\$LIVEDATA_HUMI$n" ] && printLivedataLine \"Humidity CH $n\" \"\$LIVEDATA_HUMI$n\" \"%5u\" \"%\" 4 \"humidity$n\""
@@ -1271,27 +1281,30 @@ $LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7
     done
 
     n=1
-    while [ "$n" -le "$TEMP_WH31_max_ch" ]; do
+    while [ "$n" -le "$TEMP_WH31_MAX_CH" ]; do
         eval "[ -n ''"\$LIVEDATA_TF_USR$n" ] && printLivedataLine \"Temperature USR $n\" \"\$LIVEDATA_TF_USR$n\" \"%7.1f\" \"\$UNIT_TEMP\" 2 \"temp_usr$n\""
         n=$((n + 1))
     done
 
     n=1
-    while [ "$n" -le "$LEAK_WH55_max_ch" ]; do
+    while [ "$n" -le "$LEAK_WH55_MAX_CH" ]; do
+      #TEST eval LIVEDATA_LEAK_CH$n=1
+       eval [ \"\$LIVEDATA_LEAK_CH$n\" -ne 0 ] && SGI_LIVE=$SGI_LEAK
         eval "[ -n ''"\$LIVEDATA_LEAK_CH$n" ] && printLivedataLine \"Leak CH $n\" \"\$LIVEDATA_LEAK_CH$n\" \"%5u\" \"\" 4 \"leak_ch$n\""
         n=$((n + 1))
+        sleep 1
     done
 
     [ -n "$LIVEDATA_PM25_CH1" ] && printLivedataLine "PM 2.5 CH 1" "$LIVEDATA_PM25_CH1" "%7.1f"  "$UNIT_PM25" 7 "pm25_ch1"
     n=2
-    while [ "$n" -le "$PM25_WH43_max_ch" ]; do
+    while [ "$n" -le "$PM25_WH43_MAX_CH" ]; do
         #shellcheck disable=SC2153
         eval "[ -n ''"\$LIVEDATA_PM25_CH$n" ] && printLivedataLine \"PM 2.5 CH $n\" \"\$LIVEDATA_PM25_CH$n\" \"%7.1f\" \"\$UNIT_PM25\" 7 \"pm25_ch$n\""
         n=$((n + 1))
     done
 
     n=1
-    while [ "$n" -le "$PM25_WH43_max_ch" ]; do
+    while [ "$n" -le "$PM25_WH43_MAX_CH" ]; do
         eval "[ -n ''"\$LIVEDATA_PM25_24HAVG$n" ] && printLivedataLine \"PM 2.5 CH $n 24h avg.\" \"\$LIVEDATA_PM25_24HAVG$n\" \"%7.1f\" \"\$UNIT_PM25\" 7 \"pm25_avg_24h_ch$n\""
         n=$((n + 1))
     done
@@ -1315,7 +1328,7 @@ $LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7
     [ -n "$LIVEDATA_LIGHTNING_POWER" ] && printLivedataLine "Lightning power" "$LIVEDATA_LIGHTNING_POWER"  "%7s" "" 5 "lightning_power"
 
     n=1
-    while [ "$n" -le "$LEAF_WETNESS_WH35_max_ch" ]; do
+    while [ "$n" -le "$LEAF_WETNESS_WH35_MAX_CH" ]; do
         eval "[ -n ''"\$LIVEDATA_LEAF_WETNESS_CH$n" ] && printLivedataLine \"Leaf wetness CH $n\" \"\$LIVEDATA_LEAF_WETNESS_CH$n\" \"%5u\" \"%\" 5 \"leaf_wetness_ch$n\""
         n=$((n + 1))
     done
@@ -1323,33 +1336,48 @@ $LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7
     #battery
 
     if [ -n "$LIVEDATA_WH65_BATTERY" ]; then
-         printLivedataLine "WH65 battery" "$LIVEDATA_WH65_BATTERY" "%7s" "" 5 "wh65_battery" 
+
+     if [ "$LIVEDATA_WH65_BATTERY" -eq "$BATTERY_LOW" ]; then
+            SGI_LIVE=$SGI_BATTERY_LOW
+     fi
+     printLivedataLine "WH65 battery" "$LIVEDATA_WH65_BATTERY_STATE" "%-7s" "" 5 "wh65_battery" 
     fi
 
     n=1
-    while [ "$n" -le "$TEMP_WH31_max_ch" ]; do
-        eval "[ -n ''"\$LIVEDATA_TEMP${n}_BATTERY" ] && printLivedataLine \"Temperature CH $n battery\" \"\$LIVEDATA_TEMP${n}_BATTERY\" \"%7s\"  \"\" 2 \"temp${n}_battery\""
+    while [ "$n" -le "$TEMP_WH31_MAX_CH" ]; do
+    
+        eval "[ -n ''"\$LIVEDATA_TEMP${n}_BATTERY_STATE" ] && [ "\$LIVEDATA_TEMP${n}_BATTERY" -eq $BATTERY_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
+        eval "[ -n ''"\$LIVEDATA_TEMP${n}_BATTERY_STATE" ] && printLivedataLine \"Temperature CH $n battery\" \"\$LIVEDATA_TEMP${n}_BATTERY_STATE\" \"%-7s\"  \"\" 2 \"temp${n}_battery_state\""
         n=$(( n + 1 ))
     done
 
     n=1
-    while [ "$n" -le "$PM25_WH43_max_ch" ]; do
+    while [ "$n" -le "$PM25_WH43_MAX_CH" ]; do
         #shellcheck disable=SC2153
-        eval "[ -n ''"\$LIVEDATA_PM25_CH${n}_BATTERY" ] && printLivedataLine \"PM 2.5 CH $n battery\" \"\$LIVEDATA_PM25_CH${n}_BATTERY\" \"%7s\" \"\" 7 \"pm25_ch${n}_battery\""
+        eval  "[ -n ''"\$LIVEDATA_PM25_CH${n}_BATTERY_STATE" ] && [ "\$LIVEDATA_PM25_CH${n}_BATTERY" -le $BATTERY_LEVEL_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
+        eval "[ -n ''"\$LIVEDATA_PM25_CH${n}_BATTERY_STATE" ] && printLivedataLine \"PM 2.5 CH $n battery\" \"\$LIVEDATA_PM25_CH${n}_BATTERY_STATE\" \"%-7s\" \"\" 7 \"pm25_ch${n}_battery_state\""
         n=$((n + 1))
     done
 
      n=1
-    while [ "$n" -le "$SOILMOISTURE_WH51_max_ch" ]; do
+    while [ "$n" -le "$SOILMOISTURE_WH51_MAX_CH" ]; do
+        eval "[ -n ''"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY" ] && [ "\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY_RAW" -le $BATTERY_VOLTAGE_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
         eval "[ -n ''"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY" ] && printLivedataLine  \"Soil moisture CH $n battery\" \"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY\" \"%6.1f\" \"V\" 2 \"soilmoisture${n}_battery\""
         n=$((n + 1))
     done
 
     n=1
-    while [ "$n" -le "$LEAK_WH55_max_ch" ]; do
-        eval "[ -n ''"\$LIVEDATA_LEAK_CH${n}_BATTERY" ] && printLivedataLine \"Leak CH $n battery\" \"\$LIVEDATA_LEAK_CH${n}_BATTERY\" \"%7s\" \"\" 4 \"leak_ch${n}_battery\""
+    while [ "$n" -le "$LEAK_WH55_MAX_CH" ]; do
+        eval "[ -n ''"\$LIVEDATA_LEAK_CH${n}_BATTERY" ] && [ "\$LIVEDATA_LEAK_CH${n}_BATTERY" -le $BATTERY_LEVEL_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
+        eval "[ -n ''"\$LIVEDATA_LEAK_CH${n}_BATTERY" ] && printLivedataLine \"Leak CH $n battery\" \"\$LIVEDATA_LEAK_CH${n}_BATTERY_STATE\" \"%-7s\" \"\" 4 \"leak_ch${n}_battery_state\""
         n=$((n + 1))
     done
+
+    #system
+
+    [ -n "$LIVEDATA_SYSTEM_VERSION" ] && printLivedataLine "System version" "$LIVEDATA_SYSTEM_VERSION" "%-7s" "" 5 "system_version"
+    [ -n "$LIVEDATA_SYSTEM_UTC" ] && printLivedataLine "System utc" "$LIVEDATA_SYSTEM_UTC" "%-20s" "" 5 "system_utc"
+    [ -n "$LIVEDATA_SYSTEM_FREQUENCY" ] && printLivedataLine "System frequency" "$LIVEDATA_SYSTEM_FREQUENCY" "%-7s" "" 5 "system_frequency"
 
 
    if [ "$DEBUG" -eq 1 ]; then 
@@ -1455,12 +1483,20 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         elif [ "$ldf" -eq $LDF_LIGHT ]; then
 
             readUInt32BE
+            LIVEDATA_LIGHT_RAW=$VALUE_UINT32BE
             convertScale10ToFloat "$VALUE_UINT32BE"
             LIVEDATA_LIGHT=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_UV ]; then
 
             readUInt16BE
+            [ "$DEBUG" -eq 1 ] && echo >&2 "RAW UV value $VALUE_UINT16BE, converting lux $LIVEDATA_LIGHT to W/m2 instead "
+            #setUVMode $UNIT_UV_MICROWM2
+            #is it µW? is it scale 10 ?
+            #lux 976 -> solar radiation raw value 11 -> ecowitt protcol: 7.7 W/m2
+            #https://help.ambientweather.net/help/why-is-the-lux-to-w-m-2-conversion-factor-126-7/
+            setUVMode $UNIT_UV_WATTM2
+            VALUE_UINT16BE=$(( LIVEDATA_LIGHT_RAW*1075/136000 ))
             convertScale10ToFloat "$VALUE_UINT16BE"
             LIVEDATA_UV=$VALUE_SCALE10_FLOAT
 
@@ -1788,15 +1824,15 @@ parsePath() {
 }
 
 printCustomized() {
-    echo "customized id                 $C_WS_CUSTOMIZED_ID
-customized password           $C_WS_CUSTOMIZED_PASSWORD
-customized server             $C_WS_CUSTOMIZED_SERVER
-customized port               $C_WS_CUSTOMIZED_PORT
-customized interval           $C_WS_CUSTOMIZED_INTERVAL
-customized type               $C_WS_CUSTOMIZED_TYPE $C_WS_CUSTOMIZED_TYPE_STATE protocol
-customized enabled            $C_WS_CUSTOMIZED_ENABLED $C_WS_CUSTOMIZED_ENABLED_STATE
-customized path ecowitt       $C_WS_CUSTOMIZED_PATH_ECOWITT
-customized path wunderground  $C_WS_CUSTOMIZED_PATH_WU"
+    echo "id                 $C_WS_CUSTOMIZED_ID
+password           $C_WS_CUSTOMIZED_PASSWORD
+server             $C_WS_CUSTOMIZED_SERVER
+port               $C_WS_CUSTOMIZED_PORT
+interval           $C_WS_CUSTOMIZED_INTERVAL
+protocol           $C_WS_CUSTOMIZED_TYPE $C_WS_CUSTOMIZED_TYPE_STATE 
+enabled            $C_WS_CUSTOMIZED_ENABLED $C_WS_CUSTOMIZED_ENABLED_STATE
+path ecowitt       $C_WS_CUSTOMIZED_PATH_ECOWITT
+path wunderground  $C_WS_CUSTOMIZED_PATH_WU"
 }
 
 parseCustomized() {
@@ -2465,40 +2501,27 @@ updateCustomized() {
 
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-            typeset value key
+            typeset value key option
     else
-        local value key
+        local value key option
     fi
 
     #readarray -d ',' -t OPTION_CUSTOMIZED < <(echo -n "$1") # <<< HERE string appends 0x0a -> using process substitution
 
     [ $DEBUG -eq 1 ] && echo >&2 "updateCustomized $1"
 
-    OPTION_CURRENT=$1
+    # 1. parse , expressions server=localhost,port=8080,protocol=ecowitt,enabled=yes
 
-    while [ -n "$OPTION_CURRENT" ]; do
+     IFS=','
+     for option in $1; do
+        
+        [ $DEBUG -eq 1 ] && echo >&2 "updateCustomized: option $option"
 
-        # first parse , expressions format: enabled=1,port=8000,server=test.no
+        # 2. parse = expressions
 
-        ##        IFS=',' read -r OPTION_CUSTOMIZED NEXT_OPTIONS << EOF
-        #$OPTION_CURRENT
-        #EOF
-        IFS=','
-        #shellcheck disable=SC2086
-        set -- $OPTION_CURRENT
-        OPTION_CUSTOMIZED=$1
-        NEXT_OPTIONS=$2
-
-        [ $DEBUG -eq 1 ] && echo >&2 "updateCustomized OPTION_CUSTOMIZED $OPTION_CUSTOMIZED $NEXT_OPTIONS"
-
-        # second parse = expressions
-
-        #      IFS='=' read -r  key value << EOF
-        #$OPTION_CUSTOMIZED
-        #EOF
         IFS='='
         #shellcheck disable=SC2086
-        set -- $OPTION_CUSTOMIZED
+        set -- $option
         key=$1
         value=$2
 
@@ -2524,7 +2547,7 @@ updateCustomized() {
 
                 ;;
 
-            port | p)
+            port)
 
                 if ! isNumber "$value"; then
                     echo >&2 Error NaN cannot set customized port to $((value)) from "$value"
@@ -2535,17 +2558,17 @@ updateCustomized() {
 
                 ;;
 
-            protocol | type | t)
+            protocol | p)
 
                 case $value in
 
-                wunderground | wu | w | 1)
-                    value=$((1))
-                    ;;
+                    wunderground | wu | w)
+                        value=$((1))
+                        ;;
 
-                ecowitt | ec | e | 0)
-                    value=$((0))
-                    ;;
+                    ecowitt | ec | e)
+                        value=$((0))
+                        ;;
 
                 esac
 
@@ -2553,7 +2576,7 @@ updateCustomized() {
                     echo >&2 Error NaN cannot set customized type to "$value"
                 else
                     C_WS_CUSTOMIZED_TYPE=$((value))
-                    [ $DEBUG -eq 1 ] && echo >&2 Update customized_type from "$C_WS_CUSTOMIZED_TYPE to $value"
+                    [ $DEBUG -eq 1 ] && echo >&2 Update customized_TYPE from "$C_WS_CUSTOMIZED_TYPE to $value"
                 fi
 
                 ;;
@@ -2562,11 +2585,11 @@ updateCustomized() {
 
                 case $value in
 
-                    on | 1)
+                    on | 1 | yes | y)
                         value=$((1))
                         ;;
 
-                    off | 0)
+                    off | 0 | no | n)
                         value=$((0))
                         ;;
                 esac
@@ -2611,8 +2634,6 @@ updateCustomized() {
                 ;;
         esac
 
-        OPTION_CURRENT=$NEXT_OPTIONS
-
     done
 
     #https://stackoverflow.com/questions/18668556/how-can-i-compare-numbers-in-bash
@@ -2622,8 +2643,9 @@ updateCustomized() {
     sendCustomized
 
     if [ -n "$KSH_VERSION" ]; then
-      unset key value
+      unset key value option
     fi
+
 
 }
 
@@ -2755,10 +2777,8 @@ initConfigDir() {
     
     [ -n "$EXTERNAL_STORAGE" ] && DIR_CONFIG=$EXTERNAL_STORAGE # testing in Android 11 adb shell
     DIR_LIVEDATA="$EXTERNAL_STORAGE/tmp/gw/livedata"
-    DIR_ECOWITT="$EXTERNAL_STORAGE/tmp/gw/ecowitt"
-    DIR_WUNDERGROUND="$EXTERNAL_STORAGE/tmp/gw/wunderground"
-    [ ! -d "$DIR_CONFIG" ] || [ ! -d "$DIR_LIVEDATA" ] || [ ! -d "$DIR_ECOWITT" ] && mkdir -p -v "$DIR_CONFIG" "$DIR_LIVEDATA"  "$DIR_ECOWITT" "$DIR_WUNDERGROUND" 1>&2
-    [ "$DEBUG" -eq 1 ] &&  echo >&2 Directory config "$DIR_CONFIG" livedata "$DIR_LIVEDATA" ecowitt "$DIR_ECOWITT" wunderground "$DIR_WUNDERGROUND"
+    [ ! -d "$DIR_CONFIG" ] || [ ! -d "$DIR_LIVEDATA" ]  && mkdir -p -v "$DIR_CONFIG" "$DIR_LIVEDATA"   1>&2
+    [ "$DEBUG" -eq 1 ] &&  echo >&2 Directory config "$DIR_CONFIG" livedata "$DIR_LIVEDATA"
 
     #SHELLPID=$$
 
@@ -2929,7 +2949,7 @@ processCommand() {
         customized | c | cust)
 
             if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_PATH
+                sendPacket $CMD_READ_PATH >/dev/null
                 sendPacket $CMD_READ_CUSTOMIZED
             else
                 sendPacket $CMD_READ_PATH >/dev/null
@@ -3014,7 +3034,7 @@ isNumber() {
 
 initShell() {
     #shellcheck disable=SC3010,SC2050
-    eval "if type "[[" >/dev/null && [[ a =~ a ]] 2>/dev/null ; then
+    eval "if 2>/dev/null 1>/dev/null type '[['  && 2>/dev/null [[ a =~ a ]] ; then
         SHELL_SUPPORT_TILDE_REGEX=1
     else
         SHELL_SUPPORT_TILDE_REGEX=0
@@ -3082,8 +3102,18 @@ getFloatAsIntDecmial()
     FLOAT_INT=${1%%.*}
     FLOAT_DECIMALS=${1#*.}
     FLOAT_SCALE10=${#FLOAT_DECIMALS}
-    if [ "$FLOAT_INT" = 0 ]; then
-      FLOAT_AS_INT=${FLOAT_DECIMALS##0} # removes zeros after .
+    if [ "$FLOAT_INT" = 0 ]; then # we have a number 0.???
+      while [ ${#FLOAT_DECIMALS} -gt 1 ]; do # removes leadning zeros, otherwise number is intepreted as  octal
+        case "$FLOAT_DECIMALS" in
+                0*) FLOAT_DECIMALS=${FLOAT_DECIMALS#0} # removes zeros after .
+                    true
+                    ;;
+                *) break # this while loop
+                   false
+                   ;;
+        esac
+      done
+      FLOAT_AS_INT=$FLOAT_DECIMALS
     else
       FLOAT_AS_INT=$FLOAT_INT$FLOAT_DECIMALS
     fi
@@ -3251,21 +3281,434 @@ setPressureLivedata()
     fi
 }
 
+parseEcowittHttpRequest()
+#$1 - http message
+{
+   if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+        #shellcheck disable=SC3044
+       typeset http_body f value key
+   else
+       local http_body f value key
+   fi
+
+    http_body=$(echo "$1" | tail -n +7) # just skip headers -n +7
+    IFS='&'
+    
+    for f in $http_body; do
+        
+        value=${f##*=}
+        key=${f%%=*}
+        
+        if [ "$key" = PASSKEY ]; then
+            continue
+        fi
+
+        case "$key" in
+
+            tempinf)
+
+                setTemperatureLivedata LIVEDATA_INTEMP "$value" 
+                ;;
+
+            tempf)
+                setTemperatureLivedata LIVEDATA_OUTTEMP "$value"
+                ;;
+
+            humidityin)
+
+                LIVEDATA_INHUMI=$value
+                ;;
+
+            humidity)
+                
+                LIVEDATA_OUTHUMI=$value
+                ;;
+
+            baromrelin)
+
+                setPressureLivedata LIVEDATA_RELBARO "$value"
+                ;;
+
+            baromabsin)
+
+                setPressureLivedata LIVEDATA_ABSBARO "$value"
+                    ;;
+
+            temp?f)
+            
+                channel=${key##temp}
+                channel=${channel%f}
+                setTemperatureLivedata LIVEDATA_TEMP"$channel" "$value" 
+                ;;
+
+            humidity?)
+
+                channel=${key##humidity}
+                eval LIVEDATA_HUMI"$channel"="$value"
+                ;;
+            
+            winddir)
+                setWindDirLivedata LIVEDATA_WINDDIRECTION "$value"
+                ;;
+
+            windspeedmph)
+
+                setWindLivedata LIVEDATA_WINDSPEED "$value"
+                ;;
+
+            windgustmph)
+
+                setWindLivedata LIVEDATA_WINDGUSTSPEED "$value"
+                ;;
+
+            maxdailygust)
+
+                setWindLivedata LIVEDATA_WINDDAILYMAX "$value"
+                ;;
+        
+            rainratein)
+
+                setRainLivedata LIVEDATA_RAINRATE "$value"
+                ;;
+
+            eventrainin)
+
+                setRainLivedata LIVEDATA_RAINEVENT "$value"
+                ;;
+
+                hourlyrainin)
+
+                setRainLivedata LIVEDATA_RAINHOUR "$value"
+                ;;
+
+                dailyrainin)
+
+                setRainLivedata LIVEDATA_RAINDAY "$value"
+                ;;
+
+            weeklyrainin)
+
+                setRainLivedata LIVEDATA_RAINWEEK "$value"
+                ;;
+
+            monthlyrainin)
+                
+                setRainLivedata LIVEDATA_RAINMONTH "$value"
+                ;;
+
+            yearlyrainin)
+
+                setRainLivedata LIVEDATA_RAINYEAR "$value"
+                ;;
+
+            soilmoisture?)
+
+                channel=${key##soilmoisture}
+                eval LIVEDATA_SOILMOISTURE"$channel"="$value"
+            ;;
+
+            pm25_ch?)
+
+                channel=${key##pm25_ch}
+                eval LIVEDATA_PM25_CH"$channel"="$value"
+                ;;
+
+            pm25_avg_24h_ch?)
+
+                channel=${key##pm25_avg_24h_ch}
+                eval LIVEDATA_PM25_24HAVG"$channel"="$value"
+                ;;
+
+            leak_ch?)
+
+                channel=${key##leak_ch}
+                eval "LIVEDATA_LEAK_CH$channel=$value"
+                ;;
+
+            solarradiation)
+                LIVEDATA_UV=$value
+                ;;
+
+            uv)
+
+                LIVEDATA_UVI=$value
+                ;;
+
+
+            wh65batt)
+
+                getBatteryState "$value"
+                LIVEDATA_WH65_BATTERY=$value
+                LIVEDATA_WH65_BATTERY_STATE=$SBATTERY_STATE
+                ;;
+
+            batt?)
+
+                channel=${key##batt}
+                getBatteryState "$value"
+                eval "LIVEDATA_TEMP${channel}_BATTERY=$value"
+                eval "LIVEDATA_TEMP${channel}_BATTERY_STATE=$SBATTERY_STATE"
+                ;;
+
+            pm25batt?)
+            
+                channel=${key##pm25batt}
+                getBatteryLevelState "$value"
+                eval "LIVEDATA_PM25_CH${channel}_BATTERY=$value"
+                eval "LIVEDATA_PM25_CH${channel}_BATTERY_STATE=$SBATTERY_STATE"
+                ;;
+
+            soilbatt?)
+
+                channel=${key##soilbatt}
+                getFloatAsIntDecmial "$value"
+                
+                eval "LIVEDATA_SOILMOISTURE_CH${channel}_BATTERY_RAW=$FLOAT_AS_INT"  
+                eval "LIVEDATA_SOILMOISTURE_CH${channel}_BATTERY=$value"  
+                ;;
+
+            leakbatt?)
+                
+                channel=${key##leakbatt}
+                getBatteryLevelState "$value"
+                eval "LIVEDATA_LEAK_CH${channel}_BATTERY=$value"
+                eval "LIVEDATA_LEAK_CH${channel}_BATTERY_STATE=$SBATTERY_STATE"
+                ;;
+
+            stationtype)
+
+                LIVEDATA_SYSTEM_VERSION=$value
+                ;;
+
+            dateutc)
+            
+                IFS=+
+                #shellcheck disable=SC2086
+                set -- $value
+                
+                LIVEDATA_SYSTEM_UTC="$1 $2"
+                ;;
+
+            freq)
+
+                IFS="M"
+                #shellcheck disable=SC2086
+                set -- $value
+                LIVEDATA_SYSTEM_FREQUENCY=$1" MHz"
+                ;;
+                
+        esac
+    done
+
+    printLivedata
+
+    if [ -n "$KSH_VERSION" ]; then
+       unset http_body f key value
+    fi
+
+}
+
+parseWundergroundHttpRequest()
+{
+
+   if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+        #shellcheck disable=SC3044
+       typeset http_body f value key
+   else
+       local http_body f value key
+   fi
+
+      #https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request
+
+    http_body=$(echo "$1" | head -n 1)
+    http_body=${http_body##GET*ID=} # remove method GET and directory prefix, assume qs always starts with ID=
+    http_body=${http_body%% HTTP*} # remove HTTP/1.0 at end
+    http_body="ID="$http_body
+
+    IFS='&'
+    for f in $http_body; do
+    
+        value=${f##*=}
+        key=${f%%=*}
+    
+        if [ "$key" = PASSWORD ] || [  "$key" = ID ]; then
+            continue
+        fi
+            #password is url encoded, for example space=%20 https://stackoverflow.com/questions/6250698/how-to-decode-url-encoded-string-in-shell
+        #TEST echo "$key=$value"
+
+    #https://support.weather.com/s/article/PWS-Upload-Protocol?language=en_US
+        case "$key" in
+
+            tempf)
+                
+                setTemperatureLivedata LIVEDATA_OUTTEMP "$value"
+                ;;
+
+            dewptf)
+               setTemperatureLivedata LIVEDATA_DEWPOINT "$value"
+               ;;
+            
+            windchillf)
+              setTemperatureLivedata LIVEDATA_WINDCHILL "$value"
+              ;;
+            
+            humidity)
+
+                LIVEDATA_OUTHUMI=$value
+                ;;
+
+            indoortempf)
+
+                setTemperatureLivedata LIVEDATA_INTEMP "$value"
+                ;;
+            
+            indoorhumidity)
+
+                LIVEDATA_INHUMI=$value
+                ;;
+            
+            baromin)
+                
+                setPressureLivedata LIVEDATA_RELBARO "$value"
+                ;;
+
+            rainin)
+                #or pr hour?
+                setRainLivedata LIVEDATA_RAINRATE "$value"
+                ;;
+
+            dailyrainin)
+
+                setRainLivedata LIVEDATA_RAINDAY "$value"
+                ;;
+
+            weeklyrainin)
+
+                setRainLivedata LIVEDATA_RAINWEEK "$value"
+                ;;
+
+            monthlyrainin)
+
+                setRainLivedata LIVEDATA_RAINMONTH "$value"
+                ;;
+
+            yearlyrainin)
+
+                setRainLivedata LIVEDATA_RAINYEAR "$value"
+                ;;
+
+            winddir)
+
+                setWindDirLivedata LIVEDATA_WINDDIRECTION "$value"
+
+                ;;
+
+            windspeedmph)
+
+                setWindLivedata LIVEDATA_WINDSPEED "$value"
+                ;;
+
+            windgustmph)
+
+                setWindLivedata LIVEDATA_WINDGUSTSPEED "$value"
+                ;;
+
+            solarradiation)
+                
+                LIVEDATA_UV=$value
+                ;;
+
+            UV)
+                
+                LIVEDATA_UVI=$value
+                ;;
+
+            AqPM2\.5)
+
+                LIVEDATA_PM25_CH1="$value"
+                ;;
+
+            soilmoisture)
+                LIVEDATA_SOILMOISTURE1="$value"
+                ;;
+
+            soilmoisture?)
+
+                channel=${key##soilmoisture}
+                eval LIVEDATA_SOILMOISTURE"$channel"="$value"
+                ;;
+
+            softwaretype)
+
+               LIVEDATA_SYSTEM_VERSION=$value
+               ;;
+
+        esac
+    done
+
+    printLivedata
+
+    if [ -n "$KSH_VERSION" ]; then
+       unset http_body f key value
+    fi
+
+}
+
+httpServerEcowittWunderground()
+#$1 - port number 
+{
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+      #shellcheck disable=SC3044
+      typeset http_message
+    else
+      local http_message
+    fi
+
+    [ "$DEBUG" -eq 1 ] && >&2 echo Listening on port "$1".
+
+    if [ $NC_VERSION -eq $NC_NMAP ]; then 
+        http_message=$( nc -l -i 0.1 "$1" 2>/dev/null) # - idle timeout to exit early, not waiting for server to close/FIN
+    elif [ $NC_VERSION -eq $NC_OPENBSD ]; then
+        http_message=$( nc -l -w 1 "$1" 2>/dev/null) # - -w to exit on idle for 1s
+    elif [ $NC_VERSION -eq $NC_TOYBOX ]; then 
+        http_message=$( nc -p "$1" -W 1 -l  2>/dev/null) # - -W to exit on idle for 1s
+    else
+        echo >&2 Error unsupported nc version "$NC_VERSION"
+    fi
+
+    if [ -z "$http_message" ]; then
+        [ $DEBUG -eq 1 ] && echo >&2 Empty http message from nc
+        return $ERROR_HTTP_MESSSAGE_EMPTY
+    fi
+
+    [ "$DEBUG" -eq 1 ] && echo >&2 "$http_message"
+    
+    case "$http_message" in
+        
+        POST*)  parseEcowittHttpRequest "$http_message"
+                
+                #https://stackoverflow.com/a/69836872/2076536
+                ;;
+        
+        GET*)   parseWundergroundHttpRequest "$http_message"
+                #cd /tmp/gw/wunderground; watch -n 16 'for f in *; do read v < "$f"; printf "%-30s %s\n" "$f" "$v"; done'
+                ;;
+    esac
+
+    if [ -n "$KSH_VERSION" ]; then
+      unset http_message
+    fi
+}
+
 cleanup()
 {
    
    if [ -n "$LOG_LIVEDATA" ]; then
-        exec 1>&6 6>&- #copy backup fd 6 to stdout 1 and close 6
+        #2>/dev/null exec 1>&6 6>&- #copy backup fd 6 to stdout 1 and close 6 (may get "Bad file descriptor if 6 is not redirected")
         rm "$DIR_LIVEDATA"/* #dont use "*" otherwise pathname/globbing expansion doesnt work
    fi
 
-   if [ -n "$LOG_ECOWITT" ]; then
-      rm  "$DIR_ECOWITT"/*
-   fi
-
-    if [ -n "$LOG_WUNDERGROUND" ]; then
-      rm  "$DIR_WUNDERGROUND"/*
-    fi
     exit
 }
 
@@ -3333,13 +3776,12 @@ while [ $# -gt 0 ]; do
 
        -L  | --log-livedata)
           LOG_LIVEDATA=1
-            exec 6>&1 #backup stdout fd
-            exec >/dev/null #redirect stdout to /dev/null
-
+           # exec 6>&1 #backup stdout fd
+           # exec >/dev/null #redirect stdout to /dev/null
 
             #exec 1>&"$FD_STDOUT_DUP" "$FD_STDOUT_DUP">&-
 
-          if [ -n "$2" ]; then
+          if ! argEmptyOrOption "$2"; then
             LOG_LIVEDATA_INTERVAL="$2"
             shift 2
           else
@@ -3347,7 +3789,8 @@ while [ $# -gt 0 ]; do
             shift
           fi
           
-          [ "$DEBUG" -eq 1 ] && echo >&2 Log livedata interval "$LOG_LIVEDATA_INTERVAL" seconds
+          #[ "$DEBUG" -eq 1 ] && 
+          echo >&2 Logging livedata to "$DIR_LIVEDATA".
 
           ;;
 
@@ -3463,7 +3906,6 @@ while [ $# -gt 0 ]; do
             #GET /wundergroundID=testid&PASSWORD=testpassword&tempf=63.0&humidity=82&dewptf=57.4&windchillf=63.0&winddir=355&windspeedmph=3.36&windgustmph=4.47&rainin=0.000&dailyrainin=0.020&weeklyrainin=0.051&monthlyrainin=0.311&yearlyrainin=4.811&solarradiation=206.87&UV=2&indoortempf=74.3&indoorhumidity=61&baromin=29.760&soilmoisture=16&lowbatt=0&dateutc=now&softwaretype=GW1000A_V1.6.8&action=updateraw&realtime=1&rtfreq=5 HTTP/1.0
             # Ecowitt
             #PASSKEY=976D09F15C.....................7&stationtype=GW1000A_V1.6.8&dateutc=2021-08-10+12:08:12&tempinf=74.1&humidityin=61&baromrelin=29.754&baromabsin=29.754&tempf=63.0&humidity=82&winddir=15&windspeedmph=3.80&windgustmph=4.47&maxdailygust=5.82&solarradiation=206.01&uv=2&rainratein=0.000&eventrainin=0.051&hourlyrainin=0.000&dailyrainin=0.020&weeklyrainin=0.051&monthlyrainin=0.311&yearlyrainin=4.811&totalrainin=4.811&temp1f=68.72&humidity1=67&temp2f=72.14&humidity2=63&temp3f=80.24&humidity3=48&soilmoisture1=16&wh65batt=0&batt1=0&batt2=0&batt3=0&soilbatt1=1.4&freq=868M&model=GW1000_Pro
-            unset http_message
 
             if argEmptyOrOption "$2"; then
                 >&2 echo No port specified for listen
@@ -3474,330 +3916,18 @@ while [ $# -gt 0 ]; do
                shift; continue
             fi
 
-            >&2 echo "Listening on port $2
-Logging to $DIR_ECOWITT"
-
-        while true; do 
-
-           if [ $NC_VERSION -eq $NC_NMAP ]; then 
-                http_message=$(nc -l -i 0.1 "$2" 2>/dev/null) # - idle timeout to exit early, not waiting for server to close/FIN
-           elif [ $NC_VERSION -eq $NC_OPENBSD ]; then
-                http_message=$(nc -l -w 1 "$2" 2>/dev/null) # - -w to exit on idle for 1s
-            elif [ $NC_VERSION -eq $NC_TOYBOX ]; then 
-                  http_message=$(nc -p "$2" -W 1 -l  2>/dev/null) # - -W to exit on idle for 1s
-           else
-             echo >&2 Error unsupported nc version "$NC_VERSION"
-           fi
-
-           if [ -n "$http_message" ]; then
-
-                #[ "$DEBUG" -eq 1 ] && 
-                echo >&2 "$http_message"
-                
-                case "$http_message" in
-                    
-                    POST*)   LOG_ECOWITT=1 
-                    
-                            http_body=$(echo "$http_message" | tail -n +7) # just skip headers -n +7
-                            IFS='&'
-                            for f in $http_body; do
-                                value=${f##*=}
-                                key=${f%%=*}
-                                if [ "$key" = PASSKEY ]; then
-                                   continue
-                                fi 
-                                    echo "$value" >"$DIR_ECOWITT/$key"
-                                    eval "ECOWITT_$key=$value"
-
-                                    case "$key" in
-
-                                       tempinf)
-
-                                           setTemperatureLivedata LIVEDATA_INTEMP "$value" 
-                                            ;;
-
-                                        tempf)
-                                            setTemperatureLivedata LIVEDATA_OUTTEMP "$value"
-                                            ;;
-
-                                        humidityin)
-
-                                            LIVEDATA_INHUMI=$value
-                                            ;;
-
-                                        humidity)
-                                            
-                                            LIVEDATA_OUTHUMI=$value
-                                            ;;
-
-                                        baromrelin)
-
-                                            setPressureLivedata LIVEDATA_RELBARO "$value"
-                                            ;;
-
-                                        baromabsin)
-
-                                            setPressureLivedata LIVEDATA_ABSBARO "$value"
-                                                ;;
-
-                                        temp?f)
-                                        
-                                            channel=${key##temp}
-                                            channel=${channel%f}
-                                            setTemperatureLivedata LIVEDATA_TEMP"$channel" "$value" 
-                                            ;;
-
-                                        humidity?)
-
-                                            channel=${key##humidity}
-                                            eval LIVEDATA_HUMI"$channel"="$value"
-                                            ;;
-                                        
-                                        winddir)
-                                           setWindDirLivedata LIVEDATA_WINDDIRECTION "$value"
-                                            ;;
-
-                                        windspeedmph)
-
-                                            setWindLivedata LIVEDATA_WINDSPEED "$value"
-                                            ;;
-
-                                        windgustmph)
-
-                                            setWindLivedata LIVEDATA_WINDGUSTSPEED "$value"
-                                            ;;
-
-                                        maxdailygust)
-
-                                            setWindLivedata LIVEDATA_WINDDAILYMAX "$value"
-                                            ;;
-                                    
-                                        rainratein)
-
-                                            setRainLivedata LIVEDATA_RAINRATE "$value"
-                                            ;;
-
-                                        eventrainin)
-
-                                            setRainLivedata LIVEDATA_RAINEVENT "$value"
-                                            ;;
-
-                                         hourlyrainin)
-
-                                            setRainLivedata LIVEDATA_RAINHOUR "$value"
-                                            ;;
-
-                                         dailyrainin)
-
-                                           setRainLivedata LIVEDATA_RAINDAY "$value"
-                                           ;;
-
-                                        weeklyrainin)
-
-                                           setRainLivedata LIVEDATA_RAINWEEK "$value"
-                                           ;;
-
-                                        monthlyrainin)
-                                           
-                                            setRainLivedata LIVEDATA_RAINMONTH "$value"
-                                           ;;
-
-                                        yearlyrainin)
-
-                                            setRainLivedata LIVEDATA_RAINYEAR "$value"
-                                           ;;
-
-                                        soilmoisture?)
-
-                                           channel=${key##soilmoisture}
-                                           eval LIVEDATA_SOILMOISTURE"$channel"="$value"
-                                        ;;
-
-                                        pm25_ch?)
-
-                                            channel=${key##pm25_ch}
-                                            eval LIVEDATA_PM25_CH"$channel"="$value"
-                                            ;;
-
-                                        pm25_avg_24h_ch?)
-
-                                            channel=${key##pm25_avg_24h_ch}
-                                            eval LIVEDATA_PM25_24HAVG"$channel"="$value"
-                                            ;;
-
-                                        leak_ch?)
-
-                                           channel=${key##leak_ch}
-                                           eval "LIVEDATA_LEAK_CH$channel=$value"
-                                           ;;
-
-                                        uv)
-
-                                           LIVEDATA_UVI=$value
-                                           ;;
-
-
-                                        wh65batt)
-
-                                           getBatteryState "$value"
-                                           LIVEDATA_WH65_BATTERY=$SBATTERY_STATE
-                                           ;;
-
-                                        batt?)
-
-                                          channel=${key##batt}
-                                          getBatteryState "$value"
-                                          eval "LIVEDATA_TEMP${channel}_BATTERY=$SBATTERY_STATE"
-                                          ;;
-
-                                        pm25batt?)
-                                        
-                                          channel=${key##pm25batt}
-                                          getBatteryLevelState "$value"
-                                          eval "LIVEDATA_PM25_CH${channel}_BATTERY=$SBATTERY_STATE"
-                                          ;;
-
-                                        soilbatt?)
-
-                                          channel=${key##soilbatt}
-                                          eval "LIVEDATA_SOILMOISTURE_CH${channel}_BATTERY=$value"  
-                                          ;;
-
-                                        leakbatt?)
-                                           
-                                          channel=${key##leakbatt}
-                                          getBatteryLevelState "$value"
-                                          eval "LIVEDATA_LEAK_CH${channel}_BATTERY=$SBATTERY_STATE"
-                                          ;;  
-                                           
-                                    esac
-                            done
-
-                            printLivedata
-                            #https://stackoverflow.com/a/69836872/2076536
-
-                        ;;
-                    
-                    GET*)  LOG_WUNDERGROUND=1 
-                        #https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request
-                        http_body=$(echo "$http_message" | head -n 1)
-                        http_body=${http_body##GET*ID=} # remove method GET and directory prefix, assume qs always starts with ID=
-                        http_body=${http_body%% HTTP*} # remove HTTP/1.0 at end
-                        http_body="ID="$http_body
-                        IFS='&'
-                        for f in $http_body; do
-                                value=${f##*=}
-                                key=${f%%=*}
-                                if [ "$key" = PASSWORD ] || [  "$key" = ID ]; then
-                                   continue
-                                fi
-                                 #password is url encoded, for example space=%20 https://stackoverflow.com/questions/6250698/how-to-decode-url-encoded-string-in-shell
-                                echo "$value" >"$DIR_WUNDERGROUND/$key"
-                                echo "$key=$value"
-
-#https://support.weather.com/s/article/PWS-Upload-Protocol?language=en_US
-                                case "$key" in
-
-                                   tempf)
-                                      
-                                      setTemperatureLivedata LIVEDATA_OUTTEMP "$value"
-                                      ;;
-                                    
-                                    humidity)
-
-                                      LIVEDATA_OUTHUMI=$value
-                                      ;;
-
-                                    indoortempf)
-
-                                       setTemperatureLivedata LIVEDATA_INTEMP "$value"
-                                       ;;
-                                    
-                                    indoorhumidity)
-
-                                       LIVEDATA_INHUMI=$value
-                                       ;;
-                                    
-                                    baromin)
-                                       
-                                       setPressureLivedata LIVEDATA_RELBARO "$value"
-                                       ;;
-
-                                    rainin)
-                                        #or pr hour?
-                                       setRainLivedata LIVEDATA_RAINRATE "$value"
-                                       ;;
-
-                                    dailyrainin)
-
-                                      setRainLivedata LIVEDATA_RAINDAY "$value"
-                                      ;;
-
-                                    weeklyrainin)
-
-                                      setRainLivedata LIVEDATA_RAINWEEK "$value"
-                                      ;;
-
-                                    monthlyrainin)
-
-                                      setRainLivedata LIVEDATA_RAINMONTH "$value"
-                                      ;;
-
-                                    yearlyrainin)
-
-                                      setRainLivedata LIVEDATA_RAINYEAR "$value"
-                                      ;;
-
-                                    winddir)
-
-                                       setWindDirLivedata LIVEDATA_WINDDIRECTION "$value"
-
-                                      ;;
-
-                                    windspeedmph)
-
-                                      setWindLivedata LIVEDATA_WINDSPEED "$value"
-                                      ;;
-
-                                    windgustmph)
-
-                                      setWindLivedata LIVEDATA_WINDGUSTSPEED "$value"
-                                      ;;
-
-                                    UV)
-                                      
-                                      LIVEDATA_UVI=$value
-                                      ;;
-
-                                    AqPM2\.5)
-
-                                      LIVEDATA_PM25_CH1="$value"
-                                      ;;
-
-                                    soilmoisture)
-
-                                        LIVEDATA_SOILMOISTURE1="$value"
-                                        ;;
-
-                                    soilmoisture?)
-
-                                        channel=${key##soilmoisture}
-                                        eval LIVEDATA_SOILMOISTURE"$channel"="$value"
-                                        ;;
-
-                                esac
-                        done
-
-                        printLivedata
-
-                        #cd /tmp/gw/wunderground; watch -n 16 'for f in *; do read v < "$f"; printf "%-30s %s\n" "$f" "$v"; done'
-                        
-                    ;;
-                esac
-            fi
-        done
-
-            ;;
+            setUVMode $UNIT_UV_WATTM2
+
+            if [ -z "$LOG_LIVEDATA" ]; then
+               httpServerEcowittWunderground "$2"
+            else
+               while true; do
+                  httpServerEcowittWunderground "$2"
+                done
+            fi 
+        shift 2
+
+        ;;
 
         -r | --restore)
 
