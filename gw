@@ -399,6 +399,9 @@ LIVEDATA_SYSTEM_FREQUENCY_HEADER=${LIVEDATA_SYSTEM_FREQUENCY_HEADER:="System fre
 #shellcheck disable=SC1091
 . ./gw-config.sh
 
+#is sent in http get request when data from sensors are not available, for example after reboot
+WUNDERGROUND_UNDEFINED_VALUE="-9999"
+
 getCommandName() { #$1 -decimal command
     eval "COMMAND_NAME=\$CMDNAME_$1"
 
@@ -1194,8 +1197,8 @@ printLivedata() {
         printLivedataLine "$LIVEDATA_DEWPOINT_HEADER" "$LIVEDATA_DEWPOINT" "%7.1f" "$UNIT_TEMP" 2 'dewpoint'
     fi
 
-    [ -n "$LIVEDATA_INHUMI" ] && printLivedataLine "$LIVEDATA_INHUMI_HEADER" "$LIVEDATA_INHUMI" "%5s" "%" 4 'humidityin'
-    [ -n "$LIVEDATA_OUTHUMI" ] &&printLivedataLine "$LIVEDATA_OUTHUMI_HEADER" "$LIVEDATA_OUTHUMI" "%5s" "%" 4 'humidity'
+    [ -n "$LIVEDATA_INHUMI" ] && printLivedataLine  "$LIVEDATA_INHUMI_HEADER" "$LIVEDATA_INHUMI"  "%5u" "%" 4 'humidityin'
+    [ -n "$LIVEDATA_OUTHUMI" ] && printLivedataLine "$LIVEDATA_OUTHUMI_HEADER" "$LIVEDATA_OUTHUMI" "%5u" "%" 4 'humidity'
 
     if [ -n "$LIVEDATA_RELBARO" ]; then
 
@@ -1235,7 +1238,7 @@ printLivedata() {
     }
     [ -n "$LIVEDATA_LIGHT" ] && printLivedataLine "$LIVEDATA_LIGHT_HEADER" "$LIVEDATA_LIGHT" "%7.1f" "$UNIT_LIGHT" 4 'light'
     [ -n "$LIVEDATA_UV" ] && printLivedataLine "$LIVEDATA_UV_HEADER" "$LIVEDATA_UV" "%7.1f" "$UNIT_UV" 5 'uv'
-    [ -n "$LIVEDATA_UVI" ] && printLivedataLine "$LIVEDATA_UVI_HEADER" "$LIVEDATA_UVI" "%7u" "" 4 'uvi'
+    [ -n "$LIVEDATA_UVI" ] && printLivedataLine "$LIVEDATA_UVI_HEADER" "$LIVEDATA_UVI" "%5u" "" 4 'uvi'
 
     [ -n "$LIVEDATA_RAINRATE" ] && {
         if [ "$LIVEDATA_RAINRATE_RAW" -gt "$LIMIT_LIVEDATA_RAINRATE" ]; then
@@ -2167,9 +2170,9 @@ sendPacketnc() { #$1 - command
     #$2 - host
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        typeset ncUDPOpt ncIdleOpt port host timeout_udp_broadcast timeout_nc od_buffer
+        typeset ncUDPOpt ncIdleOpt port host timeout_udp_broadcast timeout_nc od_buffer cmdstr nccmdstr odcmdstr
     else
-        local   ncUDPOpt ncIdleOpt port host timeout_udp_broadcast timeout_nc useTimeout od_buffer
+        local   ncUDPOpt ncIdleOpt port host timeout_udp_broadcast timeout_nc useTimeout od_buffer cmdstr nccmdstr odcmdstr
     fi
 
     timeout_nc=0.05
@@ -2191,6 +2194,7 @@ sendPacketnc() { #$1 - command
 
     convertBufferFromDecToOctalEscape "$PACKET_TX" # \0377 \0377 \0nnn
     PACKET_TX_ESCAPE=$VALUE_OCTAL_BUFFER_ESCAPE
+
     { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_PRINT_OD_BUFFER" ] ; } &&
     {
         printf >&2 "> %-20s" "$COMMAND_NAME"
@@ -2206,38 +2210,50 @@ sendPacketnc() { #$1 - command
         useTimeout=1
     elif [ "$PACKET_TX_CMD" -eq $CMD_WRITE_RESET ] || [ "$PACKET_TX_CMD" -eq $CMD_WRITE_SSID ]; then
         :
+    elif [ "$PACKET_TX_CMD" -eq $CMD_REBOOT ]; then
+       useTimeout=1
+       timeout_nc=1
+       #sometimes result packet from gw is not received, and nc hangs
     fi
 
     # change between openbsd/nmap ncat in WSL2/ubuntu - sudo update-alternatives --config nc
 
+    odcmdstr="od -A n -t u1 -w$MAX_16BIT_UINT"
+
     if [ "$NC_VERSION" -eq $NC_OPENBSD ]; then
 
         # -N shutdown(2) the network socket after EOF on the input / from man nc - otherwise nc hangs
-
-        if [ "$useTimeout" -eq 0 ]; then
-            od_buffer="$(printf "%b" "$PACKET_TX_ESCAPE" | "$NC_CMD" -4 -N $ncUDPOpt "$host" "$port" | od -A n -t u1 -w$MAX_16BIT_UINT)"
-        elif [ "$useTimeout" -eq 1 ]; then
-            od_buffer="$(printf "%b" "$PACKET_TX_ESCAPE" | timeout $timeout_nc "$NC_CMD" -4 -N $ncUDPOpt "$host" "$port" | od -A n -t u1 -w$MAX_16BIT_UINT)"
+        nccmdstr="$NC_CMD -4 -N $ncUDPOpt $host $port" 
+       
+        if [ "$useTimeout" -eq 1 ]; then
+           nccmdstr="timeout $timeout_nc $nccmdstr"
         fi
+        
+        cmdstr="printf %b \"$PACKET_TX_ESCAPE\" | $nccmdstr | $odcmdstr"
 
     elif [ "$NC_VERSION" -eq $NC_NMAP ]; then
 
         #sleep to disable immediate EOF and shutdown of ncat -> which leads to data not received from udp socket
-        od_buffer="$({
-            printf "%b" "$PACKET_TX_ESCAPE"
-            sleep $timeout_nc
-        } | "$NC_CMD" -4 $ncUDPOpt "$host" "$port" | od -A n -t u1 -w$MAX_16BIT_UINT)"
+       
+        nccmdstr="$NC_CMD -4 $ncUDPOpt $host $port"
+        cmdstr="{ printf %b \"$PACKET_TX_ESCAPE\"; sleep $timeout_nc; } | $nccmdstr | $odcmdstr"
 
     elif [ "$NC_VERSION" -eq $NC_TOYBOX ]; then
-        if [ "$useTimeout" -eq 0 ]; then
-            od_buffer="$(printf "%b" "$PACKET_TX_ESCAPE" | "$NC_CMD" -4 $ncUDPOpt "$host" "$port" | od -A n -t u1 -w$MAX_16BIT_UINT)"
-        elif [ "$useTimeout" -eq 1 ]; then
-            od_buffer="$(printf "%b" "$PACKET_TX_ESCAPE" | timeout $timeout_nc "$NC_CMD" -4 $ncUDPOpt "$host" "$port" | od -A n -t u1 -w$MAX_16BIT_UINT)"
+
+        nccmdstr="$NC_CMD -4 $ncUDPOpt $host $port"
+        
+        if [ "$useTimeout" -eq 1 ]; then
+           nccmdstr="timeout $timeout_nc $nccmdstr"
         fi
+
+        cmdstr="printf %b \"$PACKET_TX_ESCAPE\" | $nccmdstr | $odcmdstr"
+
     elif [ "$NC_VERSION" -eq $NC_BUSYBOX ]; then
 
+        nccmdstr="$NC_CMD nc $host $port"
+
         if [ -z "$ncUDPOpt" ]; then
-            od_buffer="$(printf "%b" "$PACKET_TX_ESCAPE" | "$NC_CMD" nc "$host" "$port" | od -A n -t u1 -w$MAX_16BIT_UINT)"
+            cmdstr="printf %b \"$PACKET_TX_ESCAPE\" |  $nccmdstr | $odcmdstr"
         else
             echo >&2 Busybox nc does not support UDP
         fi
@@ -2245,10 +2261,16 @@ sendPacketnc() { #$1 - command
         echo >&2 "Error nc not found in sendPacketnc $ERROR_NO_NC"
     fi
 
-    parsePacket "$od_buffer"
+    if [ -n "$cmdstr" ]; then
+       if [ "$OPTION_SHOW_COMMAND" -eq 1 ]; then
+         printf "%s\n" "$cmdstr"
+       fi
+       od_buffer=$(eval "$cmdstr")
+        parsePacket "$od_buffer"
+    fi
 
     if [ -n "$KSH_VERSION" ]; then
-       unset ncUDPOpt ncIdleOpt port host timeout_udp_broadcast useTimeout timeout_nc od_buffer 
+       unset ncUDPOpt ncIdleOpt port host timeout_udp_broadcast useTimeout timeout_nc od_buffer cmdstr nccmdstr odcmdstr
     fi
 }
 
@@ -2573,6 +2595,7 @@ updateCustomized() {
 
                 [ $DEBUG -eq 1 ] && echo >&2 Update customized_password from "${C_WS_CUSTOMIZED_PASSWORD} to $value"
                 C_WS_CUSTOMIZED_PASSWORD=$value
+                #observation: gw1000 client will not send wunderground http request unless password and id is specified
                 ;;
 
             server | s)
@@ -3274,6 +3297,10 @@ setRainLivedata()
 
 setWindLivedata()
 {
+     if [ "$2" = $WUNDERGROUND_UNDEFINED_VALUE ]; then
+      return
+    fi
+
     convertMphTMps "$2"
     eval "$1"_RAW=$VALUE_MPH_MPS_SCALE10
     if [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPS ]; then
@@ -3286,6 +3313,10 @@ setWindLivedata()
 
 setWindDirLivedata()
 {
+    if [ "$2" = $WUNDERGROUND_UNDEFINED_VALUE ]; then
+      return
+    fi
+ 
     eval "$1"="$2" 
     convertWindDirectionToCompassDirection "$2"
     eval "$1"_COMPASS=$VALUE_COMPASS_DIRECTION
@@ -3294,6 +3325,11 @@ setWindDirLivedata()
 
 setTemperatureLivedata()
 {
+    #skip undefined value -9999
+    if [ "$2" = $WUNDERGROUND_UNDEFINED_VALUE ]; then
+      return
+    fi
+
     convertFarenheitToCelciusScale10 "$2" 
     eval "$1"_RAW=$VALUE_CELCIUS_SCALE10
     if [ "$UNIT_TEMPERATURE_MODE" -eq $UNIT_TEMPERATURE_CELCIUS ]; then
@@ -3341,12 +3377,12 @@ parseEcowittHttpRequest()
         case "$key" in
 
             tempinf)
-
-                setTemperatureLivedata LIVEDATA_INTEMP "$value" 
+                   setTemperatureLivedata LIVEDATA_INTEMP "$value" 
+                  
                 ;;
 
             tempf)
-                setTemperatureLivedata LIVEDATA_OUTTEMP "$value"
+                    setTemperatureLivedata LIVEDATA_OUTTEMP "$value"
                 ;;
 
             humidityin)
@@ -3356,7 +3392,7 @@ parseEcowittHttpRequest()
 
             humidity)
                 
-                LIVEDATA_OUTHUMI=$value
+                    LIVEDATA_OUTHUMI=$value
                 ;;
 
             baromrelin)
@@ -3383,7 +3419,8 @@ parseEcowittHttpRequest()
                 ;;
             
             winddir)
-                setWindDirLivedata LIVEDATA_WINDDIRECTION "$value"
+
+                    setWindDirLivedata LIVEDATA_WINDDIRECTION "$value"
                 ;;
 
             windspeedmph)
@@ -3461,12 +3498,12 @@ parseEcowittHttpRequest()
                 ;;
 
             solarradiation)
-                LIVEDATA_UV=$value
+            
+                   LIVEDATA_UV=$value
                 ;;
 
             uv)
-
-                LIVEDATA_UVI=$value
+                    LIVEDATA_UVI=$value
                 ;;
 
 
@@ -3589,8 +3626,9 @@ parseWundergroundHttpRequest()
               ;;
             
             humidity)
-
-                LIVEDATA_OUTHUMI=$value
+                if [ "$value" != $WUNDERGROUND_UNDEFINED_VALUE ]; then
+                  LIVEDATA_OUTHUMI=$value
+                fi
                 ;;
 
             indoortempf)
@@ -3651,12 +3689,16 @@ parseWundergroundHttpRequest()
 
             solarradiation)
                 
-                LIVEDATA_UV=$value
+                 if [ "$value" != $WUNDERGROUND_UNDEFINED_VALUE ]; then
+                   LIVEDATA_UV=$value
+                fi
                 ;;
 
             UV)
-                
-                LIVEDATA_UVI=$value
+               
+                 if [ "$value" != $WUNDERGROUND_UNDEFINED_VALUE ]; then
+                     LIVEDATA_UVI=$value
+                 fi
                 ;;
 
             AqPM2\.5)
@@ -3879,6 +3921,11 @@ while [ $# -gt 0 ]; do
                 shift 1
             fi
             ;;
+        
+        -C | --show-command) #echo command printf/nc/od pipeline
+             OPTION_SHOW_COMMAND=1
+             shift 1
+             ;;
 
         -c | --command)
 
@@ -3945,7 +3992,9 @@ while [ $# -gt 0 ]; do
             #open TCP 8080 in windows firewall -> add rule to open
             #add portproxy from hostos to WSL2 distro/ubuntu
             #netsh interface portproxy add v4tov4 listenport=8080 listenaddress=192.168.3.3 connectaddress=172.22.134.109 connectport=8080
-           
+            # iex "netsh interface portproxy add v4tov4 listenport=8080 listenaddress=(Get-NetIPAddress -InterfaceAlias Wi-Fi -AddressFamily IPv4).IPAddress connectaddress=$(wsl -e hostname -I) connectport=8080"
+            # iex = invoke-expression cmdlet
+            #https://github.com/microsoft/WSL/issues/4150#issuecomment-504209723
             
             # Wunderground
             #GET /wundergroundID=testid&PASSWORD=testpassword&tempf=63.0&humidity=82&dewptf=57.4&windchillf=63.0&winddir=355&windspeedmph=3.36&windgustmph=4.47&rainin=0.000&dailyrainin=0.020&weeklyrainin=0.051&monthlyrainin=0.311&yearlyrainin=4.811&solarradiation=206.87&UV=2&indoortempf=74.3&indoorhumidity=61&baromin=29.760&soilmoisture=16&lowbatt=0&dateutc=now&softwaretype=GW1000A_V1.6.8&action=updateraw&realtime=1&rtfreq=5 HTTP/1.0
