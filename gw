@@ -47,6 +47,7 @@ ERROR_PRX_PREAMBLE=7
 ERROR_EOF_OD_BUFFER=8
 ERROR_CONVERT=9
 ERROR_HTTP_MESSSAGE_EMPTY=10
+ERROR_NO_HOST_SPECIFIED=11
 
 #to do: conversion
 UNIT_LIGHT="lux"
@@ -563,10 +564,10 @@ writeString()
         n=$(( n + 1 ))
     done
 
-    if [ "$SHELL_SUPPORT_PRINTF_VOPT" -eq  1 ]; then
+    if [ "$SHELL_SUPPORT_PRINTF_VOPT" -eq  1 ] && [ -n "$APPEND_FORMAT" ]; then
         eval printf -v decstr \""$APPEND_FORMAT"\" "$APPEND_STRING"
         PACKET_TX_BODY="$PACKET_TX_BODY $decstr"
-    else
+    elif [ -n "$APPEND_FORMAT" ]; then
         PACKET_TX_BODY="$PACKET_TX_BODY $(eval printf \""$APPEND_FORMAT"\" "$APPEND_STRING")" #ok, run in subshell
     fi
 
@@ -581,7 +582,6 @@ writeString()
         unset len str decstr n
     fi
 
-    
     [ "$DEBUG" -eq 1 ] && >&2 echo  "writeString $PACKET_TX_BODY"
 
 }
@@ -1158,6 +1158,24 @@ printLivedataLine()
 
 }
 
+setSGILivedataLtGt()
+#$1 - raw value, $2 low limit, 3$ high limit, $4 sgi low, $5 sgi high
+{
+    if [ "$1" -lt "$2" ]; then
+        SGI_LIVE=$4
+    elif [ "$1" -gt "$3" ]; then
+        SGI_LIVE=$5
+    fi
+}
+
+setSGILivedataGt()
+{
+ if [ "$1" -gt "$2" ]; then
+     SGI_LIVE=$SGI_LIMIT_LIVEDATA
+fi
+       
+}
+
 printLivedata() {
 #prefer same filenames as the Ecowitt-protocol fieldnames
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
@@ -1167,29 +1185,24 @@ printLivedata() {
         local n 
     fi
 
+    unset APPEND_FORMAT APPEND_ARGS
+
     
     if [ -n "$LIVEDATA_INTEMP" ]; then
         
-        if [ "$LIVEDATA_INTEMP_RAW" -lt "$LIMIT_LIVEDATA_INTEMP_LOW" ]; then
-            SGI_LIVE=$SGI_LIMIT_LIVEDATA_INTEMP_LOW
-        elif [ "$LIVEDATA_INTEMP_RAW" -gt "$LIMIT_LIVEDATA_INTEMP_HIGH" ]; then
-            SGI_LIVE=$SGI_LIMIT_LIVEDATA_INTEMP_HIGH
-        fi
-        
+        setSGILivedataLtGt "$LIVEDATA_INTEMP_RAW" "$LIMIT_LIVEDATA_INTEMP_LOW" "$LIMIT_LIVEDATA_INTEMP_HIGH" "$SGI_LIMIT_LIVEDATA_INTEMP_LOW" "$SGI_LIMIT_LIVEDATA_INTEMP_HIGH"
         printLivedataLine "$LIVEDATA_INTEMP_HEADER"  "$LIVEDATA_INTEMP" "%7.1f" "$UNIT_TEMP" 2 'tempin'
     fi
 
     if [ -n "$LIVEDATA_OUTTEMP" ]; then
-        if [ "$LIVEDATA_OUTTEMP_RAW" -lt "$LIMIT_LIVEDATA_OUTTEMP_LOW" ]; then
-            SGI_LIVE=$SGI_LIMIT_LIVEDATA_OUTTEMP_LOW
-        elif [ "$LIVEDATA_OUTTEMP_RAW" -gt "$LIMIT_LIVEDATA_OUTTEMP_HIGH" ]; then
-            SGI_LIVE=$SGI_LIMIT_LIVEDATA_OUTTEMP_HIGH
-        fi
 
+        setSGILivedataLtGt "$LIVEDATA_OUTTEMP_RAW" "$LIMIT_LIVEDATA_OUTTEMP_LOW" "$LIMIT_LIVEDATA_OUTTEMP_HIGH" "$SGI_LIMIT_LIVEDATA_OUTTEMP_LOW" "$SGI_LIMIT_LIVEDATA_OUTTEMP_HIGH"
         printLivedataLine "$LIVEDATA_OUTTEMP_HEADER" "$LIVEDATA_OUTTEMP" "%7.1f" "$UNIT_TEMP" 2 'tempout'
     fi
     
     if [ -n "$LIVEDATA_WINDCHILL" ]; then
+
+        setSGILivedataLtGt "$LIVEDATA_WINDCHILL_RAW" "$LIMIT_LIVEDATA_OUTTEMP_LOW" "$LIMIT_LIVEDATA_OUTTEMP_HIGH" "$SGI_LIMIT_LIVEDATA_OUTTEMP_LOW" "$SGI_LIMIT_LIVEDATA_OUTTEMP_HIGH"
         printLivedataLine "$LIVEDATA_WINDCHILL_HEADER" "$LIVEDATA_WINDCHILL" "%7.1f" "$UNIT_TEMP" 2 'windchill'
     fi
 
@@ -1218,22 +1231,16 @@ printLivedata() {
     [ -n "$LIVEDATA_WINDDIRECTION" ] && printLivedataLine  "$LIVEDATA_WINDDIRECTION_HEADER" "$LIVEDATA_WINDDIRECTION" "%5u" "" 6 'winddir'
     [ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ] && printLivedataLine "$LIVEDATA_WINDDIRECTION_COMPASS_HEADER" "$LIVEDATA_WINDDIRECTION_COMPASS" "%5s" "" 5 'winddir_compass'
     [ -n "$LIVEDATA_WINDSPEED" ] && {
-        if [ "$LIVEDATA_WINDSPEED_RAW" -gt "$LIMIT_LIVEDATA_WIND" ]; then
-          SGI_LIVE=$SGI_LIMIT_LIVEDATA
-        fi
+        setSGILivedataGt "$LIVEDATA_WINDSPEED_RAW"  "$LIMIT_LIVEDATA_WIND" 
         printLivedataLine "$LIVEDATA_WINDSPEED_HEADER" "$LIVEDATA_WINDSPEED" "%7.1f" "$UNIT_WIND" 4 'windspeed' 
     }
     [ -n "$LIVEDATA_WINDGUSTSPEED" ] && 
     {
-        if [ "$LIVEDATA_WINDGUSTSPEED_RAW" -gt "$LIMIT_LIVEDATA_WIND" ]; then
-          SGI_LIVE=$SGI_LIMIT_LIVEDATA
-        fi
+        setSGILivedataGt "$LIVEDATA_WINDGUSTSPEED_RAW"  "$LIMIT_LIVEDATA_WIND" 
         printLivedataLine "$LIVEDATA_WINDGUSTSPEED_HEADER" "$LIVEDATA_WINDGUSTSPEED" "%7.1f" "$UNIT_WIND" 4 'windgust' 
     }
     [ -n "$LIVEDATA_WINDDAILYMAX" ] && {
-        if [ "$LIVEDATA_WINDDAILYMAX_RAW" -gt "$LIMIT_LIVEDATA_WIND" ]; then
-          SGI_LIVE=$SGI_LIMIT_LIVEDATA
-        fi
+        setSGILivedataGt "$LIVEDATA_WINDDAILYMAX_RAW" "$LIMIT_LIVEDATA_WIND" 
         printLivedataLine "$LIVEDATA_WINDDAILYMAX_HEADER" "$LIVEDATA_WINDDAILYMAX" "%7.1f" "$UNIT_WIND" 4 'winddailymax' 
     }
     [ -n "$LIVEDATA_LIGHT" ] && printLivedataLine "$LIVEDATA_LIGHT_HEADER" "$LIVEDATA_LIGHT" "%7.1f" "$UNIT_LIGHT" 4 'light'
@@ -1241,9 +1248,7 @@ printLivedata() {
     [ -n "$LIVEDATA_UVI" ] && printLivedataLine "$LIVEDATA_UVI_HEADER" "$LIVEDATA_UVI" "%5u" "" 4 'uvi'
 
     [ -n "$LIVEDATA_RAINRATE" ] && {
-        if [ "$LIVEDATA_RAINRATE_RAW" -gt "$LIMIT_LIVEDATA_RAINRATE" ]; then
-         SGI_LIVE=$SGI_LIMIT_LIVEDATA
-        fi
+        setSGILivedataGt "$LIVEDATA_RAINRATE_RAW" "$LIMIT_LIVEDATA_RAINRATE"
 
         if [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_MM ]; then
           printLivedataLine "$LIVEDATA_RAINRATE_HEADER" "$LIVEDATA_RAINRATE" "%7.1f" "$UNIT_RAINRATE" 5 'rainrate'
@@ -1254,9 +1259,7 @@ printLivedata() {
 
      #available in Ecowitt http request
      [ -n "$LIVEDATA_RAINHOUR" ] && {
-        if [ "$LIVEDATA_RAINHOUR_RAW" -gt "$LIMIT_LIVEDATA_RAINHOUR" ]; then
-         SGI_LIVE=$SGI_LIMIT_LIVEDATA
-        fi
+         setSGILivedataGt "$LIVEDATA_RAINHOUR_RAW" "$LIMIT_LIVEDATA_RAINHOUR"
         
         if [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_MM ]; then
             printLivedataLine "$LIVEDATA_RAINHOUR_HEADER" "$LIVEDATA_RAINHOUR" "%7.1f" "$UNIT_RAIN" 3 'rainhour'
@@ -1266,9 +1269,8 @@ printLivedata() {
     }
 
      [ -n "$LIVEDATA_RAINDAY" ] && {
-        if [ "$LIVEDATA_RAINDAY_RAW" -gt "$LIMIT_LIVEDATA_RAINDAY" ]; then
-         SGI_LIVE=$SGI_LIMIT_LIVEDATA
-        fi
+        setSGILivedataGt  "$LIVEDATA_RAINDAY_RAW"  "$LIMIT_LIVEDATA_RAINDAY" 
+
         if [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_MM ]; then
            printLivedataLine "$LIVEDATA_RAINDAY_HEADER" "$LIVEDATA_RAINDAY" "%7.1f" "$UNIT_RAIN" 3 'rainday'
         elif [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_IN ]; then
@@ -1277,9 +1279,8 @@ printLivedata() {
     }
 
     [ -n "$LIVEDATA_RAINEVENT" ] && {
-        if [ "$LIVEDATA_RAINEVENT_RAW" -gt "$LIMIT_LIVEDATA_RAINEVENT" ]; then
-         SGI_LIVE=$SGI_LIMIT_LIVEDATA
-        fi
+        
+        setSGILivedataGt "$LIVEDATA_RAINEVENT_RAW" "$LIMIT_LIVEDATA_RAINEVENT" 
         printLivedataLine "$LIVEDATA_RAINEVENT_HEADER" "$LIVEDATA_RAINEVENT" "%7.1f" "$UNIT_RAIN" 3 'rainevent'
     }
 
@@ -2190,6 +2191,11 @@ sendPacketnc() { #$1 - command
         host="$C_host" # -h option
     fi
 
+    if [ -z "$host" ]; then
+      echo >&2 No host specified
+      return "$ERROR_NO_HOST_SPECIFIED"
+    fi
+
     checksumPacketTX
 
     convertBufferFromDecToOctalEscape "$PACKET_TX" # \0377 \0377 \0nnn
@@ -2262,7 +2268,7 @@ sendPacketnc() { #$1 - command
     fi
 
     if [ -n "$cmdstr" ]; then
-       if [ "$OPTION_SHOW_COMMAND" -eq 1 ]; then
+       if [ -n "$OPTION_SHOW_COMMAND" ] && [ "$OPTION_SHOW_COMMAND" -eq 1 ]; then
          printf "%s\n" "$cmdstr"
        fi
        od_buffer=$(eval "$cmdstr")
@@ -3007,12 +3013,16 @@ processCommand() {
         customized | c | cust)
 
             if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_PATH >/dev/null
-                sendPacket $CMD_READ_CUSTOMIZED
+                if ! sendPacket $CMD_READ_PATH >/dev/null || ! sendPacket $CMD_READ_CUSTOMIZED; then
+                  >&2 echo Failed to get customized settings
+                fi
             else
-                sendPacket $CMD_READ_PATH >/dev/null
-                sendPacket $CMD_READ_CUSTOMIZED >/dev/null
+                
+                if sendPacket $CMD_READ_CUSTOMIZED >/dev/null && sendPacket $CMD_READ_PATH >/dev/null; then
                 updateCustomized "$1"
+                else
+                  >&2 echo Cannot update customized, failed to read customized settings
+                fi
             fi
             ;;
 
@@ -3963,7 +3973,7 @@ while [ $# -gt 0 ]; do
             ;;
 
         -f | --firmware)
-            HTTP_UA_NAME="gw script BASH ${BASH_VERSION} $(uname -srv)"
+            HTTP_UA_NAME="gw $(uname -srv)"
             HTTP_FIRMWARE="http://download.ecowitt.net/down/filewave?v=FirwaveReadme.txt"
             [ $DEBUG -eq 1 ] && printf >&2 "%s\n%s" "$HTTP_UA_NAME" "$HTTP_FIRMWARE"
             curl --silent --show-error --user-agent "$HTTP_UA_NAME" "$HTTP_FIRMWARE"
