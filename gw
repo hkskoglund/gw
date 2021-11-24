@@ -285,31 +285,23 @@ SYSTEM_SENSOR_TYPE_WH65=1
 #https://www.wxforum.net/index.php?topic=40730.0
 case $KSH_VERSION in
 
-*MIRBSD?KSH*)
-    #shellcheck disable=SC3044
-    typeset -iU SENSOR_SEARCH
-    SENSOR_SEARCH=$(( 0xffffffff ))
-    #shellcheck disable=SC3044
-    typeset -iU SENSOR_DISABLE
-    SENSOR_DISABLE=$(( 0xfffffffe ))
-    # mksh - sets 0xffffffff to -1!? if typeset -i SENSOR_SEARCH=0xffffffff - its using 32-bit signed integer by default unless typeset -iU is used
-    #shellcheck disable=SC3044
-    typeset -iU VALUE_UINT32BE #force to unsigned 32-bit int (-U option)
-    #shellcheck disable=SC3044
-    typeset -iU VALUE_UINT16BE
-    #shellcheck disable=SC3044
-    typeset -iU VALUE_UINT8
-    ;;
+    *MIRBSD?KSH*)
+        #shellcheck disable=SC3044
+        typeset -iU SENSOR_SEARCH  SENSOR_DISABLE VALUE_UINT32BE  VALUE_UINT16BE VALUE_UINT8 SID
+        SENSOR_SEARCH=$(( 0xffffffff ))
+        SENSOR_DISABLE=$(( 0xfffffffe ))
+        # mksh - sets 0xffffffff to -1!? if typeset -i SENSOR_SEARCH=0xffffffff - its using 32-bit signed integer by default unless typeset -iU is used
+        ;;
 
-*)
-    SENSOR_SEARCH=$((0xffffffff))
-    SENSOR_DISABLE=$((0xfffffffe))
-    #ksh typeset option -iu for usigned int https://docstore.mik.ua/orelly/unix3/korn/appb_07.htm
-    ;;
+    *)
+        SENSOR_SEARCH=$((0xffffffff))
+        SENSOR_DISABLE=$((0xfffffffe))
+        #ksh typeset option -iu for usigned int https://docstore.mik.ua/orelly/unix3/korn/appb_07.htm
+        ;;
 esac
 
 WH24_TYPE=$((0x00))
-WH65_TYPE=$((0x00))
+SENSORTYPE_WH65=$((0x00))
 WH68_TYPE=$((0x01))
 WH80_TYPE=$((0x02))
 WH40_TYPE=$((0x03))
@@ -332,6 +324,9 @@ LEAF_WETNESS_WH35_MAX_CH=8
 WH45_TYPE=$((0x27))
 SENSORTYPE_MAX=47
 
+#sensor names
+
+eval "SENSORNAME_$SENSORTYPE_WH65='Outdoor Solar Powered 7-in-1 Weather Sensor'"
 
 #default livedata headers
 LIVEDATA_INTEMP_HEADER=${LIVEDATA_INTEMP_HEADER:="Indoor temperature"}
@@ -397,8 +392,40 @@ LIVEDATA_SYSTEM_VERSION_HEADER=${LIVEDATA_SYSTEM_VERSION_HEADER:="System version
 LIVEDATA_SYSTEM_UTC_HEADER=${LIVEDATA_SYSTEM_UTC_HEADER:="System utc"}
 LIVEDATA_SYSTEM_FREQUENCY_HEADER=${LIVEDATA_SYSTEM_FREQUENCY_HEADER:="System frequency"}
 
-#shellcheck disable=SC1091
-. ./gw-config.sh
+#ANSI esqape
+#disable with -E option
+#https://en.wikipedia.org/wiki/ANSI_escape_code
+SGI_NORMAL='\e[0m'
+SGI_INVERT='\e[1;7m'
+#SGI_BLINK='\e[6m'
+SGI_LIGHTBLUE_BLACK='\e[1;34m'
+SGI_BRIGHTRED_BLACK='\e[1;31m'
+SGI_BRIGHTGREEN_BLACK='\e[1;32m'
+SGI_LIMIT_LIVEDATA=${SGI_LIMIT_LIVEDATA:=$SGI_INVERT}
+SGI_LIMIT_LIVEDATA_OUTTEMP_LOW=${SGI_LIMIT_LIVEDATA_OUTTEMP_LOW:=$SGI_LIGHTBLUE_BLACK}
+SGI_LIMIT_LIVEDATA_OUTTEMP_HIGH=${SGI_LIMIT_LIVEDATA_OUTTEMP_HIGH:=$SGI_BRIGHTRED_BLACK}
+SGI_LIMIT_LIVEDATA_INTEMP_LOW=${SGI_LIMIT_LIVEDATA_INTEMP_LOW:=$SGI_LIGHTBLUE_BLACK}
+SGI_LIMIT_LIVEDATA_INTEMP_HIGH=${SGI_LIMIT_LIVEDATA_INTEMP_HIGH:=$SGI_BRIGHTRED_BLACK}
+
+
+SGI_BATTERY_LOW=${SGI_BATTERY_LOW:=$SGI_BRIGHTRED_BLACK}
+SGI_SIGNAL_LOW=${SGI_SIGNAL_LOW:=$SGI_BRIGHTRED_BLACK}
+SGI_LEAK=${SGI_LEAK:="\a"$SGI_BRIGHTRED_BLACK} # add alert/bell \a if leakage detected
+
+TERM_ANSI_ESCAPE=${TERM_ANSI_ESCAPE:=1}
+
+#Limits for triggering of ansi escape highlights
+LIMIT_LIVEDATA_WIND=${LIMIT_LIVEDATA_WIND:=80}  # 8 m/s - set param if value unset/null
+LIMIT_LIVEDATA_RAINRATE=${LIMIT_LIVEDATA_RAINRATE:=10} # 1.0 mm/h - scale x10
+LIMIT_LIVEDATA_RAINHOUR=${LIMIT_LIVEDATA_RAINHOUR:=10}
+LIMIT_LIVEDATA_RAINDAY=${LIMIT_LIVEDATA_RAINDAILY:=30} # 3.0 mm
+LIMIT_LIVEDATA_RAINEVENT=${LIMIT_LIVEDATA_RAINEVENT:=30}
+LIMIT_LIVEDATA_RELBARO_LOW=${LIMIT_LIVEDATA_BAROREL_LOW:=9900} # 990 hpa - scale x10
+LIMIT_LIVEDATA_OUTTEMP_LOW=${LIMIT_LIVEDATA_OUTTEMP_LOW:=-10} # -1.0 - scale x10
+LIMIT_LIVEDATA_OUTTEMP_HIGH=${LIMIT_LIVEDATA_OUTTEMP_HIGH:=170} # 17.0 - scale x10
+LIMIT_LIVEDATA_INTEMP_LOW=${LIMIT_LIVEDATA_INTEMP_LOW:=200} 
+LIMIT_LIVEDATA_INTEMP_HIGH=${LIMIT_LIVEDATA_INTEMP_HIGH:=230} 
+
 
 #is sent in http get request when data from sensors are not available, for example after reboot
 WUNDERGROUND_UNDEFINED_VALUE="-9999"
@@ -694,27 +721,29 @@ convertWindDirectionToCompassDirection() { #$1 - direction in degrees
 }
 
 getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
+    
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
         typeset -i  l
     else
         local       l
     fi
+
     unset SBATTERY_STATE
    
     #set -- 0     #debug  set $1 to 0
     if [ "$1" -eq 6 ]; then
         SBATTERY_STATE="dc" # for example PM 2.5 indoor
     else
-        SBATTERY_STATE=""
         l=1
-        while [ "$l" -le "$1" ] ; do
-            SBATTERY_STATE=$SBATTERY_STATE"+"
+        while [ "$l" -le 5 ] ; do
+            if [ "$l" -le "$1" ]; then
+                SBATTERY_STATE=$SBATTERY_STATE"+"
+            else
+                SBATTERY_STATE=$SBATTERY_STATE"-"
+            fi
             l=$((l + 1))
         done
-        if [ "$1" -le 1 ]; then
-            SBATTERY_STATE=$SBATTERY_STATE" low"
-        fi
     fi
 
     if [ -n "$KSH_VERSION" ]; then
@@ -722,7 +751,7 @@ getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
     fi
 }
 
-getBatteryState() {
+getBatteryLowOrNormal() {
     unset SBATTERY_STATE
     if [ "$1" -eq $BATTERY_NORMAL ]; then
         SBATTERY_STATE="normal" #ok
@@ -1138,20 +1167,15 @@ setRainMode()
 
 printLivedataLine()
 {
-    #if [ "$SHELL_SUPPORT_PRINTF" -eq 1 ]; then
-    #set -x
-      # eval "printf \"%-25s %\$3s %\$5s\\n\" \"$1\" \"$2\" \"$4\""
-      if [ "$TERM_ANSI_ESCAPE" -eq 1 ]; then
-         APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE%-27s $3 %$5s$SGI_NORMAL\n" #just use one printf call builtin/external -> builds up entire format and argument strings
-         unset SGI_LIVE
-      else
-         APPEND_FORMAT=$APPEND_FORMAT"%-27s %$3s %$5s\n" #just use one printf call builtin/external -> builds up entire format and argument strings
-      fi
-       APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$2\" \"$4\" "
-    #else
-    #   printKey "$1" -25 ; printKey "$2" "$3"; printKey "$4" " $5" "\n"
-    #fi
+    if [ -z "$TERM_ANSI_ESCAPE" ]; then
+      unset SGI_LIVE SGI_NORMAL #maybe keep SGI_NORMAL?
+    fi
 
+    APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE%-27s $3 %$5s$SGI_NORMAL\n" #just use one printf call builtin/external -> builds up entire format and argument strings
+    APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$2\" \"$4\" "
+    
+    unset SGI_LIVE
+   
     if [ -n "$LOG_LIVEDATA"  ]; then
       eval "echo \"$2\"  >$DIR_LIVEDATA/\"$6\""
     fi
@@ -1176,6 +1200,19 @@ fi
        
 }
 
+printAppendBuffer()
+{
+    if [ "$DEBUG" -eq 1 ]; then 
+    echo >&2 "APPEND_FORMAT $APPEND_FORMAT"
+    echo >&2 "APPEND_ARGS $APPEND_ARGS"
+    fi
+
+    eval printf \""$APPEND_FORMAT"\" "$APPEND_ARGS"
+
+    resetAppendBuffer
+
+}
+
 printLivedata() {
 #prefer same filenames as the Ecowitt-protocol fieldnames
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
@@ -1185,9 +1222,8 @@ printLivedata() {
         local n 
     fi
 
-    unset APPEND_FORMAT APPEND_ARGS
+    resetAppendBuffer
 
-    
     if [ -n "$LIVEDATA_INTEMP" ]; then
         
         setSGILivedataLtGt "$LIVEDATA_INTEMP_RAW" "$LIMIT_LIVEDATA_INTEMP_LOW" "$LIMIT_LIVEDATA_INTEMP_HIGH" "$SGI_LIMIT_LIVEDATA_INTEMP_LOW" "$SGI_LIMIT_LIVEDATA_INTEMP_HIGH"
@@ -1418,15 +1454,7 @@ printLivedata() {
     [ -n "$LIVEDATA_SYSTEM_FREQUENCY" ] && printLivedataLine "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$LIVEDATA_SYSTEM_FREQUENCY" "%-7s" "" 5 "system_frequency"
 
 
-   if [ "$DEBUG" -eq 1 ]; then 
-    echo >&2 "APPEND_FORMAT $APPEND_FORMAT"
-    echo >&2 "APPEND_ARGS $APPEND_ARGS"
-   fi
-
-    eval printf \""$APPEND_FORMAT"\" "$APPEND_ARGS"
-
-    unset APPEND_FORMAT
-    unset APPEND_ARGS
+    printAppendBuffer
 
     #unset local variables for ksh -> made global by using () function syntax without function keyword
     #https://www.unix.com/shell-programming-and-scripting/137435-ksh-different-syntax-function.html
@@ -1955,6 +1983,90 @@ parseWow() {
     printWow
 }
 
+printSensorLine()
+{
+
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+    #shellcheck disable=SC3044
+      typeset sensorstate
+    else
+      local sensorstate
+    fi
+
+    unset SGI_SENSOR
+
+    if [ "$2" -eq "$SENSOR_DISABLE" ]; then 
+      SGI_SENSOR=$SGI_BRIGHTRED_BLACK
+      sensorstate="disabled"
+    elif [ "$2" -eq "$SENSOR_SEARCH" ]; then
+      SGI_SENSOR=$SGI_BRIGHTGREEN_BLACK
+      sensorstate="searching"
+    else
+       if [ "$4" -le 1 ]; then # poor signal
+           SGI_SENSOR=$SGI_SIGNAL_LOW
+       fi
+    fi
+    
+    if [ -z "$TERM_ANSI_ESCAPE" ]; then
+       unset SGI_SENSOR SGI_NORMAL
+    fi
+
+    if [ "$2" -ne "$SENSOR_DISABLE" ] && [ "$2" -ne "$SENSOR_SEARCH" ]; then 
+        APPEND_FORMAT=$APPEND_FORMAT"$SGI_SENSOR%2u %9x %3u %1u$SGI_NORMAL\n" #just use one printf call builtin/external -> builds up entire format and argument strings
+        APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$2\" \"$3\" \"$4\" "
+    else
+        APPEND_FORMAT=$APPEND_FORMAT"$SGI_SENSOR%2u %9s %3u %1u$SGI_NORMAL\n" 
+        APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$sensorstate\" \"$3\" \"$4\" "
+    fi
+
+    if [ -n "$KSH_VERSION" ]; then
+      unset sensorstate
+    fi
+     
+}
+
+resetAppendBuffer()
+{
+   unset APPEND_FORMAT APPEND_ARGS
+}
+
+parseSensorIdNew()
+{
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+    #shellcheck disable=SC3044
+        typeset stype signal battery
+    else
+       local stype signal battery
+    fi
+
+    resetAppendBuffer
+
+    while [ ${#OD_BUFFER} -ge 7 ]; do
+       
+       readUInt8
+       stype=$VALUE_UINT8
+       
+       readUInt32BE
+       SID=$VALUE_UINT32BE
+       
+       readUInt8
+       battery=$VALUE_UINT8
+       
+       readUInt8
+       signal=$VALUE_UINT8
+
+       printSensorLine $stype $SID $battery $signal
+
+       [ "$DEBUG" -eq 1 ] && >&2 echo "type $stype id $SID battery $battery signal $signal od_buffer length ${#OD_BUFFER}"
+    done
+
+    printAppendBuffer
+
+    if [ -n "$KSH_VERSION" ]; then
+      unset stype signal battery
+    fi
+}
+
 parsePacket() {
 
     if [ -z "$1" ]; then
@@ -2016,6 +2128,8 @@ parsePacket() {
         parsePath
     elif [ "$PRX_CMD_UINT8" -eq $CMD_READ_CUSTOMIZED ]; then
         parseCustomized
+    elif [ "$PRX_CMD_UINT8" -eq $CMD_READ_SENSOR_ID_NEW ]; then
+        parseSensorIdNew
     else
         echo >&2 ERROR Parsing of command "$COMMAND_NAME" not supported
     fi
@@ -3232,7 +3346,18 @@ convertInHgToHpa()
        # VALUE_INHG_HPA_SCALE10=$(printf %.0f "$(echo "338.639 * $1" | bc)")
 
    getFloatAsIntDecmial "$1"
-   VALUE_INHG_HPA_SCALE10=$(( (338639 * FLOAT_AS_INT) / 100000)) # use interger arithmetic
+
+   case "$KSH_VERSION" in 
+         *MIRBSD?KSH*)
+            # maybe use $((# )) for 32-bit usigned int expression
+             VALUE_INHG_HPA_SCALE10=$(( (33864 * FLOAT_AS_INT)/ 10000)) # round conversion constant/scale down 10 -> 33864
+             ;;
+         *)
+            #does not work with 32-bit unsigned integer arithmetic as used by mksh with $((# ... ))
+             VALUE_INHG_HPA_SCALE10=$(( (338639 * FLOAT_AS_INT) / 100000)) # use interger arithmetic
+             ;;
+    esac
+   
    round "$VALUE_INHG_HPA_SCALE10"
    VALUE_INHG_HPA_SCALE10=$VALUE_ROUND
 }
@@ -3406,7 +3531,7 @@ parseEcowittHttpRequest()
                 ;;
 
             baromrelin)
-
+                
                 setPressureLivedata LIVEDATA_RELBARO "$value"
                 ;;
 
@@ -3519,7 +3644,7 @@ parseEcowittHttpRequest()
 
             wh65batt)
 
-                getBatteryState "$value"
+                getBatteryLowOrNormal "$value"
                 LIVEDATA_WH65_BATTERY=$value
                 LIVEDATA_WH65_BATTERY_STATE=$SBATTERY_STATE
                 ;;
@@ -3527,7 +3652,7 @@ parseEcowittHttpRequest()
             batt?)
 
                 channel=${key##batt}
-                getBatteryState "$value"
+                getBatteryLowOrNormal "$value"
                 eval "LIVEDATA_TEMP${channel}_BATTERY=$value"
                 eval "LIVEDATA_TEMP${channel}_BATTERY_STATE=$SBATTERY_STATE"
                 ;;
@@ -3769,7 +3894,9 @@ httpServerEcowittWunderground()
         return $ERROR_HTTP_MESSSAGE_EMPTY
     fi
 
-    [ "$DEBUG" -eq 1 ] && echo >&2 "$http_message"
+    if [ "$DEBUG" -eq 1 ] || [ -n "$OPTION_SHOW_HTTP_REQUEST" ] && [ "$OPTION_SHOW_HTTP_REQUEST" -eq 1  ] ; then
+        echo >&2 "$http_message"
+    fi
     
     case "$http_message" in
         
@@ -3928,14 +4055,19 @@ while [ $# -gt 0 ]; do
                 shift 2
             else
                 printConfiguration #or just stdout
-                shift 1
+                shift 
             fi
             ;;
         
-        -C | --show-command) #echo command printf/nc/od pipeline
+        -SC | --show-command) #echo command printf/nc/od pipeline
              OPTION_SHOW_COMMAND=1
-             shift 1
+             shift 
              ;;
+
+        -SH | --show-http) #show http request when listening 
+              OPTION_SHOW_HTTP_REQUEST=1
+              shift
+              ;;
 
         -c | --command)
 
@@ -4126,7 +4258,7 @@ while [ $# -gt 0 ]; do
             ;;
 
         -E | --ansi-escape-disable)
-
+           
            unset TERM_ANSI_ESCAPE
            shift
            ;;
