@@ -829,7 +829,7 @@ EOF
 }
 
 
- parseSensor ()
+ parseSensor()
 {
   typeset match # flag when pattern matches fields
   typeset printSensorHeaderFlag
