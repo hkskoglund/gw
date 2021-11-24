@@ -1988,9 +1988,9 @@ printSensorLine()
 
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
-      typeset sensorstate
+      typeset sensorstate sensorsignal_unicode
     else
-      local sensorstate
+      local sensorstate sensorsignal_unicode
     fi
 
     unset SGI_SENSOR
@@ -2002,22 +2002,35 @@ printSensorLine()
       SGI_SENSOR=$SGI_BRIGHTGREEN_BLACK
       sensorstate="searching"
     else
+       sensorstate="connected"
        if [ "$4" -le 1 ]; then # poor signal
            SGI_SENSOR=$SGI_SIGNAL_LOW
        fi
+       if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+            case "$4" in 
+                    1) sensorsignal_unicode='▁'
+                    ;;
+                    2) sensorsignal_unicode='▁▂'
+                    ;;
+                    3) sensorsignal_unicode='▁▂▃'
+                    ;;
+                    4) sensorsignal_unicode='▁▂▃▄'
+                    ;;
+            esac
+        fi
     fi
     
     if [ -z "$TERM_ANSI_ESCAPE" ]; then
        unset SGI_SENSOR SGI_NORMAL
     fi
 
-    if [ "$2" -ne "$SENSOR_DISABLE" ] && [ "$2" -ne "$SENSOR_SEARCH" ]; then 
-        APPEND_FORMAT=$APPEND_FORMAT"$SGI_SENSOR%2u %9x %3u %1u$SGI_NORMAL\n" #just use one printf call builtin/external -> builds up entire format and argument strings
-        APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$2\" \"$3\" \"$4\" "
-    else
-        APPEND_FORMAT=$APPEND_FORMAT"$SGI_SENSOR%2u %9s %3u %1u$SGI_NORMAL\n" 
-        APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$sensorstate\" \"$3\" \"$4\" "
-    fi
+   # if [ "$2" -ne "$SENSOR_DISABLE" ] && [ "$2" -ne "$SENSOR_SEARCH" ]; then 
+        APPEND_FORMAT=$APPEND_FORMAT"%2u %9x %3u %1u $SGI_SENSOR%10s$SGI_NORMAL %5s\n" #just use one printf call builtin/external -> builds up entire format and argument strings
+        APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$2\" \"$3\" \"$4\" \"$sensorstate\" \"$sensorsignal_unicode\" "
+   # else
+   #     APPEND_FORMAT=$APPEND_FORMAT"$SGI_SENSOR%2u %9s %3u %1u$SGI_NORMAL\n" 
+   #     APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$sensorstate\" \"$3\" \"$4\" "
+   # fi
 
     if [ -n "$KSH_VERSION" ]; then
       unset sensorstate
@@ -3266,6 +3279,31 @@ initShell() {
       SHELL_SUPPORT_MATH_POWER=0 #probably
     fi
     
+    #https://stackoverflow.com/questions/602912/how-do-you-echo-a-4-digit-unicode-character-in-bash/602924#602924
+
+    if [ "$SHELL_SUPPORT_PRINTF_VOPT" -eq 1 ]; then
+    #shellcheck disable=SC3045
+      printf -v unicode "\u2620"
+      UNICODE_LENGTH=${#unicode}
+    else
+      # UNICODE_LENGTH=$(printf "\u2620" | { read -r unicode; printf "%d" ${#unicode}; })
+      UNICODE_LENGTH=$(printf "\u2620" | { read -r unicode; printf "%d" ${#unicode}; })
+    fi
+     
+    if [ "$UNICODE_LENGTH" = "6" ]; then #dash does not support unicode
+      SHELL_SUPPORT_UNICODE=0
+    elif [ "$UNICODE_LENGTH" = "1" ]; then
+      SHELL_SUPPORT_UNICODE=1
+    else
+      SHELL_SUPPORT_UNICODE=1 # likely
+    fi
+
+    unset UNICODE_LENGTH
+
+    #TEST unciode: i=$(( 0x2500 )); while [ "$i" -le $(( 0x2600 )) ]; do printf -v hex "%x" "$i"; eval 'printf "%s \u$hex\n" "$hex"'; i=$(( i + 1 )); done
+
+
+
 }
 
 printWeatherServices () {
