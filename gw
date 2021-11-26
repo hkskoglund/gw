@@ -156,9 +156,12 @@ eval "CMDNAME_$CMD_WRITE_CALIBRATION='write calibration'"
 
 LDF_INTEMP=$((0x01))        #Indoor Temperature (℃) 2
 LDF_OUTTEMP=$((0x02))       #Outdoor Temperature (℃) 2
+#shellcheck disable=SC2034
+{
 LDF_DEWPOINT=$((0x03))      #Dew point (℃) 2
 LDF_WINDCHILL=$((0x04))     #Wind chill (℃) 2
 LDF_HEATINDEX=$((0x05))     #Heat index (℃) 2
+}
 LDF_INHUMI=$((0x06))        #Indoor Humidity (%) 1
 LDF_OUTHUMI=$((0x07))       #Outdoor Humidity (%) 1
 LDF_ABSBARO=$((0x08))       #Absolutely Barometric (hpa) 2
@@ -168,15 +171,18 @@ LDF_WINDSPEED=$((0x0B))     #Wind Speed (m/s) 2
 LDF_WINDGUSTSPPED=$((0x0C)) #Gust Speed (m/s) 2
 LDF_RAINEVENT=$((0x0D))     #Rain Event (mm) 2
 LDF_RAINRATE=$((0x0E))      #Rain Rate (mm/h) 2
+#shellcheck disable=SC2034
 LDF_RAINHOUR=$((0x0F))      #Rain hour (mm) 2
 LDF_RAINDAY=$((0x10))       #Rain Day (mm) 2
 LDF_RAINWEEK=$((0x11))      #Rain Week (mm) 2
 LDF_RAINMONTH=$((0x12))     #Rain Month (mm) 4
 LDF_RAINYEAR=$((0x13))      #Rain Year (mm) 4
+#shellcheck disable=SC2034
 LDF_RAINTOTALS=$((0x14))    #Rain Totals (mm) 4
 LDF_LIGHT=$((0x15))         #Light (lux) 4
 LDF_UV=$((0x16))            #UV (uW/m2) 2
 LDF_UVI=$((0x17))           #UVI (0-15 index) 1
+#shellcheck disable=SC2034
 LDF_TIME=$((0x18))          #Date and time 6
 LDF_DAYLWINDMAX=$((0X19))   #Day max wind(m/s) 2
 
@@ -216,6 +222,7 @@ LDF_SOILTEMP7=$((0x37))     #Soil Temperature(℃) 2
 LDF_SOILMOISTURE7=$((0x38)) #Soil Moisture(%) 1
 LDF_SOILTEMP8=$((0x39))     #Soil Temperature(℃) 2
 LDF_SOILMOISTURE8=$((0x3A)) #Soil Moisture(%) 1
+#shellcheck disable=SC2034
 LDF_LOWBATT=$((0x4C))       #All sensor lowbatt 16 char 16
 LDF_PM25_24HAVG1=$((0x4D))  # pm25_ch1 2
 #shellcheck disable=SC2034
@@ -248,6 +255,7 @@ LDF_LIGHTNING_POWER=$((0x62)) # lightning counter for the ay 4
     LDF_TF_USR8=$((0x6A)) #Temperature(℃) 4
 }
 LDF_SENSOR_CO2=$((0x70)) #16
+#shellcheck disable=SC2034
 LDF_PM25_AQI=$((0x71))   #only for amb
 # LDF_PM25_AQI length(n*2)(1byte) 1-aqi_pm25 2-aqi_pm25_24h ... ... n-aqi
 #aqi_pm25 AQI derived from PM25 int
@@ -429,6 +437,159 @@ LIMIT_LIVEDATA_INTEMP_HIGH=${LIMIT_LIVEDATA_INTEMP_HIGH:=230}
 
 #is sent in http get request when data from sensors are not available, for example after reboot
 WUNDERGROUND_UNDEFINED_VALUE="-9999"
+
+getSensorBatteryState()
+{
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+      #shellcheck disable=SC3044
+      typeset channel
+    else
+      local channel
+    fi
+
+    #specification FOS_ENG-022-A, page 28
+    unset SBATTERY_STATE
+
+     case "$1" in
+        0) getBatteryLowOrNormal "$2" # WH65
+           LIVEDATA_WH65_BATTERY="$2"
+           LIVEDATA_WH65_BATTERY_STATE="$SBATTERY_STATE"
+            ;;
+        1) getBatteryVoltageLevelState "$2" #WH68/WH69
+           LIVEDATA_WH68_BATTERY="$2"
+           LIVEDATA_WH68_BATTERY_STATE="$SBATTERY_STATE"
+            ;;
+        2) getBatteryVoltageLevelState "$2" #WH80 - ultrasonic
+           LIVEDATA_WH80_BATTERY="$2"
+           LIVEDATA_WH80_BATTERY_STATE="$SBATTERY_STATE"
+            ;;
+        3) getBatteryLowOrNormal "$2" #WH40 -rainfall
+           LIVEDATA_WH40_RAINFALL_BATTERY="$2"
+           LIVEDATA_WH40_RAINFALL_BATTERY_STATE="$SBATTERY_STATE"
+            ;;
+        5) getBatteryLowOrNormal "$2" #WH32 - temp out
+           LIVEDATA_WH32_TEMPERATURE_BATTERY="$2"
+           LIVEDATA_WH32_TEMPERATURE_BATTERY_STATE="$SBATTERY_STATE"
+            ;;
+        6|7|8|9|10|11|12|13)
+           getBatteryLowOrNormal "$2" #WH31 - temp in
+           channel=$(($1 - 5))
+           eval "LIVEDATA_TEMP${channel}_BATTERY=$2"
+           eval "LIVEDATA_TEMP${channel}_BATTERY_STATE=\"$SBATTERY_STATE\""
+           ;;
+        14|15|16|17|18|19|20|21)
+           getBatteryVoltageLevelState "$2" #WH51 - soilmoisture
+           channel=$(( $1 - 13))
+           eval "LIVEDATA_SOILMOISTURE_CH${channel}_BATTERY_RAW=$2"
+           eval "LIVEDATA_SOILMOISTURE_CH${channel}_BATTERY=$VALUE_BATTERY_VOLTAGE"
+           eval "LIVEDATA_SOILMOISTURE_CH${channel}_BATTERY_STATE=\"$SBATTERY_STATE\""
+          ;;
+        22|23|24|25)
+          getBatteryLevelState "$2"  #WH41 - PM2.5
+          channel=$(( $1 - 22 ))
+           eval "LIVEDATA_PM25_CH${channel}_BATTERY=$2"
+           eval "LIVEDATA_PM25_CH${channel}_BATTERY_STATE=$SBATTERY_STATE"
+          ;;
+        26)
+          getBatteryLevelState "$2"  #WH57 - Lightning
+          LIVEDATA_WH57_LIGHTNING_BATTERY="$2"
+          LIVEDATA_WH57_LIGHTNING_BATTERY_STATE="$SBATTERY_STATE"
+          ;;
+        27|28|29|30)
+          getBatteryLevelState "$2"  #WH55 - Leak
+          channel=$(( $1 - 26 ))
+          eval "LIVEDATA_LEAK_CH${channel}_BATTERY=$2"
+          eval "LIVEDATA_LEAK_CH${channel}_BATTERY_STATE=\"$SBATTERY_STATE\""
+          ;;
+        31|32|33|34|35|36|37|38)
+           getBatteryVoltageLevelState "$2" #WH34 - Soiltemperature
+           channel=$(( $1 - 30))
+           eval "LIVEDATA_SOILTEMP_CH${channel}_BATTERY_RAW=$2"
+           eval "LIVEDATA_SOILTEMP_CH${channel}_BATTERY=$VALUE_BATTERY_VOLTAGE"
+           eval "LIVEDATA_SOILTEMP_CH${channel}_BATTERY_STATE=\"$SBATTERY_STATE\""
+          ;;
+        39)
+           getBatteryLevelState "$2"  #WH45 - CO2 PM2.5 PM10 AQ
+           #battery info also available from sensor read livedata
+           LIVEDATA_WH45_CO2_BATTERY="$2"
+           LIVEDATA_WH45_CO2_BATTERY_STATE="$SBATTERY_STATE"
+          ;;
+        40|41|42|43|44|45|46|47)
+           getBatteryVoltageLevelState "$2" #WH35 - Leaf wetness
+           channel=$(( $1 - 39))
+           eval "LIVEDATA_LEAFWETNESS_CH${channel}_BATTERY_RAW=$2"
+           eval "LIVEDATA_LEAFWETNESS_CH${channel}_BATTERY=$VALUE_BATTERY_VOLTAGE"
+           eval "LIVEDATA_LEAFWETNESS_CH${channel}_BATTERY_STATE=\"$SBATTERY_STATE\""
+           ;;
+    esac
+
+    if [ -n "$KSH_VERSION" ]; then
+      unset channel
+    fi
+}
+
+getSensorNameShort()
+{
+    case "$1" in
+        0) if [ "$C_SYSTEM_SENSORTYPE" -eq $SYSTEM_SENSOR_TYPE_WH24 ]; then
+             SENSORNAME_WH='WH24'
+             SENSORNAME_SHORT='Wind/Temp./UV'
+            else
+              SENSORNAME_WH='WH65'
+              SENSORNAME_SHORT="Wind/Temp./UV"
+            fi
+            ;;
+        1) SENSORNAME_WH='WH68'
+           SENSORNAME_SHORT="Wind/Temp./UV"
+            ;;
+        2) SENSORNAME_WH="WH80"
+           SENSORNAME_SHORT='Wind/Temp./UV'
+            ;;
+        3) SENSORNAME_WH="WH40"
+           SENSORNAME_SHORT="Rainfall"
+            ;;
+        5) SENSORNAME_WH='WH32'
+           SENSORNAME_SHORT='Temperatue out'
+            ;;
+        6|7|8|9|10|11|12|13)
+           SENSORNAME_WH='WH31'
+           SENSORNAME_SHORT="Temperature$(($1 - 5))"
+           ;;
+        14|15|16|17|18|19|20|21)
+          SENSORNAME_WH='WH51'
+          SENSORNAME_SHORT="Soilmoisture$(($1 - 13))"
+          ;;
+        22|23|24|25)
+          SENSORNAME_WH='WH43'
+          SENSORNAME_SHORT="PM2.5 AQ $(($1 - 21))"
+          ;;
+        26)
+          SENSORNAME_SHORT="Lightning"
+          SENSORNAME_WH='WH57'
+          ;;
+        27|28|29|30)
+          SENSORNAME_WH='WH55'
+          SENSORNAME_SHORT="Leak$(($1 - 26))"
+          ;;
+        31|32|33|34|35|36|37|38)
+
+          SENSORNAME_WH='WH34'
+          SENSORNAME_SHORT="Soiltemperature$(($1 - 30))"
+          ;;
+        39)
+          SENSORNAME_WH='WH45'
+          SENSORNAME_SHORT="CO2 PM2.5 PM10 AQ"
+          ;;
+        40|41|42|43|44|45|46|47)
+
+            SENSORNAME_WH='WH35'
+            SENSORNAME_SHORT="Leafwetness$(($1 - 39))"
+           ;;
+         *)
+          SENSORNAME_WH='WH??' 
+          SENSORNAME_SHORT='?'
+    esac
+}
 
 getCommandName() { #$1 -decimal command
     eval "COMMAND_NAME=\$CMDNAME_$1"
@@ -720,6 +881,60 @@ convertWindDirectionToCompassDirection() { #$1 - direction in degrees
     fi
 }
 
+appendBatteryState()
+{
+   if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+        SBATTERY_STATE=$SBATTERY_STATE"🔋"
+   else
+        SBATTERY_STATE=$SBATTERY_STATE"+"
+   fi 
+}
+
+appendLowBatteryState()
+{
+   # if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+    #https://emojipedia.org/low-battery/
+        # SBATTERY_STATE=$SBATTERY_STATE"🪫" 
+    #    SBATTERY_STATE=$SBATTERY_STATE"_"
+   # else
+   #     SBATTERY_STATE=$SBATTERY_STATE"-"
+   # fi
+   :
+}
+
+getBatteryVoltageLevelState()
+#$1 - volatage scaled *10
+{
+     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+        #shellcheck disable=SC3044
+  #      typeset -i  i
+    :
+    else
+   #     local       i
+    :
+    fi
+
+   unset SBATTERY_STATE
+
+   if [ "$1" -le 12 ]; then
+      appendLowBatteryState
+   else
+    # i=13
+    # while [ "$i" -le "$1" ]; do
+       appendBatteryState # not really linear, but approximate 
+    #   i=$(( i + 1 ))
+    # done
+   fi
+
+   convertScale10ToFloat "$1"
+   VALUE_BATTERY_VOLTAGE=$VALUE_SCALE10_FLOAT
+   SBATTERY_STATE=$SBATTERY_STATE" $VALUE_BATTERY_VOLTAGE V"
+
+   if [ -n "$KSH_VERSION" ]; then
+        unset  i
+    fi
+}
+
 getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
     
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
@@ -733,18 +948,32 @@ getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
    
     #set -- 0     #debug  set $1 to 0
     if [ "$1" -eq 6 ]; then
+      if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+       #https://emojipedia.org/electric-plug/
+        SBATTERY_STATE="🔌"
+      else
         SBATTERY_STATE="dc" # for example PM 2.5 indoor
+      fi
     else
-        l=1
-        while [ "$l" -le 5 ] ; do
-            if [ "$l" -le "$1" ]; then
-                SBATTERY_STATE=$SBATTERY_STATE"+"
-            else
-                SBATTERY_STATE=$SBATTERY_STATE"-"
-            fi
-            l=$((l + 1))
-        done
+       # l=1
+       # while [ "$l" -le 5 ] ; do
+       #     if [ "$l" -le "$1" ]; then
+       #         appendBatteryState
+       #     else
+       #         appendLowBatteryState
+       #     fi
+       #     l=$((l + 1))
+       # done
+       if [ "$1" -le 1 ]; then
+          appendLowBatteryState
+       else
+          appendBatteryState
+       fi
+
+       SBATTERY_STATE=$SBATTERY_STATE" $1"
     fi
+
+    
 
     if [ -n "$KSH_VERSION" ]; then
         unset  l
@@ -752,11 +981,13 @@ getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
 }
 
 getBatteryLowOrNormal() {
+    
     unset SBATTERY_STATE
+
     if [ "$1" -eq $BATTERY_NORMAL ]; then
-        SBATTERY_STATE="normal" #ok
+       appendBatteryState
     elif [ "$1" -eq $BATTERY_LOW ]; then
-        SBATTERY_STATE="low"
+        appendLowBatteryState
     fi
 }
 
@@ -1167,17 +1398,33 @@ setRainMode()
 
 printLivedataLine()
 {
+
+     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+        #shellcheck disable=SC3044
+        typeset sgi_normal 
+    else
+        local sgi_normal
+    fi
+
+    if [ -n "$SGI_LIVE" ]; then
+      sgi_normal=$SGI_NORMAL
+    fi
+
     if [ -z "$TERM_ANSI_ESCAPE" ]; then
       unset SGI_LIVE SGI_NORMAL #maybe keep SGI_NORMAL?
     fi
 
-    APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE%-27s $3 %$5s$SGI_NORMAL\n" #just use one printf call builtin/external -> builds up entire format and argument strings
+    APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE%-27s $3 %$5s$sgi_normal\n" #just use one printf call builtin/external -> builds up entire format and argument strings
     APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$2\" \"$4\" "
     
     unset SGI_LIVE
    
     if [ -n "$LOG_LIVEDATA"  ]; then
       eval "echo \"$2\"  >$DIR_LIVEDATA/\"$6\""
+    fi
+
+    if [ -n "$KSH_VERSION" ]; then
+      unset sgi_normal
     fi
 
 }
@@ -1211,6 +1458,18 @@ printAppendBuffer()
 
     resetAppendBuffer
 
+}
+
+printLivedataBatteryLowNormal()
+#$1 - battery 0/1, $2 - battery state, $3 header, $4 filename
+{
+    if [ -n "$1" ]; then
+
+     if [ "$1" -eq "$BATTERY_LOW" ]; then
+            SGI_LIVE=$SGI_BATTERY_LOW
+     fi
+     printLivedataLine "$3" "$2" "%-7s" "" 5 "$4" 
+    fi
 }
 
 printLivedata() {
@@ -1409,12 +1668,15 @@ printLivedata() {
 
     #battery
 
-    if [ -n "$LIVEDATA_WH65_BATTERY" ]; then
-
-     if [ "$LIVEDATA_WH65_BATTERY" -eq "$BATTERY_LOW" ]; then
-            SGI_LIVE=$SGI_BATTERY_LOW
-     fi
-     printLivedataLine "WH65 battery" "$LIVEDATA_WH65_BATTERY_STATE" "%-7s" "" 5 "wh65_battery" 
+    printLivedataBatteryLowNormal "$LIVEDATA_WH65_BATTERY" "$LIVEDATA_WH65_BATTERY_STATE" "WH65 Wind/Temp./UV battery" "wh65_battery"
+    printLivedataBatteryLowNormal "$LIVEDATA_WH68_BATTERY" "$LIVEDATA_WH68_BATTERY_STATE" "WH68 Wind/Temp./UV battery" "wh68_battery"
+    printLivedataBatteryLowNormal "$LIVEDATA_WH80_BATTERY" "$LIVEDATA_WH80_BATTERY_STATE" "WH80 Wind/Temp./UV battery" "wh80_battery"
+    printLivedataBatteryLowNormal "$LIVEDATA_WH32_TEMPERATURE_BATTERY" "$LIVEDATA_WH32_TEMPERATURE_BATTERY_STATE" "Temperature out battery" "wh32_temperature_battery"
+    printLivedataBatteryLowNormal "$LIVEDATA_WH40_RAINFALL_BATTERY" "$LIVEDATA_WH40_RAINFALL_BATTERY_STATE" "Rainfall battery" "wh40_rainfall_battery"
+    printLivedataBatteryLowNormal "$LIVEDATA_WH57_LIGHTNING_BATTERY" "$LIVEDATA_WH57_LIGHTNING_BATTERY_STATE" "Lightning battery" "wh57_lightning_battery"
+    
+    if [ -n "$LIVEDATA_WH45_CO2_BATTERY" ]; then 
+      printLivedataLine  "CO2 PM25 PM10 battery" "$LIVEDATA_WH45_CO2_BATTERY_STATE" "%-7s" "" 2 "wh45_co2_battery"
     fi
 
     n=1
@@ -1436,7 +1698,18 @@ printLivedata() {
      n=1
     while [ "$n" -le "$SOILMOISTURE_WH51_MAX_CH" ]; do
         eval "[ -n ''"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY" ] && [ "\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY_RAW" -le $BATTERY_VOLTAGE_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
-        eval "[ -n ''"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY" ] && printLivedataLine  \"Soil moisture CH $n battery\" \"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY\" \"%6.1f\" \"V\" 2 \"soilmoisture${n}_battery\""
+       # eval "[ -n ''"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY" ] && printLivedataLine  \"Soil moisture CH $n battery\" \"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY\" \"%6.1f\" \"V\" 2 \"soilmoisture${n}_battery\""
+        eval "[ -n ''"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY" ] && printLivedataLine  \"Soil moisture CH $n battery\" \"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY_STATE\" \"%-7s\" \"\" 2 \"soilmoisture${n}_battery\""
+
+        n=$((n + 1))
+    done
+
+     n=1
+    while [ "$n" -le "$SOILTEMP_WH34_MAX_CH" ]; do
+        eval "[ -n ''"\$LIVEDATA_SOILTEMP_CH${n}_BATTERY" ] && [ "\$LIVEDATA_SOILTEMP_CH${n}_BATTERY_RAW" -le $BATTERY_VOLTAGE_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
+       # eval "[ -n ''"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY" ] && printLivedataLine  \"Soil moisture CH $n battery\" \"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY\" \"%6.1f\" \"V\" 2 \"soiltemperature${n}_battery\""
+        eval "[ -n ''"\$LIVEDATA_SOILTEMP_CH${n}_BATTERY" ] && printLivedataLine  \"Soil temp. CH $n battery\" \"\$LIVEDATA_SOILTEMP_CH${n}_BATTERY_STATE\" \"%-7s\" \"\" 2 \"soiltemperature${n}_battery\""
+
         n=$((n + 1))
     done
 
@@ -1447,6 +1720,14 @@ printLivedata() {
         n=$((n + 1))
     done
 
+     n=1
+    while [ "$n" -le "$LEAF_WETNESS_WH35_MAX_CH" ]; do
+        eval "[ -n ''"\$LIVEDATA_LEAFWETNESS_CH${n}_BATTERY" ] && [ "\$LIVEDATA_LEAFWETNESS_CH${n}_BATTERY" -le $BATTERY_LEVEL_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
+        eval "[ -n ''"\$LIVEDATA_LEAFWETNESS_CH${n}_BATTERY" ] && printLivedataLine \"Leaf wetness CH $n battery\" \"\$LIVEDATA_LEAFWETNESS_CH${n}_BATTERY_STATE\" \"%-7s\" \"\" 4 \"leafwetness_ch${n}_battery_state\""
+        n=$((n + 1))
+    done
+
+   
     #system
 
     [ -n "$LIVEDATA_SYSTEM_VERSION" ] && printLivedataLine "$LIVEDATA_SYSTEM_VERSION_HEADER" "$LIVEDATA_SYSTEM_VERSION" "%-7s" "" 5 "system_version"
@@ -1988,12 +2269,14 @@ printSensorLine()
 
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
-      typeset sensorstate sensorsignal_unicode
+      typeset sensorstate sensorsignal_unicode sgi_normal
     else
-      local sensorstate sensorsignal_unicode
+      local sensorstate sensorsignal_unicode sgi_normal
     fi
 
-    unset SGI_SENSOR
+    unset SGI_SENSOR SBATTERY_STATE
+
+    getSensorNameShort "$1"
 
     if [ "$2" -eq "$SENSOR_DISABLE" ]; then 
       SGI_SENSOR=$SGI_BRIGHTRED_BLACK
@@ -2002,6 +2285,7 @@ printSensorLine()
       SGI_SENSOR=$SGI_BRIGHTGREEN_BLACK
       sensorstate="searching"
     else
+       getSensorBatteryState "$1" "$3"
        sensorstate="connected"
        if [ "$4" -le 1 ]; then # poor signal
            SGI_SENSOR=$SGI_SIGNAL_LOW
@@ -2019,21 +2303,26 @@ printSensorLine()
             esac
         fi
     fi
+
+    if [ -n "$SGI_SENSOR" ]; then
+       sgi_normal=$SGI_NORMAL # insert end escape sequence only if sgi is used
+    fi
     
     if [ -z "$TERM_ANSI_ESCAPE" ]; then
        unset SGI_SENSOR SGI_NORMAL
     fi
 
    # if [ "$2" -ne "$SENSOR_DISABLE" ] && [ "$2" -ne "$SENSOR_SEARCH" ]; then 
-        APPEND_FORMAT=$APPEND_FORMAT"%2u %9x %3u %1u $SGI_SENSOR%10s$SGI_NORMAL %5s\n" #just use one printf call builtin/external -> builds up entire format and argument strings
-        APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$2\" \"$3\" \"$4\" \"$sensorstate\" \"$sensorsignal_unicode\" "
+     # 1 battery unicode is field size 4 in printf format string. TEST printf  "🔋 1.3 V" | od -A n -t x1 | wc -w -> 10
+        APPEND_FORMAT=$APPEND_FORMAT"%2u %9x %3u %1u %4s %-17s $SGI_SENSOR%10s$sgi_normal %-10s %15s\n" #just use one printf call builtin/external -> builds up entire format and argument strings
+        APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$2\" \"$3\" \"$4\"  \"$SENSORNAME_WH\" \"$SENSORNAME_SHORT\" \"$sensorstate\" \"$SBATTERY_STATE\" \"$sensorsignal_unicode\" "
    # else
    #     APPEND_FORMAT=$APPEND_FORMAT"$SGI_SENSOR%2u %9s %3u %1u$SGI_NORMAL\n" 
    #     APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$sensorstate\" \"$3\" \"$4\" "
    # fi
 
     if [ -n "$KSH_VERSION" ]; then
-      unset sensorstate
+      unset sensorstate sgi_normal
     fi
      
 }
@@ -3283,26 +3572,22 @@ initShell() {
 
     if [ "$SHELL_SUPPORT_PRINTF_VOPT" -eq 1 ]; then
     #shellcheck disable=SC3045
-      printf -v unicode "\u2620"
+      printf -v unicode "▃"
       UNICODE_LENGTH=${#unicode}
     else
       # UNICODE_LENGTH=$(printf "\u2620" | { read -r unicode; printf "%d" ${#unicode}; })
-      UNICODE_LENGTH=$(printf "\u2620" | { read -r unicode; printf "%d" ${#unicode}; })
+      UNICODE_LENGTH=$(printf "▃" | { read -r unicode; printf "%d" ${#unicode}; })
     fi
      
-    if [ "$UNICODE_LENGTH" = "6" ]; then #dash does not support unicode
-      SHELL_SUPPORT_UNICODE=0
-    elif [ "$UNICODE_LENGTH" = "1" ]; then
+    if [ "$UNICODE_LENGTH" = "1" ] || [ "$UNICODE_LENGTH" = 3 ]; then #dash/mksh -3, zsh/bash/ksh = 1
       SHELL_SUPPORT_UNICODE=1
     else
-      SHELL_SUPPORT_UNICODE=1 # likely
+      SHELL_SUPPORT_UNICODE=0
     fi
 
     unset UNICODE_LENGTH
 
     #TEST unciode: i=$(( 0x2500 )); while [ "$i" -le $(( 0x2600 )) ]; do printf -v hex "%x" "$i"; eval 'printf "%s \u$hex\n" "$hex"'; i=$(( i + 1 )); done
-
-
 
 }
 
@@ -3707,9 +3992,11 @@ parseEcowittHttpRequest()
 
                 channel=${key##soilbatt}
                 getFloatAsIntDecmial "$value"
+                getBatteryVoltageLevelState "$FLOAT_AS_INT"
                 
                 eval "LIVEDATA_SOILMOISTURE_CH${channel}_BATTERY_RAW=$FLOAT_AS_INT"  
-                eval "LIVEDATA_SOILMOISTURE_CH${channel}_BATTERY=$value"  
+                eval "LIVEDATA_SOILMOISTURE_CH${channel}_BATTERY=$value"
+                eval "LIVEDATA_SOILMOISTURE_CH${channel}_BATTERY_STATE=\"$SBATTERY_STATE\""  
                 ;;
 
             leakbatt?)
@@ -3717,7 +4004,7 @@ parseEcowittHttpRequest()
                 channel=${key##leakbatt}
                 getBatteryLevelState "$value"
                 eval "LIVEDATA_LEAK_CH${channel}_BATTERY=$value"
-                eval "LIVEDATA_LEAK_CH${channel}_BATTERY_STATE=$SBATTERY_STATE"
+                eval "LIVEDATA_LEAK_CH${channel}_BATTERY_STATE=\"$SBATTERY_STATE\""
                 ;;
 
             stationtype)
@@ -4161,8 +4448,7 @@ while [ $# -gt 0 ]; do
             #sendPacket "$CMD_READ_MAC" >/dev/null
             sendPacket "$CMD_READ_VERSION" >/dev/null
             sendPacket "$CMD_READ_SYSTEM" >/dev/null # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
-            #maybe: option to turn off?
-            #>&2  printf "%s %s\n" "${CONFIGURATION[$CONF_version]}" "${CONFIGURATION[$CONF_system_utc_state]}"
+            sendPacket "$CMD_READ_SENSOR_ID_NEW" >/dev/null
 
             shift 2
             ;;
