@@ -2491,5 +2491,12 @@ $LIVEDATA_LEAF_WETNESS_CH5,$LIVEDATA_LEAF_WETNESS_CH6,$LIVEDATA_LEAF_WETNESS_CH7
 
 
 
-
+initSearchPatternForCommand() {
+    if argEmptyOrOption "$1" || [ "$1" = "*" ]; then
+        SPATTERN='.*' #add default search for any pattern
+    else
+        toLowercase "$1"
+        SPATTERN=$LOWERCASE
+    fi
+}
     

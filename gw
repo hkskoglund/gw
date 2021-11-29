@@ -48,6 +48,8 @@ ERROR_EOF_OD_BUFFER=8
 ERROR_CONVERT=9
 ERROR_HTTP_MESSSAGE_EMPTY=10
 ERROR_NO_HOST_SPECIFIED=11
+ERROR_INVALID_SENSORID=12
+ERROR_INVALID_SENSORID_COMMAND=13
 
 #to do: conversion
 UNIT_LIGHT="lux"
@@ -295,15 +297,15 @@ case $KSH_VERSION in
 
     *MIRBSD?KSH*)
         #shellcheck disable=SC3044
-        typeset -iU SENSOR_SEARCH  SENSOR_DISABLE VALUE_UINT32BE  VALUE_UINT16BE VALUE_UINT8 SID
-        SENSOR_SEARCH=$(( 0xffffffff ))
-        SENSOR_DISABLE=$(( 0xfffffffe ))
-        # mksh - sets 0xffffffff to -1!? if typeset -i SENSOR_SEARCH=0xffffffff - its using 32-bit signed integer by default unless typeset -iU is used
+        typeset -iU SENSORID_SEARCH  SENSORID_DISABLE VALUE_UINT32BE  VALUE_UINT16BE VALUE_UINT8 SID
+        SENSORID_SEARCH=$(( 0xffffffff ))
+        SENSORID_DISABLE=$(( 0xfffffffe ))
+        # mksh - sets 0xffffffff to -1!? if typeset -i SENSORID_SEARCH=0xffffffff - its using 32-bit signed integer by default unless typeset -iU is used
         ;;
 
     *)
-        SENSOR_SEARCH=$((0xffffffff))
-        SENSOR_DISABLE=$((0xfffffffe))
+        SENSORID_SEARCH=$((0xffffffff))
+        SENSORID_DISABLE=$((0xfffffffe))
         #ksh typeset option -iu for usigned int https://docstore.mik.ua/orelly/unix3/korn/appb_07.htm
         ;;
 esac
@@ -2278,10 +2280,10 @@ printSensorLine()
 
     getSensorNameShort "$1"
 
-    if [ "$2" -eq "$SENSOR_DISABLE" ]; then 
+    if [ "$2" -eq "$SENSORID_DISABLE" ]; then 
       SGI_SENSOR=$SGI_BRIGHTRED_BLACK
       sensorstate="disabled"
-    elif [ "$2" -eq "$SENSOR_SEARCH" ]; then
+    elif [ "$2" -eq "$SENSORID_SEARCH" ]; then
       SGI_SENSOR=$SGI_BRIGHTGREEN_BLACK
       sensorstate="searching"
     else
@@ -2312,7 +2314,7 @@ printSensorLine()
        unset SGI_SENSOR SGI_NORMAL
     fi
 
-   # if [ "$2" -ne "$SENSOR_DISABLE" ] && [ "$2" -ne "$SENSOR_SEARCH" ]; then 
+   # if [ "$2" -ne "$SENSORID_DISABLE" ] && [ "$2" -ne "$SENSORID_SEARCH" ]; then 
      # 1 battery unicode is field size 4 in printf format string. TEST printf  "🔋 1.3 V" | od -A n -t x1 | wc -w -> 10
         APPEND_FORMAT=$APPEND_FORMAT"%2u %9x %3u %1u %4s %-17s $SGI_SENSOR%9s$sgi_normal %-10s %15s\n" #just use one printf call builtin/external -> builds up entire format and argument strings
         APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$2\" \"$3\" \"$4\"  \"$SENSORNAME_WH\" \"$SENSORNAME_SHORT\" \"$sensorstate\" \"$SBATTERY_STATE\" \"$sensorsignal_unicode\" "
@@ -2433,7 +2435,7 @@ parsePacket() {
         parsePath
     elif [ "$PRX_CMD_UINT8" -eq $CMD_READ_CUSTOMIZED ]; then
         parseCustomized
-    elif [ "$PRX_CMD_UINT8" -eq $CMD_READ_SENSOR_ID_NEW ]; then
+    elif [ "$PRX_CMD_UINT8" -eq $CMD_READ_SENSOR_ID_NEW ] ||[ "$PRX_CMD_UINT8" -eq $CMD_READ_SENSOR_ID ]; then
         parseSensorIdNew
     else
         echo >&2 ERROR Parsing of command "$COMMAND_NAME" not supported
@@ -3267,16 +3269,8 @@ initConfigDir() {
 
 }
 
-initSearchPatternForCommand() {
-    if argEmptyOrOption "$1" || [ "$1" = "*" ]; then
-        SPATTERN='.*' #add default search for any pattern
-    else
-        toLowercase "$1"
-        SPATTERN=$LOWERCASE
-    fi
-}
-
 argEmptyOrOption() {
+    [ "$DEBUG" -eq 1 ] && echo >&2 argEmptyOrOption "$@"
     if [ -z "$1" ]; then
         return 0
     else
@@ -3320,10 +3314,126 @@ initcoptCommands ()
     CMDOPT_VERSION='version|ver'
 }
 
-processCommand() {
-    #$1 - field pattern for livedata/sensor id
+writeSensorId()
+#$1 - low sensortype, $2 - high sensortype, $3 - sensorid
+{
+    newPacketBody $CMD_WRITE_SENSOR_ID
 
-    [ "$DEBUG" -eq 1 ] &&  >&2 echo ARGS to processCommand "$@" length "$#" COMMAND "$COMMAND"
+    if [ -z "$2" ]; then
+     #[ "$DEBUG" -eq 1 ] &&
+      echo >&2 "Writing sensor type $1, sensor id $3"
+      writeUInt8 "$1"
+      writeUInt32BE "$3"
+    else
+      n="$1"
+      while [ "$n" -le "$2" ]; do
+        #[ "$DEBUG" -eq 1 ] &&
+         echo >&2 "Writing sensor type $n, sensor id $3"
+         writeUInt8 "$n"
+         writeUInt32BE "$3"
+         n=$(( n + 1 ))
+      done
+    fi
+    
+    sendPacket
+}
+
+processSensorOptions()
+# format: 31-38=disable,40-47=disable
+{
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+       #shellcheck disable=SC3044
+       {
+        typeset f  sensortypeexpr cmdexpr
+        case "$KSH_VERSION" in
+
+          *MIRBSD?KSH*) typeset -iU sensorid
+                        ;;
+                    *) typeset sensorid
+                    ;;
+        esac
+       }  
+    else
+       local f sensorid sensortypeexpr cmdexpr
+    fi
+
+    [ "$DEBUG" -eq 1 ] && echo >&2 processSensorOptions "$*"
+
+     IFS=,
+     for f in $1; do
+       IFS='='
+       set -- $f
+       sensortypeexpr=$1
+       cmdexpr=$2
+       unset sensorType_low sensorType_high
+
+       case $cmdexpr in 
+          disable|d) sensorid=$SENSORID_DISABLE
+                   ;;
+          search|s|enable|e)  sensorid=$SENSORID_SEARCH
+                   ;;
+          *) 
+              if ! isHex "$cmdexpr"; then
+               echo >&2 "Error Invalid hex number for sensor id $cmdexpr"
+               return "$ERROR_INVALID_SENSORID_COMMAND"
+              else
+                 sensorid=$(( "$cmdexpr" ))
+              fi
+             ;;
+       esac
+
+       case $sensortypeexpr in
+         *-*)  IFS=- # range with hyphen, for example 31-33
+                set -- $sensortypeexpr
+                sensorType_low=$1
+                sensorType_high=$2
+                echo "Sensor id low $sensorType_low sensor id high $sensorType_high"
+               
+                ;;
+            *) 
+               sensorType_low=$sensortypeexpr # only a single number
+               ;;
+       esac
+
+       if [ -z "$sensorType_low" ]; then
+          echo >&2 "Error Empty sensor id low $sensorType_low"
+          return "$ERROR_INVALID_SENSORID"
+       fi
+       
+       if [ -n "$sensorType_low" ] && ! isNumber "$sensorType_low" || [ "$sensorType_low" -gt "$SENSORTYPE_MAX" ]; then
+          echo >&2 "Error Not a valid sensor type $sensorType_low, max sensortype $SENSORTYPE_MAX"
+          return "$ERROR_INVALID_SENSORID"
+       fi
+       
+       if [ -n "$sensorType_high" ]; then
+          if  ! isNumber "$sensorType_high" || [ "$sensorType_high" -gt "$SENSORTYPE_MAX" ]; then
+            echo >&2 "Error Not a valid sensor id $sensorType_high, max sensortype $SENSORTYPE_MAX"
+            return "$ERROR_INVALID_SENSORID"
+          fi
+
+          if [ "$sensorType_low" -gt "$sensorType_high" ]; then
+            echo >&2 "Error Sensor id low $sensorType_low is greather than sensorid high $sensorType_high"
+            return "$ERROR_INVALID_SENSORID"
+          fi
+
+          if [ "$sensorid" -ne $SENSORID_DISABLE ] && [ "$sensorid" -ne $SENSORID_SEARCH ] && [ "$sensorType_low" -ne "$sensorType_high" ]; then
+                    echo >&2 "Error Cannot set sensortype range to same sensorid $cmdexpr"
+                    return $ERROR_INVALID_SENSORID
+          fi
+       fi
+
+       writeSensorId "$sensorType_low" "$sensorType_high" "$sensorid"
+          
+    done
+
+    if [ -n "$KSH_VERSION" ]; then
+       unset f sensorid sensortypeexpr cmdexpr
+    fi
+}
+
+processCommand() {
+
+   [ "$DEBUG" -eq 1 ] && >&2 echo ARGS to processCommand "$@" length "$#" COMMAND "$COMMAND"
 
    if [ "$#" -ge 1 ]; then
       shift # remove {command} (to -c option) -> all args to {command} starts at $1
@@ -3472,7 +3582,6 @@ processCommand() {
 
         livedata | ld | live | l)
 
-            #initSearchPatternForCommand "$1"
             if [ -z "$LOG_LIVEDATA" ]; then
                 sendPacket $CMD_LIVEDATA
             else
@@ -3487,14 +3596,15 @@ processCommand() {
 
         sensor_id)
 
-            initSearchPatternForCommand "$1"
             sendPacket $CMD_READ_SENSOR_ID
             ;;
 
         sensor_id_new | sid | sensor | s) # for new SENSOR_TYPE types
 
-            initSearchPatternForCommand "$1"
             sendPacket $CMD_READ_SENSOR_ID_NEW
+            if ! argEmptyOrOption "$1"; then
+              processSensorOptions "$1"
+            fi
             ;;
 
         calibration | cal)
@@ -3516,6 +3626,14 @@ isNumber() {
     case $1 in
         '' | *[!0-9]*) return 1 ;;
         *) return 0 ;;
+    esac
+}
+
+isHex()
+{
+    case $1 in 
+      '' | 0x*[!0-9a-fA-F]*) return 1 ;;
+      0x*) return 0 ;;
     esac
 }
 
