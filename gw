@@ -420,7 +420,7 @@ SGI_BATTERY_LOW=${SGI_BATTERY_LOW:=$SGI_BRIGHTRED_BLACK}
 SGI_SIGNAL_LOW=${SGI_SIGNAL_LOW:=$SGI_BRIGHTRED_BLACK}
 SGI_LEAK=${SGI_LEAK:="\a"$SGI_BRIGHTRED_BLACK} # add alert/bell \a if leakage detected
 
-TERM_ANSI_ESCAPE=${TERM_ANSI_ESCAPE:=1}
+#TERM_ANSI_ESCAPE=${TERM_ANSI_ESCAPE:=1}
 
 #Limits for triggering of ansi escape highlights
 LIMIT_LIVEDATA_WIND=${LIMIT_LIVEDATA_WIND:=80}  # 8 m/s - set param if value unset/null
@@ -1410,7 +1410,7 @@ printLivedataLine()
       sgi_normal=$SGI_NORMAL
     fi
 
-    if [ -z "$TERM_ANSI_ESCAPE" ]; then
+    if [ "$TERM_ANSI_ESCAPE" -eq 0 ]; then
       unset SGI_LIVE SGI_NORMAL #maybe keep SGI_NORMAL?
     fi
 
@@ -2308,13 +2308,13 @@ printSensorLine()
        sgi_normal=$SGI_NORMAL # insert end escape sequence only if sgi is used
     fi
     
-    if [ -z "$TERM_ANSI_ESCAPE" ]; then
+    if [ "$TERM_ANSI_ESCAPE" -eq 0  ]; then
        unset SGI_SENSOR SGI_NORMAL
     fi
 
    # if [ "$2" -ne "$SENSOR_DISABLE" ] && [ "$2" -ne "$SENSOR_SEARCH" ]; then 
      # 1 battery unicode is field size 4 in printf format string. TEST printf  "🔋 1.3 V" | od -A n -t x1 | wc -w -> 10
-        APPEND_FORMAT=$APPEND_FORMAT"%4u %9x %3u %1u %4s %-17s $SGI_SENSOR%9s$sgi_normal %-10s %15s\n" #just use one printf call builtin/external -> builds up entire format and argument strings
+        APPEND_FORMAT=$APPEND_FORMAT"%2u %9x %3u %1u %4s %-17s $SGI_SENSOR%9s$sgi_normal %-10s %15s\n" #just use one printf call builtin/external -> builds up entire format and argument strings
         APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$2\" \"$3\" \"$4\"  \"$SENSORNAME_WH\" \"$SENSORNAME_SHORT\" \"$sensorstate\" \"$SBATTERY_STATE\" \"$sensorsignal_unicode\" "
    # else
    #     APPEND_FORMAT=$APPEND_FORMAT"$SGI_SENSOR%2u %9s %3u %1u$SGI_NORMAL\n" 
@@ -2342,11 +2342,9 @@ parseSensorIdNew()
     fi
 
     resetAppendBuffer
-
-   # APPEND_FORMAT="%4s %9s %1s %1s %4s %-17s"
-     APPEND_FORMAT="%4s %-9s %3s %1s %-4s %-17s %-9s %-10s %s \n"
-       APPEND_ARGS="Type Id B S ID Name State Battery Signal "
-
+    
+    APPEND_FORMAT="%2s %9s %3s %1s %-4s %-17s %-9s %-10s %s\n%s\n"
+    APPEND_ARGS="T ID B S Type Name State Battery Signal ───────────────────────────────────────────────────────────────────── "
 
     while [ ${#OD_BUFFER} -ge 7 ]; do
        
@@ -3594,6 +3592,21 @@ initShell() {
 
     #TEST unciode: i=$(( 0x2500 )); while [ "$i" -le $(( 0x2600 )) ]; do printf -v hex "%x" "$i"; eval 'printf "%s \u$hex\n" "$hex"'; i=$(( i + 1 )); done
 
+#https://www.gnu.org/software/gettext/manual/html_node/The-TERM-variable.html
+#https://www.gnu.org/software/gettext/libtextstyle/manual/html_node/The-NO_005fCOLOR-variable.html
+# TEST : msgcat --color=test
+    [ "$DEBUG" -eq 1 ] && >&2 echo TERM "$TERM"
+
+    if [ -n "$NO_COLOR" ]; then
+      TERM_ANSI_ESCAPE=0
+    else
+        case "$TERM" in
+            *color) TERM_ANSI_ESCAPE=1
+                    ;;
+            *)      TERM_ANSI_ESCAPE=0
+                    ;;
+        esac
+    fi
 }
 
 printWeatherServices () {
@@ -4311,6 +4324,7 @@ initTimezones
 initUnit
 
 #https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
+#useful CLI info: https://clig.dev/#arguments-and-flags
 
 while [ $# -gt 0 ]; do
 
@@ -4442,7 +4456,7 @@ while [ $# -gt 0 ]; do
             shift 2
             ;;
 
-        -h | --host)
+        -g | --host)
 
             #if ! connect "$2"; then
             #  >&2 echo  "$HOST" "Error Failed to connect host $2, exiting"
@@ -4588,7 +4602,7 @@ while [ $# -gt 0 ]; do
 
         -E | --ansi-escape-disable)
            
-           unset TERM_ANSI_ESCAPE
+           TERM_ANSI_ESCAPE=0
            shift
            ;;
 
