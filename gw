@@ -2294,14 +2294,14 @@ printSensorLine()
        fi
        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
             case "$4" in 
-                    1) sensorsignal_unicode='▁'
-                    ;;
-                    2) sensorsignal_unicode='▁▂'
-                    ;;
-                    3) sensorsignal_unicode='▁▂▃'
-                    ;;
-                    4) sensorsignal_unicode='▁▂▃▄'
-                    ;;
+                1) sensorsignal_unicode='▁'
+                ;;
+                2) sensorsignal_unicode='▁▂'
+                ;;
+                3) sensorsignal_unicode='▁▂▃'
+                ;;
+                4) sensorsignal_unicode='▁▂▃▄'
+                ;;
             esac
         fi
     fi
@@ -2348,22 +2348,31 @@ parseSensorIdNew()
     APPEND_FORMAT="%2s %9s %3s %1s %-4s %-17s %-9s %-10s %s\n%s\n"
     APPEND_ARGS="T ID B S Type Name State Battery Signal ───────────────────────────────────────────────────────────────────── "
 
+    [ "$DEBUG" -eq  1 ] && >&2 echo "SPATTERNID $SPATTERNID"
+    
     while [ ${#OD_BUFFER} -ge 7 ]; do
        
-       readUInt8
+       readUInt8            #type
        stype=$VALUE_UINT8
        
-       readUInt32BE
+       readUInt32BE         #id
        SID=$VALUE_UINT32BE
        
-       readUInt8
+       readUInt8   
        battery=$VALUE_UINT8
        
        readUInt8
        signal=$VALUE_UINT8
 
-       printSensorLine $stype $SID $battery $signal
 
+       if [ -n "$SPATTERNID" ] && [ "$SPATTERNID" -eq 1 ] && [ $SID -ne $SENSORID_SEARCH ] && [ $SID -ne $SENSORID_DISABLE ] ; then
+            printSensorLine $stype $SID $battery $signal
+       elif [ -n "$SPATTERNID" ] &&  [ "$SPATTERNID" -eq $SID ] ; then
+            printSensorLine $stype $SID $battery $signal
+       elif [ -z "$SPATTERNID" ]; then
+            printSensorLine $stype $SID $battery $signal
+       fi   
+       
        [ "$DEBUG" -eq 1 ] && >&2 echo "type $stype id $SID battery $battery signal $signal od_buffer length ${#OD_BUFFER}"
     done
 
@@ -3320,15 +3329,13 @@ writeSensorId()
     newPacketBody $CMD_WRITE_SENSOR_ID
 
     if [ -z "$2" ]; then
-     #[ "$DEBUG" -eq 1 ] &&
-      echo >&2 "Writing sensor type $1, sensor id $3"
+     [ "$DEBUG" -eq 1 ] && echo >&2 "Writing sensor type $1, sensor id $3"
       writeUInt8 "$1"
       writeUInt32BE "$3"
     else
       n="$1"
       while [ "$n" -le "$2" ]; do
-        #[ "$DEBUG" -eq 1 ] &&
-         echo >&2 "Writing sensor type $n, sensor id $3"
+        [ "$DEBUG" -eq 1 ] && echo >&2 "Writing sensor type $n, sensor id $3"
          writeUInt8 "$n"
          writeUInt32BE "$3"
          n=$(( n + 1 ))
@@ -3362,6 +3369,7 @@ processSensorOptions()
      IFS=,
      for f in $1; do
        IFS='='
+       #shellcheck disable=SC2086
        set -- $f
        sensortypeexpr=$1
        cmdexpr=$2
@@ -3384,10 +3392,11 @@ processSensorOptions()
 
        case $sensortypeexpr in
          *-*)  IFS=- # range with hyphen, for example 31-33
+                #shellcheck disable=SC2086
                 set -- $sensortypeexpr
                 sensorType_low=$1
                 sensorType_high=$2
-                echo "Sensor id low $sensorType_low sensor id high $sensorType_high"
+                [ "$DEBUG" -eq 1 ] && >&2 echo "Sensor type low $sensorType_low sensor type high $sensorType_high"
                
                 ;;
             *) 
@@ -3601,10 +3610,33 @@ processCommand() {
 
         sensor_id_new | sid | sensor | s) # for new SENSOR_TYPE types
 
-            sendPacket $CMD_READ_SENSOR_ID_NEW
             if ! argEmptyOrOption "$1"; then
-              processSensorOptions "$1"
+              case "$1" in 
+                connected|c)
+                   SPATTERNID=1
+                   sendPacket $CMD_READ_SENSOR_ID_NEW
+                   ;;
+                searching|s)
+                   SPATTERNID=$SENSORID_SEARCH
+                   sendPacket $CMD_READ_SENSOR_ID_NEW
+                   ;;
+                disabled|d)
+                   SPATTERNID=$SENSORID_DISABLE
+                   sendPacket $CMD_READ_SENSOR_ID_NEW
+                   ;;
+                   
+                *)  if isHex "$1"; then #search on hexid (without 0x prefix)
+                       SPATTERNID=$(( 0x$1 ))
+                       sendPacket $CMD_READ_SENSOR_ID_NEW
+                    else
+                      processSensorOptions "$1"
+                    fi
+                   ;;
+              esac
+            else
+                sendPacket $CMD_READ_SENSOR_ID_NEW
             fi
+
             ;;
 
         calibration | cal)
