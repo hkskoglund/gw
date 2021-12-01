@@ -2500,3 +2500,107 @@ initSearchPatternForCommand() {
     fi
 }
     
+ -r | --restore)
+
+            # unset CONFIGURATION
+            # unset CONFIGURAITION_INDEX
+            # unset CONFIGURATION_SENSOR
+            # unset CONFIGURATION_SENSOR_UPDATE_INDEX
+            # unset CONFIGURATION_SENSOR_INDEX
+            # typeset -a CONFIGURATION
+            # typeset -a CONFIGURATION_SENSOR
+            # typeset -a CONFIGURATION_SENSOR_UPDATE_INDEX # sensor types that needs update/write
+            # typeset -a CONFIGURATION_SENSOR_INDEX
+
+            # if [ -s "$2" ]; then
+            #   IFS=' '
+            #   #shellcheck disable=SC2034
+            #   while read -r K V DISCARD; do
+            #     unset CONFIGURATION_INDEX
+            #     STYPE=$(expr "$K" : "$CONFIGURATION_SENSORFIELD\([0-9]*\)" ) # extracts number part from sensortype_{number}
+            #     if [ -n "$STYPE" ]; then
+            ##       setConfigurationSensor "$STYPE" "$V"
+            #     else
+            #        getConfigurationIndexFromName "$K"
+            #        if [ -n "$CONFIGURATION_NAME_INDEX" ]; then
+            #         [ "$DEBUG" -eq 1 ] && >&2 echo  "$K" "Configuration[$CONFIGURATION_NAME_INDEX]=$V"
+            #          setConfiguration $CONFIGURATION_NAME_INDEX "$V"
+            #        fi
+            #     fi
+            #
+            #   done < "$2"
+
+            #   printConfiguration >&2
+
+            #   sendEcowittInterval "${CONFIGURATION[$CONF_ecowitt_interval]}"
+            #   sendWeatherservice "$CMD_WRITE_WUNDERGROUND" "${CONFIGURATION[$CONF_wunderground_id]}" "${CONFIGURATION[$CONF_wunderground_password]}"
+            #   sendWeatherservice "$CMD_WRITE_WOW"          "${CONFIGURATION[$CONF_wow_id]}"          "${CONFIGURATION[$CONF_wow_password]}"
+            ##   sendWeatherservice "$CMD_WRITE_WEATHERCLOUD" "${CONFIGURATION[$CONF_weathercloud_id]}" "${CONFIGURATION[$CONF_weathercloud_password]}"
+            #  sendCustomized
+            #   sendRaindata "${CONFIGURATION[$CONF_raindaily]}" "${CONFIGURATION[$CONF_rainweek]}" \
+            #                 "${CONFIGURATION[$CONF_rainmonth]}" "${CONFIGURATION[$CONF_rainyear]}"
+            #   sendSensorId
+            #   sendCalibration "${CONFIGURATION[$CONF_calibration_intempoffset]}" "${CONFIGURATION[$C_CALIBRATION_INHUMIDITYOFFSET]}" \
+            #                   "${CONFIGURATION[$CONF_calibration_absoffset]}" "${CONFIGURATION[$CONF_calibration_reloffset]}" \
+            #                   "${CONFIGURATION[$CONF_calibration_outtempoffset]}" "${CONFIGURATION[$CONF_calibration_outhumidityoffset]}" \
+            #                   "${CONFIGURATION[$CONF_calibration_windiroffset]}"
+
+            #     shift 2
+
+            # elif [ -z "$2" ]; then
+
+            #   >&2 echo Error no backup file specified
+            #    shift
+            # else
+            #   >&2 echo Error "$2 does not exists or is empty";
+            #   shift 2
+            # fi
+
+            ;;
+
+
+
+    
+        -n | --notifyrain)
+            runRainNotification "$2" "$3" #tested on GNOME
+            shift 3
+            ;;
+
+
+
+ -b | --backup)
+
+            #https://tldp.org/LDP/abs/html/x17974.html
+             "$FD_STDOUT_DUP">&1
+            exec >/dev/null
+
+            sendPacket $CMD_READ_MAC
+            sendPacket $CMD_READ_VERSION
+            sendPacket $CMD_BROADCAST
+
+            printWeatherServices
+
+            sendPacket $CMD_READ_PATH
+            sendPacket $CMD_READ_RAINDATA
+            sendPacket $CMD_READ_SENSOR_ID_NEW
+            sendPacket $CMD_READ_CALIBRATION
+
+            exec 1>&"$FD_STDOUT_DUP" "$FD_STDOUT_DUP">&-
+
+            # some data probably saved to device EEPROM
+            # TODO? calibration data?
+            if [ -n "$2" ]; then #save to file
+                printConfiguration >"$2"
+                shift 2
+            else
+                printConfiguration #or just stdout
+                shift 
+            fi
+            ;;
+
+
+
+            
+
+
+    
