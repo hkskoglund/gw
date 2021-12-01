@@ -1736,6 +1736,16 @@ convertTemperatureLivedata()
     fi
 }
 
+convertPressureLivedata()
+{
+   if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
+        convertScale10ToFloat "$1"
+    elif [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_INHG ]; then
+        convertHpaScale10ToInHgScale10 "$1"
+        convertScale10ToFloat "$VALUE_INHG_SCALE10"
+    fi
+}
+
 parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 5d 0a 01 59 0b 00 00 0c 00 00 15 00 00 93 bc 16 00 20 17 00 2c 12 1a 00 87 22 32 1b 00 b0 23 27 1c 00 dd 24 31 58 00 19 00 47 0e 00 00 10 00 08 11 00 42 12 00 00 02 9a 13 00 00 0f 8b 0d 00 42 63
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
@@ -1770,14 +1780,14 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             readUInt16BE
             #shellcheck disable=SC2034
             LIVEDATA_ABSBARO_RAW=$VALUE_UINT16BE #may use for ansi escape coloring beyond limits
-            convertScale10ToFloat "$VALUE_UINT16BE"
+            convertPressureLivedata "$VALUE_UINT16BE"
             LIVEDATA_ABSBARO=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_RELBARO ]; then
 
             readUInt16BE
             LIVEDATA_RELBARO_RAW=$VALUE_UINT16BE
-            convertScale10ToFloat "$VALUE_UINT16BE"
+            convertPressureLivedata "$VALUE_UINT16BE"
             LIVEDATA_RELBARO=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_OUTTEMP ]; then
@@ -3886,6 +3896,13 @@ convertInHgToHpa()
    VALUE_INHG_HPA_SCALE10=$VALUE_ROUND
 }
 
+convertHpaScale10ToInHgScale10()
+#using: SI unit 1 inHg = 3.38639 kPa
+{
+   round $(( $1 * 100000 / 338639 ))
+   VALUE_INHG_SCALE10=$VALUE_ROUND
+}
+
 round()
 {
  if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
@@ -4508,6 +4525,41 @@ initUnit()
    fi
 }
 
+parseUnitOptions()
+#format: temp=farenheit|celius,pressure=inhg|hpa
+{
+    IFS=,
+    for f in $1; do
+        IFS='='
+        set -- $f
+        case "$1" in
+            temperature|t) case "$2" in 
+
+                             celcius|c)    setTemperatureMode $UNIT_TEMPERATURE_CELCIUS 
+                                            ;;
+                             farenheit|f)   setTemperatureMode $UNIT_TEMPERATURE_FARENHEIT 
+                                            ;;
+                             *)             echo >&2 Warning: Unknown temperature mode "$2", use "celcius|c,farenheit|f" 
+                                            ;;
+                            esac
+                            ;;
+
+            pressure|p)     case "$2" in
+                                inhg|i)     setPressureMode $UNIT_PRESSURE_INHG 
+                                            ;;
+                                hpa|h)      setPressureMode $UNIT_PRESSURE_HPA 
+                                            ;;
+                                *)          echo >&2 Warning: Unknown pressure mode "$2", use "inhg|i,hpa|h" 
+                                            ;;
+                            esac
+                            ;;
+                    
+                    *)      echo >&2 Warning: Unknown mode "$1", use "temperature|t,pressure|p" 
+                            ;;
+        esac
+    done
+}
+
 initShell
 initcoptCommands
 initConfigDir
@@ -4602,7 +4654,13 @@ while [ $# -gt 0 ]; do
         
         -u | --unit)
                
-               #temp=farenheit|celius,pressure=inhg|hpa
+               if argEmptyOrOption "$2"; then
+                 echo >&2 "Warning: no arguments specified for unit, for example temp=farenheit|celcius"
+                 shift # ignore
+               else
+                 parseUnitOptions "$2"
+                 shift 2 
+               fi
               ;;
 
         -d | --debug)
