@@ -1434,7 +1434,7 @@ printLivedataLine()
     fi
 
     #TEST UTF-8: for f in $(seq -s' ' 255); do eval printf "\\\x$(printf "%x" "$f")"; done
-    
+
     APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE%-30s $3 %$5s$sgi_normal\n" #just use one printf call builtin/external -> builds up entire format and argument strings
     APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$2\" \"$4\" "
     
@@ -1795,6 +1795,17 @@ convertPressureLivedata()
     fi
 }
 
+convertWindLivedata()
+{
+   if [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPS ]; then
+        convertScale10ToFloat "$1"
+    elif [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPH ]; then
+        convertMpsScale10ToMphScale10 "$1"
+        convertScale10ToFloat "$VALUE_MPH_SCALE10"
+    fi
+}
+
+
 parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 5d 0a 01 59 0b 00 00 0c 00 00 15 00 00 93 bc 16 00 20 17 00 2c 12 1a 00 87 22 32 1b 00 b0 23 27 1c 00 dd 24 31 58 00 19 00 47 0e 00 00 10 00 08 11 00 42 12 00 00 02 9a 13 00 00 0f 8b 0d 00 42 63
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
@@ -1862,21 +1873,21 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
             readUInt16BE
             LIVEDATA_WINDSPEED_RAW=$VALUE_UINT16BE
-            convertScale10ToFloat "$VALUE_UINT16BE"
+            convertWindLivedata "$VALUE_UINT16BE"
             LIVEDATA_WINDSPEED=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_WINDGUSTSPPED ]; then
 
             readUInt16BE
             LIVEDATA_WINDGUSTSPEED_RAW=$VALUE_UINT16BE
-            convertScale10ToFloat "$VALUE_UINT16BE"
+            convertWindLivedata "$VALUE_UINT16BE"
             LIVEDATA_WINDGUSTSPEED=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_DAYLWINDMAX ]; then
 
             readUInt16BE
             LIVEDATA_WINDDAILYMAX_RAW=$VALUE_UINT16BE
-            convertScale10ToFloat "$VALUE_UINT16BE"
+            convertWindLivedata "$VALUE_UINT16BE"
             LIVEDATA_WINDDAILYMAX=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_LIGHT ]; then
@@ -3995,6 +4006,13 @@ convertMphTMps()
   VALUE_MPH_MPS_SCALE10=$VALUE_ROUND
 }
 
+convertMpsScale10ToMphScale10()
+{
+    VALUE_MPH_SCALE10=$(( 10000000/44704 ))
+    round "$VALUE_MPH_SCALE10"
+    VALUE_MPH_SCALE10=$VALUE_ROUND
+}
+
 convertInTomm()
 #1 inch SI unit = 25.4 mm
 #https://en.wikipedia.org/wiki/Inch
@@ -4601,6 +4619,16 @@ parseUnitOptions()
                                 hpa|h)      setPressureMode $UNIT_PRESSURE_HPA 
                                             ;;
                                 *)          echo >&2 Warning: Unknown pressure mode "$2", use "inhg|i,hpa|h" 
+                                            ;;
+                            esac
+                            ;;
+
+             wind|w)     case "$2" in
+                                mph|h)     setWindMode $UNIT_WIND_MPH 
+                                            ;;
+                                mps|s)      setWindMode $UNIT_WIND_MPS 
+                                            ;;
+                                *)          echo >&2 Warning: Unknown wind mode "$2", use "mph|h,mps|s" 
                                             ;;
                             esac
                             ;;
