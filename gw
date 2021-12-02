@@ -321,30 +321,56 @@ LIVEDATA_RAINYEAR_HEADER=${LIVEDATA_RAINYEAR_HEADER:="Rain year"}
 LIVEDATA_LEAK_YES=${LIVEDATA_LEAK_YES:="YES"}
 LIVEDATA_LEAK_NO=${LIVEDATA_LEAK_NO:="NO"}
 
+LIVEDATA_WH65_BATTERY_HEADER=${LIVEDATA_WH65_BATTERY_HEADER:='WH65 Weather station'}
+LIVEDATA_WH68_BATTERY_HEADER=${LIVEDATA_WH68_BATTERY_HEADER:='WH68 Weather station'}
+LIVEDATA_WH80_BATTERY_HEADER=${LIVEDATA_WH80_BATTERY_HEADER:='WH80 Weather station'}
+
+LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER=${LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER:="Temperature out battery"}
+LIVEDATA_WH40_RAINFALL_BATTERY_HEADER=${LIVEDATA_WH40_RAINFALL_BATTERY_HEADER:="Rainfall battery"}
+LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER=${LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="Lightning battery"} 
+
 N=1
 while [ "$N" -le "$WH31_TEMP_MAXCH" ]; do 
     eval LIVEDATA_TEMP_HEADER$N=\$\{LIVEDATA_TEMP_HEADER$N:=\"Temperature $N\"\}
+    eval LIVEDATA_TEMP_BATTERY_HEADER$N=\$\{LIVEDATA_TEMP_BATTERY_HEADER$N:=\"Temperature $N battery\"\}
     eval LIVEDATA_HUMIDITY_HEADER$N=\$\{LIVEDATA_HUMIDITY_HEADER$N:=\"Humidity $N\"\}
     N=$(( N + 1 ))
 done
 
 N=1
-while [ "$N" -lt "$WH55_LEAK_MAXCH" ]; do 
+while [ "$N" -le "$WH55_LEAK_MAXCH" ]; do 
     eval LIVEDATA_LEAK_HEADER$N=\$\{LIVEDATA_LEAK_HEADER$N:="Leak $N"\}
+    eval LIVEDATA_LEAK_BATTERY_HEADER$N=\$\{LIVEDATA_LEAK_BATTERY_HEADER$N:="Leak $N battery"\}
     N=$(( N + 1 ))
 done
 
 
 N=1
-while [ "$N" -lt "$WH43_PM25_MAXCH" ]; do 
+while [ "$N" -le "$WH43_PM25_MAXCH" ]; do 
     eval LIVEDATA_PM25_HEADER$N=\$\{LIVEDATA_PM25_HEADER$N:="PM 2.5 $N"\}
     eval LIVEDATA_PM25_24HAVG_HEADER$N=\$\{LIVEDATA_PM25_24HAVG_HEADER$N:="PM 2.5 24h avg. $N"\}
+    eval LIVEDATA_PM25_BATTERY_HEADER$N=\$\{LIVEDATA_PM25_BATTERY_HEADER$N:="PM 2.5 $N battery"\}
     N=$(( N + 1 ))
 done
 
 N=1
-while [ "$N" -lt "$WH51_SOILMOISTURE_MAXCH" ]; do 
+while [ "$N" -le "$WH51_SOILMOISTURE_MAXCH" ]; do 
     eval LIVEDATA_SOILMOISTURE_HEADER$N=\$\{LIVEDATA_SOILMOISTURE_HEADER$N:="Soilmoisture $N"\}
+    eval LIVEDATA_SOILMOISTURE_BATTERY_HEADER$N=\$\{LIVEDATA_SOILMOISTURE_BATTERY_HEADER$N:="Soilmoisture $N battery"\}
+    N=$(( N + 1 ))
+done
+
+N=1
+while [ "$N" -le "$WH34_SOILTEMP_MAXCH" ]; do 
+    eval LIVEDATA_SOILTEMP_HEADER$N=\$\{LIVEDATA_SOILTEMP_HEADER$N:="Soiltemp. $N"\}
+    eval LIVEDATA_SOILTEMP_BATTERY_HEADER$N=\$\{LIVEDATA_SOILTEMP_BATTERY_HEADER$N:="Soiltemp. $N battery"\}
+    N=$(( N + 1 ))
+done
+
+N=1
+while [ "$N" -le "$WH35_LEAFWETNESS_MAXCH" ]; do 
+    eval LIVEDATA_LEAFWETNESS_HEADER$N=\$\{LIVEDATA_LEAFWETNESS_HEADER$N:="Leafwetness $N"\}
+    eval LIVEDATA_LEAFWETNESS_BATTERY_HEADER$N=\$\{LIVEDATA_LEAFWETNESS_BATTERY_HEADER$N:="Leafwetness $N battery"\}
     N=$(( N + 1 ))
 done
 
@@ -435,6 +461,16 @@ getSensorBatteryState()
            eval "LIVEDATA_SOILMOISTURE_CH${channel}_BATTERY_RAW=$2"
            eval "LIVEDATA_SOILMOISTURE_CH${channel}_BATTERY=$VALUE_BATTERY_VOLTAGE"
            eval "LIVEDATA_SOILMOISTURE_CH${channel}_BATTERY_STATE=\"$SBATTERY_STATE\""
+           #TEST 
+           #LIVEDATA_LEAFWETNESS_CH1_BATTERY="1.2"
+           #LIVEDATA_LEAFWETNESS_CH1_BATTERY_RAW=12
+           #getBatteryVoltageLevelState 12
+           #LIVEDATA_LEAFWETNESS_CH1_BATTERY_STATE=$SBATTERY_STATE
+            #TEST 
+            #LIVEDATA_SOILTEMP_CH1_BATTERY="1.2"
+           #LIVEDATA_SOILTEMP_CH1_BATTERY_RAW=12
+           #getBatteryVoltageLevelState 12
+           #LIVEDATA_SOILTEMP_CH1_BATTERY_STATE=$SBATTERY_STATE
           ;;
         22|23|24|25)
           getBatteryLevelState "$2"  #WH41 - PM2.5
@@ -877,14 +913,12 @@ appendBatteryState()
 
 appendLowBatteryState()
 {
-   # if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-    #https://emojipedia.org/low-battery/
-        # SBATTERY_STATE=$SBATTERY_STATE"🪫" 
-    #    SBATTERY_STATE=$SBATTERY_STATE"_"
-   # else
-   #     SBATTERY_STATE=$SBATTERY_STATE"-"
-   # fi
-   :
+    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+    #https://emojipedia.org/low-battery/ "Coming to major platforms in late 2021 and throughout 2022".
+         SBATTERY_STATE=$SBATTERY_STATE"🪫" 
+    else
+        SBATTERY_STATE=$SBATTERY_STATE"LOW"
+    fi
 }
 
 getBatteryVoltageLevelState()
@@ -1399,7 +1433,9 @@ printLivedataLine()
       unset SGI_LIVE SGI_NORMAL #maybe keep SGI_NORMAL?
     fi
 
-    APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE%-27s $3 %$5s$sgi_normal\n" #just use one printf call builtin/external -> builds up entire format and argument strings
+    #TEST UTF-8: for f in $(seq -s' ' 255); do eval printf "\\\x$(printf "%x" "$f")"; done
+    
+    APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE%-30s $3 %$5s$sgi_normal\n" #just use one printf call builtin/external -> builds up entire format and argument strings
     APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$2\" \"$4\" "
     
     unset SGI_LIVE
@@ -1434,9 +1470,9 @@ fi
 
 printAppendBuffer()
 {
+    #special characters like 'æøå' gives wrong adjustment in %s 
     if [ "$DEBUG" -eq 1 ]; then 
-        echo >&2 "APPEND_FORMAT $APPEND_FORMAT"
-        echo >&2 "APPEND_ARGS $APPEND_ARGS"
+        printf >&2 "%s\n" "APPEND_FORMAT/APPEND_ARGS printf '$APPEND_FORMAT' $APPEND_ARGS"
     fi
 
     eval printf \""$APPEND_FORMAT"\" "$APPEND_ARGS"
@@ -1451,6 +1487,17 @@ printLivedataBatteryLowNormal()
     if [ -n "$1" ]; then
 
      if [ "$1" -eq "$BATTERY_LOW" ]; then
+            SGI_LIVE=$SGI_BATTERY_LOW
+     fi
+     printLivedataLine "$3" "$2" "%-7s" "" 5 "$4" 
+    fi
+}
+
+printLivedataBatteryVoltage()
+#$1 - batteryvoltage raw scaled 10, $2 - battery state, $3 header, $4 filename
+{
+    if [ -n "$1" ]; then
+     if [ "$1" -le "$BATTERY_VOLTAGE_LOW" ]; then
             SGI_LIVE=$SGI_BATTERY_LOW
      fi
      printLivedataLine "$3" "$2" "%-7s" "" 5 "$4" 
@@ -1653,12 +1700,12 @@ printLivedata() {
 
     #battery
 
-    printLivedataBatteryLowNormal "$LIVEDATA_WH65_BATTERY" "$LIVEDATA_WH65_BATTERY_STATE" "WH65 Wind/Temp./UV battery" "wh65_battery"
-    printLivedataBatteryLowNormal "$LIVEDATA_WH68_BATTERY" "$LIVEDATA_WH68_BATTERY_STATE" "WH68 Wind/Temp./UV battery" "wh68_battery"
-    printLivedataBatteryLowNormal "$LIVEDATA_WH80_BATTERY" "$LIVEDATA_WH80_BATTERY_STATE" "WH80 Wind/Temp./UV battery" "wh80_battery"
-    printLivedataBatteryLowNormal "$LIVEDATA_WH32_TEMPERATURE_BATTERY" "$LIVEDATA_WH32_TEMPERATURE_BATTERY_STATE" "Temperature out battery" "wh32_temperature_battery"
-    printLivedataBatteryLowNormal "$LIVEDATA_WH40_RAINFALL_BATTERY" "$LIVEDATA_WH40_RAINFALL_BATTERY_STATE" "Rainfall battery" "wh40_rainfall_battery"
-    printLivedataBatteryLowNormal "$LIVEDATA_WH57_LIGHTNING_BATTERY" "$LIVEDATA_WH57_LIGHTNING_BATTERY_STATE" "Lightning battery" "wh57_lightning_battery"
+    printLivedataBatteryLowNormal "$LIVEDATA_WH65_BATTERY" "$LIVEDATA_WH65_BATTERY_STATE" "$LIVEDATA_WH65_BATTERY_HEADER" "wh65_battery"
+    printLivedataBatteryVoltage   "$LIVEDATA_WH68_BATTERY" "$LIVEDATA_WH68_BATTERY_STATE" "$LIVEDATA_WH68_BATTERY_HEADER" "wh68_battery"
+    printLivedataBatteryVoltage   "$LIVEDATA_WH80_BATTERY" "$LIVEDATA_WH80_BATTERY_STATE" "$LIVEDATA_WH68_BATTERY_HEADER" "wh80_battery"
+    printLivedataBatteryLowNormal "$LIVEDATA_WH32_TEMPERATURE_BATTERY" "$LIVEDATA_WH32_TEMPERATURE_BATTERY_STATE" "$LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER" "wh32_temperature_battery"
+    printLivedataBatteryLowNormal "$LIVEDATA_WH40_RAINFALL_BATTERY" "$LIVEDATA_WH40_RAINFALL_BATTERY_STATE" "$LIVEDATA_WH40_RAINFALL_BATTERY_HEADER" "wh40_rainfall_battery"
+    printLivedataBatteryLowNormal "$LIVEDATA_WH57_LIGHTNING_BATTERY" "$LIVEDATA_WH57_LIGHTNING_BATTERY_STATE" "$LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER"  "wh57_lightning_battery"
     
     if [ -n "$LIVEDATA_WH45_CO2_BATTERY" ]; then 
       printLivedataLine  "CO2 PM25 PM10 battery" "$LIVEDATA_WH45_CO2_BATTERY_STATE" "%-7s" "" 2 "wh45_co2_battery"
@@ -1668,7 +1715,7 @@ printLivedata() {
     while [ "$n" -le "$WH31_TEMP_MAXCH" ]; do
     
         eval "[ -n ''"\$LIVEDATA_TEMP${n}_BATTERY_STATE" ] && [ "\$LIVEDATA_TEMP${n}_BATTERY" -eq $BATTERY_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
-        eval "[ -n ''"\$LIVEDATA_TEMP${n}_BATTERY_STATE" ] && printLivedataLine \"Temperature CH $n battery\" \"\$LIVEDATA_TEMP${n}_BATTERY_STATE\" \"%-7s\"  \"\" 2 \"temp${n}_battery_state\""
+        eval "[ -n ''"\$LIVEDATA_TEMP${n}_BATTERY_STATE" ] && printLivedataLine \"\$LIVEDATA_TEMP_BATTERY_HEADER${n}\" \"\$LIVEDATA_TEMP${n}_BATTERY_STATE\" \"%-7s\"  \"\" 2 \"temp${n}_battery_state\""
         n=$(( n + 1 ))
     done
 
@@ -1676,15 +1723,14 @@ printLivedata() {
     while [ "$n" -le "$WH43_PM25_MAXCH" ]; do
         #shellcheck disable=SC2153
         eval  "[ -n ''"\$LIVEDATA_PM25_CH${n}_BATTERY_STATE" ] && [ "\$LIVEDATA_PM25_CH${n}_BATTERY" -le $BATTERY_LEVEL_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
-        eval "[ -n ''"\$LIVEDATA_PM25_CH${n}_BATTERY_STATE" ] && printLivedataLine \"PM 2.5 CH $n battery\" \"\$LIVEDATA_PM25_CH${n}_BATTERY_STATE\" \"%-7s\" \"\" 7 \"pm25_ch${n}_battery_state\""
+        eval "[ -n ''"\$LIVEDATA_PM25_CH${n}_BATTERY_STATE" ] && printLivedataLine \"\$LIVEDATA_PM25_BATTERY_HEADER${n}\" \"\$LIVEDATA_PM25_CH${n}_BATTERY_STATE\" \"%-7s\" \"\" 7 \"pm25_ch${n}_battery_state\""
         n=$((n + 1))
     done
 
      n=1
     while [ "$n" -le "$WH51_SOILMOISTURE_MAXCH" ]; do
         eval "[ -n ''"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY" ] && [ "\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY_RAW" -le $BATTERY_VOLTAGE_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
-       # eval "[ -n ''"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY" ] && printLivedataLine  \"Soil moisture CH $n battery\" \"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY\" \"%6.1f\" \"V\" 2 \"soilmoisture${n}_battery\""
-        eval "[ -n ''"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY" ] && printLivedataLine  \"Soil moisture CH $n battery\" \"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY_STATE\" \"%-7s\" \"\" 2 \"soilmoisture${n}_battery\""
+        eval "[ -n ''"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY" ] && printLivedataLine  \"\$LIVEDATA_SOILMOISTURE_BATTERY_HEADER${n}\"  \"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY_STATE\" \"%-7s\" \"\" 2 \"soilmoisture${n}_battery\""
 
         n=$((n + 1))
     done
@@ -1692,26 +1738,25 @@ printLivedata() {
      n=1
     while [ "$n" -le "$WH34_SOILTEMP_MAXCH" ]; do
         eval "[ -n ''"\$LIVEDATA_SOILTEMP_CH${n}_BATTERY" ] && [ "\$LIVEDATA_SOILTEMP_CH${n}_BATTERY_RAW" -le $BATTERY_VOLTAGE_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
-       # eval "[ -n ''"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY" ] && printLivedataLine  \"Soil moisture CH $n battery\" \"\$LIVEDATA_SOILMOISTURE_CH${n}_BATTERY\" \"%6.1f\" \"V\" 2 \"soiltemperature${n}_battery\""
-        eval "[ -n ''"\$LIVEDATA_SOILTEMP_CH${n}_BATTERY" ] && printLivedataLine  \"Soil temp. CH $n battery\" \"\$LIVEDATA_SOILTEMP_CH${n}_BATTERY_STATE\" \"%-7s\" \"\" 2 \"soiltemperature${n}_battery\""
-
+        eval "[ -n ''"\$LIVEDATA_SOILTEMP_CH${n}_BATTERY" ] && printLivedataLine  \"\$LIVEDATA_SOILTEMP_BATTERY_HEADER${n}\" \"\$LIVEDATA_SOILTEMP_CH${n}_BATTERY_STATE\" \"%-7s\" \"\" 2 \"soiltemperature${n}_battery\""
         n=$((n + 1))
     done
 
     n=1
     while [ "$n" -le "$WH55_LEAK_MAXCH" ]; do
         eval "[ -n ''"\$LIVEDATA_LEAK_CH${n}_BATTERY" ] && [ "\$LIVEDATA_LEAK_CH${n}_BATTERY" -le $BATTERY_LEVEL_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
-        eval "[ -n ''"\$LIVEDATA_LEAK_CH${n}_BATTERY" ] && printLivedataLine \"Leak CH $n battery\" \"\$LIVEDATA_LEAK_CH${n}_BATTERY_STATE\" \"%-7s\" \"\" 4 \"leak_ch${n}_battery_state\""
+        eval "[ -n ''"\$LIVEDATA_LEAK_CH${n}_BATTERY" ] && printLivedataLine  \"\$LIVEDATA_LEAK_BATTERY_HEADER${n}\" \"\$LIVEDATA_LEAK_CH${n}_BATTERY_STATE\" \"%-7s\" \"\" 4 \"leak_ch${n}_battery_state\""
         n=$((n + 1))
     done
 
      n=1
+     
+     #spec. page 28 eWH35_SENSORCH1 = 40,//电压=val*0.02V 当<=1.2V 时显示低电压
     while [ "$n" -le "$WH35_LEAFWETNESS_MAXCH" ]; do
-        eval "[ -n ''"\$LIVEDATA_LEAFWETNESS_CH${n}_BATTERY" ] && [ "\$LIVEDATA_LEAFWETNESS_CH${n}_BATTERY" -le $BATTERY_LEVEL_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
-        eval "[ -n ''"\$LIVEDATA_LEAFWETNESS_CH${n}_BATTERY" ] && printLivedataLine \"Leaf wetness CH $n battery\" \"\$LIVEDATA_LEAFWETNESS_CH${n}_BATTERY_STATE\" \"%-7s\" \"\" 4 \"leafwetness_ch${n}_battery_state\""
+        eval "[ -n ''"\$LIVEDATA_LEAFWETNESS_CH${n}_BATTERY" ] && [ "\$LIVEDATA_LEAFWETNESS_CH${n}_BATTERY_RAW" -le $BATTERY_VOLTAGE_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
+        eval "[ -n ''"\$LIVEDATA_LEAFWETNESS_CH${n}_BATTERY" ] && printLivedataLine \"\$LIVEDATA_LEAFWETNESS_BATTERY_HEADER${n}\" \"\$LIVEDATA_LEAFWETNESS_CH${n}_BATTERY_STATE\" \"%-7s\" \"\" 4 \"leafwetness_ch${n}_battery_state\""
         n=$((n + 1))
     done
-
    
     #system
 
@@ -4536,6 +4581,7 @@ parseUnitOptions()
     IFS=,
     for f in $1; do
         IFS='='
+        #shellcheck disable=SC2086
         set -- $f
         case "$1" in
             temperature|t) case "$2" in 
@@ -4589,17 +4635,20 @@ while [ $# -gt 0 ]; do
 
     case $KEY in
 
-       -A | --livedata-language)
+       -A | --lang)
 
            if [ -n "$2" ] && [ -s "$2" ]; then
+           #shellcheck disable=SC1090
               . "$2"
+           else
+              echo >&2 Warning: language file not found "$2"
            fi
 
            shift 2
 
            ;;
 
-       -L  | --log-livedata)
+       -L  | --log)
           LOG_LIVEDATA=1
 
            #FD_STDOUT_DUP=6 # used for backup of stdout when doing exec redirection to /dev/null 
