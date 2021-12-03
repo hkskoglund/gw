@@ -281,6 +281,7 @@ WH35_LEAFWETNESS_MAXCH=8
 WH43_PM25_MAXCH=4
 WH51_SOILMOISTURE_MAXCH=8
 WH55_LEAK_MAXCH=4
+TF_USR_MAXCH=8
 
 SENSORTYPE_MAX=47 # for cmd read sensorid new
 
@@ -373,6 +374,14 @@ while [ "$N" -le "$WH35_LEAFWETNESS_MAXCH" ]; do
     eval LIVEDATA_LEAFWETNESS_BATTERY_HEADER$N=\$\{LIVEDATA_LEAFWETNESS_BATTERY_HEADER$N:="Leafwetness $N battery"\}
     N=$(( N + 1 ))
 done
+
+N=1
+while [ "$N" -le "$TF_USR_MAXCH" ]; do 
+    eval LIVEDATA_TF_USR_HEADER$N=\$\{LIVEDATA_TF_USR_HEADER$N:="Temperature USR $N"\}
+    eval LIVEDATA_TF_USR_BATTERY_HEADER$N=\$\{LIVEDATA_TF_USR_BATTERY_HEADER$N:="Temperature USR $N battery"\}
+    N=$(( N + 1 ))
+done
+
 
 LIVEDATA_SYSTEM_VERSION_HEADER=${LIVEDATA_SYSTEM_VERSION_HEADER:="System version"}
 LIVEDATA_SYSTEM_UTC_HEADER=${LIVEDATA_SYSTEM_UTC_HEADER:="System utc"}
@@ -569,7 +578,6 @@ getSensorNameShort()
           SENSORNAME_SHORT="CO2 PM2.5 PM10 AQ"
           ;;
         40|41|42|43|44|45|46|47)
-
             SENSORNAME_WH='WH35'
             SENSORNAME_SHORT="Leafwetness$(($1 - 39))"
            ;;
@@ -991,8 +999,6 @@ getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
 
        SBATTERY_STATE=$SBATTERY_STATE" $1"
     fi
-
-    
 
     if [ -n "$KSH_VERSION" ]; then
         unset  l
@@ -1674,27 +1680,26 @@ printLivedata() {
         n=$((n + 1))
     done
 
-
+    #WH45
     [ -n "$LIVEDATA_CO2_TEMPF" ] && printLivedataLine "Temperature" "$LIVEDATA_CO2_TEMPF" "%7.1f" "$UNIT_TEMP" 2 "co2-temperaturef"
     [ -n "$LIVEDATA_CO2_HUMI" ] && printLivedataLine "Humidity" "$LIVEDATA_CO2_HUMI" "%5u" "%" 4 "co2-humidity"
     [ -n "$LIVEDATA_CO2_PM10" ] && printLivedataLine "PM10" "$LIVEDATA_CO2_PM10" "%7.1f" "$UNIT_PM25" 7 "co2-pm10"
     [ -n "$LIVEDATA_CO2_PM10_24HAVG" ] && printLivedataLine "PM10 24h avg." "$LIVEDATA_CO2_PM10_24HAVG" "%7.1f" "$UNIT_PM25" 7 "co2-pm_24havg"
     [ -n "$LIVEDATA_CO2_PM25" ] && printLivedataLine "PM25" "$LIVEDATA_CO2_PM25" "%7.1f" "$UNIT_PM25" 7 "co2-pm25"
-    [ -n "$LIVEDATA_CO2_PM25_24HAVG" ] && printLivedataLine "PM25 24h avg." "$LIVEDATA_CO2_PM25_24HAVG" "%7.1f" "$UNIT_PM25" 7 "co2-pm25_24havg"
-    [ -n "$LIVEDATA_CO2_CO2" ] && printLivedataLine "CO2" "$LIVEDATA_CO2_CO2" "%5u" "$UNIT_CO2" 5 "co2-co2"
-    [ -n "$LIVEDATA_CO2_CO2_24HAVG" ] && printLivedataLine "CO2 24h avg." "$LIVEDATA_CO2_CO2_24HAVG" "%7.1f" "$UNIT_CO2" 5 "co2-co2_24havg"
-    [ -n "$LIVEDATA_CO2_CO2_BATTERYLEVEL" ] && printLivedataLine "CO2 batterylevel" "$LIVEDATA_CO2_CO2_BATTERYLEVEL" "%5u" "" 5 "co2-batterylevel"
+    [ -n "$LIVEDATA_CO2_PM25_24HAVG" ] && printLivedataLine "PM 2.5 24h avg." "$LIVEDATA_CO2_PM25_24HAVG" "%7.1f" "$UNIT_PM25" 7 "co2-pm25_24havg"
+    [ -n "$LIVEDATA_CO2_CO2" ] && printLivedataLine "CO2" "$LIVEDATA_CO2_CO2" "%5u" "$UNIT_CO2" 6 "co2-co2"
+    [ -n "$LIVEDATA_CO2_CO2_24HAVG" ] && printLivedataLine "CO2 24h avg." "$LIVEDATA_CO2_CO2_24HAVG" "%5u" "$UNIT_CO2" 6 "co2-co2_24havg"
 
    
     [ -n "$LIVEDATA_LIGHTNING_DISTANCE" ] && printLivedataLine "Lightning distance" "$LIVEDATA_LIGHTNING_DISTANCE" "%5u" "km" 5 "lightning_distance"
+    [ -n "$LIVEDATA_LIGHTNING_POWER" ] && printLivedataLine "Lightning power" "$LIVEDATA_LIGHTNING_POWER"  "%5u" "" 5 "lightning_power"
     if [ -n "$LIVEDATA_LIGHTNING_TIME" ]; then
       printLivedataLine "Lightning time utc" "$LIVEDATA_LIGHTNING_TIME_UTC" "%7s" "" 5 "ligntning_time_utc"
     fi
-    [ -n "$LIVEDATA_LIGHTNING_POWER" ] && printLivedataLine "Lightning power" "$LIVEDATA_LIGHTNING_POWER"  "%7s" "" 5 "lightning_power"
-
+   
     n=1
     while [ "$n" -le "$WH35_LEAFWETNESS_MAXCH" ]; do
-        eval "[ -n ''"\$LIVEDATA_LEAF_WETNESS_CH$n" ] && printLivedataLine \"Leaf wetness CH $n\" \"\$LIVEDATA_LEAF_WETNESS_CH$n\" \"%5u\" \"%\" 5 \"leaf_wetness_ch$n\""
+        eval "[ -n ''"\$LIVEDATA_LEAFWETNESS_CH$n" ] && printLivedataLine \"Leaf wetness CH $n\" \"\$LIVEDATA_LEAFWETNESS_CH$n\" \"%5u\" \"%\" 4 \"leaf_wetness_ch$n\""
         n=$((n + 1))
     done
 
@@ -1708,7 +1713,7 @@ printLivedata() {
     printLivedataBatteryLowNormal "$LIVEDATA_WH57_LIGHTNING_BATTERY" "$LIVEDATA_WH57_LIGHTNING_BATTERY_STATE" "$LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER"  "wh57_lightning_battery"
     
     if [ -n "$LIVEDATA_WH45_CO2_BATTERY" ]; then 
-      printLivedataLine  "CO2 PM25 PM10 battery" "$LIVEDATA_WH45_CO2_BATTERY_STATE" "%-7s" "" 2 "wh45_co2_battery"
+      printLivedataLine  "CO2 battery" "$LIVEDATA_WH45_CO2_BATTERY_STATE" "%-7s" "" 2 "wh45_co2_battery"
     fi
 
     n=1
@@ -1757,7 +1762,14 @@ printLivedata() {
         eval "[ -n ''"\$LIVEDATA_LEAFWETNESS_CH${n}_BATTERY" ] && printLivedataLine \"\$LIVEDATA_LEAFWETNESS_BATTERY_HEADER${n}\" \"\$LIVEDATA_LEAFWETNESS_CH${n}_BATTERY_STATE\" \"%-7s\" \"\" 4 \"leafwetness_ch${n}_battery_state\""
         n=$((n + 1))
     done
-   
+
+    n=1
+    while [ "$n" -le "$TF_USR_MAXCH" ]; do
+        eval "[ -n ''"\$LIVEDATA_TF_USR${n}_BATTERY" ] && [ "\$LIVEDATA_TF_USR${n}_BATTERY_RAW" -le $BATTERY_VOLTAGE_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
+        eval "[ -n ''"\$LIVEDATA_TF_USR${n}_BATTERY" ] && printLivedataLine \"\$LIVEDATA_TF_USR_BATTERY_HEADER${n}\" \"\$LIVEDATA_TF_USR${n}_BATTERY_STATE\" \"%-7s\" \"\" 4 \"leafwetness_ch${n}_battery_state\""
+        n=$((n + 1))
+    done
+
     #system
 
     [ -n "$LIVEDATA_SYSTEM_VERSION" ] && printLivedataLine "$LIVEDATA_SYSTEM_VERSION_HEADER" "$LIVEDATA_SYSTEM_VERSION" "%-7s" "" 5 "system_version"
@@ -1803,6 +1815,65 @@ convertWindLivedata()
         convertMpsScale10ToMphScale10 "$1"
         convertScale10ToFloat "$VALUE_MPH_SCALE10"
     fi
+}
+
+injectWH45_CO2Livedata()
+{
+    #spec. p 8/32 FOS-ENG-022-A
+    LIVEDATA_CO2_TEMPF=501 #propably farenheit? -> converting necessary
+    LIVEDATA_CO2_HUMI=40
+    LIVEDATA_CO2_PM10=37
+    LIVEDATA_CO2_PM10_24HAVG=38
+    LIVEDATA_CO2_PM25=41
+    LIVEDATA_CO2_PM25_24HAVG=36
+    LIVEDATA_CO2_CO2=999
+    LIVEDATA_CO2_CO2_24HAVG=1000
+    LIVEDATA_WH45_CO2_BATTERY=4
+    getBatteryLevelState "$LIVEDATA_WH45_CO2_BATTERY"
+    LIVEDATA_WH45_CO2_BATTERY_STATE=$SBATTERY_STATE
+
+}
+
+injectWH57_LightningLivedata()
+{
+    LIVEDATA_LIGHTNING_DISTANCE=30
+    LIVEDATA_LIGHTNING_POWER=1004
+    LIVEDATA_LIGHTNING_TIME=1638531935
+    getDateUTC "$LIVEDATA_LIGHTNING_TIME"
+    LIVEDATA_LIGHTNING_TIME_UTC=$VALUE_DATE_UTC
+}
+
+injectWH35_LeafwetnessLivedata()
+{
+    #shellcheck disable=SC2034
+    LIVEDATA_LEAFWETNESS_CH1=47
+}
+
+inject_TF_USR()
+{
+     convertTemperatureLivedata "235"
+    #shellcheck disable=SC2034
+     LIVEDATA_TF_USR1=$VALUE_SCALE10_FLOAT 
+     LIVEDATA_TF_USR1_BATTERY_RAW=14
+     convertScale10ToFloat "$LIVEDATA_TF_USR1_BATTERY_RAW"
+    #shellcheck disable=SC2034
+     LIVEDATA_TF_USR1_BATTERY=$VALUE_SCALE10_FLOAT
+     getBatteryVoltageLevelState "$LIVEDATA_TF_USR1_BATTERY_RAW"
+     eval "LIVEDATA_TF_USR${channel}_BATTERY_STATE='$SBATTERY_STATE'"
+}
+
+injectTestSensorLivedata()
+{
+    #injectWH45_CO2Livedata
+    #injectWH57_LightningLivedata
+    #injectWH35_LeafwetnessLivedata
+    #inject_TF_USR # what is this, extra temp sensors?
+    :
+}
+
+getDateUTC()
+{
+    VALUE_DATE_UTC=$(date -u -d @"$1" +'%F %T') #add field
 }
 
 
@@ -1931,7 +2002,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
             readUInt8
             channel=$((((ldf - LDF_SOILTEMP1) / 2) + 1))
-            eval "LIVEDATA_SOILTEMPE$channel=$VALUE_UINT8"
+            eval "LIVEDATA_SOILTEMP$channel=$VALUE_UINT8"
 
         elif [ "$ldf" -ge $LDF_TEMP1 ] && [ "$ldf" -le $LDF_TEMP8 ]; then
 
@@ -2059,7 +2130,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             LIVEDATA_CO2_CO2_24HAVG=$VALUE_UINT16BE
 
             readUInt8
-            LIVEDATA_CO2_CO2_BATTERYLEVEL=$VALUE_UINT8
+            LIVEDATA_WH45_CO2_BATTERY=$VALUE_UINT8
 
         elif [ "$ldf" -ge $LDF_TF_USR1 ] && [ "$ldf" -le $LDF_TF_USR8 ]; then
 
@@ -2070,7 +2141,12 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             eval "LIVEDATA_TF_USR$channel=$VALUE_SCALE10_FLOAT"
 
             readUInt8
-            eval "LIVEDATA_TF_USR${channel}_BATTERY=$VALUE_UINT8" #todo : scaling
+            convertScale10ToFloat "$VALUE_UINT8"
+            eval "LIVEDATA_TF_USR${channel}_BATTERY_RAW=$VALUE_UINT8"
+            eval "LIVEDATA_TF_USR${channel}_BATTERY=$VALUE_SCALE10_FLOAT"
+            getBatteryVoltageLevelState "$VALUE_UINT8"
+            eval "LIVEDATA_TF_USR${channel}_BATTERY_STATE=$SBATTERY_STATE"
+            
 
         elif [ "$ldf" -ge $LDF_LIGHTNING ]; then
 
@@ -2081,7 +2157,8 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
             readUInt32BE
             LIVEDATA_LIGHTNING_TIME=$VALUE_UINT32BE
-            LIVEDATA_LIGHTNING_TIME_UTC=$(date -u -d @"$LIVEDATA_LIGHTNING_TIME" +'%F %T') #add field
+            getDateUTC "$LIVEDATA_LIGHTNING_TIME"
+            LIVEDATA_LIGHTNING_TIME_UTC=$VALUE_DATE_UTC
 
 
         elif [ "$ldf" -ge $LDF_LIGHTNING_POWER ]; then
@@ -2094,7 +2171,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             readUInt8
             channel=$((ldf - LDF_LEAF_WETNESS_CH1 + 1))
 
-            eval "LIVEDATA_LEAF_WETNESS_CH$channel=$VALUE_UINT8"
+            eval "LIVEDATA_LEAFWETNESS_CH${channel}=$VALUE_UINT8"
 
         else
             echo >&2 "ERROR Unable to parse livedata field $(printf "%x" $ldf)"
@@ -2107,6 +2184,8 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         checksum=$VALUE_UINT8
         echo >&2 checksum "$(printf "%02x" $checksum)"
     fi
+
+    injectTestSensorLivedata
 
     printLivedata
 
@@ -2327,6 +2406,7 @@ parseWow() {
 }
 
 printSensorLine()
+#$1 - sensortype, $2 sensor id, $3 battery, $4 signal
 {
 
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
@@ -2339,6 +2419,12 @@ printSensorLine()
     unset SGI_SENSOR SBATTERY_STATE
 
     getSensorNameShort "$1"
+    
+   # TEST data 
+    #if [ "$1" -eq 40 ]; then
+    #   set -- "39" "$(( 0xfff ))" 4 4  # co2
+    #  set -- "40" "$(( 0xfff ))" 14 4 # leaf wetness
+    #fi
 
     if [ "$2" -eq "$SENSORID_DISABLE" ]; then 
       SGI_SENSOR=$SGI_BRIGHTRED_BLACK
@@ -2386,7 +2472,6 @@ printSensorLine()
     if [ -n "$KSH_VERSION" ]; then
       unset sensorIdState sgi_normal
     fi
-     
 }
 
 resetAppendBuffer()
@@ -3125,23 +3210,23 @@ updateCustomized() {
 
                 case $value in
 
-                    wunderground | wu | w)
-                        value=$((1))
+                    wunderground | w | 1)
+                        value=1
                         ;;
 
-                    ecowitt | ec | e)
-                        value=$((0))
+                    ecowitt | e | 0)
+                        value=0
                         ;;
 
+                    
                 esac
 
                 if ! isNumber "$value"; then
-                    echo >&2 Error NaN cannot set customized type to "$value"
+                    echo >&2 "Error: Unknown value $value for protocol, use wunderground|w|1 or ecowitt|e|0"
                 else
-                    C_WS_CUSTOMIZED_TYPE=$((value))
-                    [ $DEBUG -eq 1 ] && echo >&2 Update customized_TYPE from "$C_WS_CUSTOMIZED_TYPE to $value"
+                   [ $DEBUG -eq 1 ] && echo >&2 Update customized_TYPE from "$C_WS_CUSTOMIZED_TYPE to $value"
+                   C_WS_CUSTOMIZED_TYPE=$value
                 fi
-
                 ;;
 
             enabled | e)
@@ -3149,16 +3234,17 @@ updateCustomized() {
                 case $value in
 
                     on | 1 | yes | y)
-                        value=$((1))
+                       value=1
                         ;;
 
                     off | 0 | no | n)
-                        value=$((0))
+                        value=0
                         ;;
+                
                 esac
 
                 if ! isNumber "$value"; then
-                    echo >&2 Error Cannot set customized enabled to "$value"
+                   echo >&2 "Error: Unknown value $value for enabled, use on|1|yes|y, off|0|no|n"
                 else
                     [ $DEBUG -eq 1 ] && echo >&2 Update customized_enabled from "$C_WS_CUSTOMIZED_ENABLED to $value"
                     C_WS_CUSTOMIZED_ENABLED=$value
@@ -3178,22 +3264,27 @@ updateCustomized() {
 
                 ;;
 
-            path_wunderground | path_wu | pwu)
+            path_wunderground | p_w)
 
                 [ $DEBUG -eq 1 ] && echo >&2 Update customized_path_wu from "$C_WS_CUSTOMIZED_PATH_WU to $value"
                 C_WS_CUSTOMIZED_PATH_WU=$value
 
                 ;;
 
-            path_ecowitt | path_ec | pec)
+            path_ecowitt | p_e )
 
                 [ $DEBUG -eq 1 ] && echo >&2 Update customized_ecowitt_path from "$C_WS_CUSTOMIZED_PATH_ECOWITT to $value"
                 C_WS_CUSTOMIZED_PATH_ECOWITT=$value
 
                 ;;
 
+            help|?)
+                echo >&2 "Use id, password|pw, server|s, port, protocol|p, enabled|e, interval|i, path_wunderground|p_w, path_ecowitt|p_e"
+                ;;
+
             *)
                 echo >&2 Skipped updateCustomized: unknown key "$key" value: "$value"
+                echo >&2 "Use id, password|pw, server|s, port, protocol|p, enabled|e, interval|i, path_wunderground|p_w, path_ecowitt|p_e"
                 ;;
         esac
 
@@ -3208,7 +3299,6 @@ updateCustomized() {
     if [ -n "$KSH_VERSION" ]; then
       unset key value option
     fi
-
 
 }
 
@@ -3945,7 +4035,8 @@ convertInHgToHpa()
    case "$KSH_VERSION" in 
          *MIRBSD?KSH*)
             # maybe use $((# )) for 32-bit usigned int expression
-             VALUE_INHG_HPA_SCALE10=$(( (33864 * FLOAT_AS_INT)/ 10000)) # round conversion constant/scale down 10 -> 33864
+             VALUE_INHG_HPA_SCALE10=$(( (4233 * FLOAT_AS_INT)/ 1250)) # round conversion constant/scale down 10 -> 338639 -> 338640
+             #factorize 33864=8*4233, 10000=8*1250, $(( (33864 * FLOAT_AS_INT)/ 10000)) -> $(( (4233 * FLOAT_AS_INT)/ 1250))
              ;;
          *)
             #does not work with 32-bit unsigned integer arithmetic as used by mksh with $((# ... ))
@@ -3960,8 +4051,10 @@ convertInHgToHpa()
 convertHpaScale10ToInHgScale10()
 #using: SI unit 1 inHg = 3.38639 kPa
 {
-   round $(( $1 * 100000 / 338639 ))
+   round $(( $1 * 100000 / 338639  ))
    VALUE_INHG_SCALE10=$VALUE_ROUND
+    #[ "$DEBUG" -eq 1 ] &&
+     echo >&2 "Converted (Scale * 10)  $1 hpa to $VALUE_INHG_SCALE10"
 }
 
 round()
