@@ -4000,7 +4000,9 @@ convertMphTMps()
    getFloatAsIntDecmial "$1"
 #   VALUE_MPH_MPS_SCALE10=$(( 44704 * $FLOAT_INT${FLOAT_DECIMALS}/ 100000)) 
     
-    VALUE_MPH_MPS_SCALE10=$(( 63360 * FLOAT_AS_INT/ 141732)) 
+    VALUE_MPH_MPS_SCALE10=$(( 7874 * FLOAT_AS_INT / 3520 ))
+    #factorize : 63360 = 18*7874, 141732 = 18* 3520 -> $(( 63360 * FLOAT_AS_INT/ 141732)) -> $(( 7874 * FLOAT_AS_INT / 3520 ))
+    #https://www.calculatorsoup.com/calculators/math/factors.php?input=141732&action=solve
   
   round "$VALUE_MPH_MPS_SCALE10"
   VALUE_MPH_MPS_SCALE10=$VALUE_ROUND
@@ -4008,7 +4010,8 @@ convertMphTMps()
 
 convertMpsScale10ToMphScale10()
 {
-    VALUE_MPH_SCALE10=$(( 10000000/44704 ))
+    VALUE_MPH_SCALE10=$(( 312500 / 1397))
+    #factorize:  10000000 = 32*312500, 44704 = 32*1397 $(( 10000000/44704 )) -> $ (( 312500 / 1397))
     round "$VALUE_MPH_SCALE10"
     VALUE_MPH_SCALE10=$VALUE_ROUND
 }
@@ -4020,7 +4023,8 @@ convertInTomm()
 {
    getFloatAsIntDecmial "$1"
 
-   VALUE_IN_MM_SCALE10=$(( 254 * FLOAT_AS_INT / 100))
+   VALUE_IN_MM_SCALE10=$(( 127 * FLOAT_AS_INT / 50))
+   #factorize 254=2*127, 100=2*50 -> $(( 254 * FLOAT_AS_INT / 100)) -> $(( 127 * FLOAT_AS_INT / 50 ))
    round $VALUE_IN_MM_SCALE10
    VALUE_IN_MM_SCALE10=$VALUE_ROUND
 }
