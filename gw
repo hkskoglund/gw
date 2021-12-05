@@ -71,6 +71,7 @@ UNIT_RAIN_IN=1
 
 UNIT_WIND_MPS=0
 UNIT_WIND_MPH=1
+UNIT_WIND_KMH=2
 
 UNIT_UV_MICROWM2=0 # used by Ecowitt protocol
 UNIT_UV_WATTM2=1
@@ -1357,6 +1358,8 @@ setWindMode()
        
     elif [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPS ]; then
          UNIT_WIND="m/s"
+    elif [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_KMH ]; then
+         UNIT_WIND="km/h"
     fi
     
     [ "$DEBUG" -eq 1 ] && >&2 echo Unit wind : $UNIT_WIND
@@ -1792,7 +1795,7 @@ convertTemperatureLivedata()
     if [ "$UNIT_TEMPERATURE_MODE" -eq $UNIT_TEMPERATURE_CELCIUS ]; then
         convertScale10ToFloat "$1"
     elif [ "$UNIT_TEMPERATURE_MODE" -eq $UNIT_TEMPERATURE_FARENHEIT ]; then
-        convertCelciusScale10ToFarenheitScale10 "$1"
+        convert_celciusScale10_to_farenheitScale10 "$1"
         convertScale10ToFloat "$VALUE_FARENHEIT_SCALE10"
     fi
 }
@@ -1802,7 +1805,7 @@ convertPressureLivedata()
    if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
         convertScale10ToFloat "$1"
     elif [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_INHG ]; then
-        convertHpaScale10ToInHgScale10 "$1"
+        convert_hpaScale10_To_inhgScale10 "$1"
         convertScale10ToFloat "$VALUE_INHG_SCALE10"
     fi
 }
@@ -1811,9 +1814,12 @@ convertWindLivedata()
 {
    if [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPS ]; then
         convertScale10ToFloat "$1"
-    elif [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPH ]; then
-        convertMpsScale10ToMphScale10 "$1"
+   elif [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPH ]; then
+        convcert_mpsScale10_to_mphScale10 "$1"
         convertScale10ToFloat "$VALUE_MPH_SCALE10"
+   elif [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_KMH ]; then
+        convert_mpsScale10_To_kmhScale10 "$1"
+        convertScale10ToFloat "$VALUE_KMH_SCALE10"
     fi
 }
 
@@ -3995,7 +4001,7 @@ getFloatAsIntDecmial()
     fi
 }
 
-convertFarenheitToCelciusScale10()
+convert_farenheit_to_celciusScale10()
 #tempinf=72.7
 #$2 - number of digits after . -> using power to scale value
 {
@@ -4007,7 +4013,7 @@ convertFarenheitToCelciusScale10()
 
 }
 
-convertCelciusToFarenheitScale10()
+convert_celcius_to_farenheitScale10()
 {
    # VALUE_CELCIUS_SCALE10=$(printf %.0f "$(echo "($1 - 32 )*50/9" | bc)")
    getFloatAsIntDecmial "$1"
@@ -4015,12 +4021,12 @@ convertCelciusToFarenheitScale10()
    VALUE_FARENHEIT_SCALE10=$(( (FLOAT_AS_INT*9/5) + 32*CONVERT_10MULTIPLIER ))
 }
 
-convertCelciusScale10ToFarenheitScale10()
+convert_celciusScale10_to_farenheitScale10()
 {
    VALUE_FARENHEIT_SCALE10=$(( ($1*9/5) + 320 ))
 }
 
-convertInHgToHpa()
+convert_inhg_to_hpa()
 #convert from inhg to hpa
 #baromrelin=29.731 -> 3 decimals -> multiply by 1000 = 29731
 #assumes always 3 decimals after .
@@ -4048,7 +4054,7 @@ convertInHgToHpa()
    VALUE_INHG_HPA_SCALE10=$VALUE_ROUND
 }
 
-convertHpaScale10ToInHgScale10()
+convert_hpaScale10_To_inhgScale10()
 #using: SI unit 1 inHg = 3.38639 kPa
 {
    round $(( $1 * 100000 / 338639  ))
@@ -4082,43 +4088,53 @@ round()
     fi
 }
 
-convertMphTMps()
+convert_mph_To_mps()
 # https://www.convertunits.com/from/mph/to/m/s
 # 1 mph is equal to 0.44704 meter/second.
 # format: speedmph=5.82&windgustmph=10.29&maxdailygust=15.88 -> 2 digits after .
 #using International mile: using scaling 63360/141732 
 {
-   #VALUE_MPH_MPS_SCALE10=$(printf %.0f "$(echo "4.4704 * $1" | bc)")
+   #VALUE_MPS_SCALE10=$(printf %.0f "$(echo "4.4704 * $1" | bc)")
   
    getFloatAsIntDecmial "$1"
-#   VALUE_MPH_MPS_SCALE10=$(( 44704 * $FLOAT_INT${FLOAT_DECIMALS}/ 100000)) 
     
-    VALUE_MPH_MPS_SCALE10=$(( 7874 * FLOAT_AS_INT / 3520 ))
     #factorize : 63360 = 18*7874, 141732 = 18* 3520 -> $(( 63360 * FLOAT_AS_INT/ 141732)) -> $(( 7874 * FLOAT_AS_INT / 3520 ))
     #https://www.calculatorsoup.com/calculators/math/factors.php?input=141732&action=solve
   
-  round "$VALUE_MPH_MPS_SCALE10"
-  VALUE_MPH_MPS_SCALE10=$VALUE_ROUND
+    round "$(( 7874 * FLOAT_AS_INT / 3520 ))"
+    VALUE_MPS_SCALE10=$VALUE_ROUND
 }
 
-convertMpsScale10ToMphScale10()
+convert_mpsScale10_To_kmhScale10()
 {
-    VALUE_MPH_SCALE10=$(( 312500 / 1397))
+    round "$(( $1 * 36 ))" # really scale * 100
+    VALUE_KMH_SCALE10=$VALUE_ROUND
+}
+
+convcert_mpsScale10_to_mphScale10()
+{
     #factorize:  10000000 = 32*312500, 44704 = 32*1397 $(( 10000000/44704 )) -> $ (( 312500 / 1397))
-    round "$VALUE_MPH_SCALE10"
+    round "$(( $1*31250 / 1397))"
     VALUE_MPH_SCALE10=$VALUE_ROUND
 }
 
-convertInTomm()
+convert_mph_to_kmhScale10()
+{
+    getFloatAsIntDecmial "$1"     #format: speedmph=5.82 -> 582
+    #1mph=1.609344 km/h -> 1609344/1000000 -> largerst factor = 64 -> 64*25146/64*15625 -> 25146/15625
+    round "$(( FLOAT_AS_INT * 251467/156250 ))"
+    VALUE_KMH_SCALE10=$VALUE_ROUND
+}
+
+convert_in_to_mm()
 #1 inch SI unit = 25.4 mm
 #https://en.wikipedia.org/wiki/Inch
 # web format: rainratein=0.000&eventrainin=0.669&hourlyrainin=0.000&dailyrainin=0.028&weeklyrainin=0.831&monthlyrainin=0.972&yearlyrainin=17.130&totalrainin=17.130
 {
    getFloatAsIntDecmial "$1"
 
-   VALUE_IN_MM_SCALE10=$(( 127 * FLOAT_AS_INT / 50))
    #factorize 254=2*127, 100=2*50 -> $(( 254 * FLOAT_AS_INT / 100)) -> $(( 127 * FLOAT_AS_INT / 50 ))
-   round $VALUE_IN_MM_SCALE10
+   round "$(( 127 * FLOAT_AS_INT / 50))"
    VALUE_IN_MM_SCALE10=$VALUE_ROUND
 }
 
@@ -4126,7 +4142,7 @@ setRainHttpLivedata()
 #$1 - field name
 #$2 - value
 {
-    convertInTomm "$2"
+    convert_in_to_mm "$2"
     eval "$1"_RAW=$VALUE_IN_MM_SCALE10
     if [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_MM ]; then
         convertScale10ToFloat "$VALUE_IN_MM_SCALE10"
@@ -4142,13 +4158,17 @@ setWindHttpLivedata()
       return
     fi
 
-    convertMphTMps "$2"
-    eval "$1"_RAW=$VALUE_MPH_MPS_SCALE10
+    convert_mph_To_mps "$2"
+    eval "$1"_RAW=$VALUE_MPS_SCALE10
     if [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPS ]; then
-       convertScale10ToFloat "$VALUE_MPH_MPS_SCALE10"
+       convertScale10ToFloat "$VALUE_MPS_SCALE10"
        eval "$1"=$VALUE_SCALE10_FLOAT
     elif [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPH ]; then
        eval "$1"="$2"
+    elif [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_KMH ]; then
+       convert_mph_to_kmhScale10 "$2"
+       convertScale10ToFloat "$VALUE_KMH_SCALE10"
+       eval "$1"=$VALUE_SCALE10_FLOAT
     fi
 }
 
@@ -4171,7 +4191,7 @@ setTemperatureHttpLivedata()
       return
     fi
 
-    convertFarenheitToCelciusScale10 "$2" 
+    convert_farenheit_to_celciusScale10 "$2" 
     eval "$1"_RAW=$VALUE_CELCIUS_SCALE10
     if [ "$UNIT_TEMPERATURE_MODE" -eq $UNIT_TEMPERATURE_CELCIUS ]; then
         convertScale10ToFloat "$VALUE_CELCIUS_SCALE10"
@@ -4183,7 +4203,7 @@ setTemperatureHttpLivedata()
 
 setPressureHttpLivedata()
 {
-    convertInHgToHpa "$2"
+    convert_inhg_to_hpa "$2"
     eval "$1"_RAW="$VALUE_INHG_HPA_SCALE10"
     if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
         convertScale10ToFloat "$VALUE_INHG_HPA_SCALE10"
@@ -4725,7 +4745,9 @@ parseUnitOptions()
                                             ;;
                                 mps|s)      setWindMode $UNIT_WIND_MPS 
                                             ;;
-                                *)          echo >&2 Warning: Unknown wind mode "$2", use "mph|h,mps|s" 
+                                kmh|k)      setWindMode $UNIT_WIND_KMH
+                                            ;;
+                                *)          echo >&2 Warning: Unknown wind mode "$2", use "mph|h,mps|s,kmh|k" 
                                             ;;
                             esac
                             ;;
