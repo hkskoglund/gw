@@ -89,6 +89,8 @@ PORT_GW_TCP=45000
 PORT_GW_UDP=46000
 PORT_CLIENT_UDP=59387
 
+LOG_INTERVAL=${LOG_INTERVAL:=60} # default 60 seconds
+
 CMD_READ_VERSION=$((0x50)) #zsh - wont compare int with hex 16#50 in [ ] expression unless converted to decimal, works in [[ ]] expression
 CMD_REBOOT=$((0x40))
 CMD_READ_MAC=$((0x26))
@@ -1453,7 +1455,7 @@ printLivedataLine()
     
     unset SGI_LIVE
    
-   # if [ -n "$LOG_KEEP"  ]; then
+   # if [ -n "$LOG_LIVEDATA"  ]; then
    #   eval "echo \"$2\"  >$DIR_LIVEDATA/\"$6\""
    # fi
 
@@ -1518,7 +1520,12 @@ printLivedataBatteryVoltage()
 }
 
 printLivedata() {
-#prefer same filenames as the Ecowitt-protocol fieldnames
+
+    if [ -n "$LOG_CMD" ]; then
+      eval "$LOG_CMD"
+      return #dont print to screen when logging
+    fi
+
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
         typeset n 
@@ -1697,7 +1704,6 @@ printLivedata() {
     [ -n "$LIVEDATA_WH45CO2_CO2" ] && printLivedataLine "$LIVEDATA_WH45CO2_CO2_HEADER" "$LIVEDATA_WH45CO2_CO2" "%5u" "$UNIT_CO2" 6 "co2-co2"
     [ -n "$LIVEDATA_WH45CO2_CO2_24HAVG" ] && printLivedataLine "$LIVEDATA_WH45CO2_CO2_24HAVG" "$LIVEDATA_WH45CO2_CO2_24HAVG" "%5u" "$UNIT_CO2" 6 "co2-co2_24havg"
 
-   
     [ -n "$LIVEDATA_LIGHTNING_DISTANCE" ] && printLivedataLine "$LIVEDATA_LIGHTNING_DISTANCE_HEADER" "$LIVEDATA_LIGHTNING_DISTANCE" "%5u" "km" 5 "lightning_distance"
     [ -n "$LIVEDATA_LIGHTNING_POWER" ] && printLivedataLine "$LIVEDATA_LIGHTNING_POWER_HEADER" "$LIVEDATA_LIGHTNING_POWER"  "%5u" "" 5 "lightning_power"
     if [ -n "$LIVEDATA_LIGHTNING_TIME" ]; then
@@ -1782,12 +1788,8 @@ printLivedata() {
     [ -n "$LIVEDATA_SYSTEM_VERSION" ] && printLivedataLine "$LIVEDATA_SYSTEM_VERSION_HEADER" "$LIVEDATA_SYSTEM_VERSION" "%-7s" "" 5 "system_version"
     [ -n "$LIVEDATA_SYSTEM_UTC" ] && printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER" "$LIVEDATA_SYSTEM_UTC" "%-20s" "" 5 "system_utc"
     [ -n "$LIVEDATA_SYSTEM_FREQUENCY" ] && printLivedataLine "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$LIVEDATA_SYSTEM_FREQUENCY" "%-7s" "" 5 "system_frequency"
-
-    if [ -n "$LOG_CMD" ]; then
-      eval "$LOG_CMD"
-    else
-       printAppendBuffer
-    fi
+   
+    printAppendBuffer
 
     #unset local variables for ksh -> made global by using () function syntax without function keyword
     #https://www.unix.com/shell-programming-and-scripting/137435-ksh-different-syntax-function.html
@@ -3795,14 +3797,14 @@ processCommand() {
 
         livedata | ld | live | l)
 
-            if [ -z "$LOG_KEEP" ]; then
+            if [ -z "$LOG_LIVEDATA" ]; then
                 sendPacket $CMD_LIVEDATA
                 EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
             else
               
                 while true; do
                   sendPacket $CMD_LIVEDATA
-                  sleep "$LOG_KEEP_INTERVAL"
+                  sleep "$LOG_INTERVAL"
                 done
             fi
 
@@ -4694,7 +4696,7 @@ httpServer()
 cleanup()
 {
    
-   #if [ -n "$LOG_KEEP" ]; then
+   #if [ -n "$LOG_LIVEDATA" ]; then
         #2>/dev/null exec 1>&6 6>&- #copy backup fd 6 to stdout 1 and close 6 (may get "Bad file descriptor if 6 is not redirected")
    #     rm "$DIR_LIVEDATA"/* #dont use "*" otherwise pathname/globbing expansion doesnt work
    #fi
@@ -4829,18 +4831,17 @@ while [ $# -gt 0 ]; do
 
            ;;
 
-       -k  | --keep-logging)
-          LOG_KEEP=1
+       -L  | --log)
+          LOG_LIVEDATA=1
 
           if ! argEmptyOrOption "$2"; then
-            LOG_KEEP_INTERVAL="$2"
+            LOG_INTERVAL="$2"
             shift 2
           else
-            LOG_KEEP_INTERVAL=5
             shift
           fi
           
-          [ "$DEBUG" -eq 1 ] &&  echo >&2 Logging each "$LOG_KEEP_INTERVAL" seconds
+          [ "$DEBUG" -eq 1 ] &&  echo >&2 Logging each "$LOG_INTERVAL" seconds
           ;;
       
         -W | --show-ws)
@@ -4957,7 +4958,7 @@ while [ $# -gt 0 ]; do
 
             setUVMode $UNIT_UV_WATTM2
 
-            if [ -z "$LOG_KEEP" ]; then
+            if [ -z "$LOG_LIVEDATA" ]; then
                httpServer "$2"
                EXITCODE_MAIN=$?
             else
