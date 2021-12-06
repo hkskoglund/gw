@@ -1892,7 +1892,7 @@ injectTestSensorLivedata()
 {
     #injectWH45_CO2Livedata
     #injectWH57_LightningLivedata
-    injectWH35_LeafwetnessLivedata
+    #injectWH35_LeafwetnessLivedata
     #inject_TF_USR # what is this, extra temp sensors?
     #injectSoiltempLivedata
     :
@@ -2013,18 +2013,18 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             LIVEDATA_UVI=$VALUE_UINT8
 
         elif [ "$ldf" -eq $LDF_SOILMOISTURE1 ] || [ "$ldf" -eq $LDF_SOILMOISTURE2 ] ||
-            [ "$ldf" -eq $LDF_SOILMOISTURE3 ] || [ "$ldf" -eq $LDF_SOILMOISTURE4 ] ||
-            [ "$ldf" -eq $LDF_SOILMOISTURE5 ] || [ "$ldf" -eq $LDF_SOILMOISTURE6 ] ||
-            [ "$ldf" -eq $LDF_SOILMOISTURE7 ] || [ "$ldf" -eq $LDF_SOILMOISTURE8 ]; then #is 16 channels supported?
+             [ "$ldf" -eq $LDF_SOILMOISTURE3 ] || [ "$ldf" -eq $LDF_SOILMOISTURE4 ] ||
+             [ "$ldf" -eq $LDF_SOILMOISTURE5 ] || [ "$ldf" -eq $LDF_SOILMOISTURE6 ] ||
+             [ "$ldf" -eq $LDF_SOILMOISTURE7 ] || [ "$ldf" -eq $LDF_SOILMOISTURE8 ]; then #is 16 channels supported?
 
             readUInt8
             channel=$((((ldf - LDF_SOILMOISTURE1) / 2) + 1))
             eval "LIVEDATA_SOILMOISTURE$channel=$VALUE_UINT8"
-
+ 
         elif [ "$ldf" -eq $LDF_SOILTEMP1 ] || [ "$ldf" -eq $LDF_SOILTEMP2 ] ||
-            [ "$ldf" -eq $LDF_SOILTEMP3 ] || [ "$ldf" -eq $LDF_SOILTEMP4 ] ||
-            [ "$ldf" -eq $LDF_SOILTEMP5 ] || [ "$ldf" -eq $LDF_SOILTEMP6 ] ||
-            [ "$ldf" -eq $LDF_SOILTEMP7 ] || [ "$ldf" -eq $LDF_SOILTEMP8 ]; then
+             [ "$ldf" -eq $LDF_SOILTEMP3 ] || [ "$ldf" -eq $LDF_SOILTEMP4 ] ||
+             [ "$ldf" -eq $LDF_SOILTEMP5 ] || [ "$ldf" -eq $LDF_SOILTEMP6 ] ||
+             [ "$ldf" -eq $LDF_SOILTEMP7 ] || [ "$ldf" -eq $LDF_SOILTEMP8 ]; then
 
             readUInt8
             channel=$((((ldf - LDF_SOILTEMP1) / 2) + 1))
@@ -4451,6 +4451,9 @@ parseEcowittHttpRequest()
                 set -- $value
                 LIVEDATA_SYSTEM_FREQUENCY=$1" MHz"
                 ;;
+
+            *) echo >&2 "Unsupported key $key in ecowitt http request"
+               ;;
                 
         esac
     done
@@ -4603,6 +4606,9 @@ parseWundergroundHttpRequest()
             softwaretype)
 
                LIVEDATA_SYSTEM_VERSION=$value
+               ;;
+
+            *) echo >&2 "Unsupported $key in wunderground http request"
                ;;
 
         esac
