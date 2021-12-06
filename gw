@@ -1453,9 +1453,9 @@ printLivedataLine()
     
     unset SGI_LIVE
    
-    if [ -n "$LOG_LIVEDATA"  ]; then
-      eval "echo \"$2\"  >$DIR_LIVEDATA/\"$6\""
-    fi
+   # if [ -n "$LOG_KEEP"  ]; then
+   #   eval "echo \"$2\"  >$DIR_LIVEDATA/\"$6\""
+   # fi
 
     if [ -n "$KSH_VERSION" ]; then
       unset sgi_normal
@@ -1783,8 +1783,11 @@ printLivedata() {
     [ -n "$LIVEDATA_SYSTEM_UTC" ] && printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER" "$LIVEDATA_SYSTEM_UTC" "%-20s" "" 5 "system_utc"
     [ -n "$LIVEDATA_SYSTEM_FREQUENCY" ] && printLivedataLine "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$LIVEDATA_SYSTEM_FREQUENCY" "%-7s" "" 5 "system_frequency"
 
-
-    printAppendBuffer
+    if [ -n "$LOG_CMD" ]; then
+      eval "$LOG_CMD"
+    else
+       printAppendBuffer
+    fi
 
     #unset local variables for ksh -> made global by using () function syntax without function keyword
     #https://www.unix.com/shell-programming-and-scripting/137435-ksh-different-syntax-function.html
@@ -3452,15 +3455,15 @@ initnc() {
 
 initConfigDir() {
 
-    DIR_CONFIG=$HOME"/.config/gw"                              # .config subdirectory used for configuration on gnome/linux
+  #  DIR_CONFIG=$HOME"/.config/gw"                              # .config subdirectory used for configuration on gnome/linux
     
-    [ -n "$EXTERNAL_STORAGE" ] && DIR_CONFIG=$EXTERNAL_STORAGE # testing in Android 11 adb shell
-    DIR_LIVEDATA="$EXTERNAL_STORAGE/tmp/gw/livedata"
-    [ ! -d "$DIR_CONFIG" ] || [ ! -d "$DIR_LIVEDATA" ]  && mkdir -p -v "$DIR_CONFIG" "$DIR_LIVEDATA"   1>&2
-    [ "$DEBUG" -eq 1 ] &&  echo >&2 Directory config "$DIR_CONFIG" livedata "$DIR_LIVEDATA"
+  #  [ -n "$EXTERNAL_STORAGE" ] && DIR_CONFIG=$EXTERNAL_STORAGE # testing in Android 11 adb shell
+  #  DIR_LIVEDATA="$EXTERNAL_STORAGE/tmp/gw/livedata"
+  #  [ ! -d "$DIR_CONFIG" ] || [ ! -d "$DIR_LIVEDATA" ]  && mkdir -p -v "$DIR_CONFIG" "$DIR_LIVEDATA"   1>&2
+  #  [ "$DEBUG" -eq 1 ] &&  echo >&2 Directory config "$DIR_CONFIG" livedata "$DIR_LIVEDATA"
 
     #SHELLPID=$$
-
+  :
 }
 
 argEmptyOrOption() {
@@ -3792,14 +3795,14 @@ processCommand() {
 
         livedata | ld | live | l)
 
-            if [ -z "$LOG_LIVEDATA" ]; then
+            if [ -z "$LOG_KEEP" ]; then
                 sendPacket $CMD_LIVEDATA
                 EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
             else
               
                 while true; do
                   sendPacket $CMD_LIVEDATA
-                  sleep "$LOG_LIVEDATA_INTERVAL"
+                  sleep "$LOG_KEEP_INTERVAL"
                 done
             fi
 
@@ -4452,7 +4455,7 @@ parseEcowittHttpRequest()
                 LIVEDATA_SYSTEM_FREQUENCY=$1" MHz"
                 ;;
 
-            *) echo >&2 "Unsupported key $key in ecowitt http request"
+            *) echo >&2 "Warning: Unsupported key $key in ecowitt http request"
                ;;
                 
         esac
@@ -4608,7 +4611,11 @@ parseWundergroundHttpRequest()
                LIVEDATA_SYSTEM_VERSION=$value
                ;;
 
-            *) echo >&2 "Unsupported $key in wunderground http request"
+            lowbatt|dateutc|action|realtime|rtfreq)
+               : # silently discard
+               ;;
+
+            *) echo >&2 "Warning: Unsupported $key in wunderground http request"
                ;;
 
         esac
@@ -4687,12 +4694,13 @@ httpServer()
 cleanup()
 {
    
-   if [ -n "$LOG_LIVEDATA" ]; then
+   #if [ -n "$LOG_KEEP" ]; then
         #2>/dev/null exec 1>&6 6>&- #copy backup fd 6 to stdout 1 and close 6 (may get "Bad file descriptor if 6 is not redirected")
-        rm "$DIR_LIVEDATA"/* #dont use "*" otherwise pathname/globbing expansion doesnt work
-   fi
+   #     rm "$DIR_LIVEDATA"/* #dont use "*" otherwise pathname/globbing expansion doesnt work
+   #fi
 
-    exit
+   exit
+   
 }
 
 initTrap()
@@ -4821,28 +4829,19 @@ while [ $# -gt 0 ]; do
 
            ;;
 
-       -L  | --log)
-          LOG_LIVEDATA=1
-
-           #FD_STDOUT_DUP=6 # used for backup of stdout when doing exec redirection to /dev/null 
-           # exec 6>&1 #backup stdout fd
-           # exec >/dev/null #redirect stdout to /dev/null
-
-            #exec 1>&"$FD_STDOUT_DUP" "$FD_STDOUT_DUP">&-
+       -k  | --keep-logging)
+          LOG_KEEP=1
 
           if ! argEmptyOrOption "$2"; then
-            LOG_LIVEDATA_INTERVAL="$2"
+            LOG_KEEP_INTERVAL="$2"
             shift 2
           else
-            LOG_LIVEDATA_INTERVAL=5
+            LOG_KEEP_INTERVAL=5
             shift
           fi
           
-          #[ "$DEBUG" -eq 1 ] && 
-          echo >&2 Logging livedata to "$DIR_LIVEDATA"
-
+          [ "$DEBUG" -eq 1 ] &&  echo >&2 Logging each "$LOG_KEEP_INTERVAL" seconds
           ;;
-
       
         -W | --show-ws)
             
@@ -4958,7 +4957,7 @@ while [ $# -gt 0 ]; do
 
             setUVMode $UNIT_UV_WATTM2
 
-            if [ -z "$LOG_LIVEDATA" ]; then
+            if [ -z "$LOG_KEEP" ]; then
                httpServer "$2"
                EXITCODE_MAIN=$?
             else
@@ -5007,6 +5006,15 @@ while [ $# -gt 0 ]; do
            
            TERM_ANSI_ESCAPE=0
            shift
+           ;;
+
+        -C | --log-cmd)
+           if ! argEmptyOrOption "$2"; then
+            LOG_CMD="$2"
+            shift 2
+           else
+              shift
+            fi
            ;;
 
 

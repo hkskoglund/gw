@@ -2600,6 +2600,14 @@ initSearchPatternForCommand() {
 
 
 
+
+           #FD_STDOUT_DUP=6 # used for backup of stdout when doing exec redirection to /dev/null 
+           # exec 6>&1 #backup stdout fd
+           # exec >/dev/null #redirect stdout to /dev/null
+
+            #exec 1>&"$FD_STDOUT_DUP" "$FD_STDOUT_DUP">&-
+
+
             
 
 
