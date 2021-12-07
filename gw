@@ -2491,7 +2491,7 @@ printSensorLine()
    # fi
 
     if [ -n "$KSH_VERSION" ]; then
-      unset sensorIdState sgi_normal
+      unset sensorIdState sensorsignal_unicode sgi_normal
     fi
 }
 
@@ -2666,7 +2666,7 @@ convertUInt8ToHex() {
     fi
 
     if [ -n "$KSH_VERSION" ]; then
-      unset lsb lsb_hexdigit msb2
+      unset lsb lsb_hexdigit msb
     fi
 }
 
@@ -3777,7 +3777,7 @@ processCommand() {
 
         livedata | ld | live | l)
 
-            if [ -z "$LOG_LIVEDATA" ]; then
+            if [ -z "$LOG_CMD" ]; then
                 sendPacket $CMD_LIVEDATA
                 EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
             else
@@ -4223,6 +4223,29 @@ printOrLogLivedata()
     if [ -z "$LOG_CMD" ]; then
         printLivedata
     else
+      if [ -z "$LOG_CMD_INIT" ]; then
+        case "$LOG_CMD" in 
+            csv)
+               #shellcheck disable=SC2016
+               {
+                LOG_CMD='echo $(date -u +"%F %T"),$LIVEDATA_OUTTEMP,$LIVEDATA_INTEMP,$LIVEDATA_INHUMI,$LIVEDATA_OUTHUMI,$LIVEDATA_RELBARO,$LIVEDATA_ABSBARO'
+                if [ -n "$LIVEDATA_WINDSPEED" ]; then # assumes other variables are set
+                    LOG_CMD="$LOG_CMD"',$LIVEDATA_WINDDIRECTION,$LIVEDATA_WINDDIRECTION_COMPASS,$LIVEDATA_WINDSPEED,$LIVEDATA_WINDGUSTSPEED'
+                fi
+                if [ -n "$LIVEDATA_LIGHT" ]; then
+                    LOG_CMD="$LOG_CMD"'$LIVEDATA_LIGHT,$LIVEDATA_UV,$LIVEDATA_UVI'
+                fi
+                if [ -n "$LIVEDATA_RAINRATE" ]; then 
+                    LOG_CMD="$LOG_CMD"'$LIVEDATA_RAINRATE,$LIVEDATA_RAINDAY,$LIVEDATA_RAINWEEK,$LIVEDATA_RAINMONTH,$LIVEDATA_RAINYEAR'
+                fi
+               }
+               #[ "$DEBUG" -eq 1 ] && 
+               echo >&2 Log command  "$LOG_CMD"
+                LOG_CMD_INIT=1 #only built first time, assumes static format received
+                ;;
+        esac
+     fi
+     
       eval "$LOG_CMD"
     fi
 }
@@ -4601,7 +4624,7 @@ parseWundergroundHttpRequest()
                ;;
 
             lowbatt|dateutc|action|realtime|rtfreq)
-               : # silently discard
+               : # silently discard, dateutc=now
                ;;
 
             *) echo >&2 "Warning: Unsupported $key in wunderground http request"
@@ -4807,7 +4830,6 @@ while [ $# -gt 0 ]; do
            fi
 
            shift 2
-
            ;;
 
        -Sb | --show-battery-livedata)
@@ -4820,17 +4842,27 @@ while [ $# -gt 0 ]; do
            shift
            ;;
 
-       -L  | --log)
-          LOG_LIVEDATA=1
-
-          if ! argEmptyOrOption "$2"; then
-            LOG_INTERVAL="$2"
-            shift 2
-          else
-            shift
-          fi
+      -n   | --log-interval)
+            if ! argEmptyOrOption "$2"; then
+                LOG_INTERVAL="$2"
+                shift 2
+            else
+                shift
+            fi
           
-          [ "$DEBUG" -eq 1 ] &&  echo >&2 Logging each "$LOG_INTERVAL" seconds
+            [ "$DEBUG" -eq 1 ] &&  echo >&2 Logging each "$LOG_INTERVAL" seconds
+            ;;
+
+
+       -L  | --log)
+          
+           if ! argEmptyOrOption "$2"; then
+               LOG_CMD="$2"
+              
+              shift 2
+            else
+              shift
+            fi
           ;;
       
         -W | --show-ws)
@@ -4947,7 +4979,7 @@ while [ $# -gt 0 ]; do
 
             setUVMode $UNIT_UV_WATTM2
 
-            if [ -z "$LOG_LIVEDATA" ]; then
+            if [ -z "$LOG_CMD" ]; then
                httpServer "$2"
                EXITCODE_MAIN=$?
             else
@@ -4960,8 +4992,7 @@ while [ $# -gt 0 ]; do
             fi 
 
             shift 2
-
-        ;;
+            ;;
    
         -s | --scan)
 
@@ -4997,16 +5028,6 @@ while [ $# -gt 0 ]; do
            TERM_ANSI_ESCAPE=0
            shift
            ;;
-
-        -C | --log-cmd)
-           if ! argEmptyOrOption "$2"; then
-            LOG_CMD="$2"
-            shift 2
-           else
-              shift
-            fi
-           ;;
-
 
         *)        # unknown option
             shift # past argument
