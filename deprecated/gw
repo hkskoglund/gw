@@ -2608,6 +2608,17 @@ initSearchPatternForCommand() {
             #exec 1>&"$FD_STDOUT_DUP" "$FD_STDOUT_DUP">&-
 
 
+ # if [ -n "$LOG_LIVEDATA"  ]; then
+   #   eval "echo \"$2\"  >$DIR_LIVEDATA/\"$6\""
+   # fi
+
+  
+   #if [ -n "$LOG_LIVEDATA" ]; then
+        #2>/dev/null exec 1>&6 6>&- #copy backup fd 6 to stdout 1 and close 6 (may get "Bad file descriptor if 6 is not redirected")
+   #     rm "$DIR_LIVEDATA"/* #dont use "*" otherwise pathname/globbing expansion doesnt work
+   #fi
+
+
             
 
 
