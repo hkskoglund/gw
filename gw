@@ -4812,10 +4812,12 @@ while [ $# -gt 0 ]; do
 
        -Sb | --show-battery-livedata)
             SHOW_BATTERY_LIVEDATA=1
+            shift
             ;;
         
        -Ss | --show-system-livedata)
            SHOW_SYSTEM_LIVEDATA=1
+           shift
            ;;
 
        -L  | --log)
