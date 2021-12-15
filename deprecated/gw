@@ -2619,7 +2619,89 @@ initSearchPatternForCommand() {
    #fi
 
 
-            
+ # if [ -n "$LIVEDATA_WH45CO2_BATTERY" ]; then 
+       #     printLivedataLine  "LIVEDATA_WH45CO2_BATTERY_HEADER" "$LIVEDATA_WH45CO2_BATTERY_STATE" "%-7s" "" "%2s" 'bco2'
+       # fi
+
+       # n=1
+       # while [ "$n" -le "$WH31_TEMP_MAXCH" ]; do
+       #     eval "[ -n ''"\$LIVEDATA_TEMP${n}_BATTERY_STATE" ] && [ "\$LIVEDATA_TEMP${n}_BATTERY" -eq $BATTERY_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
+       #     eval "[ -n ''"\$LIVEDATA_TEMP${n}_BATTERY_STATE" ] && printLivedataLine \"LIVEDATA_TEMP_BATTERY_HEADER${n}\" \"\$LIVEDATA_TEMP${n}_BATTERY_STATE\" \"%-7s\"  \"\" \"%2s\" \"btemp$n\""
+       #    n=$(( n + 1 ))
+       # done
+
+       # n=1
+       # while [ "$n" -le "$WH43_PM25_MAXCH" ]; do
+       #     #shellcheck disable=SC2153
+       #     eval  "[ -n ''"\$LIVEDATA_PM25${n}_BATTERY_STATE" ] && [ "\$LIVEDATA_PM25${n}_BATTERY" -le $BATTERY_LEVEL_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
+       #     eval "[ -n ''"\$LIVEDATA_PM25${n}_BATTERY_STATE" ] && printLivedataLine \"LIVEDATA_PM25_BATTERY_HEADER${n}\" \"\$LIVEDATA_PM25${n}_BATTERY_STATE\" \"%-7s\" \"\" \"%7s\" \"bpm25$n\""
+       #     n=$((n + 1))
+       # done
+
+      #  n=1
+      #  while [ "$n" -le "$WH51_SOILMOISTURE_MAXCH" ]; do
+      #     eval "[ -n ''"\$LIVEDATA_SOILMOISTURE${n}_BATTERY" ] && [ "\$LIVEDATA_SOILMOISTURE${n}_BATTERY_RAW" -le $BATTERY_VOLTAGE_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
+      #      eval "[ -n ''"\$LIVEDATA_SOILMOISTURE${n}_BATTERY" ] && printLivedataLine  \"LIVEDATA_SOILMOISTURE_BATTERY_HEADER${n}\"  \"\$LIVEDATA_SOILMOISTURE${n}_BATTERY_STATE\" \"%-7s\" \"\" \"%2s\" \"bsoilm$n\""
+      #      n=$((n + 1))
+      #  done
+
+        n=1
+        while [ "$n" -le "$WH34_SOILTEMP_MAXCH" ]; do
+            eval "[ -n ''"\$LIVEDATA_SOILTEMP${n}_BATTERY" ] && [ "\$LIVEDATA_SOILTEMP${n}_BATTERY_RAW" -le $BATTERY_VOLTAGE_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
+            eval "[ -n ''"\$LIVEDATA_SOILTEMP${n}_BATTERY" ] && printLivedataLine  \"LIVEDATA_SOILTEMP_BATTERY_HEADER${n}\" \"\$LIVEDATA_SOILTEMP${n}_BATTERY_STATE\" \"%-7s\" \"\" \"%2s\" \"bsoilt$n\""
+            n=$((n + 1))
+        done
+
+       # n=1
+       # while [ "$n" -le "$WH55_LEAK_MAXCH" ]; do
+       #     eval "[ -n ''"\$LIVEDATA_LEAK${n}_BATTERY" ] && [ "\$LIVEDATA_LEAK${n}_BATTERY" -le $BATTERY_LEVEL_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
+       #     eval "[ -n ''"\$LIVEDATA_LEAK${n}_BATTERY" ] && printLivedataLine  \"LIVEDATA_LEAK_BATTERY_HEADER${n}\" \"\$LIVEDATA_LEAK${n}_BATTERY_STATE\" \"%-7s\" \"\" \"%4s\" \"bleak$n\""
+       #     n=$((n + 1))
+       # done
+
+        #spec. page 28 eWH35_SENSORCH1 = 40,//电压=val*0.02V 当<=1.2V 时显示低电压
+        n=1 
+        while [ "$n" -le "$WH35_LEAFWETNESS_MAXCH" ]; do
+            eval "[ -n ''"\$LIVEDATA_LEAFWETNESS${n}_BATTERY" ] && [ "\$LIVEDATA_LEAFWETNESS${n}_BATTERY_RAW" -le $BATTERY_VOLTAGE_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
+            eval "[ -n ''"\$LIVEDATA_LEAFWETNESS${n}_BATTERY" ] && printLivedataLine \"LIVEDATA_LEAFWETNESS_BATTERY_HEADER${n}\" \"\$LIVEDATA_LEAFWETNESS${n}_BATTERY_STATE\" \"%-7s\" \"\" \"%4s\" \"bleaf$n\""
+            n=$((n + 1))
+        done
+
+        n=1
+        while [ "$n" -le "$TF_USR_MAXCH" ]; do
+            eval "[ -n ''"\$LIVEDATA_TF_USR${n}_BATTERY" ] && [ "\$LIVEDATA_TF_USR${n}_BATTERY_RAW" -le $BATTERY_VOLTAGE_LOW ] && SGI_LIVE=\"$SGI_BATTERY_LOW\""
+            eval "[ -n ''"\$LIVEDATA_TF_USR${n}_BATTERY" ] && printLivedataLine \"LIVEDATA_TF_USR_BATTERY_HEADER${n}\" \"\$LIVEDATA_TF_USR${n}_BATTERY_STATE\" \"%-7s\" \"\" \"%4s\" \"btusr$n\""
+            n=$((n + 1))
+        done
+    fi
 
 
-    
+    printLivedataLine
+
+      case "$1" in
+           
+            LIVEDATA_TEMP_HEADER?)
+               echo "1 $1 2 $2 3 $3 4 $4 5 $5 6 $6 7 $7 8 $8 9 $9"
+               LIVEDATA_LINE_BATTERY_STATE="$9"
+               ;;
+
+            LIVEDATA_*HEADER?)
+       
+                ch=${1#LIVEDATA_*_HEADER}
+                if [ -n "$ch" ]; then
+                    eval LIVEDATA_LINE_BATTERY_STATE="\$${1%_HEADER?}${ch}_BATTERY_STATE"
+                fi
+                ;;
+
+            LIVEDATA_WH45CO2_TEMPF_HEADER) # integrate battery status after co2 temperature
+       
+                LIVEDATA_LINE_BATTERY_STATE=$LIVEDATA_WH45CO2_BATTERY_STATE
+                ;;
+
+            LIVEDATA_LIGHTNING_DISTANCE_HEADER)
+
+                setSGIBatteryLowNormal "$LIVEDATA_WH57_LIGHTNING_BATTERY"
+                LIVEDATA_LINE_BATTERY_STATE=$LIVEDATA_WH57_LIGHTNING_BATTERY_STATE
+                ;;            
+
+        esac
