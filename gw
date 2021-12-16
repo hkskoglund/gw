@@ -1464,7 +1464,7 @@ printLivedataLine()
         local fwidth format format_code header_fmt battery_state_fmt unit_fmt
     fi
 
-    [ $DEBUG -eq 1 ] && echo "printLivedataLine $*"
+    [ "$DEBUG" -eq 1 ] && echo "printLivedataLine $*"
 
     header_fmt="%-30s"
 
@@ -1610,8 +1610,8 @@ printAppendBuffer()
     if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
         printf >&2 "%s\n" "APPEND_FORMAT/APPEND_ARGS printf '$APPEND_FORMAT' $APPEND_ARGS"
     fi
-
-    eval printf \""$APPEND_HEADER\n$APPEND_FORMAT"\" "$APPEND_ARGS"
+    
+    eval printf \""$APPEND_FORMAT"\" "$APPEND_ARGS"
 
     resetAppendBuffer
 }
@@ -1666,6 +1666,10 @@ printLivedata() {
         setSGILivedataLtGt "$LIVEDATA_INTEMP_RAW" "$LIMIT_LIVEDATA_INTEMP_LOW" "$LIMIT_LIVEDATA_INTEMP_HIGH" "$SGI_LIMIT_LIVEDATA_INTEMP_LOW" "$SGI_LIMIT_LIVEDATA_INTEMP_HIGH"
         printLivedataLine 'LIVEDATA_INTEMP_HEADER'  "$LIVEDATA_INTEMP" "%6.1f" "$UNIT_TEMP" "%s" 'in' "%s" 
     fi
+   
+   #for debugging:
+   #printappendBuffer
+   #return
    
     if [ -n "$LIVEDATA_OUTTEMP" ]; then
 
@@ -4400,7 +4404,7 @@ setPressureHttpLivedata()
 printOrLogLivedata()
 {
     if [ -z "$LOG_CMD" ]; then
-        printLivedata
+       printLivedata
     else
       if [ -z "$LOG_CMD_INIT" ]; then
         case "$LOG_CMD" in 
@@ -5030,7 +5034,7 @@ if ! initnc; then
     echo >&2 Error nc/ncat not found
     exit "$ERROR_DEPENDENCY_NC"
 fi
-#initLivedataFieldDescriptionRenaming
+
 initTimezones
 
 initUnit
@@ -5240,7 +5244,7 @@ while [ $# -gt 0 ]; do
               shift
               ;;
 
-        -dI | --show-testsensor)
+        -dI | --show-testsensor) # inject test sensor data
              OPTION_SHOW_TESTSENSOR=1
              shift
              ;;
