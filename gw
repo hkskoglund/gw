@@ -39,13 +39,21 @@ OPTION_SHOW_TESTSENSOR=0
 
 MAX_16BIT_UINT=$(((2 << 16) - 1))
 
-UNICODE_RAIN=${UNICODE_RAIN:=🌧}
+UNICODE_RAIN=${UNICODE_RAIN:=💧}
+#https://unicode-table.com/en/emoji/travel-and-places/sky-and-weather/
 #UNICODE_RAIN=⛆
 UNICODE_BATTERY=${UNICODE_BATTERY:=🔋}
+
 UNICODE_BATTERY_LOW=${UNICODE_BATTERY_LOW:=🪫}
 UNICODE_PLUG=${UNICODE_PLUG:=🔌}
 UNICODE_WIND=${UNICODE_WIND:=💨} 
 #https://emojipedia.org/dashing-away/
+UNICODE_SIGNAL_LEVEL1=${UNICODE_SIGNAL_LEVEL1:=▁}
+UNICODE_SIGNAL_LEVEL2=${UNICODE_SIGNAL_LEVEL2:=▁▂}
+UNICODE_SIGNAL_LEVEL3=${UNICODE_SIGNAL_LEVEL3:=▁▂▃}
+UNICODE_SIGNAL_LEVEL4=${UNICODE_SIGNAL_LEVEL4:=▁▂▃▄}
+#maybe wind direction?
+#UNICODE_WIND_DIRECTION_S=${UNICODE_WIND_DIRECTION_S:=⭡}
 
 #ERROR_CONNECTION=1
 #ERROR_NO_NMCLI=2
@@ -300,6 +308,7 @@ WH55_LEAK_MAXCH=4
 TF_USR_MAXCH=8
 
 SENSORTYPE_MAX=47 # for cmd read sensorid new
+SENSORTYPE_WH31TEMP=6 # temp. sensors start at 6
 
 SENSORIDSTATE_CONNECTED=${SENSORIDSTATE_CONNECTED:="connected"}
 SENSORIDSTATE_SEARCHING=${SENSORIDSTATE_SEARCHING:="searching"}
@@ -1461,18 +1470,18 @@ setRainMode()
 }
 
 printLivedataLine()
-#$1 -header variable name, $2 value, $3 - value format, $4 unit, $5 unit format,$6 terse header, $7 terse format ("$LIVEDATA_INTEMP_HEADER"  "$LIVEDATA_INTEMP" "%6.1f" "$UNIT_TEMP" "%2s" 'int' )
+#$1 -header variable name, $2 value, $3 - value format, $4 unit, $5 unit format,$6 terse header, $7 terse format, $8 status value $9 status $10 signal value $11 signal state
+# optimized to just use one printf call builtin/external -> builds up entire format and argument strings for entire livedata view
 {
 
      if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        typeset fwidth format format_code header_fmt status_fmt unit_fmt
+        typeset fwidth format format_code header_fmt status_fmt unit_fmt status_line signal_fmt signal_status
     else
-        local fwidth format format_code header_fmt status_fmt unit_fmt
+        local fwidth format format_code header_fmt status_fmt unit_fmt  status_line signal_fmt signal_status
     fi
 
-    #[ "$DEBUG" -eq 1 ] && 
-    echo "printLivedataLine $* length $#"
+    [ "$DEBUG" -eq 1 ] && echo >&2 "printLivedataLine $* length $#"
 
     header_fmt="%-30s"
 
@@ -1480,23 +1489,24 @@ printLivedataLine()
         #override if _FMT added to header variable name, used if printf does not left/right justify when unicodes are used in the header
         eval "if [ -n ''\"\$$1_FMT\" ]; then header_fmt=\"\$$1_FMT\"; fi"
         status_fmt="%-10s"
-        
+        signal_fmt="%-12s"
         #formatting is also related to terminal font pixel size, look quite good in "Consolas" 12 in Ubuntu WSL
         case "$4" in 
             
             ℃|℉|µg/㎥)  
-                      unit_fmt="%-9sT"
+                         unit_fmt="%-9s"
                         ;;
             
-            °|㏓|W/㎡)   unit_fmt="%-8sT"
+            °|㏓|W/㎡)   unit_fmt="%-8s"
                         ;;
             
-            *)           unit_fmt="%-7sT"
+            *)           unit_fmt="%-7s"
                         ;;
         esac
     else
        status_fmt="%-7s"
        unit_fmt="%-4s"
+       signal_fmt="%-4s"
     fi
 
     #TEST UTF-8: for f in $(seq -s' ' 255); do eval printf "\\\x$(printf "%x" "$f")"; done
@@ -1504,21 +1514,44 @@ printLivedataLine()
     if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then 
        
         status_line="$9"
-        if [ -z "$status_line" ]; then
-            unset status_fmt
-        fi
+       # if [ -z "$status_line" ]; then
+       #     unset status_fmt
+       # fi
+
+        signal_status="${11}"
 
         if [ "$TERM_ANSI_ESCAPE" -eq 1 ] && [ -n "$SGI_LIVE" ]; then
-           APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE$header_fmt $3 $unit_fmt$SGI_NORMAL $status_fmt\n" #just use one printf call builtin/external -> builds up entire format and argument strings
+        
+            if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
+                 APPEND_FORMAT="$APPEND_FORMAT $header_fmt %s %s %s\n"
+            fi
+            
+            APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE$header_fmt $3 $unit_fmt$SGI_NORMAL $status_fmt $signal_fmt\n" 
+        
         else
-           APPEND_FORMAT=$APPEND_FORMAT"$header_fmt $3 $unit_fmt $status_fmt\n"
+            if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
+                APPEND_FORMAT="$APPEND_FORMAT $header_fmt %s %s %s\n"
+            fi
+
+            APPEND_FORMAT=$APPEND_FORMAT"$header_fmt $3 $unit_fmt $status_fmt $signal_fmt\n"
         fi
 
-        if [ -n "$status_line" ]; then
-            eval "APPEND_ARGS=\"$APPEND_ARGS\"\'\$$1\'\ \'\"$2\"\'\ \'$4\'\ \'\"$status_line\"\'\ " # maybe too complex?! (takes a long time to get right)
-        else
-            eval "APPEND_ARGS=\"$APPEND_ARGS\"\'\$$1\'\ \'\"$2\"\'\ \'$4\'\ "
-        fi
+       # if [ -n "$status_line" ]; then
+        
+            if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
+                APPEND_ARGS="$APPEND_ARGS '$header_fmt' '$3' '$unit_fmt' '$status_fmt' "
+            fi
+        
+            eval "APPEND_ARGS=\"$APPEND_ARGS\"\'\$$1\'\ \'\"$2\"\'\ \'$4\'\ \'\"$status_line\"\'\ \'\"$signal_status\"\'\ " # maybe too complex?! (takes a long time to get right)
+        
+       # else
+        
+       #     if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
+       #         APPEND_ARGS="$APPEND_ARGS '$header_fmt' '$3' '$unit_fmt' '$status_fmt' "
+       #     fi
+        
+       #     eval "APPEND_ARGS=\"$APPEND_ARGS\"\'\$$1\'\ \'\"$2\"\'\ \'$4\'\ "
+       # fi
 
   elif [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_TERSE ]; then
      
@@ -1586,7 +1619,7 @@ printLivedataLine()
     unset SGI_LIVE
    
     if [ -n "$KSH_VERSION" ]; then
-      unset fwidth format header_fmt ch status_fmt unit_fmt
+      unset fwidth format header_fmt ch status_fmt unit_fmt status_line signal_fmt signal_status
     fi
 }
 
@@ -1668,11 +1701,10 @@ printLivedataRainLine()
       value_fmt="%6.2f"
     fi
 
-    setSGILivedataGt "$1" "$2"
-
     if [ "$1" -ge "$2" ] && [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
         printLivedataLine "$3" "$4" "$value_fmt" "$5" "%5s" "$6" "%6.1f" "$1" "$UNICODE_RAIN"
     else
+        setSGILivedataGt "$1" "$2"
         printLivedataLine "$3" "$4" "$value_fmt"  "$5" "%5s" "$6" "%6.1f"
     fi
 }
@@ -1681,11 +1713,10 @@ printLivedataWindLine()
 {
     #echo "printLivedataWindLine 1: $1 2: $2 3: $3 4: $4 5: $5 6: $6"
 
-    setSGILivedataGt "$1" "$2" 
-    
     if [ "$1" -ge "$2" ] && [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
         printLivedataLine "$3" "$4" "%6.1f"  "$5" "%4s"  "$6" "%6.1f" "$1" "$UNICODE_WIND"
     else
+        setSGILivedataGt "$1" "$2" 
         printLivedataLine "$3" "$4" "%6.1f"  "$5" "%4s"  "$6" "%6.1f"
     fi
 }
@@ -1708,7 +1739,7 @@ printLivedata() {
     fi
    
    #for debugging:
-   #printappendBuffer
+   #printAppendBuffer
    #return
 
     if [ -n "$LIVEDATA_OUTTEMP" ]; then
@@ -1746,11 +1777,11 @@ printLivedata() {
     fi
 
     if [ -z "$HIDE_WIND_LIVEDATA" ]; then
-        [ -n "$LIVEDATA_WINDDIRECTION" ]            && printLivedataLine  "LIVEDATA_WINDDIRECTION_HEADER" "$LIVEDATA_WINDDIRECTION"                 "%6u" "$UNIT_DEGREE" "%5s" 'wdeg' "%4u"
-        [ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]    && printLivedataLine "LIVEDATA_WINDDIRECTION_COMPASS_HEADER" "$LIVEDATA_WINDDIRECTION_COMPASS"  "%6s" "" "%5s" 'wdir' "%4s"
-        [ -n "$LIVEDATA_WINDSPEED" ] &&     printLivedataWindLine   "$LIVEDATA_WINDSPEED_RAW"       "$LIMIT_LIVEDATA_WIND" "LIVEDATA_WINDSPEED_HEADER"      "$LIVEDATA_WINDSPEED" "$UNIT_WIND" 'wspd' 
+        [ -n "$LIVEDATA_WINDDIRECTION" ]            && printLivedataLine "LIVEDATA_WINDDIRECTION_HEADER" "$LIVEDATA_WINDDIRECTION"                 "%6u" "$UNIT_DEGREE" "%5s" 'wdeg' "%4u"
+        [ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]    && printLivedataLine  "LIVEDATA_WINDDIRECTION_COMPASS_HEADER" "$LIVEDATA_WINDDIRECTION_COMPASS"  "%6s" "" "%5s" 'wdir' "%4s"
+        [ -n "$LIVEDATA_WINDSPEED" ]     && printLivedataWindLine   "$LIVEDATA_WINDSPEED_RAW"       "$LIMIT_LIVEDATA_WIND" "LIVEDATA_WINDSPEED_HEADER"      "$LIVEDATA_WINDSPEED" "$UNIT_WIND" 'wspd' 
         [ -n "$LIVEDATA_WINDGUSTSPEED" ] && printLivedataWindLine   "$LIVEDATA_WINDGUSTSPEED_RAW"   "$LIMIT_LIVEDATA_WIND" "LIVEDATA_WINDGUSTSPEED_HEADER"  "$LIVEDATA_WINDGUSTSPEED" "$UNIT_WIND" 'wgspd'
-        [ -n "$LIVEDATA_WINDDAILYMAX" ] &&  printLivedataWindLine   "$LIVEDATA_WINDDAILYMAX_RAW"    "$LIMIT_LIVEDATA_WIND" "LIVEDATA_WINDDAILYMAX_HEADER"   "$LIVEDATA_WINDDAILYMAX"  "$UNIT_WIND"  'wdmax'
+        [ -n "$LIVEDATA_WINDDAILYMAX" ]  && printLivedataWindLine   "$LIVEDATA_WINDDAILYMAX_RAW"    "$LIMIT_LIVEDATA_WIND" "LIVEDATA_WINDDAILYMAX_HEADER"   "$LIVEDATA_WINDDAILYMAX"  "$UNIT_WIND"  'wdmax'
     fi
 
     if [ -z "$HIDE_LIGHT_LIVEDATA" ]; then
@@ -1777,10 +1808,13 @@ printLivedata() {
         while [ "$n" -le "$WH31_TEMP_MAXCH" ]; do
         #shellcheck disable=SC2153
         {
+            #eval echo !!!!!!!!!!!!!!!!! \"\$LIVEDATA_TEMP${n}_SIGNAL_STATE\" n=$n
+            #set -x
             eval " if [ -n ''"\$LIVEDATA_TEMP$n" ]; then
                         setSGIBatteryLowNormal "\$LIVEDATA_TEMP${n}_BATTERY"
-                        printLivedataLine 'LIVEDATA_TEMP_HEADER$n' \"\$LIVEDATA_TEMP$n\" '%6.1f'  \"\$UNIT_TEMP\" '%2s' 'temp$n' '' \"\$LIVEDATA_TEMP${n}_BATTERY\" \"\$LIVEDATA_TEMP${n}_BATTERY_STATE\"
+                        printLivedataLine 'LIVEDATA_TEMP_HEADER$n' \"\$LIVEDATA_TEMP$n\" '%6.1f'  \"\$UNIT_TEMP\" '%2s' 'temp$n' '' \"\$LIVEDATA_TEMP${n}_BATTERY\" \"\$LIVEDATA_TEMP${n}_BATTERY_STATE\"  \"\$LIVEDATA_TEMP${n}_SIGNAL\" \"\$LIVEDATA_TEMP${n}_SIGNAL_STATE\"
                    fi "
+            #set +x
         }
             n=$((n + 1))
         done
@@ -2612,16 +2646,9 @@ printSensorLine()
        fi
 
        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-            case "$4" in 
-                1) sensorsignal_unicode='▁'
-                    ;;
-                2) sensorsignal_unicode='▁▂'
-                    ;;
-                3) sensorsignal_unicode='▁▂▃'
-                    ;;
-                4) sensorsignal_unicode='▁▂▃▄' # unicode e2 96 81 e2 96 82 e2 96 83 e2 96 84 -> each symbol 3 bytes, minimum field size = 4*3 = 12
-                    ;;
-            esac
+            getSignalUnicode "$4"
+            sensorsignal_unicode=$VALUE_SIGNAL_UNICODE
+           # unicode e2 96 81 e2 96 82 e2 96 83 e2 96 84 -> each symbol 3 bytes, minimum field size = 4*3 = 12
         fi
     fi
 
@@ -2657,13 +2684,31 @@ resetAppendBuffer()
    unset APPEND_FORMAT APPEND_ARGS
 }
 
+getSignalUnicode()
+{
+    eval VALUE_SIGNAL_UNICODE="\$UNICODE_SIGNAL_LEVEL$1"
+}
+
+setLivedataSignal()
+# $1 sensortype $2 signal
+#maps sensor type to livedata
+{
+    
+    if [ "$1" -ge $SENSORTYPE_WH31TEMP ] && [ "$1" -lt $(( SENSORTYPE_WH31TEMP + WH31_TEMP_MAXCH )) ]; then
+        eval LIVEDATA_TEMP$(( $1 - SENSORTYPE_WH31TEMP + 1))_SIGNAL="$2"
+        getSignalUnicode "$2"
+        eval LIVEDATA_TEMP$(( $1 - SENSORTYPE_WH31TEMP + 1))_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
+    fi
+      
+}
+
 parseSensorIdNew()
 {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
-        typeset stype signal battery
+        typeset stype signal battery sensor_connected
     else
-       local stype signal battery
+       local stype signal battery sensor_connected
     fi
 
     resetAppendBuffer
@@ -2676,34 +2721,41 @@ parseSensorIdNew()
     
     while [ ${#OD_BUFFER} -ge 7 ]; do
        
-       readUInt8            #type
-       stype=$VALUE_UINT8
+        readUInt8            #type
+        stype=$VALUE_UINT8
        
-       readUInt32BE         #id
-       SID=$VALUE_UINT32BE
+        readUInt32BE         #id
+        SID=$VALUE_UINT32BE
        
-       readUInt8   
-       battery=$VALUE_UINT8
-       
-       readUInt8
-       signal=$VALUE_UINT8
+        readUInt8   
+        battery=$VALUE_UINT8
+        
+        readUInt8
+        signal=$VALUE_UINT8
 
+        if [ $SID -ne $SENSORID_SEARCH ] && [ $SID -ne $SENSORID_DISABLE ]; then
+            sensor_connected=1
+            setLivedataSignal "$stype" "$signal"
+        else
+            sensor_connected=0
+        fi
 
-       if [ -n "$SPATTERNID" ] && [ "$SPATTERNID" -eq 1 ] && [ $SID -ne $SENSORID_SEARCH ] && [ $SID -ne $SENSORID_DISABLE ] ; then
-            printSensorLine $stype $SID $battery $signal
-       elif [ -n "$SPATTERNID" ] &&  [ "$SPATTERNID" -eq $SID ] ; then
-            printSensorLine $stype $SID $battery $signal
-       elif [ -z "$SPATTERNID" ]; then
-            printSensorLine $stype $SID $battery $signal
-       fi   
-       
-       [ "$DEBUG" -eq 1 ] && >&2 echo "type $stype id $SID battery $battery signal $signal od_buffer length ${#OD_BUFFER}"
+        #pattern matching
+        if [ -n "$SPATTERNID" ] && [ "$SPATTERNID" -eq 1 ] && [ $sensor_connected -eq 0  ] ; then
+                printSensorLine $stype $SID $battery $signal
+        elif [ -n "$SPATTERNID" ] &&  [ "$SPATTERNID" -eq $SID ] ; then
+                printSensorLine $stype $SID $battery $signal
+        elif [ -z "$SPATTERNID" ]; then
+                printSensorLine $stype $SID $battery $signal
+        fi   
+        
+        [ "$DEBUG" -eq 1 ] && >&2 echo "type $stype id $SID battery $battery signal $signal od_buffer length ${#OD_BUFFER}"
     done
 
     printAppendBuffer
 
     if [ -n "$KSH_VERSION" ]; then
-      unset stype signal battery
+      unset stype signal battery sensor_connected
     fi
 }
 
