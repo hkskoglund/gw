@@ -2,7 +2,6 @@
 #!/bin/bash
 #! use dash as first line for portability testing
 
-
 # Utility for configuration of GW-1000
 # Only for firmware v1.6.5 or later - for intepretation of battery levels/sensor id new command
 # example ./gw -s
@@ -30,6 +29,9 @@
 #set -x # enable for tracing in strace -f -c dash .c './gw -h 192.168.3.80 -c livedata'
 #for s in bash dash ksh zsh; do strace -f -c $s -c './gw -h 192.168.3.80 -c livedata' 2>strace-log-$s; done
 #not much to gain in time by avoiding subshell, but number of system calls is less. Try not to overoptimize.
+
+#watch not compatible -> wrong formatting of \r\t\t\t sequences
+#clear; while true; do  ../gw -A ../lang/gw-nbno.sh  -g 192.168.3.16 -Hb -c livedata; sleep 60; printf "\e[H"; done
 
 DEBUG=0 # 1 will enable additional debug information, -d option to enable
 OPTION_SHOW_APPEND_FORMAT=0
@@ -67,6 +69,28 @@ UNICODE_WIND_DIRECTION_NE=${UNICODE_WIND_DIRECTION_NE:=↙}
 UNICODE_WIND_DIRECTION_SW=${UNICODE_WIND_DIRECTION_SW:=↗}
 UNICODE_WIND_DIRECTION_SE=${UNICODE_WIND_DIRECTION_SE:=↖}
 
+WIND_DIRECTION_N=${WIND_DIRECTION_N:="N"}
+WIND_DIRECTION_E=${WIND_DIRECTION_E:="E"}
+WIND_DIRECTION_S=${WIND_DIRECTION_S:="S"}
+WIND_DIRECTION_W=${WIND_DIRECTION_W:="W"}
+
+WIND_N=1
+WIND_NNE=2
+WIND_NE=3
+WIND_ENE=4
+WIND_E=5
+WIND_ESE=6
+WIND_SE=7
+WIND_SSE=8
+WIND_S=9
+WIND_SSW=10
+WIND_SW=11
+WIND_WSW=12
+WIND_W=13
+WIND_WNW=14
+WIND_NW=15
+WIND_NNW=16
+
 #ERROR_CONNECTION=1
 #ERROR_NO_NMCLI=2
 ERROR_NC_UDP_SCAN_UNAVAILABLE=3
@@ -89,8 +113,9 @@ ERROR_COMMAND_UNKNOWN=17
 #CRLF='\r\n'
 
 LIVEDATA_VIEW_NORMAL=0
-LIVEDATA_VIEW_TERSE=1
-LIVEDATA_VIEW_TERSE_ROW=2
+LIVEDATA_VIEW_BIG=1
+LIVEDATA_VIEW_TERSE=2
+LIVEDATA_VIEW_TERSE_ROW=3
 LIVEDATA_VIEW=${LIVIEDATA_VIEW:=$LIVEDATA_VIEW_NORMAL}
 
 UNIT_TEMPERATURE_CELCIUS=0
@@ -124,6 +149,8 @@ PORT_GW_UDP=46000
 PORT_CLIENT_UDP=59387
 
 LOG_INTERVAL=${LOG_INTERVAL:=60} # default 60 seconds
+
+SPATTERNID_CONNECTED=connected
 
 CMD_READ_VERSION=$((0x50)) #zsh - wont compare int with hex 16#50 in [ ] expression unless converted to decimal, works in [[ ]] expression
 CMD_REBOOT=$((0x40))
@@ -443,22 +470,71 @@ LIVEDATA_SYSTEM_MODEL_HEADER=${LIVEDATA_SYSTEM_MODEL_HEADER:="System model"}
 #disable with -E option
 #https://en.wikipedia.org/wiki/ANSI_escape_code
 CSI='\e[' # control sequence introducer
-SGI_NORMAL=$CSI'0m'
-SGI_INVERT=$CSI'1;7m'
-#SGI_BLINK='\e[6m"
-SGI_LIGHTBLUE_BLACK=$CSI'1;34m'
-SGI_BRIGHTRED_BLACK=$CSI'1;31m'
-SGI_BRIGHTGREEN_BLACK=$CSI'1;32m'
-SGI_LIMIT_LIVEDATA=${SGI_LIMIT_LIVEDATA:=$SGI_INVERT}
-SGI_LIMIT_LIVEDATA_OUTTEMP_LOW=${SGI_LIMIT_LIVEDATA_OUTTEMP_LOW:=$SGI_LIGHTBLUE_BLACK}
-SGI_LIMIT_LIVEDATA_OUTTEMP_HIGH=${SGI_LIMIT_LIVEDATA_OUTTEMP_HIGH:=$SGI_BRIGHTRED_BLACK}
-SGI_LIMIT_LIVEDATA_INTEMP_LOW=${SGI_LIMIT_LIVEDATA_INTEMP_LOW:=$SGI_LIGHTBLUE_BLACK}
-SGI_LIMIT_LIVEDATA_INTEMP_HIGH=${SGI_LIMIT_LIVEDATA_INTEMP_HIGH:=$SGI_BRIGHTRED_BLACK}
+#ANSIESC_SGI_NORMAL=$CSI'0m'
+SGI_NORMAL=0
+SGI_BOLD=1
+SGI_BLINK=6
+SGI_INVERSE=7
+SGI_FOREGROUND_COLOR=38
+SGI_BACKGROUND_COLOR=48
+
+SGI_FOREGC="$SGI_FOREGROUND_COLOR;5;"
+SGI_BACKGC="$SGI_BACKGROUND_COLOR;5;"
+
+ANSIESC_SGI_NORMAL="$CSI${SGI_NORMAL}m"
+ANSIESC_SGI_INVERT="$CSI${SGI_INVERSE}m"
+ANSIESC_SGI_BOLD_INVERT="$CSI$SGI_BOLD;${SGI_INVERSE}m"
+ANSIESC_SGI_BOLD="$CSI${SGI_BOLD}m"
+
+#Colors 8-bit
+SGI_COLOR_BLACK=0
+SGI_COLOR_RED=1
+SGI_COLOR_GREEN=2
+SGI_COLOR_YELLOW=3
+SGI_COLOR_BLUE=4
+SGI_COLOR_MAGENTA=5
+SGI_COLOR_CYAN=6
+SGI_COLOR_WHITE=7
+SGI_COLOR_GRAY=8
+SGI_COLOR_BRIGHT_RED=9
+SGI_COLOR_BRIGHT_GREEN=10
+SGI_COLOR_BRIGHT_YELLOW=11
+SGI_COLOR_BRIGHT_BLUE=12
+SGI_COLOR_BRIGHT_MAGENTA=13
+SGI_COLOR_BRIGHT_CYAN=14
+SGI_COLOR_ORANGE=208
+
+ANSIESC_SGI_BRIGHTRED=$CSI$SGI_FOREGC$SGI_COLOR_BRIGHT_RED"m"
+ANSIESC_SGI_BRIGHTBLUE=$CSI$SGI_FOREGC$SGI_COLOR_BRIGHT_BLUE"m"
+ANSIESC_SGI_BRIGHTGREEN=$CSI$SGI_FOREGC$SGI_COLOR_BRIGHT_GREEN"m"
+
+STYLE_LIMIT_LIVEDATA=${STYLE_LIMIT_LIVEDATA:=$ANSI_ESC_SGI_INVERT}
+STYLE_LIMIT_LIVEDATA_OUTTEMP=${STYLE_LIMIT_LIVEDATA_OUTTEMP:=$ANSIESC_SGI_BRIGHTBLUE}
+STYLE_LIMIT_LIVEDATA_OUTTEMP_HIGH=${STYLE_LIMIT_LIVEDATA_OUTTEMP_HIGH:=$ANSIESC_SGI_BRIGHTRED}
+STYLE_LIMIT_LIVEDATA_INTEMP_LOW=${STYLE_LIMIT_LIVEDATA_INTEMP_LOW:=$ANSIESC_SGI_BRIGHTBLUE}
+STYLE_LIMIT_LIVEDATA_INTEMP_HIGH=${STYLE_LIMIT_LIVEDATA_INTEMP_HIGH:=$ANSIESC_SGI_BRIGHTRED}
 
 
-SGI_BATTERY_LOW=${SGI_BATTERY_LOW:=$SGI_BRIGHTRED_BLACK}
-SGI_SIGNAL_LOW=${SGI_SIGNAL_LOW:=$SGI_BRIGHTRED_BLACK}
-SGI_LEAK=${SGI_LEAK:="\a"$SGI_BRIGHTRED_BLACK} # add alert/bell \a if leakage detected
+STYLE_BATTERY_LOW=${STYLE_BATTERY_LOW:=$ANSIESC_SGI_BRIGHTRED}
+STYLE_SIGNAL_LOW=${STYLE_SIGNAL_LOW:=$ANSIESC_SGI_BRIGHTRED}
+STYLE_LEAK=${STYLE_LEAK:="\a"$ANSIESC_SGI_BRIGHTRED} # add alert/bell \a if leakage detected
+
+STYLE_RESET="$ANSIESC_SGI_NORMAL"
+
+STYLE_HEADER_DEFAULT="$CSI$SGI_BOLD;${SGI_INVERSE}m"
+STYLE_HEADER=${STYLE_HEADER:=$STYLE_HEADER_DEFAULT}
+
+STYLE_HUMIDITY=${STYLE_HUMIDITY:="$CSI$SGI_FOREGC${SGI_COLOR_BLUE}m"}
+STYLE_HEADER_HUMIDITY=${STYLE_HEADER_HUMIDITY:="$CSI$SGI_BOLD;$SGI_INVERSE;$SGI_FOREGC${SGI_COLOR_BLUE}m"}
+
+STYLE_HEADER_TEMP=${STYLE_HEADER_TEMP:=$STYLE_HEADER_DEFAULT}
+STYLE_TEMP=${STYLE_TEMP:="$CSI$SGI_FOREGC${SGI_COLOR_BRIGHT_MAGENTA}m"}
+
+STYLE_HEADER_RAIN=${STYLE_HEADER_RAIN="$CSI$SGI_BOLD;$SGI_INVERSE;$SGI_FOREGC${SGI_COLOR_BRIGHT_BLUE}m"}
+STYLE_RAIN=${STYLE_RAIN:="$CSI$SGI_FOREGC${SGI_COLOR_BRIGHT_BLUE}m"}
+
+STYLE_SENSOR_DISABLE=${STYLE_SENSOR_DISABLE:=$ANSIESC_SGI_BRIGHTRED}
+STYLE_SENSOR_SEARCH=${STYLE_SENSOR_SEARCH:=$ANSIESC_SGI_BRIGHTGREEN}
 
 #TERM_ANSI_ESCAPE=${TERM_ANSI_ESCAPE:=1}
 
@@ -474,9 +550,226 @@ LIMIT_LIVEDATA_OUTTEMP_HIGH=${LIMIT_LIVEDATA_OUTTEMP_HIGH:=170} # 17.0 - scale x
 LIMIT_LIVEDATA_INTEMP_LOW=${LIMIT_LIVEDATA_INTEMP_LOW:=200} 
 LIMIT_LIVEDATA_INTEMP_HIGH=${LIMIT_LIVEDATA_INTEMP_HIGH:=230} 
 
-
 #is sent in http get request when data from sensors are not available, for example after reboot
 WUNDERGROUND_UNDEFINED_VALUE="-9999"
+
+#https://fsymbols.com/generators/tarty/
+
+ASCII_MAXLINE=3
+
+#shellcheck disable=SC2034
+ASCII_L10="█▀█"
+ASCII_L20="█ █"
+ASCII_L30="█▄█"
+
+ASCII_L11="▄█ "
+ASCII_L21=" █ "
+ASCII_L31="▄█▄"
+
+ASCII_L12="█▀█"
+ASCII_L22=" ▄▀" 
+ASCII_L32="█▄▄"
+
+ASCII_L13="█▀█"
+ASCII_L23=" ▀▄"
+ASCII_L33="█▄█"
+
+ASCII_L14=" █▀█"
+ASCII_L24="█▄▄█"
+ASCII_L34="   █"
+
+ASCII_L15="█▀▀"
+ASCII_L25="▀▀▄"
+ASCII_L35="▄▄▀"
+
+ASCII_L16="▄▀▀▄" 
+ASCII_L26="█▄▄ "
+ASCII_L36="▀▄▄▀"
+
+ASCII_L17="▀▀█"
+ASCII_L27=" █ "
+ASCII_L37="▐▌ "
+
+ASCII_L18="▄▀▀▄"
+ASCII_L28="▄▀▀▄"
+ASCII_L38="▀▄▄▀"
+
+ASCII_L19="▄▀▀▄"
+ASCII_L29="▀▄▄█"
+ASCII_L39=" ▄▄▀"
+
+ASCII_L1sign="  "
+ASCII_L2sign="▀▀"
+ASCII_L3sign="  "
+
+ASCII_L1punctum=" "
+ASCII_L2punctum=" "
+ASCII_L3punctum="▄"
+
+ASCII_WIND_S_L1=" ▲"
+ASCII_WIND_S_L2=" |"
+ASCII_WIND_S_L3=" |"
+
+ASCII_WIND_N_L1=" |"
+ASCII_WIND_N_L2=" |"
+ASCII_WIND_N_L3=" ▼"
+
+ASCII_WIND_W_L1=""
+ASCII_WIND_W_L2="---▶"
+ASCII_WIND_W_L3=""
+
+ASCII_WIND_E_L1=""
+ASCII_WIND_E_L2="◀---"
+ASCII_WIND_E_L3=""
+
+ASCII_WIND_SW_L1="    ◥"
+ASCII_WIND_SW_L2="  ⟋"
+ASCII_WIND_SW_L3="⟋"
+
+ASCII_WIND_NW_L1="⟍"
+ASCII_WIND_NW_L2="  ⟍"
+ASCII_WIND_NW_L3="    ◢"
+
+ASCII_WIND_NE_L1="    ⟋"
+ASCII_WIND_NE_L2="  ⟋"
+ASCII_WIND_NE_L3="◣"
+
+ASCII_WIND_SE_L1="◤"
+ASCII_WIND_SE_L2="  ⟍"
+ASCII_WIND_SE_L3="    ⟍"
+
+#list all capabilities to terminal: infocmp/infocmp -L https://en.wikipedia.org/wiki/Terminal_capabilities
+# it capability = tab size = 8 for xterm-256
+# watch -c command only supports 3-bit colors in wsl2/ubuntu, other ansi escapes codes are filtered
+
+
+UV_RISK_LOW=${UV_RISK_LOW:="LOW"}
+UV_RISK_MODERATE=${UV_RISK_MODERATE:="MODERATE"}
+UV_RISK_HIGH=${UV_RISK_HIGH:="HIGH"}
+UV_RISK_VERYHIGH=${UV_RISK_VERYHIGH:="VERY HIGH"}
+UV_RISK_EXTREME=${UV_RISK_EXTREME="EXTREME"}
+
+newBIGnumber()
+#$1 number $2 name
+{
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+      #shellcheck disable=SC3044
+        typeset n digit digits line number
+    else
+        local n digit digits line number
+    fi
+
+    number=$1
+    
+    #find digits in number
+    n=1
+    while [ "${#number}" -ge 1  ]; do
+        digits=$digits"${number%%"${number#?}"} " #add front digit -> build up digit string with space "1 2 3 "
+        number=${number#?} # remove front digit
+        n=$(( n + 1 ))
+    done
+
+    #construct each line from digits
+    n=1
+    while [ "$n" -le "$ASCII_MAXLINE" ]; do
+        unset line
+        for digit in $digits; do
+             if [ "$digit" = '-' ]; then
+                digit='sign' # map to valid variable name
+             elif [ "$digit" = '.' ]; then
+                digit='punctum'
+            fi
+            #shellcheck disable=SC2154
+             eval line=\""$line\$ASCII_L$n$digit "\" # add \" to preserve space between digits
+        done
+        if [ $DEBUG -eq  1 ]; then
+           echo >&2 "$2 $line"
+        fi
+        eval "$2_L$n=\"$line\""
+        n=$(( n + 1 ))
+    done
+
+   if [ -n "$KSH_VERSION" ]; then
+     unset n digit digits line number
+   fi
+
+}
+
+setUVRisk()
+#$1 UVI
+{
+    if [ "$1" -ge 0 ] && [ "$1" -le 2 ]; then
+       UV_RISK=$UV_RISK_LOW
+    elif [ "$1" -ge 3 ] && [ "$1" -le 5 ]; then
+        UV_RISK=$UV_RISK_MODERATE
+    elif [ "$1" -ge 6 ] && [ "$1" -le 7 ]; then
+        UV_RISK=$UV_RISK_HIGH
+    elif [ "$1" -ge 8 ] && [ "$1" -le 10 ]; then
+        UV_RISK="$UV_RISK_VERYHIGH"
+    elif [ "$1" -ge 11 ]; then
+        UV_RISK=$UV_RISK_EXTREME
+    fi
+}
+
+newBIGWinddirection()
+#$1 direction, $2 name
+{
+    if [ "$1" -le 11 ] || [ "$1" -gt 349 ]; then
+        direction=ASCII_WIND_N
+    elif [ "$1" -gt 11 ] && [ "$1" -lt 34 ]; then
+        direction=ASCII_WIND_NE
+    elif [ "$1" -ge 34 ] && [ "$1" -le 56 ]; then
+        direction=ASCII_WIND_NE
+    elif [ "$1" -gt 56 ] && [ "$1" -le 79 ]; then
+        direction=ASCII_WIND_NE
+    elif [ "$1" -gt 79 ] && [ "$1" -le 101 ]; then
+        direction=ASCII_WIND_E
+    elif [ "$1" -gt 101 ] && [ "$1" -le 124 ]; then
+         direction=ASCII_WIND_SE
+    elif [ "$1" -gt 124 ] && [ "$1" -le 146 ]; then
+        direction=ASCII_WIND_SE
+    elif [ "$1" -gt 146 ] && [ "$1" -le 169 ]; then
+        direction=ASCII_WIND_SE
+    elif [ "$1" -gt 169 ] && [ "$1" -le 191 ]; then
+        direction=ASCII_WIND_S
+    elif [ "$1" -gt 191 ] && [ "$1" -le 214 ]; then
+        direction=ASCII_WIND_SW
+    elif [ "$1" -gt 214 ] && [ "$1" -le 236 ]; then
+        direction=ASCII_WIND_SW
+    elif [ "$1" -gt 236 ] && [ "$1" -le 259 ]; then
+        direction=ASCII_WIND_SW
+    elif [ "$1" -gt 259 ] && [ "$1" -le 281 ]; then
+        direction=ASCI_WIND_W
+    elif [ "$1" -gt 281 ] && [ "$1" -le 304 ]; then
+        direction=ASCII_WIND_NW
+    elif [ "$1" -gt 304 ] && [ "$1" -le 326 ]; then
+        direction=ASCII_WIND_NW
+    elif [ "$1" -gt 326 ] && [ "$1" -le 349 ]; then
+        direction=ASCII_WIND_NW
+    fi
+
+   eval "${2}_L1=\$${direction}_L1"
+   eval "${2}_L2=\$${direction}_L2"
+   eval "${2}_L3=\$${direction}_L3"
+   
+}
+
+setStyleUVI()
+#$1 UVI
+#https://en.wikipedia.org/wiki/Ultraviolet_index
+{
+    if [ "$1" -ge 0 ] && [ "$1" -le 2 ]; then
+       STYLE_UVI="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKGC${SGI_COLOR_GREEN}m"
+    elif [ "$1" -ge 3 ] && [ "$1" -le 5 ]; then
+        STYLE_UVI="$CSI$SGI_FOREGC$SGI_COLOR_GRAY;$SGI_BACKGC${SGI_COLOR_YELLOW}m"
+    elif [ "$1" -ge 6 ] && [ "$1" -le 7 ]; then
+        STYLE_UVI="$CSI$SGI_FOREGC$SGI_COLOR_GRAY;$SGI_BACKGC${SGI_COLOR_ORANGE}m"
+    elif [ "$1" -ge 8 ] && [ "$1" -le 10 ]; then
+        STYLE_UVI="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKGC${SGI_COLOR_RED}m"
+    elif [ "$1" -ge 11 ]; then
+        STYLE_UVI="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKGC${SGI_COLOR_MAGENTA}m"
+    fi
+}
 
 resetANSI_ESC()
 {
@@ -922,67 +1215,75 @@ printBuffer() { # print hex. buffer
     echo "$APPEND_STRING"
 }
 
+
+
 convertWindDirectionToCompassDirection() { #$1 - direction in degrees
     #http://snowfence.umn.edu/Components/winddirectionanddegrees.htm
     unset VALUE_COMPASS_DIRECTION
 
     if [ "$1" -le 11 ] || [ "$1" -gt 349 ]; then
-        VALUE_COMPASS_DIRECTION="N"
+        VALUE_COMPASS=$WIND_N
+        VALUE_COMPASS_DIRECTION=$WIND_DIRECTION_N
         UNICODE_WIND=$UNICODE_WIND_DIRECTION_N
-
     elif [ "$1" -gt 11 ] && [ "$1" -lt 34 ]; then
-        VALUE_COMPASS_DIRECTION="NNE"
+        VALUE_COMPASS=$WIND_NNE
+        VALUE_COMPASS_DIRECTION=$WIND_DIRECTION_NNE
         UNICODE_WIND=$UNICODE_WIND_DIRECTION_NE
-
     elif [ "$1" -ge 34 ] && [ "$1" -le 56 ]; then
-        VALUE_COMPASS_DIRECTION="NE"
+        VALUE_COMPASS=$WIND_NE
+        VALUE_COMPASS_DIRECTION=$WIND_DIRECTION_NE
         UNICODE_WIND=$UNICODE_WIND_DIRECTION_NE
-
     elif [ "$1" -gt 56 ] && [ "$1" -le 79 ]; then
-        VALUE_COMPASS_DIRECTION="ENE"
+        VALUE_COMPASS=$WIND_ENE
+        VALUE_COMPASS_DIRECTION=$WIND_DIRECTION_ENE
         UNICODE_WIND=$UNICODE_WIND_DIRECTION_NE
-
     elif [ "$1" -gt 79 ] && [ "$1" -le 101 ]; then
-        VALUE_COMPASS_DIRECTION="E"
+        VALUE_COMPASS=$WIND_E
+        VALUE_COMPASS_DIRECTION=$WIND_DIRECTION_E
         UNICODE_WIND=$UNICODE_WIND_DIRECTION_E
-
     elif [ "$1" -gt 101 ] && [ "$1" -le 124 ]; then
-        VALUE_COMPASS_DIRECTION="ESE"
+        VALUE_COMPASS=$WIND_ESE
+        VALUE_COMPASS_DIRECTION=$WIND_DIRECTION_ESE
          UNICODE_WIND=$UNICODE_WIND_DIRECTION_SE
     elif [ "$1" -gt 124 ] && [ "$1" -le 146 ]; then
-        VALUE_COMPASS_DIRECTION="SE"
+       VALUE_COMPASS=$WIND_SE
+        VALUE_COMPASS_DIRECTION=$WIND_DIRECTION_SE
         UNICODE_WIND=$UNICODE_WIND_DIRECTION_SE
-
     elif [ "$1" -gt 146 ] && [ "$1" -le 169 ]; then
-        VALUE_COMPASS_DIRECTION="SSE"
+        VALUE_COMPASS=$WIND_SSE
+        VALUE_COMPASS_DIRECTION=$WIND_DIRECTION_SSE
         UNICODE_WIND=$UNICODE_WIND_DIRECTION_SE
     elif [ "$1" -gt 169 ] && [ "$1" -le 191 ]; then
-        VALUE_COMPASS_DIRECTION="S"
+        VALUE_COMPASS=$WIND_S
+        VALUE_COMPASS_DIRECTION=$WIND_DIRECTION_S
         UNICODE_WIND=$UNICODE_WIND_DIRECTION_S
     elif [ "$1" -gt 191 ] && [ "$1" -le 214 ]; then
-        VALUE_COMPASS_DIRECTION="SSW"
+        VALUE_COMPASS=$WIND_SSW
+        VALUE_COMPASS_DIRECTION=$WIND_DIRECTION_SSW
         UNICODE_WIND=$UNICODE_WIND_DIRECTION_SW
-
     elif [ "$1" -gt 214 ] && [ "$1" -le 236 ]; then
-        VALUE_COMPASS_DIRECTION="SW"
+        VALUE_COMPASS=$WIND_SW
+        VALUE_COMPASS_DIRECTION=$WIND_DIRECTION_SW
         UNICODE_WIND=$UNICODE_WIND_DIRECTION_SW
     elif [ "$1" -gt 236 ] && [ "$1" -le 259 ]; then
-        VALUE_COMPASS_DIRECTION="WSW"
+        VALUE_COMPASS=$WIND_WSW
+        VALUE_COMPASS_DIRECTION=$WIND_DIRECTION_WSW
         UNICODE_WIND=$UNICODE_WIND_DIRECTION_SW
     elif [ "$1" -gt 259 ] && [ "$1" -le 281 ]; then
-        VALUE_COMPASS_DIRECTION="W"
+        VALUE_COMPASS=$WIND_W
+        VALUE_COMPASS_DIRECTION=$WIND_DIRECTION_W
         UNICODE_WIND=$UNICODE_WIND_DIRECTION_W
-
     elif [ "$1" -gt 281 ] && [ "$1" -le 304 ]; then
-        VALUE_COMPASS_DIRECTION="WNW"
+        VALUE_COMPASS=$WIND_WNW
+        VALUE_COMPASS_DIRECTION=$WIND_DIRECTION_WNW
         UNICODE_WIND=$UNICODE_WIND_DIRECTION_NW
-
     elif [ "$1" -gt 304 ] && [ "$1" -le 326 ]; then
-        VALUE_COMPASS_DIRECTION="NW"
+        VALUE_COMPASS=$WIND_NW
+        VALUE_COMPASS_DIRECTION=$WIND_DIRECTION_NW
         UNICODE_WIND=$UNICODE_WIND_DIRECTION_NW
-
     elif [ "$1" -gt 326 ] && [ "$1" -le 349 ]; then
-        VALUE_COMPASS_DIRECTION="NNW"
+        VALUE_COMPASS=$WIND_NNW
+        VALUE_COMPASS_DIRECTION=$WIND_DIRECTION_NNW
         UNICODE_WIND=$UNICODE_WIND_DIRECTION_NW
     fi
 }
@@ -1031,7 +1332,7 @@ getBatteryVoltageLevelState()
    fi
    convertScale10ToFloat "$1"
    VALUE_BATTERY_VOLTAGE=$VALUE_SCALE10_FLOAT
-   SBATTERY_STATE=$SBATTERY_STATE" $VALUE_BATTERY_VOLTAGE V"
+   SBATTERY_STATE=$SBATTERY_STATE" ${VALUE_BATTERY_VOLTAGE}V"
 
    if [ -n "$KSH_VERSION" ]; then
         unset  i
@@ -1522,17 +1823,20 @@ printLivedataLine()
 
      if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        typeset fwidth format format_code header_fmt status_fmt unit_fmt status_line signal_fmt signal_status
+        typeset fwidth format format_code header_fmt status_fmt unit_fmt status_line signal_fmt signal_status style_live_reset
     else
         local fwidth format format_code header_fmt status_fmt unit_fmt status_line signal_fmt signal_status
     fi
 
     [ "$DEBUG" -eq 1 ] && echo >&2 "printLivedataLine $* length $#"
 
-    header_fmt="%s\r\t\t\t\t" # move to tabulator 4 - \t is compatible with unicode in string
-      unit_fmt="\r\t\t\t\t\t%s"
-    status_fmt="\r\t\t\t\t\t\t%s"
-    signal_fmt="\r\t\t\t\t\t\t\t\t%s"
+    # \r\t horizontal positioning is compatible with unicode in string
+    header_fmt="%s\r\t\t\t\t"
+       # unit_fmt="\r\t\t\t\t\t%s"
+       unit_fmt="%s"
+      #status_fmt="\r\t\t\t\t\t\t%s"
+      status_fmt="\t%s"
+      signal_fmt="\t%s"
 
     #TEST UTF-8: for f in $(seq -s' ' 255); do eval printf "\\\x$(printf "%x" "$f")"; done
 
@@ -1545,14 +1849,20 @@ printLivedataLine()
 
         signal_status="${11}"
 
-        if [ "$TERM_ANSI_ESCAPE" -eq 1 ] && [ -n "$SGI_LIVE" ]; then
+        if [ "$TERM_ANSI_ESCAPE" -eq 1 ]; then
         
             if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
                  APPEND_FORMAT="$APPEND_FORMAT $header_fmt %s %s %s\n"
             fi
             
-            APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE$header_fmt $3 $unit_fmt$SGI_NORMAL $status_fmt $signal_fmt\n" 
-        
+            if [ -n "$SGI_LIVE" ] || [ -n "$SGI_LIVE_VALUE" ]; then
+              style_live_reset=$ANSIESC_SGI_NORMAL
+            else
+              unset style_live_reset
+            fi
+
+            APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE$header_fmt $SGI_LIVE_VALUE$3 $unit_fmt$style_live_reset $status_fmt $signal_fmt\n" 
+            unset SGI_LIVE_VALUE
         else
             if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
                 APPEND_FORMAT="$APPEND_FORMAT $header_fmt %s %s %s\n"
@@ -1567,8 +1877,7 @@ printLivedataLine()
                 APPEND_ARGS="$APPEND_ARGS '$header_fmt' '$3' '$unit_fmt' '$status_fmt' "
             fi
         
-            eval "APPEND_ARGS=\"$APPEND_ARGS\"\'\$$1\'\ \'\"$2\"\'\ \'$4\'\ \'\"$status_line\"\'\ \'\"$signal_status\"\'\ " # maybe too complex?! (takes a long time to get right)
-        
+            eval "APPEND_ARGS=\"$APPEND_ARGS\"\'\$$1\'\ \'\"$2\"\'\ \'\"$4\"\'\ \'\"$status_line\"\'\ \'\"$signal_status\"\'\ " # maybe too complex?! (takes a long time to get right)
        # else
         
        #     if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
@@ -1627,9 +1936,9 @@ printLivedataLine()
         APPEND_HEADER_ARGS="$APPEND_HEADER_ARGS$6 "
             
         case "$6" in
-            b*) APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE%$fwidth$format_code$sgi_normal "
+            b*) APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE%$fwidth$format_code$ANSIESC_SGI_NORMAL "
                 ;;
-            *)  APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE$format$sgi_normal "
+            *)  APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE$format$ANSIESC_SGI_NORMAL "
                 ;;
         esac
         
@@ -1637,7 +1946,7 @@ printLivedataLine()
     
    
     elif [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_TERSE_ROW ]; then
-        APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE%-7s $3 %s$sgi_normal\n" #just use one printf call builtin/external -> builds up entire format and argument strings
+        APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE%-7s $3 %s$ANSIESC_SGI_NORMAL\n" #just use one printf call builtin/external -> builds up entire format and argument strings
         APPEND_ARGS=$APPEND_ARGS"\"$6\" \"$2\" \"$4\" "
     fi
 
@@ -1661,7 +1970,7 @@ setSGILivedataLtGt()
 setSGILivedataGt()
 {
     if [ "$1" -gt "$2" ]; then
-        SGI_LIVE=$SGI_LIMIT_LIVEDATA
+        SGI_LIVE=$STYLE_LIMIT_LIVEDATA
     fi
 }
 
@@ -1705,14 +2014,14 @@ printLivedataBatteryVoltage()
 setSGIBatteryLowNormal()
 {
     if [ "$1" -eq "$BATTERY_LOW" ]; then
-        SGI_LIVE=$SGI_BATTERY_LOW
+        SGI_LIVE=$STYLE_BATTERY_LOW
     fi
 }
 
 setSGIBatteryVoltage()
 {
     if [ "$1" -le "$BATTERY_VOLTAGE_LOW" ]; then
-        SGI_LIVE=$SGI_BATTERY_LOW
+        SGI_LIVE=$STYLE_BATTERY_LOW
     fi
 }
 
@@ -1773,28 +2082,25 @@ printLivedata() {
     APPEND_FORMAT="%${TERM_COLUMNS}s\n"
     APPEND_ARGS="'$top_line' "
 
-    #printAppendBuffer
-    #return
-
     if [ -n "$LIVEDATA_INTEMP" ]; then
         
-        setSGILivedataLtGt "$LIVEDATA_INTEMP_RAW" "$LIMIT_LIVEDATA_INTEMP_LOW" "$LIMIT_LIVEDATA_INTEMP_HIGH" "$SGI_LIMIT_LIVEDATA_INTEMP_LOW" "$SGI_LIMIT_LIVEDATA_INTEMP_HIGH"
+        setSGILivedataLtGt "$LIVEDATA_INTEMP_RAW" "$LIMIT_LIVEDATA_INTEMP_LOW" "$LIMIT_LIVEDATA_INTEMP_HIGH" "$STYLE_LIMIT_LIVEDATA_INTEMP_LOW" "$STYLE_LIMIT_LIVEDATA_INTEMP_HIGH"
         printLivedataLine 'LIVEDATA_INTEMP_HEADER'  "$LIVEDATA_INTEMP" "%6.1f" "$UNIT_TEMP" "%s" 'in' "%s" 
     fi
    
    #for debugging:
-   #printAppendBuffer
-   #return
+  # printAppendBuffer
+  # return
 
     if [ -n "$LIVEDATA_OUTTEMP" ]; then
 
-        setSGILivedataLtGt "$LIVEDATA_OUTTEMP_RAW" "$LIMIT_LIVEDATA_OUTTEMP_LOW" "$LIMIT_LIVEDATA_OUTTEMP_HIGH" "$SGI_LIMIT_LIVEDATA_OUTTEMP_LOW" "$SGI_LIMIT_LIVEDATA_OUTTEMP_HIGH"
+        setSGILivedataLtGt "$LIVEDATA_OUTTEMP_RAW" "$LIMIT_LIVEDATA_OUTTEMP_LOW" "$LIMIT_LIVEDATA_OUTTEMP_HIGH" "$STYLE_LIMIT_LIVEDATA_OUTTEMP" "$STYLE_LIMIT_LIVEDATA_OUTTEMP_HIGH"
         printLivedataLine "LIVEDATA_OUTTEMP_HEADER" "$LIVEDATA_OUTTEMP" "%6.1f" "$UNIT_TEMP" "%s" 'out' 
     fi
 
     if [ -n "$LIVEDATA_WINDCHILL" ]; then
 
-        setSGILivedataLtGt "$LIVEDATA_WINDCHILL_RAW" "$LIMIT_LIVEDATA_OUTTEMP_LOW" "$LIMIT_LIVEDATA_OUTTEMP_HIGH" "$SGI_LIMIT_LIVEDATA_OUTTEMP_LOW" "$SGI_LIMIT_LIVEDATA_OUTTEMP_HIGH"
+        setSGILivedataLtGt "$LIVEDATA_WINDCHILL_RAW" "$LIMIT_LIVEDATA_OUTTEMP_LOW" "$LIMIT_LIVEDATA_OUTTEMP_HIGH" "$STYLE_LIMIT_LIVEDATA_OUTTEMP" "$STYLE_LIMIT_LIVEDATA_OUTTEMP_HIGH"
         printLivedataLine "LIVEDATA_WINDCHILL_HEADER" "$LIVEDATA_WINDCHILL" "%6.1f" "$UNIT_TEMP" "%2s" 'wchill' 
     fi
 
@@ -1808,7 +2114,7 @@ printLivedata() {
     if [ -n "$LIVEDATA_RELBARO" ]; then
 
         if [ "$LIVEDATA_RELBARO_RAW" -lt "$LIMIT_LIVEDATA_RELBARO_LOW" ]; then
-            SGI_LIVE=$SGI_LIMIT_LIVEDATA
+            SGI_LIVE=$STYLE_LIMIT_LIVEDATA
         fi
         
         if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
@@ -1821,17 +2127,22 @@ printLivedata() {
     fi
 
     if [ -z "$HIDE_WIND_LIVEDATA" ]; then
-        [ -n "$LIVEDATA_WINDDIRECTION" ]            && printLivedataLine "LIVEDATA_WINDDIRECTION_HEADER"           "$LIVEDATA_WINDDIRECTION"          "%6u" "$UNIT_DEGREE" "%5s" 'wdeg' "%4u" "$LIVEDATA_WINDDIRECTION" "$UNICODE_WIND"
-        [ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]    && printLivedataLine "LIVEDATA_WINDDIRECTION_COMPASS_HEADER"   "$LIVEDATA_WINDDIRECTION_COMPASS"  "%6s" "" "%5s" 'wdir' "%4s"
         [ -n "$LIVEDATA_WINDSPEED" ]     && printLivedataWindLine   "$LIVEDATA_WINDSPEED_RAW"       "$LIMIT_LIVEDATA_WIND" "LIVEDATA_WINDSPEED_HEADER"      "$LIVEDATA_WINDSPEED" "$UNIT_WIND" 'wspd' 
         [ -n "$LIVEDATA_WINDGUSTSPEED" ] && printLivedataWindLine   "$LIVEDATA_WINDGUSTSPEED_RAW"   "$LIMIT_LIVEDATA_WIND" "LIVEDATA_WINDGUSTSPEED_HEADER"  "$LIVEDATA_WINDGUSTSPEED" "$UNIT_WIND" 'wgspd'
         [ -n "$LIVEDATA_WINDDAILYMAX" ]  && printLivedataWindLine   "$LIVEDATA_WINDDAILYMAX_RAW"    "$LIMIT_LIVEDATA_WIND" "LIVEDATA_WINDDAILYMAX_HEADER"   "$LIVEDATA_WINDDAILYMAX"  "$UNIT_WIND"  'wdmax'
+        [ -n "$LIVEDATA_WINDDIRECTION" ]            && printLivedataLine "LIVEDATA_WINDDIRECTION_HEADER"           "$LIVEDATA_WINDDIRECTION"          "%6u" "$UNIT_DEGREE" "%5s" 'wdeg' "%4u" "$LIVEDATA_WINDDIRECTION" "$UNICODE_WIND"
+        [ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]    && printLivedataLine "LIVEDATA_WINDDIRECTION_COMPASS_HEADER"   "$LIVEDATA_WINDDIRECTION_COMPASS"  "%6s" "" "%5s" 'wdir' "%4s"
     fi
 
     if [ -z "$HIDE_LIGHT_LIVEDATA" ]; then
         [ -n "$LIVEDATA_LIGHT" ]    && printLivedataLine "LIVEDATA_LIGHT_HEADER" "$LIVEDATA_LIGHT"  "%6.1f" "$UNIT_LIGHT" "%4s" 'light'
         [ -n "$LIVEDATA_UV" ]       && printLivedataLine "LIVEDATA_UV_HEADER" "$LIVEDATA_UV"        "%6.1f" "$UNIT_UV" "%5s" 'uv'
-        [ -n "$LIVEDATA_UVI" ]      && printLivedataLine "LIVEDATA_UVI_HEADER" "$LIVEDATA_UVI"      "%6u" "" "%4s" 'uvi' "%3u"
+        if [ -n "$LIVEDATA_UVI" ]; then
+            setUVRisk "$LIVEDATA_UVI"
+            setStyleUVI "$LIVEDATA_UVI"
+            SGI_LIVE_VALUE=$STYLE_UVI
+            printLivedataLine "LIVEDATA_UVI_HEADER" "$LIVEDATA_UVI"      "%6u" "$UV_RISK" "%-10s" 'uvi' "%3u"
+        fi
     fi
 
     if [ -z "$HIDE_RAIN_LIVEDATA" ]; then
@@ -1918,7 +2229,7 @@ printLivedata() {
             #shellcheck disable=SC2034
             eval "if [ -n ''"\$LIVEDATA_LEAK$n" ]; then
                         setSGIBatteryLowNormal \"\$LIVEDATA_LEAK${n}_BATTERY\"
-                        [ \"\$LIVEDATA_LEAK$n\" -ne 0 ] && SGI_LIVE=\"$SGI_LEAK\" && LIVEDATA_LEAK_YESNO=$LIVEDATA_LEAK_YES
+                        [ \"\$LIVEDATA_LEAK$n\" -ne 0 ] && SGI_LIVE=\"$STYLE_LEAK\" && LIVEDATA_LEAK_YESNO=$LIVEDATA_LEAK_YES
                         printLivedataLine \"LIVEDATA_LEAK_HEADER$n\" \"\$LIVEDATA_LEAK_YESNO\" \"%6s\" \"\" \"%4s\" \"leak$n\" '' \"\$LIVEDATA_LEAK${n}_BATTERY\" \"\$LIVEDATA_LEAK${n}_BATTERY_STATE\" 
                 fi"
             n=$((n + 1))
@@ -2014,6 +2325,130 @@ printLivedata() {
     if [ -n "$KSH_VERSION" ]; then
          unset n top_line top_line_spacepadding
     fi
+}
+
+newRuler()
+#creates a ruler for debugging positioning on screen
+{
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+        #shellcheck disable=SC3044
+        typeset n
+    else
+        local n
+    fi
+    
+    n=1
+    unset VALUE_RULER
+    while [ "$n" -le "$1" ]; do
+        VALUE_RULER=$VALUE_RULER"123456789${ANSIESC_SGI_BOLD_INVERT}0${ANSIESC_SGI_NORMAL}"
+        n=$(( n + 1 ))
+    done
+
+    if [ -n "$KSH_VERSION" ]; then
+      unset n
+    fi
+}
+
+shortHeader()
+#$1 long header
+{
+    set -- $1
+    if [ "${#1}" -le 16 ]; then
+       VALUE_HEADER_SHORT=$1 #just pick first word
+    else
+      : # maybe remove part lager than 16 chars
+    fi
+}
+
+printLivedataBIG()
+{
+    newBIGnumber "$LIVEDATA_OUTTEMP" LDVBIG_OUTTEMP
+    newBIGnumber "$LIVEDATA_INTEMP" LDVBIG_INTEMP
+    newBIGnumber "$LIVEDATA_OUTHUMI" LDVBIG_OUTHUMI
+    newBIGnumber "$LIVEDATA_INHUMI" LDVBIG_INHUMI
+    
+    newBIGnumber "$LIVEDATA_ABSBARO" LDVBIG_ABSBARO
+    newBIGnumber "$LIVEDATA_RELBARO" LDVBIG_RELBARO
+
+    newBIGnumber "$LIVEDATA_RAINRATE" LDVBIG_RAINRATE
+    newBIGnumber "$LIVEDATA_RAINHOUR" LDVBIG_RAINHOUR
+    newBIGnumber "$LIVEDATA_RAINDAY" LDVBIG_RAINDAY
+    newBIGnumber "$LIVEDATA_RAINEVENT" LDVBIG_RAINEVENT
+    newBIGnumber "$LIVEDATA_RAINWEEK" LDVBIG_RAINWEEK
+    newBIGnumber "$LIVEDATA_RAINMONTH" LDVBIG_RAINMONTH
+    newBIGnumber "$LIVEDATA_RAINYEAR" LDVBIG_RAINYEAR
+    
+    newBIGnumber "$LIVEDATA_WINDSPEED" LDVBIG_WINDSPEED
+    newBIGnumber "$LIVEDATA_WINDGUSTSPEED" LDVBIG_WINDGUSTSPEED
+    newBIGnumber "$LIVEDATA_WINDDAILYMAX" LDVBIG_WINDDAILYMAX
+
+    newBIGnumber "$LIVEDATA_WINDDIRECTION" LDVBIG_WINDDIRECTION
+    newBIGWinddirection "$LIVEDATA_WINDDIRECTION" LDVBIG_WINDDIRECTION_SYMBOL
+
+    newBIGnumber "$LIVEDATA_UV" LDVBIG_UV
+    newBIGnumber "$LIVEDATA_UVI" LDVBIG_UVI
+    setStyleUVI "$LIVEDATA_UVI"
+
+    shortHeader "$LIVEDATA_OUTHUMI_HEADER"
+    LIVEDATA_OUTHUMI_HEADER_SHORT=$VALUE_HEADER_SHORT
+    shortHeader "$LIVEDATA_INHUMI_HEADER"
+    LIVEDATA_INHUMI_HEADER_SHORT=$VALUE_HEADER_SHORT
+
+    humidity_fmt="$STYLE_HUMIDITY%s$STYLE_RESET"
+    humidity_header_fmt="$STYLE_HEADER_HUMIDITY%s$STYLE_RESET"
+
+    temp_header_fmt="$STYLE_HEADER_TEMP%s$STYLE_RESET"
+    temp_fmt="$STYLE_TEMP%s$STYLE_RESET"
+    line_temp_header_fmt="$temp_header_fmt\r\t\t\t$humidity_header_fmt\r\t\t\t\t\t$temp_header_fmt\r\t\t\t\t\t\t\t\t$humidity_header_fmt"
+    line_temp_fmt="$temp_fmt\r\t\t\t$humidity_fmt\r\t\t\t\t\t$temp_fmt\r\t\t\t\t\t\t\t\t$humidity_fmt"
+    
+    line_baro_fmt="%s\r\t\t\t\t%s"
+
+    rain_header_fmt="$STYLE_HEADER_RAIN%s$STYLE_RESET"
+    line_rain_header_fmt="$rain_header_fmt\r\t\t\t\t$rain_header_fmt"
+    rain_fmt="$STYLE_RAIN%s$STYLE_RESET"
+    line_rain_fmt="$rain_fmt\r\t\t\t\t$rain_fmt"
+    
+     line_wind_fmt="%s\r\t\t\t\t%s"
+    line_winddir_fmt="%s\r\t\t%s\r\t\t\t\t%s"
+    line_uv_header_fmt="$STYLE_HEADER_DEFAULT%s$STYLE_RESET\r\t\t\t\t$STYLE_HEADER_DEFAULT%s$STYLE_RESET"
+    line_uv_fmt="%s\r\t\t\t\t$STYLE_UVI%s$STYLE_RESET"
+    
+    if [ "$DEBUG" -eq 1 ]; then
+        newRuler 8
+        ruler_fmt="$VALUE_RULER\n"
+    fi
+
+    setUVRisk "$LIVEDATA_UVI"
+    #set -x 
+    
+    #shellcheck disable=SC2059
+    printf "$ruler_fmt\
+$line_temp_header_fmt\n\n$line_temp_fmt\n$line_temp_fmt\n$line_temp_fmt\n\n\
+$STYLE_HEADER$line_baro_fmt$STYLE_RESET\n\n$line_baro_fmt\n$line_baro_fmt\n$line_baro_fmt\n\n\
+$line_rain_header_fmt\n\n$line_rain_fmt\n$line_rain_fmt\n$line_rain_fmt\n\n\
+$line_rain_header_fmt\n\n$line_rain_fmt\n$line_rain_fmt\n$line_rain_fmt\n\n\
+$STYLE_HEADER$line_wind_fmt$STYLE_RESET\n\n$line_wind_fmt\n$line_wind_fmt\n$line_wind_fmt\n\n\
+$STYLE_HEADER$line_wind_fmt$STYLE_RESET\n\n$line_winddir_fmt\n$line_winddir_fmt\n$line_winddir_fmt\n\n\
+$line_uv_header_fmt\n\n$line_uv_fmt\n$line_uv_fmt\n$line_uv_fmt\n\n"\
+    "$LIVEDATA_OUTTEMP_HEADER $UNIT_TEMP " "$LIVEDATA_OUTHUMI_HEADER_SHORT %" "$LIVEDATA_INTEMP_HEADER $UNIT_TEMP " "$LIVEDATA_INHUMI_HEADER_SHORT %"\
+    "$LDVBIG_OUTTEMP_L1" "$LDVBIG_OUTHUMI_L1" "$LDVBIG_INTEMP_L1" "$LDVBIG_INHUMI_L1"\
+    "$LDVBIG_OUTTEMP_L2" "$LDVBIG_OUTHUMI_L2" "$LDVBIG_INTEMP_L2" "$LDVBIG_INHUMI_L2"\
+    "$LDVBIG_OUTTEMP_L3" "$LDVBIG_OUTHUMI_L3" "$LDVBIG_INTEMP_L3" "$LDVBIG_INHUMI_L3"\
+    "$LIVEDATA_ABSBARO_HEADER $UNIT_PRESSURE" "$LIVEDATA_RELBARO_HEADER $UNIT_PRESSURE"\
+    "$LDVBIG_ABSBARO_L1" "$LDVBIG_RELBARO_L1" "$LDVBIG_ABSBARO_L2" "$LDVBIG_RELBARO_L2" "$LDVBIG_ABSBARO_L3" "$LDVBIG_RELBARO_L3"\
+    "$LIVEDATA_RAINRATE_HEADER $UNIT_RAINRATE" "$LIVEDATA_RAINHOUR_HEADER $UNIT_RAIN"\
+    "$LDVBIG_RAINRATE_L1" "$LDVBIG_RAINHOUR_L1" "$LDVBIG_RAINRATE_L2" "$LDVBIG_RAINHOUR_L2" "$LDVBIG_RAINRATE_L3" "$LDVBIG_RAINHOUR_L3"\
+    "$LIVEDATA_RAINDAY_HEADER $UNIT_RAIN" "$LIVEDATA_RAINEVENT_HEADER $UNIT_RAIN"\
+    "$LDVBIG_RAINDAY_L1" "$LDVBIG_RAINEVENT_L1" "$LDVBIG_RAINDAY_L2" "$LDVBIG_RAINEVENT_L2" "$LDVBIG_RAINDAY_L3" "$LDVBIG_RAINEVENT_L3"\
+    "$LIVEDATA_WINDSPEED_HEADER $UNIT_WIND" "$LIVEDATA_WINDGUSTSPEED_HEADER $UNIT_WIND"\
+    "$LDVBIG_WINDSPEED_L1" "$LDVBIG_WINDGUSTSPEED_L1" "$LDVBIG_WINDSPEED_L2" "$LDVBIG_WINDGUSTSPEED_L2" "$LDVBIG_WINDSPEED_L3" "$LDVBIG_WINDGUSTSPEED_L3"\
+    "$LIVEDATA_WINDDIRECTION_HEADER $UNIT_DEGREE $LIVEDATA_WINDDIRECTION_COMPASS" "$LIVEDATA_WINDDAILYMAX_HEADER $UNIT_WIND"\
+    "$LDVBIG_WINDDIRECTION_L1" "$LDVBIG_WINDDIRECTION_SYMBOL_L1" "$LDVBIG_WINDDAILYMAX_L1" "$LDVBIG_WINDDIRECTION_L2" "$LDVBIG_WINDDIRECTION_SYMBOL_L2" "$LDVBIG_WINDDAILYMAX_L2" "$LDVBIG_WINDDIRECTION_L3" "$LDVBIG_WINDDIRECTION_SYMBOL_L3" "$LDVBIG_WINDDAILYMAX_L3"\
+     "☀️ $LIVEDATA_UV_HEADER $UNIT_UV" "$LIVEDATA_UVI_HEADER $UV_RISK"\
+    "$LDVBIG_UV_L1" "$LDVBIG_UVI_L1" "$LDVBIG_UV_L2" "$LDVBIG_UVI_L2" "$LDVBIG_UV_L3" "$LDVBIG_UVI_L3"
+
+  # set +x
 }
 
 convertTemperatureLivedata()
@@ -2661,12 +3096,12 @@ printSensorLine()
 
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
-      typeset sensorIdState sensorsignal_unicode sgi_normal
+      typeset sensorIdState sensorsignal_unicode style_sensor_off style_sensor
     else
-      local sensorIdState sensorsignal_unicode sgi_normal
+      local sensorIdState sensorsignal_unicode style_sensor_off style_sensor
     fi
 
-    unset SGI_SENSOR SBATTERY_STATE
+    unset SBATTERY_STATE
 
     getSensorNameShort "$1"
     
@@ -2677,16 +3112,16 @@ printSensorLine()
     #fi
 
     if [ "$2" -eq "$SENSORID_DISABLE" ]; then 
-      SGI_SENSOR=$SGI_BRIGHTRED_BLACK
+      style_sensor=$STYLE_SENSOR_DISABLE
       sensorIdState=$SENSORIDSTATE_DISABLED
     elif [ "$2" -eq "$SENSORID_SEARCH" ]; then
-      SGI_SENSOR=$SGI_BRIGHTGREEN_BLACK
+      style_sensor=$STYLE_SENSOR_SEARCH
       sensorIdState=$SENSORIDSTATE_SEARCHING
     else
        getSensorBatteryState "$1" "$3"
        sensorIdState=$SENSORIDSTATE_CONNECTED
        if [ "$4" -le 1 ]; then # poor signal
-           SGI_SENSOR=$SGI_SIGNAL_LOW
+           style_sensor=$STYLE_SIGNAL_LOW
        fi
 
        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
@@ -2696,30 +3131,22 @@ printSensorLine()
         fi
     fi
 
-    if [ -n "$SGI_SENSOR" ]; then
-       sgi_normal=$SGI_NORMAL # insert end escape sequence only if sgi is used
+    if [ -n "$style_sensor" ]; then
+       style_sensor_off=$ANSIESC_SGI_NORMAL # insert end escape sequence only if sgi is used
     fi
     
     if [ "$TERM_ANSI_ESCAPE" -eq 0  ]; then
-       unset SGI_SENSOR SGI_NORMAL
+       unset style_sensor style_sensor_off
     fi
 
-   # if [ "$2" -ne "$SENSORID_DISABLE" ] && [ "$2" -ne "$SENSORID_SEARCH" ]; then 
      # 1 battery unicode is field size 4 in printf format string. TEST printf  "🔋 1.3 V" | od -A n -t x1 | wc -w -> 10
-    if [ "$SHELL_SUPPORT_PRINTF_UNICODE_SFORMAT" -eq 0 ]; then
-        APPEND_FORMAT=$APPEND_FORMAT"%6u %9x %3u %1u %4s %-17s $SGI_SENSOR%9s$sgi_normal %-10s %-14s\n" #just use one printf call builtin/external -> builds up entire format and argument strings
-    else
-        APPEND_FORMAT=$APPEND_FORMAT"%6u %9x %3u %1u %4s %-17s $SGI_SENSOR%9s$sgi_normal %-7s %-6s\n"
-    fi
+     # use \r\t\t\t workaround for unicode alignment
+     APPEND_FORMAT=$APPEND_FORMAT"%6u %9x %3u %1u %4s %-17s $style_sensor%9s$style_sensor_off\r\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t%s\n" #just use one printf call builtin/external -> builds up entire format and argument strings
 
-        APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$2\" \"$3\" \"$4\"  \"$SENSORNAME_WH\" \"$SENSORNAME_SHORT\" \"$sensorIdState\" \"$SBATTERY_STATE\" \"$sensorsignal_unicode\" "
-   # else
-   #     APPEND_FORMAT=$APPEND_FORMAT"$SGI_SENSOR%2u %9s %3u %1u$SGI_NORMAL\n" 
-   #     APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$sensorIdState\" \"$3\" \"$4\" "
-   # fi
-
+     APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$2\" \"$3\" \"$4\"  \"$SENSORNAME_WH\" \"$SENSORNAME_SHORT\" \"$sensorIdState\" \"$SBATTERY_STATE\" \"$sensorsignal_unicode\" "
+  
     if [ -n "$KSH_VERSION" ]; then
-      unset sensorIdState sensorsignal_unicode sgi_normal
+      unset sensorIdState sensorsignal_unicode style_sensor_off style_sensor
     fi
 }
 
@@ -2752,16 +3179,17 @@ parseSensorIdNew()
     #shellcheck disable=SC3044
         typeset stype signal battery sensor_connected
     else
-       local stype signal battery sensor_connected
+        local stype signal battery sensor_connected
     fi
 
     resetAppendBuffer
     
     APPEND_FORMAT="%6s %9s %3s %1s %-4s %-17s %-9s %-7s %s\n%s\n"
+
     SENSORID_HEADER=${SENSORID_HEADER:="Sensor ID B S Type Name State Battery Signal"}
     APPEND_ARGS="$SENSORID_HEADER ────────────────────────────────────────────────────────────────────── "
 
-    [ "$DEBUG" -eq  1 ] && >&2 echo "SPATTERNID $SPATTERNID"
+    [ "$DEBUG" -eq  1 ] && >&2 echo "parseSensorIdNew SPATTERNID $SPATTERNID length od buffer ${#OD_BUFFER}"
     
     while [ ${#OD_BUFFER} -ge 7 ]; do
        
@@ -2785,13 +3213,13 @@ parseSensorIdNew()
         fi
 
         #pattern matching
-        if [ -n "$SPATTERNID" ] && [ "$SPATTERNID" -eq 1 ] && [ $sensor_connected -eq 0  ] ; then
-                printSensorLine $stype $SID $battery $signal
-        elif [ -n "$SPATTERNID" ] &&  [ "$SPATTERNID" -eq $SID ] ; then
-                printSensorLine $stype $SID $battery $signal
-        elif [ -z "$SPATTERNID" ]; then
-                printSensorLine $stype $SID $battery $signal
-        fi   
+        if [ "$SPATTERNID" = "$SPATTERNID_CONNECTED" ] && [ $sensor_connected -eq 1  ] ; then # connected sensor
+            printSensorLine $stype $SID $battery $signal
+        elif [ -n "$SPATTERNID" ] && [ "$SPATTERNID" -eq "$SID" ]; then #specific sensors (searching/disabled)
+                    printSensorLine $stype $SID $battery $signal
+        elif [ -z "$SPATTERNID" ]; then #all sensors
+            printSensorLine $stype $SID $battery $signal
+        fi
         
         [ "$DEBUG" -eq 1 ] && >&2 echo "type $stype id $SID battery $battery signal $signal od_buffer length ${#OD_BUFFER}"
     done
@@ -3898,10 +4326,10 @@ processCommand() {
             read -r
 
             case $REPLY in
-            Y)
-                sendPacket $CMD_WRITE_RESET # 3 blink in red LED
-                connectGW                   # assume user wants to reconnect for setting up new WIFI
-                ;;
+                Y)
+                    sendPacket $CMD_WRITE_RESET # 3 blink in red LED
+                    connectGW                   # assume user wants to reconnect for setting up new WIFI
+                    ;;
             esac
 
             ;;
@@ -3925,12 +4353,12 @@ processCommand() {
 
             if argEmptyOrOption "$1"; then
                 sendPacket $CMD_READ_SYSTEM
-            else
-                if [ $# -lt 4 ]; then
-                    echo >&2 "Error {sensortype} {timezoneindex} {dst} {autotimezone} must be specified"
-                else
-                    sendSystem "$1" "$2" "$3" "$4"
-                fi
+ #           else
+ #               if [ $# -lt 4 ]; then
+ #                   echo >&2 "Error {sensortype} {timezoneindex} {dst} {autotimezone} must be specified"
+ #               else
+ #                   sendSystem "$1" "$2" "$3" "$4"
+ #               fi
             fi
             ;;
 
@@ -4016,13 +4444,13 @@ processCommand() {
 
             if argEmptyOrOption "$1"; then
                 sendPacket $CMD_READ_RAINDATA
-            else
+#            else
 
-                if [ $# -lt 4 ]; then # validate rain input
-                    echo >&2 "Error: {rainday} {week} {month} {year} parameters not specified"
-                else
-                    sendRaindata "$1" "$2" "$3" "$4"
-                fi
+#                if [ $# -lt 4 ]; then # validate rain input
+#                    echo >&2 "Error: {rainday} {week} {month} {year} parameters not specified"
+#                else
+#                    sendRaindata "$1" "$2" "$3" "$4"
+#                fi
 
             fi
 
@@ -4048,20 +4476,20 @@ processCommand() {
             sendPacket $CMD_READ_SENSOR_ID
             ;;
 
-        sensor_id_new | sid | sensor | s) # for new SENSOR_TYPE types
+        sensor_id_new | sensor | s) # for new SENSOR_TYPE types
 
             if ! argEmptyOrOption "$1"; then
              #filter for senorid; -c sensor connected|-c s c
               case "$1" in 
-                connected|c)
-                   SPATTERNID=1 #matches connected sensors
+                connected|co)
+                   SPATTERNID=$SPATTERNID_CONNECTED #matches connected sensors
                    sendPacket $CMD_READ_SENSOR_ID_NEW
                    ;;
                 searching|s)
                    SPATTERNID=$SENSORID_SEARCH
                    sendPacket $CMD_READ_SENSOR_ID_NEW
                    ;;
-                disabled|d)
+                disabled|di)
                    SPATTERNID=$SENSORID_DISABLE
                    sendPacket $CMD_READ_SENSOR_ID_NEW
                    ;;
@@ -4080,10 +4508,10 @@ processCommand() {
 
             ;;
 
-        calibration | cal)
-
-            sendPacket $CMD_READ_CALIBRATION
-            ;;
+   #     calibration | cal)
+   #
+   #         sendPacket $CMD_READ_CALIBRATION
+   #         ;;
 
         *)
 
@@ -4130,7 +4558,7 @@ initTerm()
 
 }
 
-chooseBulitinOrExternalPrintfForUnicodeSFormat()
+test_printf_sformat()
 {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
@@ -4138,14 +4566,12 @@ chooseBulitinOrExternalPrintfForUnicodeSFormat()
     else
        local od_unicode
     fi
-     od_unicode=$("$1" "%2s" "🔋" | od -A n -t x1)
+     od_unicode=$(printf "%2s" "🔋" | od -A n -t x1)
     if [ "$od_unicode" = " 20 f0 9f 94 8b" ]; then #zsh printf correctly insert a space infront
         SHELL_SUPPORT_PRINTF_UNICODE_SFORMAT=1
-        PRINTF_CMD="$1" # either builtin or external printf which support unicode %s formatting
         [ "$DEBUG" -eq 1 ] && echo >&2 "Shell support printf unicode right/left adjustment"
     else
         SHELL_SUPPORT_PRINTF_UNICODE_SFORMAT=0
-        PRINTF_CMD=printf
          [ "$DEBUG" -eq 1 ] && echo >&2 "Shell NO SUPPORT for printf unicode right/left adjustment"
     fi
 
@@ -4204,11 +4630,8 @@ initShell() {
             ;;
     esac
 
-     chooseBulitinOrExternalPrintfForUnicodeSFormat printf
-     if [ $SHELL_SUPPORT_PRINTF_UNICODE_SFORMAT -eq 0 ]; then
-       chooseBulitinOrExternalPrintfForUnicodeSFormat "$(which printf)"
-     fi
-
+     test_printf_sformat #only zsh bultin printf works with unicode when using %-30s format -> workaround \r\t\t\t\t positioning instead which works with every shell printf
+     
    #shellcheck disable=SC2034,SC3019
   # I=$(( 10 ** 1 )) 2>/dev/null;
   #dash shell exit with: arithmetic expression: expecting primary: " 10 ** 1 "
@@ -4361,8 +4784,7 @@ convert_hpaScale10_To_inhgScale10()
 {
    round $(( $1 * 100000 / 338639  ))
    VALUE_INHG_SCALE10=$VALUE_ROUND
-    #[ "$DEBUG" -eq 1 ] &&
-     echo >&2 "Converted (Scale * 10)  $1 hpa to $VALUE_INHG_SCALE10"
+    [ "$DEBUG" -eq 1 ] && echo >&2 "Converted (Scale * 10)  $1 hpa to $VALUE_INHG_SCALE10"
 }
 
 round()
@@ -4481,7 +4903,7 @@ setWindDirHttpLivedata()
  
     eval "$1"="$2" 
     convertWindDirectionToCompassDirection "$2"
-    eval "$1"_COMPASS=$VALUE_COMPASS_DIRECTION
+    eval "$1"_COMPASS="$VALUE_COMPASS_DIRECTION"
 
 }
 
@@ -4517,7 +4939,11 @@ setPressureHttpLivedata()
 printOrLogLivedata()
 {
     if [ -z "$LOG_CMD" ]; then
-       printLivedata
+       if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then
+            printLivedata
+       elif [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_BIG ]; then
+            printLivedataBIG
+       fi
     else
       if [ -z "$LOG_CMD_INIT" ]; then
         case "$LOG_CMD" in 
@@ -5095,6 +5521,22 @@ initUnit()
 
 }
 
+initWinddirectionCompass()
+{
+    WIND_DIRECTION_NNE="$WIND_DIRECTION_N$WIND_DIRECTION_N$WIND_DIRECTION_E"
+        WIND_DIRECTION_NE="$WIND_DIRECTION_N$WIND_DIRECTION_E"
+    WIND_DIRECTION_ENE="$WIND_DIRECTION_E$WIND_DIRECTION_N$WIND_DIRECTION_E"
+    WIND_DIRECTION_ESE="$WIND_DIRECTION_E$WIND_DIRECTION_S$WIND_DIRECTION_E"
+        WIND_DIRECTION_SE="$WIND_DIRECTION_S$WIND_DIRECTION_E"
+    WIND_DIRECTION_SSE="$WIND_DIRECTION_S$WIND_DIRECTION_S$WIND_DIRECTION_E"
+    WIND_DIRECTION_SSW="$WIND_DIRECTION_S$WIND_DIRECTION_S$WIND_DIRECTION_W"
+        WIND_DIRECTION_SW="$WIND_DIRECTION_S$WIND_DIRECTION_W"
+    WIND_DIRECTION_WSW="$WIND_DIRECTION_W$WIND_DIRECTION_S$WIND_DIRECTION_W"
+    WIND_DIRECTION_WNW="$WIND_DIRECTION_W$WIND_DIRECTION_N$WIND_DIRECTION_W"
+        WIND_DIRECTION_NW="$WIND_DIRECTION_N$WIND_DIRECTION_W"
+    WIND_DIRECTION_NNW="$WIND_DIRECTION_N$WIND_DIRECTION_N$WIND_DIRECTION_W"
+}
+
 parseUnitOptions()
 #format: temp=farenheit|celius,pressure=inhg|hpa
 {
@@ -5166,6 +5608,7 @@ fi
 initTimezones
 
 initUnit
+initWinddirectionCompass
 
 #https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
 #useful CLI info: https://clig.dev/#arguments-and-flags
@@ -5177,6 +5620,11 @@ while [ $# -gt 0 ]; do
     KEY="$1"
 
     case $KEY in
+
+       -vb | --view-big)
+           LIVEDATA_VIEW=$LIVEDATA_VIEW_BIG
+           shift
+           ;;
 
        -vtr | --view-terse-row)
 
@@ -5200,6 +5648,7 @@ while [ $# -gt 0 ]; do
            #shellcheck disable=SC1090
               . "$2"
                initUnit # update UNIT_HOUR
+               initWinddirectionCompass
            else
               echo >&2 Warning: language file not found "$2"
            fi
