@@ -480,7 +480,8 @@ SGI_BACKGROUND_COLOR=48
 
 SGI_FOREGC="$SGI_FOREGROUND_COLOR;5;"
 SGI_BACKGC="$SGI_BACKGROUND_COLOR;5;"
-
+SGI_FOREGC_24BIT="$SGI_FOREGROUND_COLOR;2;"
+SGI_BACKGC_24BIT="$SGI_BACKGROUND_COLOR;2;"
 ANSIESC_SGI_NORMAL="$CSI${SGI_NORMAL}m"
 ANSIESC_SGI_INVERT="$CSI${SGI_INVERSE}m"
 ANSIESC_SGI_BOLD_INVERT="$CSI$SGI_BOLD;${SGI_INVERSE}m"
@@ -504,7 +505,8 @@ SGI_COLOR_BRIGHT_MAGENTA=13
 SGI_COLOR_BRIGHT_CYAN=14
 SGI_COLOR_ORANGE=208
 
-ANSIESC_SGI_BRIGHTRED=$CSI$SGI_FOREGC$SGI_COLOR_BRIGHT_RED"m"
+ANSIESC_SGI_BRIGHTRED_BACKGROUND=$CSI$SGI_FOREGC$SGI_COLOR_WHITE";"$SGI_BACKGC$SGI_COLOR_BRIGHT_RED";${SGI_BLINK}m"
+ANSIESC_SGI_BRIGHTRED=$CSI$SGI_FOREGC$SGI_COLOR$SGI_COLOR_BRIGHT_RED"m"
 ANSIESC_SGI_BRIGHTBLUE=$CSI$SGI_FOREGC$SGI_COLOR_BRIGHT_BLUE"m"
 ANSIESC_SGI_BRIGHTGREEN=$CSI$SGI_FOREGC$SGI_COLOR_BRIGHT_GREEN"m"
 
@@ -517,7 +519,7 @@ STYLE_LIMIT_LIVEDATA_INTEMP_HIGH=${STYLE_LIMIT_LIVEDATA_INTEMP_HIGH:=$ANSIESC_SG
 
 STYLE_BATTERY_LOW=${STYLE_BATTERY_LOW:=$ANSIESC_SGI_BRIGHTRED}
 STYLE_SIGNAL_LOW=${STYLE_SIGNAL_LOW:=$ANSIESC_SGI_BRIGHTRED}
-STYLE_LEAK=${STYLE_LEAK:="\a"$ANSIESC_SGI_BRIGHTRED} # add alert/bell \a if leakage detected
+STYLE_LEAK=${STYLE_LEAK:="\a"$ANSIESC_SGI_BRIGHTRED_BACKGROUND} # add alert/bell \a if leakage detected
 
 STYLE_RESET="$ANSIESC_SGI_NORMAL"
 
@@ -642,12 +644,19 @@ ASCII_WIND_SE_L3="    ⟍"
 # it capability = tab size = 8 for xterm-256
 # watch -c command only supports 3-bit colors in wsl2/ubuntu, other ansi escapes codes are filtered
 
-
 UV_RISK_LOW=${UV_RISK_LOW:="LOW"}
 UV_RISK_MODERATE=${UV_RISK_MODERATE:="MODERATE"}
 UV_RISK_HIGH=${UV_RISK_HIGH:="HIGH"}
 UV_RISK_VERYHIGH=${UV_RISK_VERYHIGH:="VERY HIGH"}
 UV_RISK_EXTREME=${UV_RISK_EXTREME="EXTREME"}
+
+# https://www.airnow.gov/aqi/aqi-basics/
+PM25_AQI_GOOD=${PM25_AQI_GOOD:="GOOD"}
+PM25_AQI_MODERATE=${PM25_AQI_MODERATE:="MODERATE"}
+PM25_AQI_UNHEALTY_SENSITIVE_GROUPS=${PM25_AQI_UNHEALTY_SENSITIVE_GROUPS:="UNHEALTHY SENSITIVE GROUPS"}
+PM25_AQI_UNHEALTY=${PM25_AQI_UNHEALTY:="UNHEALTY"}
+PM25_AQI_VERY_UNHEALTY=${PM25_AQI_VERY_UNHEALTY:="VERY UNHEALTY"}
+PM25_AQI_HAZARDOUS=${PM25_AQI_HAZARDOUS:="HAZARDOUS"}
 
 newBIGnumber()
 #$1 number $2 name
@@ -699,15 +708,15 @@ setUVRisk()
 #$1 UVI
 {
     if [ "$1" -ge 0 ] && [ "$1" -le 2 ]; then
-       UV_RISK=$UV_RISK_LOW
+       VALUE_UV_RISK=$UV_RISK_LOW
     elif [ "$1" -ge 3 ] && [ "$1" -le 5 ]; then
-        UV_RISK=$UV_RISK_MODERATE
+        VALUE_UV_RISK=$UV_RISK_MODERATE
     elif [ "$1" -ge 6 ] && [ "$1" -le 7 ]; then
-        UV_RISK=$UV_RISK_HIGH
+        VALUE_UV_RISK=$UV_RISK_HIGH
     elif [ "$1" -ge 8 ] && [ "$1" -le 10 ]; then
-        UV_RISK="$UV_RISK_VERYHIGH"
+        VALUE_UV_RISK="$UV_RISK_VERYHIGH"
     elif [ "$1" -ge 11 ]; then
-        UV_RISK=$UV_RISK_EXTREME
+        VALUE_UV_RISK=$UV_RISK_EXTREME
     fi
 }
 
@@ -2025,6 +2034,42 @@ setSGIBatteryVoltage()
     fi
 }
 
+setAQI()
+#https://blissair.com/what-is-pm-2-5.htm
+{
+    if [ "$1" -lt 121 ]; then
+      VALUE_PM25_AQI=$PM25_AQI_GOOD
+    elif [ "$1" -ge 121 ] && [ "$1" -lt 355 ]; then
+      VALUE_PM25_AQI=$PM25_AQI_MODERATE
+    elif [ "$1" -ge 355 ] && [ "$1" -lt 555 ]; then
+      VALUE_PM25_AQI=$PM25_AQI_UNHEALTY_SENSITIVE_GROUPS
+    elif [ "$1" -ge 555 ] && [ "$1" -lt 1505 ]; then
+      VALUE_PM25_AQI=$PM25_AQI_UNHEALTY
+    elif [ "$1" -ge 1505 ] && [ "$1" -lt 2505 ]; then
+      VALUE_PM25_AQI=$PM25_AQI_VERY_UNHEALTY
+    elif [ "$1" -ge 2505 ]; then
+      VALUE_PM25_AQI=$PM25_AQI_HAZARDOUS
+    fi
+}
+
+setStyleAQI()
+{
+    if [ "$1" -lt 121 ]; then
+       STYLE_AQI="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKGC${SGI_COLOR_GREEN}m"
+    elif [ "$1" -ge 121 ] && [ "$1" -lt 355 ]; then
+        STYLE_AQI="$CSI$SGI_FOREGC$SGI_COLOR_GRAY;$SGI_BACKGC${SGI_COLOR_YELLOW}m"
+    elif [ "$1" -ge 355 ] && [ "$1" -lt 555 ]; then
+        STYLE_AQI="$CSI$SGI_FOREGC$SGI_COLOR_GRAY;$SGI_BACKGC${SGI_COLOR_ORANGE}m"
+    elif [ "$1" -ge 555 ] && [ "$1" -lt 1505 ]; then
+        STYLE_AQI="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKGC${SGI_COLOR_RED}m"
+    elif [ "$1" -ge 1505 ] && [ "$1" -lt 2505 ]; then
+        STYLE_AQI="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKGC${SGI_COLOR_MAGENTA}m"
+    elif [ "$1" -ge 2505 ]; then
+       #STYLE_AQI="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;${SGI_BACKGC_24BIT}126;0;35m" #7f0023
+       STYLE_AQI="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;${SGI_BACKGC}88m" #approximate #88000
+    fi
+}
+
 printLivedataRainLine()
 {
     #echo "printLivedataRainLine 1: $1 2: $2 3: $3 4: $4 5: $5 6: $6"
@@ -2141,7 +2186,8 @@ printLivedata() {
             setUVRisk "$LIVEDATA_UVI"
             setStyleUVI "$LIVEDATA_UVI"
             SGI_LIVE_VALUE=$STYLE_UVI
-            printLivedataLine "LIVEDATA_UVI_HEADER" "$LIVEDATA_UVI"      "%6u" "$UV_RISK" "%-10s" 'uvi' "%3u"
+            LIVEDATA_UVI_HEADER="$LIVEDATA_UVI_HEADER $VALUE_UV_RISK"
+            printLivedataLine "LIVEDATA_UVI_HEADER" "$LIVEDATA_UVI"      "%6u" "" "%4s" 'uvi' "%3u"
         fi
     fi
 
@@ -2224,13 +2270,14 @@ printLivedata() {
 
         n=1
         while [ "$n" -le "$WH55_LEAK_MAXCH" ]; do
-        #TEST eval LIVEDATA_LEAK$n=1
-            LIVEDATA_LEAK_YESNO=$LIVEDATA_LEAK_NO
+            #TEST eval LIVEDATA_LEAK$n=1
             #shellcheck disable=SC2034
+            VALUE_LEAK=$LIVEDATA_LEAK_NO
             eval "if [ -n ''"\$LIVEDATA_LEAK$n" ]; then
                         setSGIBatteryLowNormal \"\$LIVEDATA_LEAK${n}_BATTERY\"
-                        [ \"\$LIVEDATA_LEAK$n\" -ne 0 ] && SGI_LIVE=\"$STYLE_LEAK\" && LIVEDATA_LEAK_YESNO=$LIVEDATA_LEAK_YES
-                        printLivedataLine \"LIVEDATA_LEAK_HEADER$n\" \"\$LIVEDATA_LEAK_YESNO\" \"%6s\" \"\" \"%4s\" \"leak$n\" '' \"\$LIVEDATA_LEAK${n}_BATTERY\" \"\$LIVEDATA_LEAK${n}_BATTERY_STATE\" 
+                        [ \"\$LIVEDATA_LEAK$n\" -ne 0 ] && SGI_LIVE_VALUE=\"$STYLE_LEAK\" && VALUE_LEAK=$LIVEDATA_LEAK_YES
+                        LIVEDATA_LEAK_HEADER$n=\$LIVEDATA_LEAK_HEADER$n\" \$VALUE_LEAK\"
+                        printLivedataLine \"LIVEDATA_LEAK_HEADER$n\" \"\$LIVEDATA_LEAK\" \"%6u\" \"\" \"%4s\" \"leak$n\" '' \"\$LIVEDATA_LEAK${n}_BATTERY\" \"\$LIVEDATA_LEAK${n}_BATTERY_STATE\" 
                 fi"
             n=$((n + 1))
         done
@@ -2243,6 +2290,10 @@ printLivedata() {
             #shellcheck disable=SC2153
             eval "if [ -n ''"\$LIVEDATA_PM25$n" ]; then
                             setSGIBatteryLowNormal \"\$LIVEDATA_PM25${n}_BATTERY\"
+                            setAQI \"\$LIVEDATA_PM25${n}_RAW\"
+                            setStyleAQI \"\$LIVEDATA_PM25${n}_RAW\"
+                            SGI_LIVE_VALUE=\$STYLE_AQI
+                            LIVEDATA_PM25_HEADER$n=\$LIVEDATA_PM25_HEADER$n\" \$VALUE_PM25_AQI\"
                             printLivedataLine \"LIVEDATA_PM25_HEADER$n\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$UNIT_PM25\" \"%6s\" \"pm25$n\" '' \"\$LIVEDATA_PM25${n}_BATTERY\" \"\$LIVEDATA_PM25${n}_BATTERY_STATE\" 
                  fi"
             n=$((n + 1))
@@ -2250,7 +2301,13 @@ printLivedata() {
 
         n=1
         while [ "$n" -le "$WH43_PM25_MAXCH" ]; do
-            eval "[ -n ''"\$LIVEDATA_PM25_24HAVG$n" ] && printLivedataLine \"LIVEDATA_PM25_24HAVG_HEADER$n\" \"\$LIVEDATA_PM25_24HAVG$n\" \"%6.1f\" \"\$UNIT_PM25\" \"%6s\" \"pm25a$n\" \"%6.1f\""
+            eval "if [ -n ''"\$LIVEDATA_PM25_24HAVG$n" ]; then
+                        setAQI \"\$LIVEDATA_PM25_24HAVG${n}_RAW\"
+                        setStyleAQI \"\$LIVEDATA_PM25_24HAVG${n}_RAW\"
+                        SGI_LIVE_VALUE=\$STYLE_AQI
+                        LIVEDATA_PM25_24HAVG_HEADER$n=\$LIVEDATA_PM25_24HAVG_HEADER$n\" \$VALUE_PM25_AQI\"
+                        printLivedataLine \"LIVEDATA_PM25_24HAVG_HEADER$n\" \"\$LIVEDATA_PM25_24HAVG$n\" \"%6.1f\" \"\$UNIT_PM25\" \"%6s\" \"pm25a$n\" \"%6.1f\"
+             fi"
             n=$((n + 1))
         done
     fi
@@ -2266,8 +2323,20 @@ printLivedata() {
         [ -n "$LIVEDATA_WH45CO2_HUMI" ]         && printLivedataLine "LIVEDATA_WH45CO2_HUMI_HEADER" "$LIVEDATA_WH45CO2_HUMI"                "%6u" "$UNIT_HUMIDITY" "%4s" 'humi'
         [ -n "$LIVEDATA_WH45CO2_PM10" ]         && printLivedataLine "LIVEDATA_WH45CO2_PM10_HEADER" "$LIVEDATA_WH45CO2_PM10"                "%6.1f" "$UNIT_PM25" "%7s" 'pm10'
         [ -n "$LIVEDATA_WH45CO2_PM10_24HAVG" ]  && printLivedataLine "LIVEDATA_WH45CO2_PM10_24HAVG_HEADER" "$LIVEDATA_WH45CO2_PM10_24HAVG"  "%6.1f" "$UNIT_PM25" "%7s" 'pm10a'
-        [ -n "$LIVEDATA_WH45CO2_PM25" ]         && printLivedataLine "LIVEDATA_WH45CO2_PM25_HEADER" "$LIVEDATA_WH45CO2_PM25"                "%6.1f" "$UNIT_PM25" "%7s" 'pm25'
-        [ -n "$LIVEDATA_WH45CO2_PM25_24HAVG" ]  && printLivedataLine "LIVEDATA_WH45CO2_PM25_24HAVG_HEADER" "$LIVEDATA_WH45CO2_PM25_24HAVG"  "%6.1f" "$UNIT_PM25" "%7s" 'pm25a'
+        if [ -n "$LIVEDATA_WH45CO2_PM25" ]; then
+            setAQI "$LIVEDATA_WH45CO2_PM25_RAW"
+            setStyleAQI "$LIVEDATA_WH45CO2_PM25_RAW"
+            SGI_LIVE_VALUE=$STYLE_AQI
+            LIVEDATA_WH45CO2_PM25_HEADER="$LIVEDATA_WH45CO2_PM25_HEADER $VALUE_PM25_AQI"
+            printLivedataLine "LIVEDATA_WH45CO2_PM25_HEADER" "$LIVEDATA_WH45CO2_PM25"                "%6.1f" "$UNIT_PM25" "%7s" 'pm25'
+        fi
+        if [ -n "$LIVEDATA_WH45CO2_PM25_24HAVG" ]; then
+            setAQI "$LIVEDATA_WH45CO2_PM25_24HAVG_RAW"
+            setStyleAQI "$LIVEDATA_WH45CO2_PM25_24HAVG_RAW"
+            SGI_LIVE_VALUE=$STYLE_AQI
+            LIVEDATA_WH45CO2_PM25_24HAVG_HEADER="$LIVEDATA_WH45CO2_PM25_24HAVG_HEADER $VALUE_PM25_AQI"
+            printLivedataLine "LIVEDATA_WH45CO2_PM25_24HAVG_HEADER" "$LIVEDATA_WH45CO2_PM25_24HAVG"  "%6.1f" "$UNIT_PM25" "%7s" 'pm25a'
+        fi
         [ -n "$LIVEDATA_WH45CO2_CO2" ]          && printLivedataLine "LIVEDATA_WH45CO2_CO2_HEADER" "$LIVEDATA_WH45CO2_CO2"                  "%6u" "$UNIT_CO2" "%6s" 'co2'
         [ -n "$LIVEDATA_WH45CO2_CO2_24HAVG" ]   && printLivedataLine "LIVEDATA_WH45CO2_CO2_24HAVG_HEADER" "$LIVEDATA_WH45CO2_CO2_24HAVG"           "%6u" "$UNIT_CO2" "%6s" 'co2a'
     fi
@@ -2445,7 +2514,7 @@ $line_uv_header_fmt\n\n$line_uv_fmt\n$line_uv_fmt\n$line_uv_fmt\n\n"\
     "$LDVBIG_WINDSPEED_L1" "$LDVBIG_WINDGUSTSPEED_L1" "$LDVBIG_WINDSPEED_L2" "$LDVBIG_WINDGUSTSPEED_L2" "$LDVBIG_WINDSPEED_L3" "$LDVBIG_WINDGUSTSPEED_L3"\
     "$LIVEDATA_WINDDIRECTION_HEADER $UNIT_DEGREE $LIVEDATA_WINDDIRECTION_COMPASS" "$LIVEDATA_WINDDAILYMAX_HEADER $UNIT_WIND"\
     "$LDVBIG_WINDDIRECTION_L1" "$LDVBIG_WINDDIRECTION_SYMBOL_L1" "$LDVBIG_WINDDAILYMAX_L1" "$LDVBIG_WINDDIRECTION_L2" "$LDVBIG_WINDDIRECTION_SYMBOL_L2" "$LDVBIG_WINDDAILYMAX_L2" "$LDVBIG_WINDDIRECTION_L3" "$LDVBIG_WINDDIRECTION_SYMBOL_L3" "$LDVBIG_WINDDAILYMAX_L3"\
-     "☀️ $LIVEDATA_UV_HEADER $UNIT_UV" "$LIVEDATA_UVI_HEADER $UV_RISK"\
+     "☀️ $LIVEDATA_UV_HEADER $UNIT_UV" "$LIVEDATA_UVI_HEADER $VALUE_UV_RISK"\
     "$LDVBIG_UV_L1" "$LDVBIG_UVI_L1" "$LDVBIG_UV_L2" "$LDVBIG_UVI_L2" "$LDVBIG_UV_L3" "$LDVBIG_UVI_L3"
 
   # set +x
@@ -2756,6 +2825,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
             readUInt16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
+            LIVEDATA_PM251_RAW="$VALUE_UINT16BE"
             LIVEDATA_PM251=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -ge $LDF_PM25_CH2 ] && [ "$ldf" -le $LDF_PM25_CH4 ]; then
@@ -2764,6 +2834,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             convertScale10ToFloat "$VALUE_UINT16BE"
 
             channel=$((ldf - LDF_PM25_CH1 + 1))
+            eval "LIVEDATA_PM25${channel}_RAW=$VALUE_UINT16BE"
             eval "LIVEDATA_PM25$channel=$VALUE_SCALE10_FLOAT"
 
         elif [ "$ldf" -ge $LDF_PM25_24HAVG1 ] && [ "$ldf" -le $LDF_PM25_24HAVG4 ]; then
@@ -2772,6 +2843,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             convertScale10ToFloat "$VALUE_UINT16BE"
 
             channel=$((ldf - LDF_PM25_24HAVG1 + 1))
+            eval "LIVEDATA_PM25_24HAVG${channel}_RAW=$VALUE_UINT16BE"
             eval "LIVEDATA_PM25_24HAVG$channel=$VALUE_SCALE10_FLOAT"
 
         elif [ "$ldf" -eq $LDF_SENSOR_CO2 ]; then
@@ -2804,10 +2876,12 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
             readUInt16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
+            LIVEDATA_WH45CO2_PM25_RAW=$VALUE_UINT16BE
             LIVEDATA_WH45CO2_PM25=$VALUE_SCALE10_FLOAT
 
             readUInt16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
+            LIVEDATA_WH45CO2_PM25_24HAVG_RAW=$VALUE_UINT16BE
             LIVEDATA_WH45CO2_PM25_24HAVG=$VALUE_SCALE10_FLOAT
 
             readUInt16BE
