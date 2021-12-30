@@ -510,12 +510,24 @@ ANSIESC_SGI_BRIGHTRED=$CSI$SGI_FOREGC$SGI_COLOR$SGI_COLOR_BRIGHT_RED"m"
 ANSIESC_SGI_BRIGHTBLUE=$CSI$SGI_FOREGC$SGI_COLOR_BRIGHT_BLUE"m"
 ANSIESC_SGI_BRIGHTGREEN=$CSI$SGI_FOREGC$SGI_COLOR_BRIGHT_GREEN"m"
 
+STYLE_PM25_AQI_GOOD="$CSI$SGI_FOREGC$SGI_COLOR_BLACK;$SGI_BACKGC${SGI_COLOR_BRIGHT_GREEN}m"    #00e400
+STYLE_PM25_AQI_MODERATE="$CSI$SGI_FOREGC$SGI_COLOR_BLACK;$SGI_BACKGC${SGI_COLOR_BRIGHT_YELLOW}m"  #ffff00
+STYLE_PM25_AQI_UNHEALTHY_SENSITIVE="$CSI$SGI_FOREGC$SGI_COLOR_BLACK;$SGI_BACKGC${SGI_COLOR_ORANGE}m"  #ff7e00
+STYLE_PM25_AQI_UNHEALTHY="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKGC${SGI_COLOR_BRIGHT_RED}m"     #ff0000
+STYLE_PM25_AQI_VERY_UNHEALTHY="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKGC${SGI_COLOR_MAGENTA}m" #99004c
+STYLE_PM25_AQI_HAZARDOUS="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;${SGI_BACKGC}88m" #approximate #88000
+
+STYLE_UVI_LOW=$STYLE_PM25_AQI_GOOD
+STYLE_UVI_MODERATE=$STYLE_PM25_AQI_MODERATE
+STYLE_UVI_HIGH=$STYLE_PM25_AQI_UNHEALTHY_SENSITIVE
+STYLE_UVI_VERY_HIGH=$STYLE_PM25_AQI_UNHEALTHY
+STYLE_UVI_EXTERME=$STYLE_PM25_AQI_VERY_UNHEALTHY
+
 STYLE_LIMIT_LIVEDATA=${STYLE_LIMIT_LIVEDATA:=$ANSI_ESC_SGI_INVERT}
 STYLE_LIMIT_LIVEDATA_OUTTEMP=${STYLE_LIMIT_LIVEDATA_OUTTEMP:=$ANSIESC_SGI_BRIGHTBLUE}
 STYLE_LIMIT_LIVEDATA_OUTTEMP_HIGH=${STYLE_LIMIT_LIVEDATA_OUTTEMP_HIGH:=$ANSIESC_SGI_BRIGHTRED}
 STYLE_LIMIT_LIVEDATA_INTEMP_LOW=${STYLE_LIMIT_LIVEDATA_INTEMP_LOW:=$ANSIESC_SGI_BRIGHTBLUE}
 STYLE_LIMIT_LIVEDATA_INTEMP_HIGH=${STYLE_LIMIT_LIVEDATA_INTEMP_HIGH:=$ANSIESC_SGI_BRIGHTRED}
-
 
 STYLE_BATTERY_LOW=${STYLE_BATTERY_LOW:=$ANSIESC_SGI_BRIGHTRED}
 STYLE_SIGNAL_LOW=${STYLE_SIGNAL_LOW:=$ANSIESC_SGI_BRIGHTRED}
@@ -537,6 +549,10 @@ STYLE_RAIN=${STYLE_RAIN:="$CSI$SGI_FOREGC${SGI_COLOR_BRIGHT_BLUE}m"}
 
 STYLE_SENSOR_DISABLE=${STYLE_SENSOR_DISABLE:=$ANSIESC_SGI_BRIGHTRED}
 STYLE_SENSOR_SEARCH=${STYLE_SENSOR_SEARCH:=$ANSIESC_SGI_BRIGHTGREEN}
+
+VALUE_PM25_AQI_DELIMITER='- '
+VALUE_LEAK_DELIMITER='- '
+VALUE_UVI_DELIMITER='- '
 
 #TERM_ANSI_ESCAPE=${TERM_ANSI_ESCAPE:=1}
 
@@ -767,16 +783,17 @@ setStyleUVI()
 #$1 UVI
 #https://en.wikipedia.org/wiki/Ultraviolet_index
 {
+    #TEST set -- 11
     if [ "$1" -ge 0 ] && [ "$1" -le 2 ]; then
-       STYLE_UVI="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKGC${SGI_COLOR_GREEN}m"
+       STYLE_UVI=$STYLE_UVI_LOW
     elif [ "$1" -ge 3 ] && [ "$1" -le 5 ]; then
-        STYLE_UVI="$CSI$SGI_FOREGC$SGI_COLOR_GRAY;$SGI_BACKGC${SGI_COLOR_YELLOW}m"
+        STYLE_UVI=$STYLE_UVI_MODERATE
     elif [ "$1" -ge 6 ] && [ "$1" -le 7 ]; then
-        STYLE_UVI="$CSI$SGI_FOREGC$SGI_COLOR_GRAY;$SGI_BACKGC${SGI_COLOR_ORANGE}m"
+        STYLE_UVI=$STYLE_UVI_HIGH
     elif [ "$1" -ge 8 ] && [ "$1" -le 10 ]; then
-        STYLE_UVI="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKGC${SGI_COLOR_RED}m"
+        STYLE_UVI=$STYLE_UVI_VERY_HIGH
     elif [ "$1" -ge 11 ]; then
-        STYLE_UVI="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKGC${SGI_COLOR_MAGENTA}m"
+        STYLE_UVI=$STYLE_UVI_EXTERME
     fi
 }
 
@@ -2055,18 +2072,18 @@ setAQI()
 setStyleAQI()
 {
     if [ "$1" -lt 121 ]; then
-       STYLE_AQI="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKGC${SGI_COLOR_GREEN}m"
+       STYLE_AQI="$STYLE_PM25_AQI_GOOD"
     elif [ "$1" -ge 121 ] && [ "$1" -lt 355 ]; then
-        STYLE_AQI="$CSI$SGI_FOREGC$SGI_COLOR_GRAY;$SGI_BACKGC${SGI_COLOR_YELLOW}m"
+        STYLE_AQI=$STYLE_PM25_AQI_MODERATE
     elif [ "$1" -ge 355 ] && [ "$1" -lt 555 ]; then
-        STYLE_AQI="$CSI$SGI_FOREGC$SGI_COLOR_GRAY;$SGI_BACKGC${SGI_COLOR_ORANGE}m"
+        STYLE_AQI=$STYLE_PM25_AQI_UNHEALTHY_SENSITIVE
     elif [ "$1" -ge 555 ] && [ "$1" -lt 1505 ]; then
-        STYLE_AQI="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKGC${SGI_COLOR_RED}m"
+        STYLE_AQI=$STYLE_PM25_AQI_UNHEALTHY
     elif [ "$1" -ge 1505 ] && [ "$1" -lt 2505 ]; then
-        STYLE_AQI="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKGC${SGI_COLOR_MAGENTA}m"
+        STYLE_AQI=$STYLE_PM25_AQI_VERY_UNHEALTHY
     elif [ "$1" -ge 2505 ]; then
        #STYLE_AQI="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;${SGI_BACKGC_24BIT}126;0;35m" #7f0023
-       STYLE_AQI="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;${SGI_BACKGC}88m" #approximate #88000
+       STYLE_AQI=$STYLE_PM25_AQI_HAZARDOUS
     fi
 }
 
@@ -2186,7 +2203,7 @@ printLivedata() {
             setUVRisk "$LIVEDATA_UVI"
             setStyleUVI "$LIVEDATA_UVI"
             SGI_LIVE_VALUE=$STYLE_UVI
-            LIVEDATA_UVI_HEADER="$LIVEDATA_UVI_HEADER $VALUE_UV_RISK"
+            LIVEDATA_UVI_HEADER="$LIVEDATA_UVI_HEADER  $VALUE_UVI_DELIMITER$VALUE_UV_RISK"
             printLivedataLine "LIVEDATA_UVI_HEADER" "$LIVEDATA_UVI"      "%6u" "" "%4s" 'uvi' "%3u"
         fi
     fi
@@ -2212,7 +2229,7 @@ printLivedata() {
             #eval echo !!!!!!!!!!!!!!!!! \"\$LIVEDATA_TEMP${n}_SIGNAL_STATE\" n=$n
             #set -x
             eval " if [ -n ''"\$LIVEDATA_TEMP$n" ]; then
-                        setSGIBatteryLowNormal "\$LIVEDATA_TEMP${n}_BATTERY"
+                       # setSGIBatteryLowNormal "\$LIVEDATA_TEMP${n}_BATTERY"
                         printLivedataLine 'LIVEDATA_TEMP_HEADER$n' \"\$LIVEDATA_TEMP$n\" '%6.1f'  \"\$UNIT_TEMP\" '%2s' 'temp$n' '' \"\$LIVEDATA_TEMP${n}_BATTERY\" \"\$LIVEDATA_TEMP${n}_BATTERY_STATE\"  \"\$LIVEDATA_TEMP${n}_SIGNAL\" \"\$LIVEDATA_TEMP${n}_SIGNAL_STATE\"
                    fi "
             #set +x
@@ -2236,7 +2253,7 @@ printLivedata() {
         n=1
         while [ "$n" -le "$WH51_SOILMOISTURE_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_SOILMOISTURE$n" ]; then
-                    setSGIBatteryVoltage \"\$LIVEDATA_SOILMOISTURE${n}_BATTERY_RAW\"
+                    #setSGIBatteryVoltage \"\$LIVEDATA_SOILMOISTURE${n}_BATTERY_RAW\"
                     printLivedataLine  \"LIVEDATA_SOILMOISTURE_HEADER$n\" \"\$LIVEDATA_SOILMOISTURE$n\" \"%6u\" \"%\" \"%4s\" \"sm$n\" \"%3u\" \"\$LIVEDATA_SOILMOISTURE${n}_BATTERY\" \"\$LIVEDATA_SOILMOISTURE${n}_BATTERY_STATE\"
                   fi "
             n=$((n + 1))
@@ -2248,7 +2265,7 @@ printLivedata() {
         n=1
         while [ "$n" -le "$WH34_SOILTEMP_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_SOILTEMP$n" ]; then
-                    setSGIBatteryVoltage \"\$LIVEDATA_SOILTEMP${n}_BATTERY_RAW\"
+                    #setSGIBatteryVoltage \"\$LIVEDATA_SOILTEMP${n}_BATTERY_RAW\"
                     printLivedataLine \"LIVEDATA_SOILTEMP_HEADER$n\" \"\$LIVEDATA_SOILTEMP$n\" \"%6.1f\" \"$UNIT_TEMP\" \"%2s\" \"st$n\" '' \"\$LIVEDATA_SOILTEMP${n}_BATTERY\" \"\$LIVEDATA_SOILTEMP${n}_BATTERY_STATE\"
                   fi"
             n=$((n + 1))
@@ -2259,7 +2276,7 @@ printLivedata() {
         n=1
         while [ "$n" -le "$WH31_TEMP_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_TF_USR$n" ]; then
-                setSGIBatteryVoltage \"\$LIVEDATA_TF_USR${n}_BATTERY_RAW\"
+                #setSGIBatteryVoltage \"\$LIVEDATA_TF_USR${n}_BATTERY_RAW\"
                 printLivedataLine \"LIVEDATA_TF_USR_HEADER$n\" \"\$LIVEDATA_TF_USR$n\" \"%6.1f\" \"\$UNIT_TEMP\" \"%2s\" \"tusr$n\" '' \"\$LIVEDATA_TF_USR${n}_BATTERY\"  \"\$LIVEDATA_TF_USR${n}_BATTERY_STATE\"
                 fi"
             n=$((n + 1))
@@ -2274,9 +2291,9 @@ printLivedata() {
             #shellcheck disable=SC2034
             VALUE_LEAK=$LIVEDATA_LEAK_NO
             eval "if [ -n ''"\$LIVEDATA_LEAK$n" ]; then
-                        setSGIBatteryLowNormal \"\$LIVEDATA_LEAK${n}_BATTERY\"
+                        #setSGIBatteryLowNormal \"\$LIVEDATA_LEAK${n}_BATTERY\"
                         [ \"\$LIVEDATA_LEAK$n\" -ne 0 ] && SGI_LIVE_VALUE=\"$STYLE_LEAK\" && VALUE_LEAK=$LIVEDATA_LEAK_YES
-                        LIVEDATA_LEAK_HEADER$n=\$LIVEDATA_LEAK_HEADER$n\" \$VALUE_LEAK\"
+                        LIVEDATA_LEAK_HEADER$n=\"\$LIVEDATA_LEAK_HEADER$n \$VALUE_LEAK_DELIMITER\$VALUE_LEAK\"
                         printLivedataLine \"LIVEDATA_LEAK_HEADER$n\" \"\$LIVEDATA_LEAK\" \"%6u\" \"\" \"%4s\" \"leak$n\" '' \"\$LIVEDATA_LEAK${n}_BATTERY\" \"\$LIVEDATA_LEAK${n}_BATTERY_STATE\" 
                 fi"
             n=$((n + 1))
@@ -2289,11 +2306,11 @@ printLivedata() {
         while [ "$n" -le "$WH43_PM25_MAXCH" ]; do
             #shellcheck disable=SC2153
             eval "if [ -n ''"\$LIVEDATA_PM25$n" ]; then
-                            setSGIBatteryLowNormal \"\$LIVEDATA_PM25${n}_BATTERY\"
+                            #setSGIBatteryLowNormal \"\$LIVEDATA_PM25${n}_BATTERY\"
                             setAQI \"\$LIVEDATA_PM25${n}_RAW\"
                             setStyleAQI \"\$LIVEDATA_PM25${n}_RAW\"
                             SGI_LIVE_VALUE=\$STYLE_AQI
-                            LIVEDATA_PM25_HEADER$n=\$LIVEDATA_PM25_HEADER$n\" \$VALUE_PM25_AQI\"
+                            LIVEDATA_PM25_HEADER$n=\"\$LIVEDATA_PM25_HEADER$n \$VALUE_PM25_AQI_DELIMITER\$VALUE_PM25_AQI\"
                             printLivedataLine \"LIVEDATA_PM25_HEADER$n\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$UNIT_PM25\" \"%6s\" \"pm25$n\" '' \"\$LIVEDATA_PM25${n}_BATTERY\" \"\$LIVEDATA_PM25${n}_BATTERY_STATE\" 
                  fi"
             n=$((n + 1))
@@ -2305,7 +2322,7 @@ printLivedata() {
                         setAQI \"\$LIVEDATA_PM25_24HAVG${n}_RAW\"
                         setStyleAQI \"\$LIVEDATA_PM25_24HAVG${n}_RAW\"
                         SGI_LIVE_VALUE=\$STYLE_AQI
-                        LIVEDATA_PM25_24HAVG_HEADER$n=\$LIVEDATA_PM25_24HAVG_HEADER$n\" \$VALUE_PM25_AQI\"
+                        LIVEDATA_PM25_24HAVG_HEADER$n=\"\$LIVEDATA_PM25_24HAVG_HEADER$n \$VALUE_PM25_AQI_DELIMITER\$VALUE_PM25_AQI\"
                         printLivedataLine \"LIVEDATA_PM25_24HAVG_HEADER$n\" \"\$LIVEDATA_PM25_24HAVG$n\" \"%6.1f\" \"\$UNIT_PM25\" \"%6s\" \"pm25a$n\" \"%6.1f\"
              fi"
             n=$((n + 1))
@@ -2316,7 +2333,7 @@ printLivedata() {
 
         #WH45
         if [ -n "$LIVEDATA_WH45CO2_TEMPF" ]; then
-             setSGIBatteryLowNormal "$LIVEDATA_WH45CO2_BATTERY"
+             #setSGIBatteryLowNormal "$LIVEDATA_WH45CO2_BATTERY"
              printLivedataLine "LIVEDATA_WH45CO2_TEMPF_HEADER" "$LIVEDATA_WH45CO2_TEMPF"              "%6.1f" "$UNIT_TEMP" "%2s" 'temp' '' "$LIVEDATA_WH45CO2_BATTERY" "$LIVEDATA_WH45CO2_BATTERY_STATE"
         fi
 
@@ -2327,14 +2344,14 @@ printLivedata() {
             setAQI "$LIVEDATA_WH45CO2_PM25_RAW"
             setStyleAQI "$LIVEDATA_WH45CO2_PM25_RAW"
             SGI_LIVE_VALUE=$STYLE_AQI
-            LIVEDATA_WH45CO2_PM25_HEADER="$LIVEDATA_WH45CO2_PM25_HEADER $VALUE_PM25_AQI"
+            LIVEDATA_WH45CO2_PM25_HEADER="$LIVEDATA_WH45CO2_PM25_HEADER $VALUE_PM25_AQI_DELIMITER$VALUE_PM25_AQI"
             printLivedataLine "LIVEDATA_WH45CO2_PM25_HEADER" "$LIVEDATA_WH45CO2_PM25"                "%6.1f" "$UNIT_PM25" "%7s" 'pm25'
         fi
         if [ -n "$LIVEDATA_WH45CO2_PM25_24HAVG" ]; then
             setAQI "$LIVEDATA_WH45CO2_PM25_24HAVG_RAW"
             setStyleAQI "$LIVEDATA_WH45CO2_PM25_24HAVG_RAW"
             SGI_LIVE_VALUE=$STYLE_AQI
-            LIVEDATA_WH45CO2_PM25_24HAVG_HEADER="$LIVEDATA_WH45CO2_PM25_24HAVG_HEADER $VALUE_PM25_AQI"
+            LIVEDATA_WH45CO2_PM25_24HAVG_HEADER="$LIVEDATA_WH45CO2_PM25_24HAVG_HEADER $VALUE_PM25_AQI_DELIMITER$VALUE_PM25_AQI"
             printLivedataLine "LIVEDATA_WH45CO2_PM25_24HAVG_HEADER" "$LIVEDATA_WH45CO2_PM25_24HAVG"  "%6.1f" "$UNIT_PM25" "%7s" 'pm25a'
         fi
         [ -n "$LIVEDATA_WH45CO2_CO2" ]          && printLivedataLine "LIVEDATA_WH45CO2_CO2_HEADER" "$LIVEDATA_WH45CO2_CO2"                  "%6u" "$UNIT_CO2" "%6s" 'co2'
@@ -2344,7 +2361,7 @@ printLivedata() {
     if [ -z "$HIDE_LIGHTNING_LIVEDATA" ]; then
 
         if [ -n "$LIVEDATA_LIGHTNING_DISTANCE" ]; then
-            setSGIBatteryLowNormal "$LIVEDATA_WH57_LIGHTNING_BATTERY"
+            #setSGIBatteryLowNormal "$LIVEDATA_WH57_LIGHTNING_BATTERY"
             printLivedataLine "LIVEDATA_LIGHTNING_DISTANCE_HEADER" "$LIVEDATA_LIGHTNING_DISTANCE"    "%6u" "km" "%5s" 'ldist' '' "$LIVEDATA_WH57_LIGHTNING_BATTERY" "$LIVEDATA_WH57_LIGHTNING_BATTERY_STATE"
         fi
         [ -n "$LIVEDATA_LIGHTNING_TIME" ]       && printLivedataLine "LIVEDATA_LIGHTNING_TIME_UTC_HEADER" "$LIVEDATA_LIGHTNING_TIME_UTC"    "%19s" "" "%5s" "lightningutc" 
@@ -2357,7 +2374,7 @@ printLivedata() {
         n=1
         while [ "$n" -le "$WH35_LEAFWETNESS_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_LEAFWETNESS$n" ]; then
-                    setSGIBatteryVoltage \"\$LIVEDATA_LEAFWETNESS${n}_BATTERY_RAW\"
+                    #setSGIBatteryVoltage \"\$LIVEDATA_LEAFWETNESS${n}_BATTERY_RAW\"
                     printLivedataLine \"LIVEDATA_LEAFWETNESS_HEADER$n\" \"\$LIVEDATA_LEAFWETNESS$n\" \"%6u\" \"%\" \"%4s\"  \"leaf$n\" '' \"\$LIVEDATA_LEAFWETNESS${n}_BATTERY\" \"\$LIVEDATA_LEAFWETNESS${n}_BATTERY_STATE\"
             fi"
             n=$((n + 1))
