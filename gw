@@ -33,7 +33,7 @@
 #watch not compatible -> wrong formatting of \r\t\t\t sequences
 #clear; while true; do  ../gw -A ../lang/gw-nbno.sh  -g 192.168.3.16 -Hb -c livedata; sleep 60; printf "\e[H"; done
 
-DEBUG=0 # 1 will enable additional debug information, -d option to enable
+export DEBUG=0 # 1 will enable additional debug information, -d option to enable
 OPTION_SHOW_APPEND_FORMAT=0
 OPTION_SHOW_COMMAND=0
 OPTION_SHOW_HTTP_REQUEST=0
@@ -353,202 +353,120 @@ SENSORIDSTATE_CONNECTED=${SENSORIDSTATE_CONNECTED:="connected"}
 SENSORIDSTATE_SEARCHING=${SENSORIDSTATE_SEARCHING:="searching"}
 SENSORIDSTATE_DISABLED=${SENSORIDSTATE_DISABLED:="disabled"}
 
-#default livedata headers
-LIVEDATA_INTEMP_HEADER=${LIVEDATA_INTEMP_HEADER:="Indoor temperature"}
-LIVEDATA_OUTTEMP_HEADER=${LIVEDATA_OUTTEMP_HEADER:="Outdoor temperature"}
-LIVEDATA_INHUMI_HEADER=${LIVEDATA_INHUMI_HEADER:="Indoor humidity"}
-LIVEDATA_OUTHUMI_HEADER=${LIVEDATA_OUTHUMI_HEADER:="Outdoor humidity"}
+#default livedata headers, may be overridden by -A language file or environment variables on cmd line
+export LIVEDATA_INTEMP_HEADER="${LIVEDATA_INTEMP_HEADER:="Indoor temperature"}"
+export LIVEDATA_OUTTEMP_HEADER="${LIVEDATA_OUTTEMP_HEADER:="Outdoor temperature"}"
+export LIVEDATA_INHUMI_HEADER="${LIVEDATA_INHUMI_HEADER:="Indoor humidity"}"
+export LIVEDATA_OUTHUMI_HEADER="${LIVEDATA_OUTHUMI_HEADER:="Outdoor humidity"}"
 
-LIVEDATA_ABSBARO_HEADER=${LIVEDATA_ABSBARO_HEADER:="Absolute pressure"}
-LIVEDATA_RELBARO_HEADER=${LIVEDATA_RELBARO_HEADER:="Relative pressure"}
+export LIVEDATA_ABSBARO_HEADER="${LIVEDATA_ABSBARO_HEADER:="Absolute pressure"}"
+export LIVEDATA_RELBARO_HEADER="${LIVEDATA_RELBARO_HEADER:="Relative pressure"}"
 
-LIVEDATA_WINDCHILL_HEADER=${LIVEDATA_WINDCHILL_HEADER:="Windchill"}
-LIVEDATA_DEWPOINT_HEADER=${LIVEDATA_DEWPOINT_HEADER:="Dewpoint"}
+export LIVEDATA_WINDCHILL_HEADER="${LIVEDATA_WINDCHILL_HEADER:="Windchill"}"
+export LIVEDATA_DEWPOINT_HEADER="${LIVEDATA_DEWPOINT_HEADER:="Dewpoint"}"
 
-LIVEDATA_WINDDAILYMAX_HEADER=${LIVEDATA_WINDDAILYMAX_HEADER:="Wind daily maximum"}
-LIVEDATA_WINDDIRECTION_HEADER=${LIVEDATA_WINDDIRECTION_HEADER:="Wind direction"}
-LIVEDATA_WINDDIRECTION_COMPASS_HEADER=${LIVEDATA_WINDDIRECTION_COMPASS_HEADER:="Wind compass direction"}
-LIVEDATA_WINDGUSTSPEED_HEADER=${LIVEDATA_WINDGUSTSPEED_HEADER:="Wind gust speed"}
-LIVEDATA_WINDSPEED_HEADER=${LIVEDATA_WINDSPEED_HEADER:="Wind speed"}
+export LIVEDATA_WINDDAILYMAX_HEADER="${LIVEDATA_WINDDAILYMAX_HEADER:="Wind daily maximum"}"
+export LIVEDATA_WINDDIRECTION_HEADER="${LIVEDATA_WINDDIRECTION_HEADER:="Wind direction"}"
+export LIVEDATA_WINDDIRECTION_COMPASS_HEADER="${LIVEDATA_WINDDIRECTION_COMPASS_HEADER:="Wind compass direction"}"
+export LIVEDATA_WINDGUSTSPEED_HEADER="${LIVEDATA_WINDGUSTSPEED_HEADER:="Wind gust speed"}"
+export LIVEDATA_WINDSPEED_HEADER="${LIVEDATA_WINDSPEED_HEADER:="Wind speed"}"
 
-LIVEDATA_LIGHT_HEADER=${LIVEDATA_LIGHT_HEADER:="Light"}
-LIVEDATA_UV_HEADER=${LIVEDATA_UV_HEADER:="Solar UV radiation"}
-LIVEDATA_UVI_HEADER=${LIVEDATA_UVI_HEADER:="Solar UV index"}
+export LIVEDATA_LIGHT_HEADER="${LIVEDATA_LIGHT_HEADER:="Light"}"
+export LIVEDATA_UV_HEADER="${LIVEDATA_UV_HEADER:="Solar UV radiation"}"
+export LIVEDATA_UVI_HEADER="${LIVEDATA_UVI_HEADER:="Solar UV index"}"
 
-LIVEDATA_RAINRATE_HEADER=${LIVEDATA_RAINRATE_HEADER:="Rain rate"}
-LIVEDATA_RAINEVENT_HEADER=${LIVEDATA_RAINEVENT_HEADER:="Rain event"}
-LIVEDATA_RAINHOUR_HEADER=${LIVEDATA_RAINHOUR_HEADER:="Rain hour"}
-LIVEDATA_RAINDAY_HEADER=${LIVEDATA_RAINDAY_HEADER:="Rain day"}
-LIVEDATA_RAINWEEK_HEADER=${LIVEDATA_RAINWEEK_HEADER:="Rain week"}
-LIVEDATA_RAINMONTH_HEADER=${LIVEDATA_RAINMONTH_HEADER:="Rain month"}
-LIVEDATA_RAINYEAR_HEADER=${LIVEDATA_RAINYEAR_HEADER:="Rain year"}
-LIVEDATA_RAINTOTAL_HEADER=${LIVEDATA_RAINTOTAL_HEADER:="Rain total"}
+export LIVEDATA_RAINRATE_HEADER="${LIVEDATA_RAINRATE_HEADER:="Rain rate"}"
+export LIVEDATA_RAINEVENT_HEADER="${LIVEDATA_RAINEVENT_HEADER:="Rain event"}"
+export LIVEDATA_RAINHOUR_HEADER="${LIVEDATA_RAINHOUR_HEADER:="Rain hour"}"
+export LIVEDATA_RAINDAY_HEADER="${LIVEDATA_RAINDAY_HEADER:="Rain day"}"
+export LIVEDATA_RAINWEEK_HEADER="${LIVEDATA_RAINWEEK_HEADER:="Rain week"}"
+export LIVEDATA_RAINMONTH_HEADER="${LIVEDATA_RAINMONTH_HEADER:="Rain month"}"
+export LIVEDATA_RAINYEAR_HEADER="${LIVEDATA_RAINYEAR_HEADER:="Rain year"}"
+export LIVEDATA_RAINTOTAL_HEADER="${LIVEDATA_RAINTOTAL_HEADER:="Rain total"}"
 
-LIVEDATA_LEAK_YES=${LIVEDATA_LEAK_YES:="YES"}
-LIVEDATA_LEAK_NO=${LIVEDATA_LEAK_NO:="NO"}
+export LIVEDATA_LEAK_YES="${LIVEDATA_LEAK_YES:="YES"}"
+export  LIVEDATA_LEAK_NO="${LIVEDATA_LEAK_NO:="NO "}"
 
-LIVEDATA_LIGHTNING_DISTANCE_HEADER=${LIVEDATA_LIGHTNING_DISTANCE_HEADER:="Lightning distance (last)"}
-LIVEDATA_LIGHTNING_TIME_UTC_HEADER=${LIVEDATA_LIGHTNING_TIME_UTC_HEADER:="Lightning time utc (last)"}
-LIVEDATA_LIGHTNING_POWER_HEADER=${LIVEDATA_LIGHTNING_POWER_HEADER:="Lightning count today"}
+export LIVEDATA_LIGHTNING_DISTANCE_HEADER="${LIVEDATA_LIGHTNING_DISTANCE_HEADER:="Lightning distance (last)"}"
+export LIVEDATA_LIGHTNING_TIME_UTC_HEADER="${LIVEDATA_LIGHTNING_TIME_UTC_HEADER:="Lightning time utc (last)"}"
+export LIVEDATA_LIGHTNING_POWER_HEADER="${LIVEDATA_LIGHTNING_POWER_HEADER:="Lightning count today"}"
 
-LIVEDATA_WH45CO2_TEMPF_HEADER=${LIVEDATA_WH45CO2_TEMPF_HEADER:="Temperature"}
-LIVEDATA_WH45CO2_HUMI_HEADER=${LIVEDATA_WH45CO2_HUMI_HEADER:="Humidity"}
-LIVEDATA_WH45CO2_PM10_HEADER=${LIVEDATA_WH45CO2_PM10_HEADER:="PM10"}
-LIVEDATA_WH45CO2_PM10_24HAVG_HEADER=${LIVEDATA_WH45CO2_PM10_24HAVG_HEADER:="PM10 24h avg."}
-LIVEDATA_WH45CO2_PM25_HEADER=${LIVEDATA_WH45CO2_PM25_HEADER:="PM25"}
-LIVEDATA_WH45CO2_PM25_24HAVG_HEADER=${LIVEDATA_WH45CO2_PM25_24HAVG_HEADER:="PM25 24h avg."}
-LIVEDATA_WH45CO2_CO2_HEADER=${LIVEDATA_WH45CO2_CO2_HEADER:="CO2"}
-LIVEDATA_WH45CO2_CO2_24HAVG_HEADER=${LIVEDATA_WH45CO2_CO2_24HAVG_HEADER:="CO2 24h avg."}
-LIVEDATA_WH45CO2_BATTERY_HEADER=${LIVEDATA_WH45CO2_BATTERY_HEADER:="CO2 battery"}
+export LIVEDATA_WH45CO2_TEMPF_HEADER="${LIVEDATA_WH45CO2_TEMPF_HEADER:="Temperature"}"
+export LIVEDATA_WH45CO2_HUMI_HEADER="${LIVEDATA_WH45CO2_HUMI_HEADER:="Humidity"}"
+export LIVEDATA_WH45CO2_PM10_HEADER="${LIVEDATA_WH45CO2_PM10_HEADER:="PM10"}"
+export LIVEDATA_WH45CO2_PM10_24HAVG_HEADER="${LIVEDATA_WH45CO2_PM10_24HAVG_HEADER:="PM10 24h avg."}"
+export LIVEDATA_WH45CO2_PM25_HEADER="${LIVEDATA_WH45CO2_PM25_HEADER:="PM25"}"
+export LIVEDATA_WH45CO2_PM25_24HAVG_HEADER="${LIVEDATA_WH45CO2_PM25_24HAVG_HEADER:="PM25 24h avg."}"
+export LIVEDATA_WH45CO2_CO2_HEADER="${LIVEDATA_WH45CO2_CO2_HEADER:="CO2"}"
+export LIVEDATA_WH45CO2_CO2_24HAVG_HEADER="${LIVEDATA_WH45CO2_CO2_24HAVG_HEADER:="CO2 24h avg."}"
+export LIVEDATA_WH45CO2_BATTERY_HEADER="${LIVEDATA_WH45CO2_BATTERY_HEADER:="CO2 battery"}"
 
-LIVEDATA_WH65_BATTERY_HEADER=${LIVEDATA_WH65_BATTERY_HEADER:='WH65 Weather station'}
-LIVEDATA_WH68_BATTERY_HEADER=${LIVEDATA_WH68_BATTERY_HEADER:='WH68 Weather station'}
-LIVEDATA_WH80_BATTERY_HEADER=${LIVEDATA_WH80_BATTERY_HEADER:='WH80 Weather station'}
+export LIVEDATA_WH65_BATTERY_HEADER="${LIVEDATA_WH65_BATTERY_HEADER:="WH65 Weather station"}"
+export LIVEDATA_WH68_BATTERY_HEADER="${LIVEDATA_WH68_BATTERY_HEADER:="WH68 Weather station"}"
+export LIVEDATA_WH80_BATTERY_HEADER="${LIVEDATA_WH80_BATTERY_HEADER:="WH80 Weather station"}"
 
-LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER=${LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER:="Temperature out battery"}
-LIVEDATA_WH40_RAINFALL_BATTERY_HEADER=${LIVEDATA_WH40_RAINFALL_BATTERY_HEADER:="Rainfall battery"}
-LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER=${LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="Lightning battery"} 
+export LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER="${LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER:="Temperature out battery"}"
+export LIVEDATA_WH40_RAINFALL_BATTERY_HEADER="${LIVEDATA_WH40_RAINFALL_BATTERY_HEADER:="Rainfall battery"}"
+export LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="${LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="Lightning battery"}" 
 
 N=1
 while [ "$N" -le "$WH31_TEMP_MAXCH" ]; do 
-    eval LIVEDATA_TEMP_HEADER$N=\$\{LIVEDATA_TEMP_HEADER$N:=\"Temperature $N\"\}
-    eval LIVEDATA_TEMP_BATTERY_HEADER$N=\$\{LIVEDATA_TEMP_BATTERY_HEADER$N:=\"Temperature $N battery\"\}
-    eval LIVEDATA_HUMIDITY_HEADER$N=\$\{LIVEDATA_HUMIDITY_HEADER$N:=\"Humidity $N\"\}
+    eval export LIVEDATA_TEMP_HEADER$N=\"\$\{LIVEDATA_TEMP_HEADER$N:=\"Temperature $N\"\}\"
+    eval export LIVEDATA_TEMP_BATTERY_HEADER$N=\"\$\{LIVEDATA_TEMP_BATTERY_HEADER$N:=\"Temperature $N battery\"\}\"
+    eval export LIVEDATA_HUMIDITY_HEADER$N=\"\$\{LIVEDATA_HUMIDITY_HEADER$N:=\"Humidity $N\"\}\"
     N=$(( N + 1 ))
 done
 
 N=1
 while [ "$N" -le "$WH55_LEAK_MAXCH" ]; do 
-    eval LIVEDATA_LEAK_HEADER$N=\$\{LIVEDATA_LEAK_HEADER$N:="Leak $N"\}
-    eval LIVEDATA_LEAK_BATTERY_HEADER$N=\$\{LIVEDATA_LEAK_BATTERY_HEADER$N:="Leak $N battery"\}
+    eval export LIVEDATA_LEAK_HEADER$N=\"\$\{LIVEDATA_LEAK_HEADER$N:="Leak $N"\}\"
+    eval export LIVEDATA_LEAK_BATTERY_HEADER$N=\"\$\{LIVEDATA_LEAK_BATTERY_HEADER$N:="Leak $N battery"\}\"
     N=$(( N + 1 ))
 done
 
 
 N=1
 while [ "$N" -le "$WH43_PM25_MAXCH" ]; do 
-    eval LIVEDATA_PM25_HEADER$N=\$\{LIVEDATA_PM25_HEADER$N:="PM 2.5 $N"\}
-    eval LIVEDATA_PM25_24HAVG_HEADER$N=\$\{LIVEDATA_PM25_24HAVG_HEADER$N:="PM 2.5 24h avg. $N"\}
-    eval LIVEDATA_PM25_BATTERY_HEADER$N=\$\{LIVEDATA_PM25_BATTERY_HEADER$N:="PM 2.5 $N battery"\}
+    eval export LIVEDATA_PM25_HEADER$N=\"\$\{LIVEDATA_PM25_HEADER$N:="PM 2.5 $N"\}\"
+    eval export LIVEDATA_PM25_24HAVG_HEADER$N=\"\$\{LIVEDATA_PM25_24HAVG_HEADER$N:="PM 2.5 24h avg. $N"\}\"
+    eval export LIVEDATA_PM25_BATTERY_HEADER$N=\"\$\{LIVEDATA_PM25_BATTERY_HEADER$N:="PM 2.5 $N battery"\}\"
     N=$(( N + 1 ))
 done
 
 N=1
 while [ "$N" -le "$WH51_SOILMOISTURE_MAXCH" ]; do 
-    eval LIVEDATA_SOILMOISTURE_HEADER$N=\$\{LIVEDATA_SOILMOISTURE_HEADER$N:="Soilmoisture $N"\}
-    eval LIVEDATA_SOILMOISTURE_BATTERY_HEADER$N=\$\{LIVEDATA_SOILMOISTURE_BATTERY_HEADER$N:="Soilmoisture $N battery"\}
+    eval export LIVEDATA_SOILMOISTURE_HEADER$N=\"\$\{LIVEDATA_SOILMOISTURE_HEADER$N:="Soilmoisture $N"\}\"
+    eval export LIVEDATA_SOILMOISTURE_BATTERY_HEADER$N=\"\$\{LIVEDATA_SOILMOISTURE_BATTERY_HEADER$N:="Soilmoisture $N battery"\}\"
     N=$(( N + 1 ))
 done
 
 N=1
 while [ "$N" -le "$WH34_SOILTEMP_MAXCH" ]; do 
-    eval LIVEDATA_SOILTEMP_HEADER$N=\$\{LIVEDATA_SOILTEMP_HEADER$N:="Soiltemperature $N"\}
-    eval LIVEDATA_SOILTEMP_BATTERY_HEADER$N=\$\{LIVEDATA_SOILTEMP_BATTERY_HEADER$N:="Soiltemperatur $N battery"\}
+    eval export LIVEDATA_SOILTEMP_HEADER$N=\"\$\{LIVEDATA_SOILTEMP_HEADER$N:="Soiltemperature $N"\}\"
+    eval export LIVEDATA_SOILTEMP_BATTERY_HEADER$N=\"\$\{LIVEDATA_SOILTEMP_BATTERY_HEADER$N:="Soiltemperatur $N battery"\}\"
     N=$(( N + 1 ))
 done
 
 N=1
 while [ "$N" -le "$WH35_LEAFWETNESS_MAXCH" ]; do 
-    eval LIVEDATA_LEAFWETNESS_HEADER$N=\$\{LIVEDATA_LEAFWETNESS_HEADER$N:="Leafwetness $N"\}
-    eval LIVEDATA_LEAFWETNESS_BATTERY_HEADER$N=\$\{LIVEDATA_LEAFWETNESS_BATTERY_HEADER$N:="Leafwetness $N battery"\}
+    eval export LIVEDATA_LEAFWETNESS_HEADER$N=\"\$\{LIVEDATA_LEAFWETNESS_HEADER$N:="Leafwetness $N"\}\"
+    eval export LIVEDATA_LEAFWETNESS_BATTERY_HEADER$N=\"\$\{LIVEDATA_LEAFWETNESS_BATTERY_HEADER$N:="Leafwetness $N battery"\}\"
     N=$(( N + 1 ))
 done
 
 N=1
 while [ "$N" -le "$TF_USR_MAXCH" ]; do 
-    eval LIVEDATA_TF_USR_HEADER$N=\$\{LIVEDATA_TF_USR_HEADER$N:="Temperature USR $N"\}
-    eval LIVEDATA_TF_USR_BATTERY_HEADER$N=\$\{LIVEDATA_TF_USR_BATTERY_HEADER$N:="Temperature USR $N battery"\}
+    eval export LIVEDATA_TF_USR_HEADER$N=\"\$\{LIVEDATA_TF_USR_HEADER$N:="Temperature USR $N"\}\"
+    eval export LIVEDATA_TF_USR_BATTERY_HEADER$N=\"\$\{LIVEDATA_TF_USR_BATTERY_HEADER$N:="Temperature USR $N battery"\}\"
     N=$(( N + 1 ))
 done
 
-LIVEDATA_SYSTEM_VERSION_HEADER=${LIVEDATA_SYSTEM_VERSION_HEADER:="System version"}
-LIVEDATA_SYSTEM_UTC_HEADER=${LIVEDATA_SYSTEM_UTC_HEADER:="System utc"}
-LIVEDATA_SYSTEM_FREQUENCY_HEADER=${LIVEDATA_SYSTEM_FREQUENCY_HEADER:="System frequency"}
-LIVEDATA_SYSTEM_MODEL_HEADER=${LIVEDATA_SYSTEM_MODEL_HEADER:="System model"}
+export LIVEDATA_SYSTEM_VERSION_HEADER="${LIVEDATA_SYSTEM_VERSION_HEADER:="System version"}"
+export LIVEDATA_SYSTEM_UTC_HEADER="${LIVEDATA_SYSTEM_UTC_HEADER:="System utc"}"
+export LIVEDATA_SYSTEM_FREQUENCY_HEADER="${LIVEDATA_SYSTEM_FREQUENCY_HEADER:="System frequency"}"
+export LIVEDATA_SYSTEM_MODEL_HEADER="${LIVEDATA_SYSTEM_MODEL_HEADER:="System model"}"
 
-#ANSI esqape
-#disable with -E option
-#https://en.wikipedia.org/wiki/ANSI_escape_code
-CSI='\e[' # control sequence introducer
-#ANSIESC_SGI_NORMAL=$CSI'0m'
-SGI_NORMAL=0
-SGI_BOLD=1
-SGI_BLINK=6
-SGI_INVERSE=7
-SGI_FOREGROUND_COLOR=38
-SGI_BACKGROUND_COLOR=48
-
-SGI_FOREGC="$SGI_FOREGROUND_COLOR;5;"
-SGI_BACKGC="$SGI_BACKGROUND_COLOR;5;"
-SGI_FOREGC_24BIT="$SGI_FOREGROUND_COLOR;2;"
-SGI_BACKGC_24BIT="$SGI_BACKGROUND_COLOR;2;"
-ANSIESC_SGI_NORMAL="$CSI${SGI_NORMAL}m"
-ANSIESC_SGI_INVERT="$CSI${SGI_INVERSE}m"
-ANSIESC_SGI_BOLD_INVERT="$CSI$SGI_BOLD;${SGI_INVERSE}m"
-ANSIESC_SGI_BOLD="$CSI${SGI_BOLD}m"
-
-#Colors 8-bit
-SGI_COLOR_BLACK=0
-SGI_COLOR_RED=1
-SGI_COLOR_GREEN=2
-SGI_COLOR_YELLOW=3
-SGI_COLOR_BLUE=4
-SGI_COLOR_MAGENTA=5
-SGI_COLOR_CYAN=6
-SGI_COLOR_WHITE=7
-SGI_COLOR_GRAY=8
-SGI_COLOR_BRIGHT_RED=9
-SGI_COLOR_BRIGHT_GREEN=10
-SGI_COLOR_BRIGHT_YELLOW=11
-SGI_COLOR_BRIGHT_BLUE=12
-SGI_COLOR_BRIGHT_MAGENTA=13
-SGI_COLOR_BRIGHT_CYAN=14
-SGI_COLOR_ORANGE=208
-
-ANSIESC_SGI_BRIGHTRED_BACKGROUND=$CSI$SGI_FOREGC$SGI_COLOR_WHITE";"$SGI_BACKGC$SGI_COLOR_BRIGHT_RED";${SGI_BLINK}m"
-ANSIESC_SGI_BRIGHTRED=$CSI$SGI_FOREGC$SGI_COLOR$SGI_COLOR_BRIGHT_RED"m"
-ANSIESC_SGI_BRIGHTBLUE=$CSI$SGI_FOREGC$SGI_COLOR_BRIGHT_BLUE"m"
-ANSIESC_SGI_BRIGHTGREEN=$CSI$SGI_FOREGC$SGI_COLOR_BRIGHT_GREEN"m"
-
-STYLE_PM25_AQI_GOOD="$CSI$SGI_FOREGC$SGI_COLOR_BLACK;$SGI_BACKGC${SGI_COLOR_BRIGHT_GREEN}m"    #00e400
-STYLE_PM25_AQI_MODERATE="$CSI$SGI_FOREGC$SGI_COLOR_BLACK;$SGI_BACKGC${SGI_COLOR_BRIGHT_YELLOW}m"  #ffff00
-STYLE_PM25_AQI_UNHEALTHY_SENSITIVE="$CSI$SGI_FOREGC$SGI_COLOR_BLACK;$SGI_BACKGC${SGI_COLOR_ORANGE}m"  #ff7e00
-STYLE_PM25_AQI_UNHEALTHY="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKGC${SGI_COLOR_BRIGHT_RED}m"     #ff0000
-STYLE_PM25_AQI_VERY_UNHEALTHY="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKGC${SGI_COLOR_MAGENTA}m" #99004c
-STYLE_PM25_AQI_HAZARDOUS="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;${SGI_BACKGC}88m" #approximate #88000
-
-STYLE_UVI_LOW=$STYLE_PM25_AQI_GOOD
-STYLE_UVI_MODERATE=$STYLE_PM25_AQI_MODERATE
-STYLE_UVI_HIGH=$STYLE_PM25_AQI_UNHEALTHY_SENSITIVE
-STYLE_UVI_VERY_HIGH=$STYLE_PM25_AQI_UNHEALTHY
-STYLE_UVI_EXTERME=$STYLE_PM25_AQI_VERY_UNHEALTHY
-
-STYLE_LIMIT_LIVEDATA=${STYLE_LIMIT_LIVEDATA:=$ANSI_ESC_SGI_INVERT}
-STYLE_LIMIT_LIVEDATA_OUTTEMP=${STYLE_LIMIT_LIVEDATA_OUTTEMP:=$ANSIESC_SGI_BRIGHTBLUE}
-STYLE_LIMIT_LIVEDATA_OUTTEMP_HIGH=${STYLE_LIMIT_LIVEDATA_OUTTEMP_HIGH:=$ANSIESC_SGI_BRIGHTRED}
-STYLE_LIMIT_LIVEDATA_INTEMP_LOW=${STYLE_LIMIT_LIVEDATA_INTEMP_LOW:=$ANSIESC_SGI_BRIGHTBLUE}
-STYLE_LIMIT_LIVEDATA_INTEMP_HIGH=${STYLE_LIMIT_LIVEDATA_INTEMP_HIGH:=$ANSIESC_SGI_BRIGHTRED}
-
-STYLE_BATTERY_LOW=${STYLE_BATTERY_LOW:=$ANSIESC_SGI_BRIGHTRED}
-STYLE_SIGNAL_LOW=${STYLE_SIGNAL_LOW:=$ANSIESC_SGI_BRIGHTRED}
-STYLE_LEAK=${STYLE_LEAK:="\a"$ANSIESC_SGI_BRIGHTRED_BACKGROUND} # add alert/bell \a if leakage detected
-
-STYLE_RESET="$ANSIESC_SGI_NORMAL"
-
-STYLE_HEADER_DEFAULT="$CSI$SGI_BOLD;${SGI_INVERSE}m"
-STYLE_HEADER=${STYLE_HEADER:=$STYLE_HEADER_DEFAULT}
-
-STYLE_HUMIDITY=${STYLE_HUMIDITY:="$CSI$SGI_FOREGC${SGI_COLOR_BLUE}m"}
-STYLE_HEADER_HUMIDITY=${STYLE_HEADER_HUMIDITY:="$CSI$SGI_BOLD;$SGI_INVERSE;$SGI_FOREGC${SGI_COLOR_BLUE}m"}
-
-STYLE_HEADER_TEMP=${STYLE_HEADER_TEMP:=$STYLE_HEADER_DEFAULT}
-STYLE_TEMP=${STYLE_TEMP:="$CSI$SGI_FOREGC${SGI_COLOR_BRIGHT_MAGENTA}m"}
-
-STYLE_HEADER_RAIN=${STYLE_HEADER_RAIN="$CSI$SGI_BOLD;$SGI_INVERSE;$SGI_FOREGC${SGI_COLOR_BRIGHT_BLUE}m"}
-STYLE_RAIN=${STYLE_RAIN:="$CSI$SGI_FOREGC${SGI_COLOR_BRIGHT_BLUE}m"}
-
-STYLE_SENSOR_DISABLE=${STYLE_SENSOR_DISABLE:=$ANSIESC_SGI_BRIGHTRED}
-STYLE_SENSOR_SEARCH=${STYLE_SENSOR_SEARCH:=$ANSIESC_SGI_BRIGHTGREEN}
+. ./gw-styles.sh
 
 VALUE_PM25_AQI_DELIMITER='- '
 VALUE_LEAK_DELIMITER='- '
@@ -571,156 +489,28 @@ LIMIT_LIVEDATA_INTEMP_HIGH=${LIMIT_LIVEDATA_INTEMP_HIGH:=230}
 #is sent in http get request when data from sensors are not available, for example after reboot
 WUNDERGROUND_UNDEFINED_VALUE="-9999"
 
-#https://fsymbols.com/generators/tarty/
-
-ASCII_MAXLINE=3
-
-#shellcheck disable=SC2034
-ASCII_L10="█▀█"
-ASCII_L20="█ █"
-ASCII_L30="█▄█"
-
-ASCII_L11="▄█ "
-ASCII_L21=" █ "
-ASCII_L31="▄█▄"
-
-ASCII_L12="█▀█"
-ASCII_L22=" ▄▀" 
-ASCII_L32="█▄▄"
-
-ASCII_L13="█▀█"
-ASCII_L23=" ▀▄"
-ASCII_L33="█▄█"
-
-ASCII_L14=" █▀█"
-ASCII_L24="█▄▄█"
-ASCII_L34="   █"
-
-ASCII_L15="█▀▀"
-ASCII_L25="▀▀▄"
-ASCII_L35="▄▄▀"
-
-ASCII_L16="▄▀▀▄" 
-ASCII_L26="█▄▄ "
-ASCII_L36="▀▄▄▀"
-
-ASCII_L17="▀▀█"
-ASCII_L27=" █ "
-ASCII_L37="▐▌ "
-
-ASCII_L18="▄▀▀▄"
-ASCII_L28="▄▀▀▄"
-ASCII_L38="▀▄▄▀"
-
-ASCII_L19="▄▀▀▄"
-ASCII_L29="▀▄▄█"
-ASCII_L39=" ▄▄▀"
-
-ASCII_L1sign="  "
-ASCII_L2sign="▀▀"
-ASCII_L3sign="  "
-
-ASCII_L1punctum=" "
-ASCII_L2punctum=" "
-ASCII_L3punctum="▄"
-
-ASCII_WIND_S_L1=" ▲"
-ASCII_WIND_S_L2=" |"
-ASCII_WIND_S_L3=" |"
-
-ASCII_WIND_N_L1=" |"
-ASCII_WIND_N_L2=" |"
-ASCII_WIND_N_L3=" ▼"
-
-ASCII_WIND_W_L1=""
-ASCII_WIND_W_L2="---▶"
-ASCII_WIND_W_L3=""
-
-ASCII_WIND_E_L1=""
-ASCII_WIND_E_L2="◀---"
-ASCII_WIND_E_L3=""
-
-ASCII_WIND_SW_L1="    ◥"
-ASCII_WIND_SW_L2="  ⟋"
-ASCII_WIND_SW_L3="⟋"
-
-ASCII_WIND_NW_L1="⟍"
-ASCII_WIND_NW_L2="  ⟍"
-ASCII_WIND_NW_L3="    ◢"
-
-ASCII_WIND_NE_L1="    ⟋"
-ASCII_WIND_NE_L2="  ⟋"
-ASCII_WIND_NE_L3="◣"
-
-ASCII_WIND_SE_L1="◤"
-ASCII_WIND_SE_L2="  ⟍"
-ASCII_WIND_SE_L3="    ⟍"
-
 #list all capabilities to terminal: infocmp/infocmp -L https://en.wikipedia.org/wiki/Terminal_capabilities
 # it capability = tab size = 8 for xterm-256
 # watch -c command only supports 3-bit colors in wsl2/ubuntu, other ansi escapes codes are filtered
 
-UV_RISK_LOW=${UV_RISK_LOW:="LOW"}
-UV_RISK_MODERATE=${UV_RISK_MODERATE:="MODERATE"}
-UV_RISK_HIGH=${UV_RISK_HIGH:="HIGH"}
-UV_RISK_VERYHIGH=${UV_RISK_VERYHIGH:="VERY HIGH"}
-UV_RISK_EXTREME=${UV_RISK_EXTREME="EXTREME"}
+export          UV_RISK_LOW="${UV_RISK_LOW:="LOW      "}"
+export UV_RISK_MODERATE="${UV_RISK_MODERATE:="MODERATE "}"
+export         UV_RISK_HIGH="${UV_RISK_HIGH:="HIGH     "}"
+export UV_RISK_VERYHIGH="${UV_RISK_VERYHIGH:="VERY HIGH"}"
+export   UV_RISK_EXTREME="${UV_RISK_EXTREME:="EXTREME  "}"
 
 # https://www.airnow.gov/aqi/aqi-basics/
-PM25_AQI_GOOD=${PM25_AQI_GOOD:="GOOD"}
-PM25_AQI_MODERATE=${PM25_AQI_MODERATE:="MODERATE"}
-PM25_AQI_UNHEALTY_SENSITIVE_GROUPS=${PM25_AQI_UNHEALTY_SENSITIVE_GROUPS:="UNHEALTHY SENSITIVE GROUPS"}
-PM25_AQI_UNHEALTY=${PM25_AQI_UNHEALTY:="UNHEALTY"}
-PM25_AQI_VERY_UNHEALTY=${PM25_AQI_VERY_UNHEALTY:="VERY UNHEALTY"}
-PM25_AQI_HAZARDOUS=${PM25_AQI_HAZARDOUS:="HAZARDOUS"}
+#added space at end when doing when refreshing screen with printf \e[H, otherwise status is merged if changed
+                              PM25_AQI_GOOD=${PM25_AQI_GOOD:="GOOD         "}
+                      PM25_AQI_MODERATE=${PM25_AQI_MODERATE:="MODERATE     "}
+PM25_AQI_UNHEALTHY_SENSITIVE=${PM25_AQI_UNHEALTHY_SENSITIVE:="UNHEALTHY S."}
+                      PM25_AQI_UNHEALTY=${PM25_AQI_UNHEALTY:="UNHEALTY     "}
+            PM25_AQI_VERY_UNHEALTY=${PM25_AQI_VERY_UNHEALTY:="VERY UNHEALTY"}
+                    PM25_AQI_HAZARDOUS=${PM25_AQI_HAZARDOUS:="HAZARDOUS    "}
 
-newBIGnumber()
-#$1 number $2 name
-{
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-      #shellcheck disable=SC3044
-        typeset n digit digits line number
-    else
-        local n digit digits line number
-    fi
 
-    number=$1
-    
-    #find digits in number
-    n=1
-    while [ "${#number}" -ge 1  ]; do
-        digits=$digits"${number%%"${number#?}"} " #add front digit -> build up digit string with space "1 2 3 "
-        number=${number#?} # remove front digit
-        n=$(( n + 1 ))
-    done
-
-    #construct each line from digits
-    n=1
-    while [ "$n" -le "$ASCII_MAXLINE" ]; do
-        unset line
-        for digit in $digits; do
-             if [ "$digit" = '-' ]; then
-                digit='sign' # map to valid variable name
-             elif [ "$digit" = '.' ]; then
-                digit='punctum'
-            fi
-            #shellcheck disable=SC2154
-             eval line=\""$line\$ASCII_L$n$digit "\" # add \" to preserve space between digits
-        done
-        if [ $DEBUG -eq  1 ]; then
-           echo >&2 "$2 $line"
-        fi
-        eval "$2_L$n=\"$line\""
-        n=$(( n + 1 ))
-    done
-
-   if [ -n "$KSH_VERSION" ]; then
-     unset n digit digits line number
-   fi
-
-}
-
-setUVRisk()
+#allows export of function in dash using eval https://groups.google.com/g/comp.unix.shell/c/6SENx-9V7NU?pli=1
+export GW_SETUVRISK_FUNC='setUVRisk()
 #$1 UVI
 {
     if [ "$1" -ge 0 ] && [ "$1" -le 2 ]; then
@@ -734,51 +524,11 @@ setUVRisk()
     elif [ "$1" -ge 11 ]; then
         VALUE_UV_RISK=$UV_RISK_EXTREME
     fi
-}
+}'
 
-newBIGWinddirection()
-#$1 direction, $2 name
-{
-    if [ "$1" -le 11 ] || [ "$1" -gt 349 ]; then
-        direction=ASCII_WIND_N
-    elif [ "$1" -gt 11 ] && [ "$1" -lt 34 ]; then
-        direction=ASCII_WIND_NE
-    elif [ "$1" -ge 34 ] && [ "$1" -le 56 ]; then
-        direction=ASCII_WIND_NE
-    elif [ "$1" -gt 56 ] && [ "$1" -le 79 ]; then
-        direction=ASCII_WIND_NE
-    elif [ "$1" -gt 79 ] && [ "$1" -le 101 ]; then
-        direction=ASCII_WIND_E
-    elif [ "$1" -gt 101 ] && [ "$1" -le 124 ]; then
-         direction=ASCII_WIND_SE
-    elif [ "$1" -gt 124 ] && [ "$1" -le 146 ]; then
-        direction=ASCII_WIND_SE
-    elif [ "$1" -gt 146 ] && [ "$1" -le 169 ]; then
-        direction=ASCII_WIND_SE
-    elif [ "$1" -gt 169 ] && [ "$1" -le 191 ]; then
-        direction=ASCII_WIND_S
-    elif [ "$1" -gt 191 ] && [ "$1" -le 214 ]; then
-        direction=ASCII_WIND_SW
-    elif [ "$1" -gt 214 ] && [ "$1" -le 236 ]; then
-        direction=ASCII_WIND_SW
-    elif [ "$1" -gt 236 ] && [ "$1" -le 259 ]; then
-        direction=ASCII_WIND_SW
-    elif [ "$1" -gt 259 ] && [ "$1" -le 281 ]; then
-        direction=ASCI_WIND_W
-    elif [ "$1" -gt 281 ] && [ "$1" -le 304 ]; then
-        direction=ASCII_WIND_NW
-    elif [ "$1" -gt 304 ] && [ "$1" -le 326 ]; then
-        direction=ASCII_WIND_NW
-    elif [ "$1" -gt 326 ] && [ "$1" -le 349 ]; then
-        direction=ASCII_WIND_NW
-    fi
+eval "$GW_SETUVRISK_FUNC"
 
-   eval "${2}_L1=\$${direction}_L1"
-   eval "${2}_L2=\$${direction}_L2"
-   eval "${2}_L3=\$${direction}_L3"
-   
-}
-
+export GW_SETSTYLEUVI_FUNC='
 setStyleUVI()
 #$1 UVI
 #https://en.wikipedia.org/wiki/Ultraviolet_index
@@ -795,12 +545,9 @@ setStyleUVI()
     elif [ "$1" -ge 11 ]; then
         STYLE_UVI=$STYLE_UVI_EXTERME
     fi
-}
+}'
 
-resetANSI_ESC()
-{
-    unset ANSI_ESC
-}
+eval "$GW_SETSTYLEUVI_FUNC"
 
 setANSI_CHA_CursorHorisontalAbsolute()
 #$1 column n
@@ -2059,7 +1806,7 @@ setAQI()
     elif [ "$1" -ge 121 ] && [ "$1" -lt 355 ]; then
       VALUE_PM25_AQI=$PM25_AQI_MODERATE
     elif [ "$1" -ge 355 ] && [ "$1" -lt 555 ]; then
-      VALUE_PM25_AQI=$PM25_AQI_UNHEALTY_SENSITIVE_GROUPS
+      VALUE_PM25_AQI=$PM25_AQI_UNHEALTHY_SENSITIVE
     elif [ "$1" -ge 555 ] && [ "$1" -lt 1505 ]; then
       VALUE_PM25_AQI=$PM25_AQI_UNHEALTY
     elif [ "$1" -ge 1505 ] && [ "$1" -lt 2505 ]; then
@@ -2129,7 +1876,6 @@ printLivedata() {
     fi
 
     resetAppendBuffer
-    #resetANSI_ESC
 
     #ANSI_rightjustifyString "$LIVEDATA_SYSTEM_UTC"
     #setANSI_CUP_CursorPosition 1 1
@@ -2670,76 +2416,76 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         if [ "$ldf" -eq $LDF_INTEMP ]; then
 
             readInt16BE
-            LIVEDATA_INTEMP_RAW=$VALUE_INT16BE
+            export LIVEDATA_INTEMP_RAW=$VALUE_INT16BE
             convertTemperatureLivedata "$VALUE_INT16BE"
-            LIVEDATA_INTEMP=$VALUE_SCALE10_FLOAT 
+            export LIVEDATA_INTEMP=$VALUE_SCALE10_FLOAT 
 
         elif [ "$ldf" -eq $LDF_INHUMI ]; then
 
             readUInt8
-            LIVEDATA_INHUMI=$VALUE_UINT8
+            export LIVEDATA_INHUMI=$VALUE_UINT8
 
         elif [ "$ldf" -eq $LDF_ABSBARO ]; then
 
             readUInt16BE
             #shellcheck disable=SC2034
-            LIVEDATA_ABSBARO_RAW=$VALUE_UINT16BE #may use for ansi escape coloring beyond limits
+            export LIVEDATA_ABSBARO_RAW=$VALUE_UINT16BE #may use for ansi escape coloring beyond limits
             convertPressureLivedata "$VALUE_UINT16BE"
-            LIVEDATA_ABSBARO=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_ABSBARO=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_RELBARO ]; then
 
             readUInt16BE
-            LIVEDATA_RELBARO_RAW=$VALUE_UINT16BE
+            export LIVEDATA_RELBARO_RAW=$VALUE_UINT16BE
             convertPressureLivedata "$VALUE_UINT16BE"
-            LIVEDATA_RELBARO=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_RELBARO=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_OUTTEMP ]; then
 
             readInt16BE
-            LIVEDATA_OUTTEMP_RAW=$VALUE_INT16BE
+            export LIVEDATA_OUTTEMP_RAW=$VALUE_INT16BE
             convertTemperatureLivedata "$VALUE_INT16BE" 
-            LIVEDATA_OUTTEMP=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_OUTTEMP=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_OUTHUMI ]; then
 
             readUInt8
-            LIVEDATA_OUTHUMI=$VALUE_UINT8
+            export LIVEDATA_OUTHUMI=$VALUE_UINT8
 
         elif [ "$ldf" -eq $LDF_WINDDIRECTION ]; then
 
             readUInt16BE
-            LIVEDATA_WINDDIRECTION=$VALUE_UINT16BE
+            export LIVEDATA_WINDDIRECTION=$VALUE_UINT16BE
             convertWindDirectionToCompassDirection "$LIVEDATA_WINDDIRECTION"
-            LIVEDATA_WINDDIRECTION_COMPASS=$VALUE_COMPASS_DIRECTION
+            export LIVEDATA_WINDDIRECTION_COMPASS=$VALUE_COMPASS_DIRECTION
 
         elif [ "$ldf" -eq $LDF_WINDSPEED ]; then
 
             readUInt16BE
-            LIVEDATA_WINDSPEED_RAW=$VALUE_UINT16BE
+            export LIVEDATA_WINDSPEED_RAW=$VALUE_UINT16BE
             convertWindLivedata "$VALUE_UINT16BE"
-            LIVEDATA_WINDSPEED=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_WINDSPEED=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_WINDGUSTSPPED ]; then
 
             readUInt16BE
-            LIVEDATA_WINDGUSTSPEED_RAW=$VALUE_UINT16BE
+            export LIVEDATA_WINDGUSTSPEED_RAW=$VALUE_UINT16BE
             convertWindLivedata "$VALUE_UINT16BE"
-            LIVEDATA_WINDGUSTSPEED=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_WINDGUSTSPEED=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_DAYLWINDMAX ]; then
 
             readUInt16BE
-            LIVEDATA_WINDDAILYMAX_RAW=$VALUE_UINT16BE
+            export LIVEDATA_WINDDAILYMAX_RAW=$VALUE_UINT16BE
             convertWindLivedata "$VALUE_UINT16BE"
-            LIVEDATA_WINDDAILYMAX=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_WINDDAILYMAX=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_LIGHT ]; then
 
             readUInt32BE
-            LIVEDATA_LIGHT_RAW=$VALUE_UINT32BE
+            export LIVEDATA_LIGHT_RAW=$VALUE_UINT32BE
             convertScale10ToFloat "$VALUE_UINT32BE"
-            LIVEDATA_LIGHT=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_LIGHT=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_UV ]; then
 
@@ -2752,12 +2498,12 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             setUVMode $UNIT_UV_WATTM2
             VALUE_UINT16BE=$(( LIVEDATA_LIGHT_RAW*1075/136000 ))
             convertScale10ToFloat "$VALUE_UINT16BE"
-            LIVEDATA_UV=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_UV=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_UVI ]; then
 
             readUInt8
-            LIVEDATA_UVI=$VALUE_UINT8
+            export LIVEDATA_UVI=$VALUE_UINT8
 
         elif [ "$ldf" -eq $LDF_SOILMOISTURE1 ] || [ "$ldf" -eq $LDF_SOILMOISTURE2 ] ||
              [ "$ldf" -eq $LDF_SOILMOISTURE3 ] || [ "$ldf" -eq $LDF_SOILMOISTURE4 ] ||
@@ -2766,7 +2512,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
             readUInt8
             channel=$((((ldf - LDF_SOILMOISTURE1) / 2) + 1))
-            eval "LIVEDATA_SOILMOISTURE$channel=$VALUE_UINT8"
+            eval "export LIVEDATA_SOILMOISTURE$channel=$VALUE_UINT8"
  
         elif [ "$ldf" -eq $LDF_SOILTEMP1 ] || [ "$ldf" -eq $LDF_SOILTEMP2 ] ||
              [ "$ldf" -eq $LDF_SOILTEMP3 ] || [ "$ldf" -eq $LDF_SOILTEMP4 ] ||
@@ -2775,7 +2521,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
             readUInt8
             channel=$((((ldf - LDF_SOILTEMP1) / 2) + 1))
-            eval "LIVEDATA_SOILTEMP$channel=$VALUE_UINT8"
+            eval "export LIVEDATA_SOILTEMP$channel=$VALUE_UINT8"
 
         elif [ "$ldf" -ge $LDF_TEMP1 ] && [ "$ldf" -le $LDF_TEMP8 ]; then
 
@@ -2783,67 +2529,67 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             convertTemperatureLivedata "$VALUE_INT16BE"
 
             channel=$((ldf - LDF_TEMP1 + 1))
-            eval "LIVEDATA_TEMP$channel=$VALUE_SCALE10_FLOAT"
+            eval "export LIVEDATA_TEMP$channel=$VALUE_SCALE10_FLOAT"
 
         elif [ "$ldf" -ge $LDF_HUMI1 ] && [ "$ldf" -le $LDF_HUMI8 ]; then
 
             readUInt8
 
             channel=$((ldf - LDF_HUMI1 + 1))
-            eval "LIVEDATA_HUMI$channel=$VALUE_UINT8"
+            eval "export LIVEDATA_HUMI$channel=$VALUE_UINT8"
 
         elif [ "$ldf" -eq $LDF_RAINMONTH ]; then
 
             readUInt32BE
             convertScale10ToFloat "$VALUE_UINT32BE"
-            LIVEDATA_RAINMONTH=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_RAINMONTH=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_RAINYEAR ]; then
 
             readUInt32BE
             convertScale10ToFloat "$VALUE_UINT32BE"
-            LIVEDATA_RAINYEAR=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_RAINYEAR=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_RAINWEEK ]; then
 
             readUInt16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
-            LIVEDATA_RAINWEEK=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_RAINWEEK=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_RAINDAY ]; then
 
             readUInt16BE
-            LIVEDATA_RAINDAY_RAW=$VALUE_UINT16BE
+            export LIVEDATA_RAINDAY_RAW=$VALUE_UINT16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
-            LIVEDATA_RAINDAY=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_RAINDAY=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_RAINEVENT ]; then
 
             readUInt16BE
-            LIVEDATA_RAINEVENT_RAW=$VALUE_UINT16BE
+            export LIVEDATA_RAINEVENT_RAW=$VALUE_UINT16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
-            LIVEDATA_RAINEVENT=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_RAINEVENT=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -eq $LDF_RAINRATE ]; then
 
             readUInt16BE
-            LIVEDATA_RAINRATE_RAW=$VALUE_UINT16BE
+            export LIVEDATA_RAINRATE_RAW=$VALUE_UINT16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
-            LIVEDATA_RAINRATE=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_RAINRATE=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -ge $LDF_LEAK_CH1 ] && [ "$ldf" -le $LDF_LEAK_CH4 ]; then
 
             readUInt8
 
             channel=$((ldf - LDF_LEAK_CH1 + 1))
-            eval "LIVEDATA_LEAK$channel=$VALUE_UINT8"
+            eval "export LIVEDATA_LEAK$channel=$VALUE_UINT8"
 
         elif [ "$ldf" -eq $LDF_PM25_CH1 ]; then
 
             readUInt16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
-            LIVEDATA_PM251_RAW="$VALUE_UINT16BE"
-            LIVEDATA_PM251=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_PM251_RAW="$VALUE_UINT16BE"
+            export LIVEDATA_PM251=$VALUE_SCALE10_FLOAT
 
         elif [ "$ldf" -ge $LDF_PM25_CH2 ] && [ "$ldf" -le $LDF_PM25_CH4 ]; then
 
@@ -2851,8 +2597,8 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             convertScale10ToFloat "$VALUE_UINT16BE"
 
             channel=$((ldf - LDF_PM25_CH1 + 1))
-            eval "LIVEDATA_PM25${channel}_RAW=$VALUE_UINT16BE"
-            eval "LIVEDATA_PM25$channel=$VALUE_SCALE10_FLOAT"
+            eval "export LIVEDATA_PM25${channel}_RAW=$VALUE_UINT16BE"
+            eval "export LIVEDATA_PM25$channel=$VALUE_SCALE10_FLOAT"
 
         elif [ "$ldf" -ge $LDF_PM25_24HAVG1 ] && [ "$ldf" -le $LDF_PM25_24HAVG4 ]; then
 
@@ -2860,8 +2606,8 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             convertScale10ToFloat "$VALUE_UINT16BE"
 
             channel=$((ldf - LDF_PM25_24HAVG1 + 1))
-            eval "LIVEDATA_PM25_24HAVG${channel}_RAW=$VALUE_UINT16BE"
-            eval "LIVEDATA_PM25_24HAVG$channel=$VALUE_SCALE10_FLOAT"
+            eval "export LIVEDATA_PM25_24HAVG${channel}_RAW=$VALUE_UINT16BE"
+            eval "export LIVEDATA_PM25_24HAVG$channel=$VALUE_SCALE10_FLOAT"
 
         elif [ "$ldf" -eq $LDF_SENSOR_CO2 ]; then
 
@@ -2878,37 +2624,37 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
             readInt16BE
             convertScale10ToFloat "$VALUE_INT16BE"
-            LIVEDATA_WH45CO2_TEMPF=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_WH45CO2_TEMPF=$VALUE_SCALE10_FLOAT
 
             readUInt8
-            LIVEDATA_WH45CO2_HUMI=$VALUE_UINT8
+            export LIVEDATA_WH45CO2_HUMI=$VALUE_UINT8
 
             readUInt16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
-            LIVEDATA_WH45CO2_PM10=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_WH45CO2_PM10=$VALUE_SCALE10_FLOAT
 
             readUInt16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
-            LIVEDATA_WH45CO2_PM10_24HAVG=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_WH45CO2_PM10_24HAVG=$VALUE_SCALE10_FLOAT
 
             readUInt16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
-            LIVEDATA_WH45CO2_PM25_RAW=$VALUE_UINT16BE
-            LIVEDATA_WH45CO2_PM25=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_WH45CO2_PM25_RAW=$VALUE_UINT16BE
+            export LIVEDATA_WH45CO2_PM25=$VALUE_SCALE10_FLOAT
 
             readUInt16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
-            LIVEDATA_WH45CO2_PM25_24HAVG_RAW=$VALUE_UINT16BE
-            LIVEDATA_WH45CO2_PM25_24HAVG=$VALUE_SCALE10_FLOAT
+            export LIVEDATA_WH45CO2_PM25_24HAVG_RAW=$VALUE_UINT16BE
+            export LIVEDATA_WH45CO2_PM25_24HAVG=$VALUE_SCALE10_FLOAT
 
             readUInt16BE
-            LIVEDATA_WH45CO2_CO2=$VALUE_UINT16BE
+            export LIVEDATA_WH45CO2_CO2=$VALUE_UINT16BE
 
             readUInt16BE
-            LIVEDATA_WH45CO2_CO2_24HAVG=$VALUE_UINT16BE
+            export LIVEDATA_WH45CO2_CO2_24HAVG=$VALUE_UINT16BE
 
             readUInt8
-            LIVEDATA_WH45CO2_BATTERY=$VALUE_UINT8
+            export LIVEDATA_WH45CO2_BATTERY=$VALUE_UINT8
 
         elif [ "$ldf" -ge $LDF_TF_USR1 ] && [ "$ldf" -le $LDF_TF_USR8 ]; then
 
@@ -2916,40 +2662,40 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             convertTemperatureLivedata "$VALUE_INT16BE"
 
             channel=$((ldf - LDF_TF_USR1 + 1))
-            eval "LIVEDATA_TF_USR$channel=$VALUE_SCALE10_FLOAT"
+            eval "export LIVEDATA_TF_USR$channel=$VALUE_SCALE10_FLOAT"
 
             readUInt8
             convertScale10ToFloat "$VALUE_UINT8"
-            eval "LIVEDATA_TF_USR${channel}_BATTERY_RAW=$VALUE_UINT8"
-            eval "LIVEDATA_TF_USR${channel}_BATTERY=$VALUE_SCALE10_FLOAT"
+            eval "export LIVEDATA_TF_USR${channel}_BATTERY_RAW=$VALUE_UINT8"
+            eval "export LIVEDATA_TF_USR${channel}_BATTERY=$VALUE_SCALE10_FLOAT"
             getBatteryVoltageLevelState "$VALUE_UINT8"
-            eval "LIVEDATA_TF_USR${channel}_BATTERY_STATE=$SBATTERY_STATE"
+            eval "export LIVEDATA_TF_USR${channel}_BATTERY_STATE=$SBATTERY_STATE"
             
 
         elif [ "$ldf" -ge $LDF_LIGHTNING ]; then
 
             readUInt8
-            LIVEDATA_LIGHTNING_DISTANCE=$VALUE_UINT8 # 1-40km
+            export LIVEDATA_LIGHTNING_DISTANCE=$VALUE_UINT8 # 1-40km
 
         elif [ "$ldf" -ge $LDF_LIGHTNING_TIME ]; then
 
             readUInt32BE
-            LIVEDATA_LIGHTNING_TIME=$VALUE_UINT32BE
+            export LIVEDATA_LIGHTNING_TIME=$VALUE_UINT32BE
             getDateUTC "$LIVEDATA_LIGHTNING_TIME"
-            LIVEDATA_LIGHTNING_TIME_UTC=$VALUE_DATE_UTC
+            export LIVEDATA_LIGHTNING_TIME_UTC=$VALUE_DATE_UTC
 
 
         elif [ "$ldf" -ge $LDF_LIGHTNING_POWER ]; then
 
             readUInt32BE
-            LIVEDATA_LIGHTNING_POWER=$VALUE_UINT32BE
+            export LIVEDATA_LIGHTNING_POWER=$VALUE_UINT32BE
 
         elif [ "$ldf" -ge $LDF_LEAF_WETNESS_CH1 ] && [ "$ldf" -le $LDF_LEAF_WETNESS_CH8 ]; then
 
             readUInt8
             channel=$((ldf - LDF_LEAF_WETNESS_CH1 + 1))
 
-            eval "LIVEDATA_LEAFWETNESS${channel}=$VALUE_UINT8"
+            eval "export LIVEDATA_LEAFWETNESS${channel}=$VALUE_UINT8"
 
         else
             echo >&2 "ERROR Unable to parse livedata field $(printf "%x" $ldf)"
@@ -2964,6 +2710,9 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
     fi
 
     [ "$OPTION_SHOW_TESTSENSOR" -eq 1 ] && injectTestSensorLivedata
+
+    #[ "$DEBUG" -eq 1 ] &&
+    # export -p
 
     printOrLogLivedata
 
@@ -3257,9 +3006,9 @@ setLivedataSignal()
 {
     
     if [ "$1" -ge $SENSORTYPE_WH31TEMP ] && [ "$1" -lt $(( SENSORTYPE_WH31TEMP + WH31_TEMP_MAXCH )) ]; then
-        eval LIVEDATA_TEMP$(( $1 - SENSORTYPE_WH31TEMP + 1))_SIGNAL="$2"
+        eval export LIVEDATA_TEMP$(( $1 - SENSORTYPE_WH31TEMP + 1))_SIGNAL="$2"
         getSignalUnicode "$2"
-        eval LIVEDATA_TEMP$(( $1 - SENSORTYPE_WH31TEMP + 1))_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
+        eval export LIVEDATA_TEMP$(( $1 - SENSORTYPE_WH31TEMP + 1))_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
     fi
       
 }
@@ -4681,9 +4430,9 @@ initShell() {
 
     #shellcheck disable=SC3044
     if type typeset >/dev/null; then
-        SHELL_SUPPORT_TYPESET=1
+        export SHELL_SUPPORT_TYPESET=1 # allows function in subprocess/ui-view to access it
     else
-        SHELL_SUPPORT_TYPESET=0
+        export SHELL_SUPPORT_TYPESET=0
     fi
 
     if [ $SHELL_SUPPORT_TYPESET -eq 1 ]; then
@@ -4957,12 +4706,12 @@ setRainHttpLivedata()
 #$2 - value
 {
     convert_in_to_mm "$2"
-    eval "$1"_RAW=$VALUE_IN_MM_SCALE10
+    eval export "$1"_RAW=$VALUE_IN_MM_SCALE10
     if [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_MM ]; then
         convertScale10ToFloat "$VALUE_IN_MM_SCALE10"
-        eval "$1"=$VALUE_SCALE10_FLOAT
+        eval export "$1"=$VALUE_SCALE10_FLOAT
     elif [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_IN ]; then
-        eval "$1"="$2"
+        eval export "$1"="$2"
     fi
 }
 
@@ -4973,16 +4722,16 @@ setWindHttpLivedata()
     fi
 
     convert_mph_To_mps "$2"
-    eval "$1"_RAW=$VALUE_MPS_SCALE10
+    eval export "$1"_RAW=$VALUE_MPS_SCALE10
     if [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPS ]; then
        convertScale10ToFloat "$VALUE_MPS_SCALE10"
-       eval "$1"=$VALUE_SCALE10_FLOAT
+       eval export "$1"=$VALUE_SCALE10_FLOAT
     elif [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPH ]; then
-       eval "$1"="$2"
+       eval export "$1"="$2"
     elif [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_KMH ]; then
        convert_mph_to_kmhScale10 "$2"
        convertScale10ToFloat "$VALUE_KMH_SCALE10"
-       eval "$1"=$VALUE_SCALE10_FLOAT
+       eval export "$1"=$VALUE_SCALE10_FLOAT
     fi
 }
 
@@ -4992,9 +4741,9 @@ setWindDirHttpLivedata()
       return
     fi
  
-    eval "$1"="$2" 
+    eval export "$1"="$2" 
     convertWindDirectionToCompassDirection "$2"
-    eval "$1"_COMPASS="$VALUE_COMPASS_DIRECTION"
+    eval export "$1"_COMPASS="$VALUE_COMPASS_DIRECTION"
 
 }
 
@@ -5006,24 +4755,24 @@ setTemperatureHttpLivedata()
     fi
 
     convert_farenheit_to_celciusScale10 "$2" 
-    eval "$1"_RAW=$VALUE_CELCIUS_SCALE10
+    eval export "$1"_RAW=$VALUE_CELCIUS_SCALE10
     if [ "$UNIT_TEMPERATURE_MODE" -eq $UNIT_TEMPERATURE_CELCIUS ]; then
         convertScale10ToFloat "$VALUE_CELCIUS_SCALE10"
-        eval "$1"=$VALUE_SCALE10_FLOAT
+        eval export "$1"=$VALUE_SCALE10_FLOAT
     elif [ "$UNIT_TEMPERATURE_MODE" -eq $UNIT_TEMPERATURE_FARENHEIT ]; then
-        eval "$1"="$2"
+        eval export "$1"="$2"
     fi
 }
 
 setPressureHttpLivedata()
 {
     convert_inhg_to_hpa "$2"
-    eval "$1"_RAW="$VALUE_INHG_HPA_SCALE10"
+    eval export "$1"_RAW="$VALUE_INHG_HPA_SCALE10"
     if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
         convertScale10ToFloat "$VALUE_INHG_HPA_SCALE10"
-        eval "$1"=$VALUE_SCALE10_FLOAT
+        eval export "$1"=$VALUE_SCALE10_FLOAT
     elif [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_INHG ]; then
-        eval "$1"="$2"
+        eval export "$1"="$2"
     fi
 }
 
@@ -5033,7 +4782,7 @@ printOrLogLivedata()
        if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then
             printLivedata
        elif [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_BIG ]; then
-            printLivedataBIG
+           ./gwv-big.sh
        fi
     else
       if [ -z "$LOG_CMD_INIT" ]; then
@@ -5098,12 +4847,12 @@ parseEcowittHttpRequest()
 
             humidityin)
 
-                LIVEDATA_INHUMI=$value
+                export LIVEDATA_INHUMI=$value
                 ;;
 
             humidity)
                 
-                    LIVEDATA_OUTHUMI=$value
+                 export LIVEDATA_OUTHUMI=$value
                 ;;
 
             baromrelin)
@@ -5126,7 +4875,7 @@ parseEcowittHttpRequest()
             humidity?)
 
                 channel=${key##humidity}
-                eval LIVEDATA_HUMI"$channel"="$value"
+                eval export LIVEDATA_HUMI"$channel"="$value"
                 ;;
             
             winddir)
@@ -5192,58 +4941,58 @@ parseEcowittHttpRequest()
             soilmoisture?)
 
                 channel=${key##soilmoisture}
-                eval LIVEDATA_SOILMOISTURE"$channel"="$value"
+                eval export LIVEDATA_SOILMOISTURE"$channel"="$value"
             ;;
 
             pm25_ch?)
 
                 channel=${key##pm25_ch}
-                eval LIVEDATA_PM25"$channel"="$value"
+                eval export LIVEDATA_PM25"$channel"="$value"
                 ;;
 
             pm25_avg_24h_ch?)
 
                 channel=${key##pm25_avg_24h_ch}
-                eval LIVEDATA_PM25_24HAVG"$channel"="$value"
+                eval export LIVEDATA_PM25_24HAVG"$channel"="$value"
                 ;;
 
             leak_ch?)
 
                 channel=${key##leak_ch}
-                eval "LIVEDATA_LEAK$channel=$value"
+                eval "export LIVEDATA_LEAK$channel=$value"
                 ;;
 
             solarradiation)
             
-                   LIVEDATA_UV=$value
+                   export LIVEDATA_UV=$value
                 ;;
 
             uv)
-                    LIVEDATA_UVI=$value
+                    export LIVEDATA_UVI=$value
                 ;;
 
 
             wh65batt)
 
                 getBatteryLowOrNormal "$value"
-                LIVEDATA_WH65_BATTERY=$value
-                LIVEDATA_WH65_BATTERY_STATE=$SBATTERY_STATE
+                export LIVEDATA_WH65_BATTERY=$value
+                export LIVEDATA_WH65_BATTERY_STATE=$SBATTERY_STATE
                 ;;
 
             batt?)
 
                 channel=${key##batt}
                 getBatteryLowOrNormal "$value"
-                eval "LIVEDATA_TEMP${channel}_BATTERY=$value"
-                eval "LIVEDATA_TEMP${channel}_BATTERY_STATE=$SBATTERY_STATE"
+                eval "export LIVEDATA_TEMP${channel}_BATTERY=$value"
+                eval "export LIVEDATA_TEMP${channel}_BATTERY_STATE=$SBATTERY_STATE"
                 ;;
 
             pm25batt?)
             
                 channel=${key##pm25batt}
                 getBatteryLevelState "$value"
-                eval "LIVEDATA_PM25${channel}_BATTERY=$value"
-                eval "LIVEDATA_PM25${channel}_BATTERY_STATE=$SBATTERY_STATE"
+                eval "export LIVEDATA_PM25${channel}_BATTERY=$value"
+                eval "export LIVEDATA_PM25${channel}_BATTERY_STATE=$SBATTERY_STATE"
                 ;;
 
             soilbatt?)
@@ -5252,22 +5001,22 @@ parseEcowittHttpRequest()
                 getFloatAsIntDecmial "$value"
                 getBatteryVoltageLevelState "$FLOAT_AS_INT"
                 
-                eval "LIVEDATA_SOILMOISTURE${channel}_BATTERY_RAW=$FLOAT_AS_INT"  
-                eval "LIVEDATA_SOILMOISTURE${channel}_BATTERY=$value"
-                eval "LIVEDATA_SOILMOISTURE${channel}_BATTERY_STATE=\"$SBATTERY_STATE\""  
+                eval "export LIVEDATA_SOILMOISTURE${channel}_BATTERY_RAW=$FLOAT_AS_INT"  
+                eval "export LIVEDATA_SOILMOISTURE${channel}_BATTERY=$value"
+                eval "export LIVEDATA_SOILMOISTURE${channel}_BATTERY_STATE=\"$SBATTERY_STATE\""  
                 ;;
 
             leakbatt?)
                 
                 channel=${key##leakbatt}
                 getBatteryLevelState "$value"
-                eval "LIVEDATA_LEAK${channel}_BATTERY=$value"
-                eval "LIVEDATA_LEAK${channel}_BATTERY_STATE=\"$SBATTERY_STATE\""
+                eval "export LIVEDATA_LEAK${channel}_BATTERY=$value"
+                eval "export LIVEDATA_LEAK${channel}_BATTERY_STATE=\"$SBATTERY_STATE\""
                 ;;
 
             stationtype)
 
-                LIVEDATA_SYSTEM_VERSION=$value
+                export LIVEDATA_SYSTEM_VERSION=$value
                 ;;
 
             dateutc)
@@ -5276,7 +5025,7 @@ parseEcowittHttpRequest()
                 #shellcheck disable=SC2086
                 set -- $value
                 
-                LIVEDATA_SYSTEM_UTC="$1 $2"
+                export LIVEDATA_SYSTEM_UTC="$1 $2"
                 ;;
 
             freq)
@@ -5284,11 +5033,11 @@ parseEcowittHttpRequest()
                 IFS="M"
                 #shellcheck disable=SC2086
                 set -- $value
-                LIVEDATA_SYSTEM_FREQUENCY=$1" MHz"
+                export LIVEDATA_SYSTEM_FREQUENCY=$1" MHz"
                 ;;
 
             model)
-               LIVEDATA_SYSTEM_MODEL="$value"
+               export LIVEDATA_SYSTEM_MODEL="$value"
                ;; 
 
             *) echo >&2 "Warning: Unsupported key $key length ${#key} in ecowitt http request"
@@ -5355,7 +5104,7 @@ parseWundergroundHttpRequest()
             
             humidity)
                 if [ "$value" != $WUNDERGROUND_UNDEFINED_VALUE ]; then
-                  LIVEDATA_OUTHUMI=$value
+                  export LIVEDATA_OUTHUMI=$value
                 fi
                 ;;
 
@@ -5366,7 +5115,7 @@ parseWundergroundHttpRequest()
             
             indoorhumidity)
 
-                LIVEDATA_INHUMI=$value
+                export LIVEDATA_INHUMI=$value
                 ;;
             
             baromin)
@@ -5422,36 +5171,36 @@ parseWundergroundHttpRequest()
             solarradiation)
                 
                  if [ "$value" != $WUNDERGROUND_UNDEFINED_VALUE ]; then
-                   LIVEDATA_UV=$value
+                   export LIVEDATA_UV=$value
                 fi
                 ;;
 
             UV)
                
                  if [ "$value" != $WUNDERGROUND_UNDEFINED_VALUE ]; then
-                     LIVEDATA_UVI=$value
+                     export LIVEDATA_UVI=$value
                  fi
                 ;;
 
             AqPM2\.5)
                 #shellcheck disable=SC2034
-                LIVEDATA_PM251="$value"
+                export LIVEDATA_PM251="$value"
                 ;;
 
             soilmoisture)
                 #shellcheck disable=SC2034
-                LIVEDATA_SOILMOISTURE1="$value"
+                export LIVEDATA_SOILMOISTURE1="$value"
                 ;;
 
             soilmoisture?)
 
                 channel=${key##soilmoisture}
-                eval LIVEDATA_SOILMOISTURE"$channel"="$value"
+                eval export LIVEDATA_SOILMOISTURE"$channel"="$value"
                 ;;
 
             softwaretype)
 
-               LIVEDATA_SYSTEM_VERSION=$value
+               export LIVEDATA_SYSTEM_VERSION=$value
                ;;
 
             lowbatt|action|realtime|rtfreq)
@@ -5463,7 +5212,7 @@ parseWundergroundHttpRequest()
                #format 2021-12-16%2008:52:24
                case "$value" in
                     [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]%20[0-9][0-9]:[0-9][0-9]:[0-9][0-9])
-                        LIVEDATA_SYSTEM_UTC="${value%\%20*} ${value#*%20}"
+                        export LIVEDATA_SYSTEM_UTC="${value%\%20*} ${value#*%20}"
                         ;;
                esac
                ;;
