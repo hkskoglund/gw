@@ -1791,14 +1791,14 @@ printLivedataBatteryVoltage()
 setSGIBatteryLowNormal()
 {
     if [ "$1" -eq "$BATTERY_LOW" ]; then
-        SGI_LIVE_VALUE$STYLE_BATTERY_LOW
+        SGI_LIVE_VALUE=$STYLE_BATTERY_LOW
     fi
 }
 
 setSGIBatteryVoltage()
 {
     if [ "$1" -le "$BATTERY_VOLTAGE_LOW" ]; then
-        SGI_LIVE_VALUE$STYLE_BATTERY_LOW
+        SGI_LIVE_VALUE=$STYLE_BATTERY_LOW
     fi
 }
 
@@ -1926,7 +1926,7 @@ printLivedata() {
     if [ -n "$LIVEDATA_RELBARO" ]; then
 
         if [ "$LIVEDATA_RELBARO_RAW" -lt "$LIMIT_LIVEDATA_RELBARO_LOW" ]; then
-            SGI_LIVE_VALUE$STYLE_LIMIT_LIVEDATA
+            SGI_LIVE_VALUE=$STYLE_LIMIT_LIVEDATA
         fi
         
         if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
@@ -1952,6 +1952,7 @@ printLivedata() {
         if [ -n "$LIVEDATA_UVI" ]; then
             setUVRisk "$LIVEDATA_UVI"
             setStyleUVI "$LIVEDATA_UVI"
+            #shellcheck disable=SC2153
             SGI_LIVE_VALUE=$STYLE_UVI
             LIVEDATA_UVI_HEADER="$LIVEDATA_UVI_HEADER  $VALUE_UVI_DELIMITER$VALUE_UV_RISK"
             printLivedataLine "LIVEDATA_UVI_HEADER" "$LIVEDATA_UVI"      "%6u" "" "%4s" 'uvi' "%3u"
