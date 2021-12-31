@@ -93,6 +93,7 @@ eval "$GW_SETSTYLEUVI_FUNC"
 shortHeader()
 #$1 long header
 {
+    #shellcheck disable=SC2086
     set -- $1
     if [ "${#1}" -le 16 ]; then
        VALUE_HEADER_SHORT=$1 #just pick first word
