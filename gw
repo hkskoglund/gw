@@ -477,12 +477,18 @@ VALUE_UVI_DELIMITER='- '
 #TERM_ANSI_ESCAPE=${TERM_ANSI_ESCAPE:=1}
 
 #Limits for triggering of ansi escape highlights
-LIMIT_LIVEDATA_WIND=${LIMIT_LIVEDATA_WIND:=80}  # 8 m/s - set param if value unset/null
-LIMIT_LIVEDATA_RAINRATE=${LIMIT_LIVEDATA_RAINRATE:=5} # 0.5 mm/h - scale x10
-LIMIT_LIVEDATA_RAINHOUR=${LIMIT_LIVEDATA_RAINHOUR:=5}
-LIMIT_LIVEDATA_RAINDAY=${LIMIT_LIVEDATA_RAINDAILY:=100} # 10.0 mm
-LIMIT_LIVEDATA_RAINEVENT=${LIMIT_LIVEDATA_RAINEVENT:=200}
+
+LIVEDATA_WINDSPEED_LIMIT=${LIVEDATA_WINDSPEED_LIMIT:=80}  # 8 m/s - set param if value unset/null
+LIVEDATA_WINDGUSTSPEED_LIMIT=${LIVEDATA_WINDGUSTSPEED_LIMIT:=80}  # 8 m/s - set param if value unset/null
+LIVEDATA_WINDDAILYMAX_LIMIT=${LIVEDATA_WINDDAILYMAX_LIMIT:=80}  # 8 m/s - set param if value unset/null
+
+LIVEDATA_RAINRATE_LIMIT=${LIVEDATA_RAINRATE_LIMIT:=5} # 0.5 mm/h - scale x10
+LIVEDATA_RAINHOUR_LIMIT=${LIVEDATA_RAINHOUR_LIMIT:=5}
+LIVEDATA_RAINDAY_LIMIT=${LIMIT_LIVEDATA_RAINDAILY:=100} # 10.0 mm
+LIVEDATA_RAINEVENT_LIMIT=${LIVEDATA_RAINEVENT_LIMIT:=200}
+
 LIMIT_LIVEDATA_RELBARO_LOW=${LIMIT_LIVEDATA_BAROREL_LOW:=9900} # 990 hpa - scale x10
+
 LIMIT_LIVEDATA_OUTTEMP_LOW=${LIMIT_LIVEDATA_OUTTEMP_LOW:=-10} # -1.0 - scale x10
 LIMIT_LIVEDATA_OUTTEMP_HIGH=${LIMIT_LIVEDATA_OUTTEMP_HIGH:=170} # 17.0 - scale x10
 LIMIT_LIVEDATA_INTEMP_LOW=${LIMIT_LIVEDATA_INTEMP_LOW:=200} 
@@ -1747,7 +1753,11 @@ setSGILivedataLtGt()
 setSGILivedataGt()
 {
     if [ "$1" -gt "$2" ]; then
-        SGI_LIVE_VALUE=$STYLE_LIMIT_LIVEDATA
+        if [ -z "$3" ]; then
+            SGI_LIVE_VALUE=$STYLE_LIMIT_LIVEDATA
+        else
+            SGI_LIVE_VALUE=$3
+        fi
     fi
 }
 
@@ -1840,7 +1850,7 @@ setStyleAQI()
 
 printLivedataRainLine()
 {
-    #echo "printLivedataRainLine 1: $1 2: $2 3: $3 4: $4 5: $5 6: $6"
+    #echo "printLivedataRainLine $*"
 
     if [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_MM ]; then
       value_fmt="%6.1f"
@@ -1851,9 +1861,9 @@ printLivedataRainLine()
     [ "$DEBUG" -eq 1 ] && echo >&2 printLivedataRainLine raw value : "$1" limit: "$2"
 
     if [ "$1" -gt "$2" ] && [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+        setSGILivedataGt "$1" "$2" "$8"
         printLivedataLine "$3" "$4" "$value_fmt" "$5" "%5s" "$6" "%6.1f" "$1" "$7"
     else
-        setSGILivedataGt "$1" "$2"
         printLivedataLine "$3" "$4" "$value_fmt"  "$5" "%5s" "$6" "%6.1f"
     fi
 }
@@ -1863,9 +1873,9 @@ printLivedataWindLine()
     #echo "printLivedataWindLine 1: $1 2: $2 3: $3 4: $4 5: $5 6: $6"
 
     if [ "$1" -ge "$2" ] && [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-        printLivedataLine "$3" "$4" "%6.1f"  "$5" "%4s"  "$6" "%6.1f" "$1" "$UNICODE_WIND"
+        setSGILivedataGt "$1" "$2" "$7"
+        printLivedataLine "$3" "$4" "%6.1f"  "$5" "%4s"  "$6" "%6.1f" "$1" 
     else
-        setSGILivedataGt "$1" "$2" 
         printLivedataLine "$3" "$4" "%6.1f"  "$5" "%4s"  "$6" "%6.1f"
     fi
 }
@@ -1939,9 +1949,9 @@ printLivedata() {
     fi
 
     if [ -z "$HIDE_WIND_LIVEDATA" ]; then
-        [ -n "$LIVEDATA_WINDSPEED" ]     && printLivedataWindLine   "$LIVEDATA_WINDSPEED_RAW"       "$LIMIT_LIVEDATA_WIND" "LIVEDATA_WINDSPEED_HEADER"      "$LIVEDATA_WINDSPEED" "$UNIT_WIND" 'wspd' 
-        [ -n "$LIVEDATA_WINDGUSTSPEED" ] && printLivedataWindLine   "$LIVEDATA_WINDGUSTSPEED_RAW"   "$LIMIT_LIVEDATA_WIND" "LIVEDATA_WINDGUSTSPEED_HEADER"  "$LIVEDATA_WINDGUSTSPEED" "$UNIT_WIND" 'wgspd'
-        [ -n "$LIVEDATA_WINDDAILYMAX" ]  && printLivedataWindLine   "$LIVEDATA_WINDDAILYMAX_RAW"    "$LIMIT_LIVEDATA_WIND" "LIVEDATA_WINDDAILYMAX_HEADER"   "$LIVEDATA_WINDDAILYMAX"  "$UNIT_WIND"  'wdmax'
+        [ -n "$LIVEDATA_WINDSPEED" ]     && printLivedataWindLine   "$LIVEDATA_WINDSPEED_RAW"       "$LIVEDATA_WINDSPEED_LIMIT" "LIVEDATA_WINDSPEED_HEADER"      "$LIVEDATA_WINDSPEED" "$UNIT_WIND" 'wspd' "$STYLE_LIMIT_LIVEDATA_WINDSPEED"
+        [ -n "$LIVEDATA_WINDGUSTSPEED" ] && printLivedataWindLine   "$LIVEDATA_WINDGUSTSPEED_RAW"   "$LIVEDATA_WINDGUSTSPEED_LIMIT" "LIVEDATA_WINDGUSTSPEED_HEADER"  "$LIVEDATA_WINDGUSTSPEED" "$UNIT_WIND" 'wgspd' "$STYLE_LIMIT_LIVEDATA_WINDGUSTSPEED"
+        [ -n "$LIVEDATA_WINDDAILYMAX" ]  && printLivedataWindLine   "$LIVEDATA_WINDDAILYMAX_RAW"    "$LIVEDATA_WINDDAILYMAX_LIMIT" "LIVEDATA_WINDDAILYMAX_HEADER"   "$LIVEDATA_WINDDAILYMAX"  "$UNIT_WIND"  'wdmax' "$STYLE_LIMIT_LIVEDATA_WINDDAILYMAX"
         [ -n "$LIVEDATA_WINDDIRECTION" ]            && printLivedataLine "LIVEDATA_WINDDIRECTION_HEADER"           "$LIVEDATA_WINDDIRECTION"          "%6u" "$UNIT_DEGREE" "%5s" 'wdeg' "%4u" "$LIVEDATA_WINDDIRECTION" "$UNICODE_WIND"
         [ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]    && printLivedataLine "LIVEDATA_WINDDIRECTION_COMPASS_HEADER"   "$LIVEDATA_WINDDIRECTION_COMPASS"  "%6s" "" "%5s" 'wdir' "%4s"
     fi
@@ -1960,11 +1970,11 @@ printLivedata() {
     fi
 
     if [ -z "$HIDE_RAIN_LIVEDATA" ]; then
-        [ -n "$LIVEDATA_RAINRATE" ]     && printLivedataRainLine "$LIVEDATA_RAINRATE_RAW"   "$LIMIT_LIVEDATA_RAINRATE"      "LIVEDATA_RAINRATE_HEADER"  "$LIVEDATA_RAINRATE"   "$UNIT_RAINRATE" 'rrate' $UNICODE_RAINRATE
+        [ -n "$LIVEDATA_RAINRATE" ]     && printLivedataRainLine "$LIVEDATA_RAINRATE_RAW"   "$LIVEDATA_RAINRATE_LIMIT"      "LIVEDATA_RAINRATE_HEADER"  "$LIVEDATA_RAINRATE"   "$UNIT_RAINRATE" 'rrate' "$UNICODE_RAINRATE" "$STYLE_LIMIT_LIVEDATA_RAINRATE"
         # rainhour available in Ecowitt http request
-        [ -n "$LIVEDATA_RAINHOUR" ]     && printLivedataRainLine "$LIVEDATA_RAINHOUR_RAW"   "$LIMIT_LIVEDATA_RAINHOUR"      "LIVEDATA_RAINHOUR_HEADER"  "$LIVEDATA_RAINHOUR" "$UNIT_RAIN" 'rhour' $UNICODE_RAINHOUR
-        [ -n "$LIVEDATA_RAINDAY" ]      && printLivedataRainLine "$LIVEDATA_RAINDAY_RAW"    "$LIMIT_LIVEDATA_RAINDAY"       "LIVEDATA_RAINDAY_HEADER"   "$LIVEDATA_RAINDAY"  "$UNIT_RAIN" 'rday' $UNICODE_RAINDAY
-        [ -n "$LIVEDATA_RAINEVENT" ]    && printLivedataRainLine "$LIVEDATA_RAINEVENT_RAW"  "$LIMIT_LIVEDATA_RAINEVENT"     "LIVEDATA_RAINEVENT_HEADER" "$LIVEDATA_RAINEVENT" "$UNIT_RAIN" 'revent' $UNICODE_RAINEVENT
+        [ -n "$LIVEDATA_RAINHOUR" ]     && printLivedataRainLine "$LIVEDATA_RAINHOUR_RAW"   "$LIVEDATA_RAINHOUR_LIMIT"      "LIVEDATA_RAINHOUR_HEADER"  "$LIVEDATA_RAINHOUR" "$UNIT_RAIN" 'rhour' "" "$STYLE_LIMIT_LIVEDATA_RAINHOUR"
+        [ -n "$LIVEDATA_RAINDAY" ]      && printLivedataRainLine "$LIVEDATA_RAINDAY_RAW"    "$LIVEDATA_RAINDAY_LIMIT"       "LIVEDATA_RAINDAY_HEADER"   "$LIVEDATA_RAINDAY"  "$UNIT_RAIN" 'rday' "" "$STYLE_LIMIT_LIVEDATA_RAINDAY"
+        [ -n "$LIVEDATA_RAINEVENT" ]    && printLivedataRainLine "$LIVEDATA_RAINEVENT_RAW"  "$LIVEDATA_RAINEVENT_LIMIT"     "LIVEDATA_RAINEVENT_HEADER" "$LIVEDATA_RAINEVENT" "$UNIT_RAIN" 'revent' "" "$STYLE_LIMIT_LIVEDATA_RAINEVENT"
 
         [ -n "$LIVEDATA_RAINWEEK" ]     && printLivedataLine "LIVEDATA_RAINWEEK_HEADER" "$LIVEDATA_RAINWEEK"    "%6.1f" "$UNIT_RAIN" "%3s" 'rweek'
         [ -n "$LIVEDATA_RAINMONTH" ]    && printLivedataLine "LIVEDATA_RAINMONTH_HEADER" "$LIVEDATA_RAINMONTH"  "%6.1f" "$UNIT_RAIN" "%3s" 'rmonth' "%6.1f"
