@@ -4350,9 +4350,9 @@ initShell() {
 
     if [ $SHELL_SUPPORT_TYPESET -eq 1 ]; then
     #shellcheck disable=SC3044
-       typeset od_unicode
+       typeset type_res
     else
-       local od_unicode
+       local type_res
     fi
 
     if [ -n "$ZSH_VERSION" ]; then
@@ -4360,7 +4360,14 @@ initShell() {
        setopt shwordsplit  #zsh compability for "1 2 3" -> split in 1 2 3
     fi
 
-    case "$(type printf)" in 
+    if [ -n "$BASH_VERSION" ]; then
+        #shellcheck disable=SC3045
+        type_res=$(type -t printf) # otherwise language translation
+    else
+        type_res=$(type printf)
+    fi
+
+    case "$type_res" in 
         
         *builtin) #mksh does not have printf bulitin -> printf calls clone a new process -> reduced performance -> prefer echo over printf unless formatting is absolutely required
             
@@ -4420,6 +4427,9 @@ initShell() {
         esac
     fi
 
+    if [ -n "$KSH_VERSION" ]; then
+        unset type_res
+    fi
    
 }
 
