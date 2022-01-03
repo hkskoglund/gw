@@ -41,6 +41,8 @@ OPTION_SHOW_TESTSENSOR=0
 
 MAX_16BIT_UINT=$(((2 << 16) - 1))
 
+GW_STYLE=${GW_STYLE:=./style/ansiesc.sh}
+
 #https://unicode-table.com/en/emoji/travel-and-places/sky-and-weather/
 UNICODE_RAINRATE=${UNICODE_RAINRATE:=💧}
 UNICODE_RAINEVENT=${UNICODE_RAINEVENT:=⛆}
@@ -467,7 +469,7 @@ export LIVEDATA_SYSTEM_FREQUENCY_HEADER="${LIVEDATA_SYSTEM_FREQUENCY_HEADER:="Sy
 export LIVEDATA_SYSTEM_MODEL_HEADER="${LIVEDATA_SYSTEM_MODEL_HEADER:="System model"}"
 
 # shellcheck source=./gw-styles.sh
-. ./gw-styles.sh
+. "$GW_STYLE"
 
 VALUE_PM25_AQI_DELIMITER='- '
 #shellcheck disable=SC2034

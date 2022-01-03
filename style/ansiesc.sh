@@ -2,7 +2,8 @@
 #ANSI escape
 #disable with -E option
 #https://en.wikipedia.org/wiki/ANSI_escape_code
-CSI='\e[' # control sequence introducer
+#CSI='\e[' # control sequence introducer
+CSI='\033[' # \e not supported in some versions of dash
 SGI_NORMAL=0
 SGI_BOLD=1
 SGI_BLINK=6
