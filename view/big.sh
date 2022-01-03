@@ -54,6 +54,10 @@ ASCII_L1punctum=" "
 ASCII_L2punctum=" "
 ASCII_L3punctum="▄"
 
+ASCII_L1comma="  "
+ASCII_L2comma="  "
+ASCII_L3comma="，"
+
 ASCII_WIND_S_L1=" ▲"
 ASCII_WIND_S_L2=" |"
 ASCII_WIND_S_L3=" |"
@@ -131,6 +135,8 @@ newBIGnumber()
                 digit='sign' # map to valid variable name
              elif [ "$digit" = '.' ]; then
                 digit='punctum'
+            elif [ "$digit" = "," ]; then
+               digit='comma'
             fi
             #shellcheck disable=SC2154
              eval line=\""$line\$ASCII_L$n$digit "\" # add \" to preserve space between digits

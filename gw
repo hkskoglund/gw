@@ -41,7 +41,8 @@ OPTION_SHOW_TESTSENSOR=0
 
 MAX_16BIT_UINT=$(((2 << 16) - 1))
 
-GW_STYLE=${GW_STYLE:=./style/ansiesc.sh}
+GW_STYLE_FILE=${GW_STYLE_FILE:=./style/ansiesc.sh}
+GW_VIEW_BIG_FILE=${GW_VIEW_BIG_FILE=./view/big.sh}
 
 #https://unicode-table.com/en/emoji/travel-and-places/sky-and-weather/
 UNICODE_RAINRATE=${UNICODE_RAINRATE:=💧}
@@ -469,7 +470,7 @@ export LIVEDATA_SYSTEM_FREQUENCY_HEADER="${LIVEDATA_SYSTEM_FREQUENCY_HEADER:="Sy
 export LIVEDATA_SYSTEM_MODEL_HEADER="${LIVEDATA_SYSTEM_MODEL_HEADER:="System model"}"
 
 # shellcheck source=./gw-styles.sh
-. "$GW_STYLE"
+. "$GW_STYLE_FILE"
 
 VALUE_PM25_AQI_DELIMITER='- '
 #shellcheck disable=SC2034
@@ -4712,7 +4713,7 @@ printOrLogLivedata()
        if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then
             printLivedata
        elif [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_BIG ]; then
-           ./gwv-big.sh
+           "$GW_VIEW_BIG_FILE" # must have execute permission chmod +x
        fi
     else
       if [ -z "$LOG_CMD_INIT" ]; then
