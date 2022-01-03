@@ -469,7 +469,7 @@ export LIVEDATA_SYSTEM_UTC_HEADER="${LIVEDATA_SYSTEM_UTC_HEADER:="System utc"}"
 export LIVEDATA_SYSTEM_FREQUENCY_HEADER="${LIVEDATA_SYSTEM_FREQUENCY_HEADER:="System frequency"}"
 export LIVEDATA_SYSTEM_MODEL_HEADER="${LIVEDATA_SYSTEM_MODEL_HEADER:="System model"}"
 
-# shellcheck source=./gw-styles.sh
+# shellcheck source=./style/ansiesc.sh
 . "$GW_STYLE_FILE"
 
 VALUE_PM25_AQI_DELIMITER='- '
@@ -1897,6 +1897,11 @@ printLivedata() {
     #ANSI_rightjustifyString "$LIVEDATA_SYSTEM_UTC"
     #setANSI_CUP_CursorPosition 1 1
     top_line="$LIVEDATA_SYSTEM_VERSION $LIVEDATA_SYSTEM_FREQUENCY"
+
+    if [ -n "$LIVEDATA_SENSOR_COUNT_CONNECTED" ]; then
+       top_line=$top_line" $LIVEDATA_SENSOR_COUNT_CONNECTED/$LIVEDATA_SENSOR_COUNT_SEARCHING/$LIVEDATA_SENSOR_COUNT_DISABLED"
+    fi
+
     top_line_spacepadding=$(( TERM_COLUMNS - ${#top_line} - ${#LIVEDATA_SYSTEM_UTC} ))
     n=1
     while [ "$n" -le $top_line_spacepadding ]; do
@@ -2947,6 +2952,10 @@ parseSensorIdNew()
 
     [ "$DEBUG" -eq  1 ] && >&2 echo "parseSensorIdNew SPATTERNID $SPATTERNID length od buffer ${#OD_BUFFER}"
     
+     LIVEDATA_SENSOR_COUNTSEARCHING=0
+     LIVEDATA_SENSOR_COUNTCONNECTED=0
+     LIVEDATA_SENSOR_COUNTDISABLED=0
+
     while [ ${#OD_BUFFER} -ge 7 ]; do
        
         readUInt8            #type
@@ -2961,11 +2970,16 @@ parseSensorIdNew()
         readUInt8
         signal=$VALUE_UINT8
 
-        if [ $SID -ne $SENSORID_SEARCH ] && [ $SID -ne $SENSORID_DISABLE ]; then
+        sensor_connected=0
+
+        if [ $SID -eq $SENSORID_SEARCH ]; then
+            LIVEDATA_SENSOR_COUNT_SEARCHING=$(( LIVEDATA_SENSOR_COUNT_SEARCHING + 1 ))
+        elif [ $SID -eq $SENSORID_DISABLE ]; then
+            LIVEDATA_SENSOR_COUNT_DISABLED=$(( LIVEDATA_SENSOR_COUNT_DISABLED + 1 ))
+        else  
+            LIVEDATA_SENSOR_COUNT_CONNECTED=$(( LIVEDATA_SENSOR_COUNT_CONNECTED + 1 ))
             sensor_connected=1
             setLivedataSignal "$stype" "$signal"
-        else
-            sensor_connected=0
         fi
 
         #pattern matching
@@ -2983,7 +2997,7 @@ parseSensorIdNew()
     printAppendBuffer
 
     if [ -n "$KSH_VERSION" ]; then
-      unset stype signal battery sensor_connected
+        unset stype signal battery sensor_connected
     fi
 }
 
@@ -4878,13 +4892,16 @@ parseEcowittHttpRequest()
             pm25_ch?)
 
                 channel=${key##pm25_ch}
-                eval export LIVEDATA_PM25"$channel"="$value"
+                eval export "LIVEDATA_PM25$channel=$value"
+                eval export "LIVEDATA_PM25${channel}_RAW=${value%%.?}${value##*.}"
                 ;;
 
             pm25_avg_24h_ch?)
 
                 channel=${key##pm25_avg_24h_ch}
-                eval export LIVEDATA_PM25_24HAVG"$channel"="$value"
+                eval export "LIVEDATA_PM25_24HAVG$channel=$value"
+                eval export "LIVEDATA_PM25_24HAVG${channel}_RAW=${value%%.?}${value##*.}"
+
                 ;;
 
             leak_ch?)
@@ -5116,6 +5133,7 @@ parseWundergroundHttpRequest()
             AqPM2\.5)
                 #shellcheck disable=SC2034
                 export LIVEDATA_PM251="$value"
+                export LIVEDATA_PM251_RAW="${value%%.?}${value##*.}"
                 ;;
 
             soilmoisture)
