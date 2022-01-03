@@ -3776,11 +3776,11 @@ convertScale10ToFloat() {
     fi
 
     if [ "$number" -lt 10 ]; then
-        VALUE_SCALE10_FLOAT=$sign"0."$number
+        VALUE_SCALE10_FLOAT=$sign"0$SHELL_DECIMAL_POINT"$number
     else
         int=$((number / 10))
         frac=$((number - int * 10))
-        VALUE_SCALE10_FLOAT=$sign$int.$frac
+        VALUE_SCALE10_FLOAT=$sign$int$SHELL_DECIMAL_POINT$frac
     fi
 
    if [ -n "$KSH_VERSION" ]; then
@@ -4427,6 +4427,11 @@ initShell() {
         esac
     fi
 
+    
+   if ! SHELL_DECIMAL_POINT=$(locale decimal_point); then
+      SHELL_DECIMAL_POINT="."
+   fi
+    
     if [ -n "$KSH_VERSION" ]; then
         unset type_res
     fi
