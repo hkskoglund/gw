@@ -57,10 +57,11 @@ UNICODE_PLUG=${UNICODE_PLUG:=🔌}
 UNICODE_WIND=${UNICODE_WIND:=💨} #https://emojipedia.org/dashing-away/
 
 #https://www.compart.com/en/unicode/block/U+2580
-UNICODE_SIGNAL_LEVEL1=${UNICODE_SIGNAL_LEVEL1:=▁}
-UNICODE_SIGNAL_LEVEL2=${UNICODE_SIGNAL_LEVEL2:=▁▂}
-UNICODE_SIGNAL_LEVEL3=${UNICODE_SIGNAL_LEVEL3:=▁▂▃}
-UNICODE_SIGNAL_LEVEL4=${UNICODE_SIGNAL_LEVEL4:=▁▂▃▄}
+UNICODE_SIGNAL_LEVEL1=${UNICODE_SIGNAL_LEVEL1:=📶1}
+UNICODE_SIGNAL_LEVEL2=${UNICODE_SIGNAL_LEVEL2:=📶2}
+UNICODE_SIGNAL_LEVEL3=${UNICODE_SIGNAL_LEVEL3:=📶3}
+#UNICODE_SIGNAL_LEVEL4=${UNICODE_SIGNAL_LEVEL4:=▁▂▃▄}
+UNICODE_SIGNAL_LEVEL4=${UNICODE_SIGNAL_LEVEL4:=📶}
 
 #https://www.compart.com/en/unicode/block/U+2190
 UNICODE_WIND_DIRECTION_S=${UNICODE_WIND_DIRECTION_S:=↑}
@@ -154,6 +155,10 @@ PORT_CLIENT_UDP=59387
 LOG_INTERVAL=${LOG_INTERVAL:=60} # default 60 seconds
 
 SPATTERNID_CONNECTED=connected
+
+LIVEDATA_PROTOCOL_ECOWITT_BINARY="eb"
+LIVEDATA_PROTOCOL_ECOWITT_HTTP="e"
+LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP="wu"
 
 CMD_READ_VERSION=$((0x50)) #zsh - wont compare int with hex 16#50 in [ ] expression unless converted to decimal, works in [[ ]] expression
 CMD_REBOOT=$((0x40))
@@ -1353,14 +1358,15 @@ parseSystem() {
 
     C_SYSTEM_FREQUENCY=$VALUE_UINT8
     if [ "$C_SYSTEM_FREQUENCY" -eq $SYSTEM_FREQUENCY_RFM433M ]; then
-        C_SYSTEM_FREQUENCY_STATE="433 MHz"
+        C_SYSTEM_FREQUENCY_STATE="433"
     elif [ "$C_SYSTEM_FREQUENCY" -eq $SYSTEM_FREQUENCY_RFM868M ]; then
-        C_SYSTEM_FREQUENCY_STATE="868 MHz"
+        C_SYSTEM_FREQUENCY_STATE="868"
     elif [ "$C_SYSTEM_FREQUENCY" -eq $SYSTEM_FREQUENCY_RFM915M ]; then
-        C_SYSTEM_FREQUENCY_STATE="915 MHz"
+        C_SYSTEM_FREQUENCY_STATE="915"
     elif [ "$C_SYSTEM_FREQUENCY" -eq $SYSTEM_FREQUENCY_RFM920M ]; then
-        C_SYSTEM_FREQUENCY_STATE="920 MHz"
+        C_SYSTEM_FREQUENCY_STATE="920"
     fi
+
     LIVEDATA_SYSTEM_FREQUENCY=$C_SYSTEM_FREQUENCY_STATE
 
     readUInt8
@@ -1887,30 +1893,59 @@ printLivedata() {
     
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        typeset n top_line top_line_spacepadding
+        typeset n  style_protocol weatherStation
     else
-        local n top_line top_line_spacepadding
+        local n style_protocol weatherStation
     fi
 
     resetAppendBuffer
 
-    #ANSI_rightjustifyString "$LIVEDATA_SYSTEM_UTC"
-    #setANSI_CUP_CursorPosition 1 1
-    top_line="$LIVEDATA_SYSTEM_VERSION $LIVEDATA_SYSTEM_FREQUENCY"
+    case "$LIVEDATA_PROTOCOL" in
 
+      "$LIVEDATA_PROTOCOL_ECOWITT_HTTP"|"$LIVEDATA_PROTOCOL_ECOWITT_BINARY")
+            style_protocol=$STYLE_PROTOCOL_ECOWITT_HTTP
+            ;;
+      "$LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP")
+            style_protocol=$STYLE_PROTOCOL_WUNDERGROUND_HTTP
+            ;;
+    esac
+
+    APPEND_FORMAT="%s %s $style_protocol%s$STYLE_RESET"
+    APPEND_ARGS="'$LIVEDATA_SYSTEM_VERSION' '$LIVEDATA_SYSTEM_FREQUENCY' '$LIVEDATA_PROTOCOL' "
+    
     if [ -n "$LIVEDATA_SENSOR_COUNT_CONNECTED" ]; then
-       top_line=$top_line" $LIVEDATA_SENSOR_COUNT_CONNECTED/$LIVEDATA_SENSOR_COUNT_SEARCHING/$LIVEDATA_SENSOR_COUNT_DISABLED"
+       APPEND_FORMAT="$APPEND_FORMAT %s/$STYLE_SENSOR_SEARCH%s$STYLE_RESET/$STYLE_SENSOR_DISABLE%s$STYLE_RESET"
+       APPEND_ARGS="$APPEND_ARGS '$LIVEDATA_SENSOR_COUNT_CONNECTED' '$LIVEDATA_SENSOR_COUNT_SEARCHING' '$LIVEDATA_SENSOR_COUNT_DISABLED'"
     fi
 
-    top_line_spacepadding=$(( TERM_COLUMNS - ${#top_line} - ${#LIVEDATA_SYSTEM_UTC} ))
-    n=1
-    while [ "$n" -le $top_line_spacepadding ]; do
-      top_line="$top_line "
-      n=$(( n + 1 ))
-    done
-    top_line="$top_line$LIVEDATA_SYSTEM_UTC"
-    APPEND_FORMAT="%${TERM_COLUMNS}s\n"
-    APPEND_ARGS="'$top_line' "
+
+    if [ -n "$LIVEDATA_WH65_BATTERY_STATE" ]; then
+            if [ -z "$C_SENSORTYPE_STATE" ]; then  # http request
+             weatherStation="WH65"
+            else
+              weatherStation=$C_SENSORTYPE_STATE #livedata/system configuration
+            fi
+
+        APPEND_FORMAT="$APPEND_FORMAT $weatherStation %s" # either WH24 or WH65
+        APPEND_ARGS="$APPEND_ARGS '$LIVEDATA_WH65_BATTERY_STATE' "
+    fi
+
+    if [ -n "$LIVEDATA_WH65_SIGNAL_STATE" ]; then
+        APPEND_FORMAT="$APPEND_FORMAT%s "
+        APPEND_ARGS="$APPEND_ARGS '$LIVEDATA_WH65_SIGNAL_STATE' "
+    fi
+
+    if [ -n "$LIVEDATA_WH68_BATTERY_STATE" ]; then
+        APPEND_FORMAT="$APPEND_FORMAT %s "
+        APPEND_ARGS="$APPEND_ARGS '$LIVEDATA_WH68_BATTERY_STATE' "
+    fi
+
+    APPEND_FORMAT="$APPEND_FORMAT %s\n"
+    APPEND_ARGS="$APPEND_ARGS '$LIVEDATA_SYSTEM_UTC' "
+
+     #for debugging:
+   #printAppendBuffer
+   #return
 
     if [ -n "$LIVEDATA_INTEMP" ]; then
         
@@ -1918,10 +1953,7 @@ printLivedata() {
         printLivedataLine 'LIVEDATA_INTEMP_HEADER'  "$LIVEDATA_INTEMP" "%6.1f" "$UNIT_TEMP" "%s" 'in' "%s" 
     fi
    
-   #for debugging:
-  # printAppendBuffer
-  # return
-
+  
     if [ -n "$LIVEDATA_OUTTEMP" ]; then
 
         setSGILivedataLtGt "$LIVEDATA_OUTTEMP_RAW" "$LIMIT_LIVEDATA_OUTTEMP_LOW" "$LIMIT_LIVEDATA_OUTTEMP_HIGH" "$STYLE_LIMIT_LIVEDATA_OUTTEMP" "$STYLE_LIMIT_LIVEDATA_OUTTEMP_HIGH"
@@ -2154,7 +2186,7 @@ printLivedata() {
 
     if [ -z "$HIDE_BATTERY_LIVEDATA" ]; then
 
-        printLivedataBatteryLowNormal "$LIVEDATA_WH65_BATTERY" "$LIVEDATA_WH65_BATTERY_STATE" "LIVEDATA_WH65_BATTERY_HEADER" 'bwh65'
+       # printLivedataBatteryLowNormal "$LIVEDATA_WH65_BATTERY" "$LIVEDATA_WH65_BATTERY_STATE" "LIVEDATA_WH65_BATTERY_HEADER" 'bwh65'
         printLivedataBatteryVoltage   "$LIVEDATA_WH68_BATTERY" "$LIVEDATA_WH68_BATTERY_STATE" "LIVEDATA_WH68_BATTERY_HEADER" 'bwh68'
         printLivedataBatteryVoltage   "$LIVEDATA_WH80_BATTERY" "$LIVEDATA_WH80_BATTERY_STATE" "LIVEDATA_WH68_BATTERY_HEADER"  'bwh80'
         printLivedataBatteryLowNormal "$LIVEDATA_WH32_TEMPERATURE_BATTERY" "$LIVEDATA_WH32_TEMPERATURE_BATTERY_STATE" "LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER" 'btout' 
@@ -2178,7 +2210,7 @@ printLivedata() {
     #https://www.unix.com/shell-programming-and-scripting/137435-ksh-different-syntax-function.html
     #man ksh93: ksh93 uses static scoping (one global scope, one local scope per function) and allows local variables only on Korn style functions
     if [ -n "$KSH_VERSION" ]; then
-         unset n top_line top_line_spacepadding
+         unset n style_protocol weatherStation
     fi
 }
 
@@ -2317,6 +2349,7 @@ getDateUTC()
     VALUE_DATE_UTC=$(date -u -d @"$1" +'%F %T') #add field
 }
 
+
 parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 5d 0a 01 59 0b 00 00 0c 00 00 15 00 00 93 bc 16 00 20 17 00 2c 12 1a 00 87 22 32 1b 00 b0 23 27 1c 00 dd 24 31 58 00 19 00 47 0e 00 00 10 00 08 11 00 42 12 00 00 02 9a 13 00 00 0f 8b 0d 00 42 63
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
@@ -2324,6 +2357,8 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
     else
         local ldf channel checksum
     fi
+
+    LIVEDATA_PROTOCOL=$LIVEDATA_PROTOCOL_ECOWITT_BINARY
 
     while [ "${#OD_BUFFER}" -gt 4 ]; do
 
@@ -2930,6 +2965,10 @@ setLivedataSignal()
         eval export LIVEDATA_TEMP$(( $1 - SENSORTYPE_WH31TEMP + 1))_SIGNAL="$2"
         getSignalUnicode "$2"
         eval export LIVEDATA_TEMP$(( $1 - SENSORTYPE_WH31TEMP + 1))_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
+    elif [ "$1" -eq $SYSTEM_SENSOR_TYPE_WH24 ]; then
+        eval export LIVEDATA_WH65_SIGNAL="$2"
+        getSignalUnicode "$2"
+        eval export LIVEDATA_WH65_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
     fi
       
 }
@@ -2952,9 +2991,9 @@ parseSensorIdNew()
 
     [ "$DEBUG" -eq  1 ] && >&2 echo "parseSensorIdNew SPATTERNID $SPATTERNID length od buffer ${#OD_BUFFER}"
     
-     LIVEDATA_SENSOR_COUNTSEARCHING=0
-     LIVEDATA_SENSOR_COUNTCONNECTED=0
-     LIVEDATA_SENSOR_COUNTDISABLED=0
+     LIVEDATA_SENSOR_COUNT_SEARCHING=0
+     LIVEDATA_SENSOR_COUNT_CONNECTED=0
+     LIVEDATA_SENSOR_COUNT_DISABLED=0
 
     while [ ${#OD_BUFFER} -ge 7 ]; do
        
@@ -2983,10 +3022,11 @@ parseSensorIdNew()
         fi
 
         #pattern matching
-        if [ "$SPATTERNID" = "$SPATTERNID_CONNECTED" ] && [ $sensor_connected -eq 1  ] ; then # connected sensor
+
+        if [ "$SPATTERNID" = "$SPATTERNID_CONNECTED" ] && [ $sensor_connected -eq 1  ]; then # connected sensor
             printSensorLine $stype $SID $battery $signal
-        elif [ -n "$SPATTERNID" ] && [ "$SPATTERNID" -eq "$SID" ]; then #specific sensors (searching/disabled)
-                    printSensorLine $stype $SID $battery $signal
+        elif [ -n "$SPATTERNID" ] && [ "$SPATTERNID" != "$SPATTERNID_CONNECTED" ] && [ "$SPATTERNID" -eq "$SID" ]; then #specific sensors (searching/disabled)
+            printSensorLine $stype $SID $battery $signal
         elif [ -z "$SPATTERNID" ]; then #all sensors
             printSensorLine $stype $SID $battery $signal
         fi
@@ -4009,22 +4049,7 @@ processSensorOptions()
        cmdexpr=$2
        unset sensorType_low sensorType_high
 
-       case $cmdexpr in 
-          disable|d) sensorid=$SENSORID_DISABLE
-                   ;;
-          search|s|enable|e)  sensorid=$SENSORID_SEARCH
-                   ;;
-          *) 
-              if ! isHex "$cmdexpr"; then
-               echo >&2 "Error Invalid hex number for sensor id $cmdexpr"
-               return "$ERROR_INVALID_SENSORID_COMMAND"
-              else
-                 sensorid=$(( "$cmdexpr" ))
-              fi
-             ;;
-       esac
-
-       case $sensortypeexpr in
+        case $sensortypeexpr in
          *-*)  IFS=- # range with hyphen, for example 31-33
                 #shellcheck disable=SC2086
                 set -- $sensortypeexpr
@@ -4064,6 +4089,24 @@ processSensorOptions()
                     return $ERROR_INVALID_SENSORID
           fi
        fi
+
+       case $cmdexpr in 
+          disable|d) sensorid=$SENSORID_DISABLE
+                   ;;
+          search|s|enable|e)  sensorid=$SENSORID_SEARCH
+                   ;;
+          '')   echo >&2 "Error Empty command, use sensortype=disable|search|d|s"
+                return "$ERROR_INVALID_SENSORID_COMMAND"
+                ;;
+          *) 
+              if ! isHex "$cmdexpr"; then
+               echo >&2 "Error Invalid hex number for sensor id $cmdexpr"
+               return "$ERROR_INVALID_SENSORID_COMMAND"
+              else
+                 sensorid=$(( "0x$cmdexpr" ))
+              fi
+             ;;
+       esac
 
        writeSensorId "$sensorType_low" "$sensorType_high" "$sensorid"
           
@@ -4228,6 +4271,8 @@ processCommand() {
 
         livedata | ld | live | l)
 
+            sendPacket "$CMD_READ_SENSOR_ID_NEW" >/dev/null   #get battery and signal info as well
+
             if [ -z "$LOG_CMD" ]; then
                 sendPacket $CMD_LIVEDATA
                 EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
@@ -4264,7 +4309,8 @@ processCommand() {
                    sendPacket $CMD_READ_SENSOR_ID_NEW
                    ;;
                    
-                *)  if isHex "$1"; then #search on hexid (without 0x prefix)
+                *)  
+                    if isHex "$1"; then #search on hexid (without 0x prefix)
                        SPATTERNID=$(( 0x$1 ))
                        sendPacket $CMD_READ_SENSOR_ID_NEW
                     else
@@ -4306,8 +4352,8 @@ isNumber() {
 isHex()
 {
     case $1 in 
-      '' | 0x*[!0-9a-fA-F]*) return 1 ;;
-      0x*) return 0 ;;
+      '' | *[!0-9a-fA-F]*) return 1 ;;
+      *) return 0 ;;
     esac
 }
 
@@ -4767,6 +4813,9 @@ parseEcowittHttpRequest()
        local http_body f value key
    fi
 
+    LIVEDATA_PROTOCOL=$LIVEDATA_PROTOCOL_ECOWITT_HTTP
+
+
     http_body=$(echo "$1" | tail -n 1) 
     [ "$DEBUG" -eq 1 ] && printf "HTTP BODY\n%s\n" "$http_body"
     IFS='&'
@@ -4981,7 +5030,7 @@ parseEcowittHttpRequest()
                 IFS="M"
                 #shellcheck disable=SC2086
                 set -- $value
-                export LIVEDATA_SYSTEM_FREQUENCY=$1" MHz"
+                export LIVEDATA_SYSTEM_FREQUENCY=$1
                 ;;
 
             model)
@@ -5010,6 +5059,8 @@ parseWundergroundHttpRequest()
    else
        local http_request f value key
    fi
+
+   LIVEDATA_PROTOCOL=$LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP
 
       #https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request
 
@@ -5629,7 +5680,7 @@ while [ $# -gt 0 ]; do
             #sendPacket "$CMD_READ_MAC" >/dev/null
             sendPacket "$CMD_READ_VERSION" >/dev/null
             sendPacket "$CMD_READ_SYSTEM" >/dev/null # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
-            sendPacket "$CMD_READ_SENSOR_ID_NEW" >/dev/null
+            #sendPacket "$CMD_READ_SENSOR_ID_NEW" >/dev/null
 
             shift 2
             ;;
