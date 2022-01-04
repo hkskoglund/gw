@@ -355,6 +355,8 @@ WH55_LEAK_MAXCH=4
 TF_USR_MAXCH=8
 
 SENSORTYPE_MAX=47 # for cmd read sensorid new
+SENSORTYPE_WH68=2
+SENSORTYPE_WH80=3
 SENSORTYPE_WH31TEMP=6 # temp. sensors start at 6
 
 SENSORIDSTATE_CONNECTED=${SENSORIDSTATE_CONNECTED:="connected"}
@@ -1889,17 +1891,32 @@ printLivedataWindLine()
     fi
 }
 
-printLivedata() {
-    
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset n  style_protocol weatherStation
-    else
-        local n style_protocol weatherStation
+printWHBatterySignal()
+{
+    if [ -n "$2" ]; then
+        if [ "$1" = "WH65" ] && [ "$C_SENSORTYPE_STATE" = "WH24" ]; then
+            APPEND_FORMAT="$APPEND_FORMAT WH24 %s"
+        else
+            APPEND_FORMAT="$APPEND_FORMAT $1 %s"
+        fi
+
+        APPEND_ARGS="$APPEND_ARGS '$2' "
     fi
+        
+    if [ -n "$3" ]; then
+        APPEND_FORMAT="$APPEND_FORMAT%s"
+        APPEND_ARGS="$APPEND_ARGS '$3' "
+    fi
+}
 
-    resetAppendBuffer
-
+printLivedataHeader()
+{
+     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+        #shellcheck disable=SC3044
+        typeset style_protocol
+    else
+        local style_protocol
+    fi
     case "$LIVEDATA_PROTOCOL" in
 
       "$LIVEDATA_PROTOCOL_ECOWITT_HTTP"|"$LIVEDATA_PROTOCOL_ECOWITT_BINARY")
@@ -1917,32 +1934,31 @@ printLivedata() {
        APPEND_FORMAT="$APPEND_FORMAT %s/$STYLE_SENSOR_SEARCH%s$STYLE_RESET/$STYLE_SENSOR_DISABLE%s$STYLE_RESET"
        APPEND_ARGS="$APPEND_ARGS '$LIVEDATA_SENSOR_COUNT_CONNECTED' '$LIVEDATA_SENSOR_COUNT_SEARCHING' '$LIVEDATA_SENSOR_COUNT_DISABLED'"
     fi
-
-
-    if [ -n "$LIVEDATA_WH65_BATTERY_STATE" ]; then
-            if [ -z "$C_SENSORTYPE_STATE" ]; then  # http request
-             weatherStation="WH65"
-            else
-              weatherStation=$C_SENSORTYPE_STATE #livedata/system configuration
-            fi
-
-        APPEND_FORMAT="$APPEND_FORMAT $weatherStation %s" # either WH24 or WH65
-        APPEND_ARGS="$APPEND_ARGS '$LIVEDATA_WH65_BATTERY_STATE' "
-    fi
-
-    if [ -n "$LIVEDATA_WH65_SIGNAL_STATE" ]; then
-        APPEND_FORMAT="$APPEND_FORMAT%s "
-        APPEND_ARGS="$APPEND_ARGS '$LIVEDATA_WH65_SIGNAL_STATE' "
-    fi
-
-    if [ -n "$LIVEDATA_WH68_BATTERY_STATE" ]; then
-        APPEND_FORMAT="$APPEND_FORMAT %s "
-        APPEND_ARGS="$APPEND_ARGS '$LIVEDATA_WH68_BATTERY_STATE' "
-    fi
+   
+    printWHBatterySignal "WH65" "$LIVEDATA_WH65_BATTERY_STATE" "$LIVEDATA_WH65_SIGNAL_STATE"
+    printWHBatterySignal "WH68" "$LIVEDATA_WH68_BATTERY_STATE" "$LIVEDATA_WH68_SIGNAL_STATE" #maybe multiple weather stations allowed?
+    printWHBatterySignal "WH80" "$LIVEDATA_WH80_BATTERY_STATE" "$LIVEDATA_WH80_SIGNAL_STATE"
 
     APPEND_FORMAT="$APPEND_FORMAT %s\n"
     APPEND_ARGS="$APPEND_ARGS '$LIVEDATA_SYSTEM_UTC' "
 
+    if [ -n "$KSH_VERSION" ]; then
+         unset style_protocol 
+    fi
+}
+
+printLivedata() {
+    
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+        #shellcheck disable=SC3044
+        typeset n  
+        local n 
+    fi
+
+    resetAppendBuffer
+
+    printLivedataHeader
+    
      #for debugging:
    #printAppendBuffer
    #return
@@ -2210,7 +2226,7 @@ printLivedata() {
     #https://www.unix.com/shell-programming-and-scripting/137435-ksh-different-syntax-function.html
     #man ksh93: ksh93 uses static scoping (one global scope, one local scope per function) and allows local variables only on Korn style functions
     if [ -n "$KSH_VERSION" ]; then
-         unset n style_protocol weatherStation
+         unset n 
     fi
 }
 
@@ -2969,6 +2985,14 @@ setLivedataSignal()
         eval export LIVEDATA_WH65_SIGNAL="$2"
         getSignalUnicode "$2"
         eval export LIVEDATA_WH65_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
+    elif [ "$1" -eq $SENSORTYPE_WH68 ]; then
+        eval export LIVEDATA_WH68_SIGNAL="$2"
+        getSignalUnicode "$2"
+        eval export LIVEDATA_WH68_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
+    elif [ "$1" -eq $SENSORTYPE_WH80 ]; then
+        eval export LIVEDATA_WH80_SIGNAL="$2"
+        getSignalUnicode "$2"
+        eval export LIVEDATA_WH80_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
     fi
       
 }
