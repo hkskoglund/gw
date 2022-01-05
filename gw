@@ -65,13 +65,21 @@ UNICODE_SIGNAL_LEVEL4=${UNICODE_SIGNAL_LEVEL4:=📶}
 
 #https://www.compart.com/en/unicode/block/U+2190
 UNICODE_WIND_DIRECTION_S=${UNICODE_WIND_DIRECTION_S:=↑}
+#UNICODE_WIND_DIRECTION_S=${UNICODE_WIND_DIRECTION_S:=▲}
 UNICODE_WIND_DIRECTION_N=${UNICODE_WIND_DIRECTION_N:=↓}
+#UNICODE_WIND_DIRECTION_N=${UNICODE_WIND_DIRECTION_N:=▼}
 UNICODE_WIND_DIRECTION_E=${UNICODE_WIND_DIRECTION_E:=←}
+#UNICODE_WIND_DIRECTION_E=${UNICODE_WIND_DIRECTION_E:=◀}
 UNICODE_WIND_DIRECTION_W=${UNICODE_WIND_DIRECTION_W:=→}
+#UNICODE_WIND_DIRECTION_W=${UNICODE_WIND_DIRECTION_W:=▶}
 UNICODE_WIND_DIRECTION_NW=${UNICODE_WIND_DIRECTION_NW:=↘}
+#UNICODE_WIND_DIRECTION_NW=${UNICODE_WIND_DIRECTION_NW:=◢}
 UNICODE_WIND_DIRECTION_NE=${UNICODE_WIND_DIRECTION_NE:=↙}
+#UNICODE_WIND_DIRECTION_NE=${UNICODE_WIND_DIRECTION_NE:=◣}
 UNICODE_WIND_DIRECTION_SW=${UNICODE_WIND_DIRECTION_SW:=↗}
+#UNICODE_WIND_DIRECTION_SW=${UNICODE_WIND_DIRECTION_SW:=◥}
 UNICODE_WIND_DIRECTION_SE=${UNICODE_WIND_DIRECTION_SE:=↖}
+#UNICODE_WIND_DIRECTION_SE=${UNICODE_WIND_DIRECTION_SE:=◤}
 
 WIND_DIRECTION_N=${WIND_DIRECTION_N:="N"}
 WIND_DIRECTION_E=${WIND_DIRECTION_E:="E"}
@@ -94,6 +102,9 @@ WIND_W=13
 WIND_WNW=14
 WIND_NW=15
 WIND_NNW=16
+
+COMPASS_NORTH_LIVEVIEW="╭─$WIND_DIRECTION_N─╮"
+COMPASS_SOUTH_LIVEVIEW="╰─$WIND_DIRECTION_S─╯"
 
 #ERROR_CONNECTION=1
 #ERROR_NO_NMCLI=2
@@ -479,10 +490,11 @@ export LIVEDATA_SYSTEM_MODEL_HEADER="${LIVEDATA_SYSTEM_MODEL_HEADER:="System mod
 # shellcheck source=./style/ansiesc.sh
 . "$GW_STYLE_FILE"
 
-VALUE_PM25_AQI_DELIMITER='- '
+VALUE_PM25_AQI_DELIMITER='-'
 #shellcheck disable=SC2034
-VALUE_LEAK_DELIMITER='- '
-VALUE_UVI_DELIMITER='- '
+VALUE_LEAK_DELIMITER='-'
+VALUE_UVI_DELIMITER='-'
+VALUE_COMPASS_DELIMITER='-'
 
 #TERM_ANSI_ESCAPE=${TERM_ANSI_ESCAPE:=1}
 
@@ -1611,7 +1623,7 @@ setRainMode()
 }
 
 printLivedataLine()
-#$1 -header variable name, $2 value, $3 - value format, $4 unit, $5 unit format,$6 terse header, $7 terse format, $8 status value $9 status $10 signal value $11 signal state
+#$1 -header variable name, $2 value, $3 - value format, $4 unit, $5 unit format,$6 terse header, $7 terse format, $8 status value $9 status  $10 status fmt $11 signal value $12 signal state
 # optimized to just use one printf call builtin/external -> builds up entire format and argument strings for entire livedata view
 {
 
@@ -1629,7 +1641,9 @@ printLivedataLine()
        # unit_fmt="\r\t\t\t\t\t%s"
        unit_fmt="%s"
       #status_fmt="\r\t\t\t\t\t\t%s"
-      status_fmt="\t%s"
+     # status_fmt=${10}
+      status_fmt=${10}
+      status_fmt=${status_fmt:="\t%s"}
       signal_fmt="\t%s"
 
     #TEST UTF-8: for f in $(seq -s' ' 255); do eval printf "\\\x$(printf "%x" "$f")"; done
@@ -1641,7 +1655,7 @@ printLivedataLine()
        #     unset status_fmt
        # fi
 
-        signal_status="${11}"
+        signal_status="${12}"
 
         if [ "$TERM_ANSI_ESCAPE" -eq 1 ]; then
         
@@ -1880,14 +1894,15 @@ printLivedataRainLine()
 }
 
 printLivedataWindLine()
+#$1 - wind speed x 10, $2 wind limit x 10, $3 header, $4 wind speed, $5 unit, $6 short name, $7 style, $8 status, $9 status_fmt
 {
-    #echo "printLivedataWindLine 1: $1 2: $2 3: $3 4: $4 5: $5 6: $6"
+    #echo "printLivedataWindLine 1: $1 2: $2 3: $3 4: $4 5: $5 6: $6 7: $7 8: $8"
 
     if [ "$1" -ge "$2" ] && [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
         setSGILivedataGt "$1" "$2" "$7"
-        printLivedataLine "$3" "$4" "%6.1f"  "$5" "%4s"  "$6" "%6.1f" "$1" 
+        printLivedataLine "$3" "$4" "%6.1f" "$5" "%4s" "$6" "%6.1f" "$1" 
     else
-        printLivedataLine "$3" "$4" "%6.1f"  "$5" "%4s"  "$6" "%6.1f"
+        printLivedataLine "$3" "$4" "%6.1f" "$5" "%4s" "$6" "%6.1f" "$4" "$8" "$9"
     fi
 }
 
@@ -2005,11 +2020,15 @@ printLivedata() {
     fi
 
     if [ -z "$HIDE_WIND_LIVEDATA" ]; then
-        [ -n "$LIVEDATA_WINDSPEED" ]     && printLivedataWindLine   "$LIVEDATA_WINDSPEED_RAW"       "$LIVEDATA_WINDSPEED_LIMIT" "LIVEDATA_WINDSPEED_HEADER"      "$LIVEDATA_WINDSPEED" "$UNIT_WIND" 'wspd' "$STYLE_LIMIT_LIVEDATA_WINDSPEED"
-        [ -n "$LIVEDATA_WINDGUSTSPEED" ] && printLivedataWindLine   "$LIVEDATA_WINDGUSTSPEED_RAW"   "$LIVEDATA_WINDGUSTSPEED_LIMIT" "LIVEDATA_WINDGUSTSPEED_HEADER"  "$LIVEDATA_WINDGUSTSPEED" "$UNIT_WIND" 'wgspd' "$STYLE_LIMIT_LIVEDATA_WINDGUSTSPEED"
+         
+        [ -n "$LIVEDATA_WINDSPEED" ]     && STYLE_LIVEDATA_STATUS=$STYLE_COMPASS_NORTH && printLivedataWindLine   "$LIVEDATA_WINDSPEED_RAW"       "$LIVEDATA_WINDSPEED_LIMIT" "LIVEDATA_WINDSPEED_HEADER"      "$LIVEDATA_WINDSPEED" "$UNIT_WIND" 'wspd' "$STYLE_LIMIT_LIVEDATA_WINDSPEED" "$WIND_DIRECTION_N" "\t╭─$STYLE_COMPASS_NORTH%s$STYLE_RESET─╮"
+        unset STYLE_LIVEDATA_STATUS
+        [ -n "$LIVEDATA_WINDGUSTSPEED" ] && printLivedataWindLine   "$LIVEDATA_WINDGUSTSPEED_RAW"   "$LIVEDATA_WINDGUSTSPEED_LIMIT" "LIVEDATA_WINDGUSTSPEED_HEADER"  "$LIVEDATA_WINDGUSTSPEED" "$UNIT_WIND" 'wgspd' "$STYLE_LIMIT_LIVEDATA_WINDGUSTSPEED" "$WIND_DIRECTION_W $UNICODE_WIND $WIND_DIRECTION_E"
+          LIVEDATA_WINDDIRECTION_HEADER="$LIVEDATA_WINDDIRECTION_HEADER $VALUE_COMPASS_DELIMITER $LIVEDATA_WINDDIRECTION_COMPASS" #integrate direction in header
+        [ -n "$LIVEDATA_WINDDIRECTION" ] && printLivedataLine "LIVEDATA_WINDDIRECTION_HEADER" "$LIVEDATA_WINDDIRECTION"   "%6u" "$UNIT_DEGREE" "%5s" 'wdeg' "%4u" "$LIVEDATA_WINDDIRECTION" "$COMPASS_SOUTH_LIVEVIEW"
         [ -n "$LIVEDATA_WINDDAILYMAX" ]  && printLivedataWindLine   "$LIVEDATA_WINDDAILYMAX_RAW"    "$LIVEDATA_WINDDAILYMAX_LIMIT" "LIVEDATA_WINDDAILYMAX_HEADER"   "$LIVEDATA_WINDDAILYMAX"  "$UNIT_WIND"  'wdmax' "$STYLE_LIMIT_LIVEDATA_WINDDAILYMAX"
-        [ -n "$LIVEDATA_WINDDIRECTION" ]            && printLivedataLine "LIVEDATA_WINDDIRECTION_HEADER"           "$LIVEDATA_WINDDIRECTION"          "%6u" "$UNIT_DEGREE" "%5s" 'wdeg' "%4u" "$LIVEDATA_WINDDIRECTION" "$UNICODE_WIND"
-        [ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]    && printLivedataLine "LIVEDATA_WINDDIRECTION_COMPASS_HEADER"   "$LIVEDATA_WINDDIRECTION_COMPASS"  "%6s" "" "%5s" 'wdir' "%4s"
+      
+        #[ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]    && printLivedataLine "LIVEDATA_WINDDIRECTION_COMPASS_HEADER"   "$LIVEDATA_WINDDIRECTION_COMPASS"  "%6s" "" "%5s" 'wdir' "%4s"
     fi
 
     if [ -z "$HIDE_LIGHT_LIVEDATA" ]; then
@@ -2020,7 +2039,7 @@ printLivedata() {
             setStyleUVI "$LIVEDATA_UVI"
             #shellcheck disable=SC2153
             SGI_LIVE_VALUE=$STYLE_UVI
-            LIVEDATA_UVI_HEADER="$LIVEDATA_UVI_HEADER  $VALUE_UVI_DELIMITER$VALUE_UV_RISK"
+            LIVEDATA_UVI_HEADER="$LIVEDATA_UVI_HEADER  $VALUE_UVI_DELIMITER $VALUE_UV_RISK"
             printLivedataLine "LIVEDATA_UVI_HEADER" "$LIVEDATA_UVI"      "%6u" "" "%4s" 'uvi' "%3u"
         fi
     fi
@@ -2047,7 +2066,7 @@ printLivedata() {
             #set -x
             eval " if [ -n ''"\$LIVEDATA_TEMP$n" ]; then
                        # setSGIBatteryLowNormal "\$LIVEDATA_TEMP${n}_BATTERY"
-                        printLivedataLine 'LIVEDATA_TEMP_HEADER$n' \"\$LIVEDATA_TEMP$n\" '%6.1f'  \"\$UNIT_TEMP\" '%2s' 'temp$n' '' \"\$LIVEDATA_TEMP${n}_BATTERY\" \"\$LIVEDATA_TEMP${n}_BATTERY_STATE\"  \"\$LIVEDATA_TEMP${n}_SIGNAL\" \"\$LIVEDATA_TEMP${n}_SIGNAL_STATE\"
+                        printLivedataLine 'LIVEDATA_TEMP_HEADER$n' \"\$LIVEDATA_TEMP$n\" '%6.1f'  \"\$UNIT_TEMP\" '%2s' 'temp$n' '' \"\$LIVEDATA_TEMP${n}_BATTERY\" \"\$LIVEDATA_TEMP${n}_BATTERY_STATE\" '' \"\$LIVEDATA_TEMP${n}_SIGNAL\" \"\$LIVEDATA_TEMP${n}_SIGNAL_STATE\"
                    fi "
             #set +x
         }
@@ -2110,7 +2129,7 @@ printLivedata() {
             eval "if [ -n ''"\$LIVEDATA_LEAK$n" ]; then
                         #setSGIBatteryLowNormal \"\$LIVEDATA_LEAK${n}_BATTERY\"
                         [ \"\$LIVEDATA_LEAK$n\" -ne 0 ] && SGI_LIVE_VALUE=\"$STYLE_LEAK\" && VALUE_LEAK=$LIVEDATA_LEAK_YES
-                        LIVEDATA_LEAK_HEADER$n=\"\$LIVEDATA_LEAK_HEADER$n \$VALUE_LEAK_DELIMITER\$VALUE_LEAK\"
+                        LIVEDATA_LEAK_HEADER$n=\"\$LIVEDATA_LEAK_HEADER$n \$VALUE_LEAK_DELIMITER \$VALUE_LEAK\"
                         printLivedataLine \"LIVEDATA_LEAK_HEADER$n\" \"\$LIVEDATA_LEAK\" \"%6u\" \"\" \"%4s\" \"leak$n\" '' \"\$LIVEDATA_LEAK${n}_BATTERY\" \"\$LIVEDATA_LEAK${n}_BATTERY_STATE\" 
                 fi"
             n=$((n + 1))
@@ -2127,7 +2146,7 @@ printLivedata() {
                             setAQI \"\$LIVEDATA_PM25${n}_RAW\"
                             setStyleAQI \"\$LIVEDATA_PM25${n}_RAW\"
                             SGI_LIVE_VALUE=\$STYLE_AQI
-                            LIVEDATA_PM25_HEADER$n=\"\$LIVEDATA_PM25_HEADER$n \$VALUE_PM25_AQI_DELIMITER\$VALUE_PM25_AQI\"
+                            LIVEDATA_PM25_HEADER$n=\"\$LIVEDATA_PM25_HEADER$n \$VALUE_PM25_AQI_DELIMITER \$VALUE_PM25_AQI\"
                             printLivedataLine \"LIVEDATA_PM25_HEADER$n\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$UNIT_PM25\" \"%6s\" \"pm25$n\" '' \"\$LIVEDATA_PM25${n}_BATTERY\" \"\$LIVEDATA_PM25${n}_BATTERY_STATE\" 
                  fi"
             n=$((n + 1))
@@ -2139,7 +2158,7 @@ printLivedata() {
                         setAQI \"\$LIVEDATA_PM25_24HAVG${n}_RAW\"
                         setStyleAQI \"\$LIVEDATA_PM25_24HAVG${n}_RAW\"
                         SGI_LIVE_VALUE=\$STYLE_AQI
-                        LIVEDATA_PM25_24HAVG_HEADER$n=\"\$LIVEDATA_PM25_24HAVG_HEADER$n \$VALUE_PM25_AQI_DELIMITER\$VALUE_PM25_AQI\"
+                        LIVEDATA_PM25_24HAVG_HEADER$n=\"\$LIVEDATA_PM25_24HAVG_HEADER$n \$VALUE_PM25_AQI_DELIMITER \$VALUE_PM25_AQI\"
                         printLivedataLine \"LIVEDATA_PM25_24HAVG_HEADER$n\" \"\$LIVEDATA_PM25_24HAVG$n\" \"%6.1f\" \"\$UNIT_PM25\" \"%6s\" \"pm25a$n\" \"%6.1f\"
              fi"
             n=$((n + 1))
@@ -2161,14 +2180,14 @@ printLivedata() {
             setAQI "$LIVEDATA_WH45CO2_PM25_RAW"
             setStyleAQI "$LIVEDATA_WH45CO2_PM25_RAW"
             SGI_LIVE_VALUE=$STYLE_AQI
-            LIVEDATA_WH45CO2_PM25_HEADER="$LIVEDATA_WH45CO2_PM25_HEADER $VALUE_PM25_AQI_DELIMITER$VALUE_PM25_AQI"
+            LIVEDATA_WH45CO2_PM25_HEADER="$LIVEDATA_WH45CO2_PM25_HEADER $VALUE_PM25_AQI_DELIMITER $VALUE_PM25_AQI"
             printLivedataLine "LIVEDATA_WH45CO2_PM25_HEADER" "$LIVEDATA_WH45CO2_PM25"                "%6.1f" "$UNIT_PM25" "%7s" 'pm25'
         fi
         if [ -n "$LIVEDATA_WH45CO2_PM25_24HAVG" ]; then
             setAQI "$LIVEDATA_WH45CO2_PM25_24HAVG_RAW"
             setStyleAQI "$LIVEDATA_WH45CO2_PM25_24HAVG_RAW"
             SGI_LIVE_VALUE=$STYLE_AQI
-            LIVEDATA_WH45CO2_PM25_24HAVG_HEADER="$LIVEDATA_WH45CO2_PM25_24HAVG_HEADER $VALUE_PM25_AQI_DELIMITER$VALUE_PM25_AQI"
+            LIVEDATA_WH45CO2_PM25_24HAVG_HEADER="$LIVEDATA_WH45CO2_PM25_24HAVG_HEADER $VALUE_PM25_AQI_DELIMITER $VALUE_PM25_AQI"
             printLivedataLine "LIVEDATA_WH45CO2_PM25_24HAVG_HEADER" "$LIVEDATA_WH45CO2_PM25_24HAVG"  "%6.1f" "$UNIT_PM25" "%7s" 'pm25a'
         fi
         [ -n "$LIVEDATA_WH45CO2_CO2" ]          && printLivedataLine "LIVEDATA_WH45CO2_CO2_HEADER" "$LIVEDATA_WH45CO2_CO2"                  "%6u" "$UNIT_CO2" "%6s" 'co2'
@@ -2203,8 +2222,8 @@ printLivedata() {
     if [ -z "$HIDE_BATTERY_LIVEDATA" ]; then
 
        # printLivedataBatteryLowNormal "$LIVEDATA_WH65_BATTERY" "$LIVEDATA_WH65_BATTERY_STATE" "LIVEDATA_WH65_BATTERY_HEADER" 'bwh65'
-        printLivedataBatteryVoltage   "$LIVEDATA_WH68_BATTERY" "$LIVEDATA_WH68_BATTERY_STATE" "LIVEDATA_WH68_BATTERY_HEADER" 'bwh68'
-        printLivedataBatteryVoltage   "$LIVEDATA_WH80_BATTERY" "$LIVEDATA_WH80_BATTERY_STATE" "LIVEDATA_WH68_BATTERY_HEADER"  'bwh80'
+       # printLivedataBatteryVoltage   "$LIVEDATA_WH68_BATTERY" "$LIVEDATA_WH68_BATTERY_STATE" "LIVEDATA_WH68_BATTERY_HEADER" 'bwh68'
+       # printLivedataBatteryVoltage   "$LIVEDATA_WH80_BATTERY" "$LIVEDATA_WH80_BATTERY_STATE" "LIVEDATA_WH68_BATTERY_HEADER"  'bwh80'
         printLivedataBatteryLowNormal "$LIVEDATA_WH32_TEMPERATURE_BATTERY" "$LIVEDATA_WH32_TEMPERATURE_BATTERY_STATE" "LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER" 'btout' 
         printLivedataBatteryLowNormal "$LIVEDATA_WH40_RAINFALL_BATTERY" "$LIVEDATA_WH40_RAINFALL_BATTERY_STATE" "LIVEDATA_WH40_RAINFALL_BATTERY_HEADER" 'brain'
         #printLivedataBatteryLowNormal "$LIVEDATA_WH57_LIGHTNING_BATTERY" "$LIVEDATA_WH57_LIGHTNING_BATTERY_STATE" "LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER" 'bwh57'
