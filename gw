@@ -487,9 +487,6 @@ export LIVEDATA_SYSTEM_UTC_HEADER="${LIVEDATA_SYSTEM_UTC_HEADER:="System utc"}"
 export LIVEDATA_SYSTEM_FREQUENCY_HEADER="${LIVEDATA_SYSTEM_FREQUENCY_HEADER:="System frequency"}"
 export LIVEDATA_SYSTEM_MODEL_HEADER="${LIVEDATA_SYSTEM_MODEL_HEADER:="System model"}"
 
-# shellcheck source=./style/ansiesc.sh
-. "$GW_STYLE_FILE"
-
 VALUE_PM25_AQI_DELIMITER='-'
 #shellcheck disable=SC2034
 VALUE_LEAK_DELIMITER='-'
@@ -1627,141 +1624,51 @@ printLivedataLine()
 # optimized to just use one printf call builtin/external -> builds up entire format and argument strings for entire livedata view
 {
 
-     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        typeset fwidth format format_code header_fmt status_fmt unit_fmt status_line signal_fmt signal_status STYLE_live_reset
+        typeset header_fmt status_fmt unit_fmt status_line signal_fmt signal_status
     else
-        local fwidth format format_code header_fmt status_fmt unit_fmt status_line signal_fmt signal_status
+        local  header_fmt status_fmt unit_fmt status_line signal_fmt signal_status
     fi
 
     [ "$DEBUG" -eq 1 ] && echo >&2 "printLivedataLine $* length $#"
 
     # \r\t horizontal positioning is compatible with unicode in string
     header_fmt="%s\r\t\t\t\t"
-       # unit_fmt="\r\t\t\t\t\t%s"
-       unit_fmt="%s"
-      #status_fmt="\r\t\t\t\t\t\t%s"
-     # status_fmt=${10}
-      status_fmt=${10}
-      status_fmt=${status_fmt:="\t%s"}
-      signal_fmt="\t%s"
+    # unit_fmt="\r\t\t\t\t\t%s"
+    unit_fmt="%s"
+    #status_fmt="\r\t\t\t\t\t\t%s"
+    status_fmt=${10}
+    status_fmt=${status_fmt:="\t%s"}
+    signal_fmt="\t%s"
 
     #TEST UTF-8: for f in $(seq -s' ' 255); do eval printf "\\\x$(printf "%x" "$f")"; done
 
     if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then 
        
         status_line="$9"
-       # if [ -z "$status_line" ]; then
-       #     unset status_fmt
-       # fi
-
         signal_status="${12}"
-
-        if [ "$TERM_ANSI_ESCAPE" -eq 1 ]; then
+  
+        if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
+            APPEND_FORMAT="$APPEND_FORMAT $header_fmt %s %s %s\n"
+        fi
         
-            if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
-                 APPEND_FORMAT="$APPEND_FORMAT $header_fmt %s %s %s\n"
-            fi
-            
-            if [ -n "$SGI_LIVE_VALUE" ]; then
-              STYLE_live_reset=$ANSIESC_SGI_NORMAL
-            else
-              unset STYLE_live_reset
-            fi
-
-            APPEND_FORMAT=$APPEND_FORMAT"$header_fmt $SGI_LIVE_VALUE$3 $unit_fmt$STYLE_live_reset $status_fmt $signal_fmt\n" 
+        if [ -n "$SGI_LIVE_VALUE" ]; then
+            APPEND_FORMAT=$APPEND_FORMAT"$header_fmt $SGI_LIVE_VALUE$3 $unit_fmt$STYLE_RESET $status_fmt $signal_fmt\n" 
             unset SGI_LIVE_VALUE
         else
-            if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
-                APPEND_FORMAT="$APPEND_FORMAT $header_fmt %s %s %s\n"
-            fi
-
-            APPEND_FORMAT=$APPEND_FORMAT"$header_fmt $3 $unit_fmt $status_fmt $signal_fmt\n"
+            APPEND_FORMAT=$APPEND_FORMAT"$header_fmt $3 $unit_fmt $status_fmt $signal_fmt\n" 
         fi
 
-       # if [ -n "$status_line" ]; then
-        
-            if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
-                APPEND_ARGS="$APPEND_ARGS '$header_fmt' '$3' '$unit_fmt' '$status_fmt' "
-            fi
-        
-            eval "APPEND_ARGS=\"$APPEND_ARGS\"\'\$$1\'\ \'\"$2\"\'\ \'\"$4\"\'\ \'\"$status_line\"\'\ \'\"$signal_status\"\'\ " # maybe too complex?! (takes a long time to get right)
-       # else
-        
-       #     if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
-       #         APPEND_ARGS="$APPEND_ARGS '$header_fmt' '$3' '$unit_fmt' '$status_fmt' "
-       #     fi
-        
-       #     eval "APPEND_ARGS=\"$APPEND_ARGS\"\'\$$1\'\ \'\"$2\"\'\ \'$4\'\ "
-       # fi
-
-  elif [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_TERSE ]; then
-     
-        if [ -z "$7" ]; then
-            format=$3 
-        else
-            format=$7 #override value format with specific terse format
+        if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
+            APPEND_ARGS="$APPEND_ARGS '$header_fmt' '$3' '$unit_fmt' '$status_fmt' "
         fi
-        
-        format_code=${format%?} # remove s from %10s to get prefix %10
-        format_code=${format#"$format_code"} # remove prefix %10 to get s
-
-        #find terse string field width based on value format
-        fwidth=${format#%}
-        if [ "$fwidth" = "${fwidth%%.*}" ]; then
-            fwidth=${fwidth%?} # remove s from 10s
-        else
-            fwidth=${fwidth%%.*} #remove .* (.1f) - part from 5.1f
-        fi
-
-        case "$6" in
-            #battery terse field name start with 'b'
-            b*) APPEND_HEADER_FORMAT=$APPEND_HEADER_FORMAT"%${fwidth}s  " #added 1 extra space to align unicode battery symbol better
-                ;;
-            *) APPEND_HEADER_FORMAT=$APPEND_HEADER_FORMAT"%${fwidth}s "
-                ;;
-        esac
-
-        #adjust field width if unicode battery symbol is present and shell does not support unicode adjustment
-
-        if [ "$SHELL_SUPPORT_PRINTF_UNICODE_SFORMAT" -eq 0 ]; then
-            #bash -c 'printf "%-10sA\n" "🔋"' | od -A n -t x1
-            # f0 9f 94 8b 20 20 20 20 20 20 41 0a
-            #zsh -c 'printf "%-7sA\n" "🔋"' | od -A n -t x1 (support unicode adjustment)
-            #f0 9f 94 8b 20 20 20 20 20 20 41 0a
-           case "$6" in
-             b*) case "$fwidth" in
-                    -*) fwidth=$((fwidth - 4  + 1 )) # negative field width -> left justify
-                        ;;
-                    *) fwidth=$((fwidth + 4 - 1 ))  # add 3 ( 1 unicode symbol encoded as 4 bytes)
-                        ;;
-                esac
-           esac
-        fi 
-
-       # echo Format code "$format_code" "$6" fwidth "$fwidth"
-        
-        APPEND_HEADER_ARGS="$APPEND_HEADER_ARGS$6 "
-            
-        case "$6" in
-            b*) APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE%$fwidth$format_code$ANSIESC_SGI_NORMAL "
-                ;;
-            *)  APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE$format$ANSIESC_SGI_NORMAL "
-                ;;
-        esac
-        
-        APPEND_ARGS=$APPEND_ARGS"\"$2\" "
     
-   
-    elif [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_TERSE_ROW ]; then
-        APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE%-7s $3 %s$ANSIESC_SGI_NORMAL\n" #just use one printf call builtin/external -> builds up entire format and argument strings
-        APPEND_ARGS=$APPEND_ARGS"\"$6\" \"$2\" \"$4\" "
+        eval "APPEND_ARGS=\"$APPEND_ARGS\"\'\$$1\'\ \'\"$2\"\'\ \'\"$4\"\'\ \'\"$status_line\"\'\ \'\"$signal_status\"\'\ " # maybe too complex?! (takes a long time to get right)
     fi
-
-    unset SGI_LIVE
    
     if [ -n "$KSH_VERSION" ]; then
-      unset fwidth format header_fmt ch status_fmt unit_fmt status_line signal_fmt signal_status
+        unset header_fmt ch status_fmt unit_fmt status_line signal_fmt signal_status
     fi
 }
 
@@ -4527,6 +4434,8 @@ initShell() {
     else
         case "$TERM" in
             *color) TERM_ANSI_ESCAPE=1
+                    # shellcheck source=./style/ansiesc.sh
+                    . "$GW_STYLE_FILE"
                     ;;
             *)      TERM_ANSI_ESCAPE=0
                     ;;
