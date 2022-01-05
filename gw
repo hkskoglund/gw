@@ -493,8 +493,6 @@ VALUE_LEAK_DELIMITER='-'
 VALUE_UVI_DELIMITER='-'
 VALUE_COMPASS_DELIMITER='-'
 
-#TERM_ANSI_ESCAPE=${TERM_ANSI_ESCAPE:=1}
-
 #Limits for triggering of ansi escape highlights
 
 LIVEDATA_WINDSPEED_LIMIT=${LIVEDATA_WINDSPEED_LIMIT:=80}  # 8 m/s - set param if value unset/null
@@ -2870,13 +2868,9 @@ printSensorLine()
     fi
 
     if [ -n "$style_sensor" ]; then
-       style_sensor_off=$ANSIESC_SGI_NORMAL # insert end escape sequence only if sgi is used
+       style_sensor_off=$STYLE_RESET# insert end escape sequence only if sgi is used
     fi
     
-    if [ "$TERM_ANSI_ESCAPE" -eq 0  ]; then
-       unset style_sensor style_sensor_off
-    fi
-
      # 1 battery unicode is field size 4 in printf format string. TEST printf  "🔋 1.3 V" | od -A n -t x1 | wc -w -> 10
      # use \r\t\t\t workaround for unicode alignment
      APPEND_FORMAT=$APPEND_FORMAT"%6u %9x %3u %1u %4s %-17s $style_sensor%9s$style_sensor_off\r\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t%s\n" #just use one printf call builtin/external -> builds up entire format and argument strings
@@ -4422,26 +4416,20 @@ initShell() {
      [ "$DEBUG" -eq 1 ] && >&2 echo Shell support unicode "$SHELL_SUPPORT_UNICODE"
 
     #TEST unciode: i=$(( 0x2500 )); while [ "$i" -le $(( 0x2600 )) ]; do printf -v hex "%x" "$i"; eval 'printf "%s \u$hex\n" "$hex"'; i=$(( i + 1 )); done
-
     
 #https://www.gnu.org/software/gettext/manual/html_node/The-TERM-variable.html
 #https://www.gnu.org/software/gettext/libtextstyle/manual/html_node/The-NO_005fCOLOR-variable.html
 # TEST : msgcat --color=test
     [ "$DEBUG" -eq 1 ] && >&2 echo TERM "$TERM"
 
-    if [ -n "$NO_COLOR" ]; then
-      TERM_ANSI_ESCAPE=0
-    else
+    if [ -z "$NO_COLOR" ]; then
         case "$TERM" in
-            *color) TERM_ANSI_ESCAPE=1
+            *color)
                     # shellcheck source=./style/ansiesc.sh
                     . "$GW_STYLE_FILE"
                     ;;
-            *)      TERM_ANSI_ESCAPE=0
-                    ;;
         esac
     fi
-
     
    if ! SHELL_DECIMAL_POINT=$(locale decimal_point); then
       SHELL_DECIMAL_POINT="."
@@ -5707,12 +5695,6 @@ while [ $# -gt 0 ]; do
 
             shift 3
             ;;
-
-        -E | --ansi-escape-disable)
-           
-           TERM_ANSI_ESCAPE=0
-           shift
-           ;;
 
         *)        # unknown option
             shift # past argument
