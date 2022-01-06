@@ -107,7 +107,6 @@ WIND_WNW=14
 WIND_NW=15
 WIND_NNW=16
 
-COMPASS_SOUTH_LIVEVIEW="╰─$WIND_DIRECTION_S─╯"
 
 #ERROR_CONNECTION=1
 #ERROR_NO_NMCLI=2
@@ -1607,19 +1606,18 @@ printLivedataLine()
 #$1 -header variable name, $2 value, $3 - value format, $4 unit, $5 unit format,$6 terse header, $7 terse format, $8 status value $9 status  $10 status fmt $11 signal value $12 signal state
 # optimized to just use one printf call builtin/external -> builds up entire format and argument strings for entire livedata view
 {
+    [ "$DEBUG" -eq 1 ] && echo >&2 "printLivedataLine $* length $#"
 
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        typeset header_fmt status_fmt unit_fmt status_line signal_fmt signal_status
+        typeset header_fmt unit_fmt status_fmt status_line signal_fmt signal_line
     else
-        local  header_fmt status_fmt unit_fmt status_line signal_fmt signal_status
+        local  header_fmt unit_fmt status_fmt status_line signal_fmt signal_line
     fi
 
-    [ "$DEBUG" -eq 1 ] && echo >&2 "printLivedataLine $* length $#"
-
-    # \r\t horizontal positioning is compatible with unicode in string
+    # \r\t horizontal/absolute positioning is compatible with unicode in string
     header_fmt="%s\r\t\t\t\t"
-    # unit_fmt="\r\t\t\t\t\t%s"
+    # unit_fmt="\r\t\t\t\t\t%s" 
     unit_fmt="%s"
     #status_fmt="\r\t\t\t\t\t\t%s"
     status_fmt=${10}
@@ -1631,28 +1629,28 @@ printLivedataLine()
     if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then 
        
         status_line="$9"
-        signal_status="${12}"
+        signal_line="${12}"
   
         if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
-            APPEND_FORMAT="$APPEND_FORMAT $header_fmt %s %s %s\n"
+            APPEND_FORMAT="$APPEND_FORMAT $header_fmt %s %s %s %s\n"
         fi
         
         if [ -n "$SGI_LIVE_VALUE" ]; then
-            APPEND_FORMAT=$APPEND_FORMAT"$header_fmt $SGI_LIVE_VALUE$3 $unit_fmt$STYLE_RESET $status_fmt $signal_fmt\n" 
+            APPEND_FORMAT=$APPEND_FORMAT"$header_fmt $SGI_LIVE_VALUE$3 $unit_fmt$STYLE_RESET $status_fmt $signal_fmt\n" #apply styling
             unset SGI_LIVE_VALUE
         else
             APPEND_FORMAT=$APPEND_FORMAT"$header_fmt $3 $unit_fmt $status_fmt $signal_fmt\n" 
         fi
 
         if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
-            APPEND_ARGS="$APPEND_ARGS '$header_fmt' '$3' '$unit_fmt' '$status_fmt' "
+            APPEND_ARGS="$APPEND_ARGS '$header_fmt' '$3' '$unit_fmt' '$status_fmt' '$signal_fmt' "
         fi
     
-        eval "APPEND_ARGS=\"$APPEND_ARGS\"\'\$$1\'\ \'\"$2\"\'\ \'\"$4\"\'\ \'\"$status_line\"\'\ \'\"$signal_status\"\'\ " # maybe too complex?! (takes a long time to get right)
+        eval "APPEND_ARGS=\"$APPEND_ARGS\"\'\$$1\'\ \'\"$2\"\'\ \'\"$4\"\'\ \'\"$status_line\"\'\ \'\"$signal_line\"\'\ " # maybe too complex?! (takes a long time to get right)
     fi
    
     if [ -n "$KSH_VERSION" ]; then
-        unset header_fmt ch status_fmt unit_fmt status_line signal_fmt signal_status
+        unset header_fmt ch status_fmt unit_fmt status_line signal_fmt signal_line
     fi
 }
 
@@ -1777,6 +1775,14 @@ setStyleAQI()
     fi
 }
 
+newLivedataCompass()
+#$1 unicode direction
+{
+    LIVEVIEW_COMPASS_N_FMT="╭─$STYLE_COMPASS_NORTH$WIND_DIRECTION_N$STYLE_RESET─╮" #styling must be in the format of printf
+    LIVEVIEW_COMPASS_WE="$WIND_DIRECTION_W $1 $WIND_DIRECTION_E"
+    LIVEVIEW_COMPASS_S="╰─$WIND_DIRECTION_S─╯"
+}
+
 printLivedataRainLine()
 {
     #echo "printLivedataRainLine $*"
@@ -1800,7 +1806,7 @@ printLivedataRainLine()
 printLivedataWindLine()
 #$1 - wind speed x 10, $2 wind limit x 10, $3 header, $4 wind speed, $5 unit, $6 short name, $7 style, $8 status, $9 status_fmt
 {
-    #echo "printLivedataWindLine 1: $1 2: $2 3: $3 4: $4 5: $5 6: $6 7: $7 8: $8"
+    #echo >&2 "printLivedataWindLine $*"
 
     if [ "$1" -ge "$2" ] && [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
         setLivedataValueStyleGt "$1" "$2" "$7"
@@ -1836,6 +1842,7 @@ printLivedataHeader()
     else
         local style_protocol
     fi
+
     case "$LIVEDATA_PROTOCOL" in
 
       "$LIVEDATA_PROTOCOL_ECOWITT_HTTP"|"$LIVEDATA_PROTOCOL_ECOWITT_BINARY")
@@ -1874,7 +1881,7 @@ printLivedata() {
         local n 
     fi
 
-    resetAppendBuffer
+    #resetAppendBuffer
     printLivedataHeader
     
      #for debugging:
@@ -1886,29 +1893,22 @@ printLivedata() {
         setLivedataValueStyleLtGt "$LIVEDATA_INTEMP_RAW" "$LIVEDATA_INTEMP_LIMIT_LOW" "$LIVEDATA_INTEMP_LIMIT_HIGH" "$STYLE_LIVEDATA_INTEMP_LIMIT_LOW" "$STYLE_LIVEDATA_INTEMP_LIMIT_HIGH"
         printLivedataLine 'LIVEDATA_INTEMP_HEADER'  "$LIVEDATA_INTEMP" "%6.1f" "$UNIT_TEMP" "%s" 'in' "%s" 
     fi
-  
-    if [ -n "$LIVEDATA_OUTTEMP" ]; then
 
-        setLivedataValueStyleLtGt "$LIVEDATA_OUTTEMP_RAW" "$LIVEDATA_OUTTEMP_LIMIT_LOW" "$LIVEDATA_OUTTEMP_LIMIT_HIGH" "$STYLE_LIMIT_LIVEDATA_OUTTEMP" "$STYLE_LIVEDATA_OUTTEMP_LIMIT_HIGH"
+    if [ -n "$LIVEDATA_OUTTEMP" ]; then
+            setLivedataValueStyleLtGt "$LIVEDATA_OUTTEMP_RAW" "$LIVEDATA_OUTTEMP_LIMIT_LOW" "$LIVEDATA_OUTTEMP_LIMIT_HIGH" "$STYLE_LIMIT_LIVEDATA_OUTTEMP" "$STYLE_LIVEDATA_OUTTEMP_LIMIT_HIGH"
         printLivedataLine "LIVEDATA_OUTTEMP_HEADER" "$LIVEDATA_OUTTEMP" "%6.1f" "$UNIT_TEMP" "%s" 'out' 
     fi
-
-    if [ -n "$LIVEDATA_WINDCHILL" ]; then
-
-        setLivedataValueStyleLtGt "$LIVEDATA_WINDCHILL_RAW" "$LIVEDATA_OUTTEMP_LIMIT_LOW" "$LIVEDATA_OUTTEMP_LIMIT_HIGH" "$STYLE_LIMIT_LIVEDATA_OUTTEMP" "$STYLE_LIVEDATA_OUTTEMP_LIMIT_HIGH"
+        if [ -n "$LIVEDATA_WINDCHILL" ]; then
+            setLivedataValueStyleLtGt "$LIVEDATA_WINDCHILL_RAW" "$LIVEDATA_OUTTEMP_LIMIT_LOW" "$LIVEDATA_OUTTEMP_LIMIT_HIGH" "$STYLE_LIMIT_LIVEDATA_OUTTEMP" "$STYLE_LIVEDATA_OUTTEMP_LIMIT_HIGH"
         printLivedataLine "LIVEDATA_WINDCHILL_HEADER" "$LIVEDATA_WINDCHILL" "%6.1f" "$UNIT_TEMP" "%2s" 'wchill' 
     fi
-
-    if [ -n "$LIVEDATA_DEWPOINT" ]; then
+        if [ -n "$LIVEDATA_DEWPOINT" ]; then
         printLivedataLine "LIVEDATA_DEWPOINT_HEADER" "$LIVEDATA_DEWPOINT" "%6.1f" "$UNIT_TEMP" "%2s"  'dewp'
     fi
-
-    [ -n "$LIVEDATA_INHUMI" ]   && printLivedataLine "LIVEDATA_INHUMI_HEADER" "$LIVEDATA_INHUMI"  "%6u" "$UNIT_HUMIDITY" "%s" 'ihum'   "%4u"
+        [ -n "$LIVEDATA_INHUMI" ]   && printLivedataLine "LIVEDATA_INHUMI_HEADER" "$LIVEDATA_INHUMI"  "%6u" "$UNIT_HUMIDITY" "%s" 'ihum'   "%4u"
     [ -n "$LIVEDATA_OUTHUMI" ]  && printLivedataLine "LIVEDATA_OUTHUMI_HEADER" "$LIVEDATA_OUTHUMI" "%6u" "$UNIT_HUMIDITY" "%s" 'ohum'  "%4u"
-
-    if [ -n "$LIVEDATA_RELBARO" ]; then
-
-        setLivedataValueStyleLt "$LIVEDATA_RELBARO_RAW" "$LIVEDATA_RELBARO_LIMIT_LOW"
+        if [ -n "$LIVEDATA_RELBARO" ]; then
+            setLivedataValueStyleLt "$LIVEDATA_RELBARO_RAW" "$LIVEDATA_RELBARO_LIMIT_LOW"
         
         if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
             printLivedataLine "LIVEDATA_RELBARO_HEADER" "$LIVEDATA_RELBARO" "%6.1f" "$UNIT_PRESSURE" "%4s" 'rbaro'
@@ -1922,12 +1922,21 @@ printLivedata() {
     fi
 
     if [ -z "$HIDE_WIND_LIVEDATA" ]; then
+
+       [ -n "$LIVEDATA_WINDSPEED" ] && [ -n "$LIVEDATA_WINDGUSTSPEED" ] && [ -n "$LIVEDATA_WINDDIRECTION" ] && newLivedataCompass "$UNICODE_WIND" 
          
-        [ -n "$LIVEDATA_WINDSPEED" ]     && printLivedataWindLine   "$LIVEDATA_WINDSPEED_RAW"       "$LIVEDATA_WINDSPEED_LIMIT" "LIVEDATA_WINDSPEED_HEADER"      "$LIVEDATA_WINDSPEED" "$UNIT_WIND" 'wspd' "$STYLE_LIMIT_LIVEDATA_WINDSPEED" "$WIND_DIRECTION_N" "\t╭─$STYLE_COMPASS_NORTH%s$STYLE_RESET─╮"
-        [ -n "$LIVEDATA_WINDGUSTSPEED" ] && printLivedataWindLine   "$LIVEDATA_WINDGUSTSPEED_RAW"   "$LIVEDATA_WINDGUSTSPEED_LIMIT" "LIVEDATA_WINDGUSTSPEED_HEADER"  "$LIVEDATA_WINDGUSTSPEED" "$UNIT_WIND" 'wgspd' "$STYLE_LIMIT_LIVEDATA_WINDGUSTSPEED" "$WIND_DIRECTION_W $UNICODE_WIND $WIND_DIRECTION_E"
+        [ -n "$LIVEDATA_WINDSPEED" ] && printLivedataWindLine "$LIVEDATA_WINDSPEED_RAW" "$LIVEDATA_WINDSPEED_LIMIT"\
+         "LIVEDATA_WINDSPEED_HEADER" "$LIVEDATA_WINDSPEED" "$UNIT_WIND" 'wspd' "$STYLE_LIMIT_LIVEDATA_WINDSPEED" "" "\t%s$LIVEVIEW_COMPASS_N_FMT" 
+        
+        [ -n "$LIVEDATA_WINDGUSTSPEED" ] && printLivedataWindLine   "$LIVEDATA_WINDGUSTSPEED_RAW" "$LIVEDATA_WINDGUSTSPEED_LIMIT"\
+         "LIVEDATA_WINDGUSTSPEED_HEADER" "$LIVEDATA_WINDGUSTSPEED" "$UNIT_WIND" 'wgspd' "$STYLE_LIMIT_LIVEDATA_WINDGUSTSPEED" "$LIVEVIEW_COMPASS_WE"
           LIVEDATA_WINDDIRECTION_HEADER="$LIVEDATA_WINDDIRECTION_HEADER $VALUE_COMPASS_DELIMITER $LIVEDATA_WINDDIRECTION_COMPASS" #integrate direction in header
-        [ -n "$LIVEDATA_WINDDIRECTION" ] && printLivedataLine "LIVEDATA_WINDDIRECTION_HEADER" "$LIVEDATA_WINDDIRECTION"   "%6u" "$UNIT_DEGREE" "%5s" 'wdeg' "%4u" "$LIVEDATA_WINDDIRECTION" "$COMPASS_SOUTH_LIVEVIEW"
-        [ -n "$LIVEDATA_WINDDAILYMAX" ]  && printLivedataWindLine   "$LIVEDATA_WINDDAILYMAX_RAW"    "$LIVEDATA_WINDDAILYMAX_LIMIT" "LIVEDATA_WINDDAILYMAX_HEADER"   "$LIVEDATA_WINDDAILYMAX"  "$UNIT_WIND"  'wdmax' "$STYLE_LIMIT_LIVEDATA_WINDDAILYMAX"
+        
+        [ -n "$LIVEDATA_WINDDIRECTION" ] && printLivedataLine "LIVEDATA_WINDDIRECTION_HEADER" "$LIVEDATA_WINDDIRECTION"   "%6u" "$UNIT_DEGREE"\
+         "%5s" 'wdeg' "%4u" "$LIVEDATA_WINDDIRECTION" "$LIVEVIEW_COMPASS_S"
+        
+        [ -n "$LIVEDATA_WINDDAILYMAX" ]  && printLivedataWindLine   "$LIVEDATA_WINDDAILYMAX_RAW"    "$LIVEDATA_WINDDAILYMAX_LIMIT"\
+         "LIVEDATA_WINDDAILYMAX_HEADER"   "$LIVEDATA_WINDDAILYMAX"  "$UNIT_WIND"  'wdmax' "$STYLE_LIMIT_LIVEDATA_WINDDAILYMAX"
       
         #[ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]    && printLivedataLine "LIVEDATA_WINDDIRECTION_COMPASS_HEADER"   "$LIVEDATA_WINDDIRECTION_COMPASS"  "%6s" "" "%5s" 'wdir' "%4s"
     fi
