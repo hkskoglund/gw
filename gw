@@ -4386,9 +4386,6 @@ initShell() {
             else
                 SHELL_SUPPORT_BULTIN_PRINTF_VOPT=0
             fi
-
-           
-
         ;;
         
         *is*)
@@ -5607,11 +5604,17 @@ while [ $# -gt 0 ]; do
              ;;
 
         -f | --firmware)
-            HTTP_UA_NAME="gw $(uname -srv)"
-            HTTP_FIRMWARE="http://download.ecowitt.net/down/filewave?v=FirwaveReadme.txt"
-            [ $DEBUG -eq 1 ] && printf >&2 "%s\n%s" "$HTTP_UA_NAME" "$HTTP_FIRMWARE"
-            curl --silent --show-error --user-agent "$HTTP_UA_NAME" "$HTTP_FIRMWARE"
-            shift 2
+            HTTP_UA="gw"
+            [ -n "$BASH_VERSION" ] && HTTP_UA="$HTTP_UA bash $BASH_VERSION"
+            [ -n "$ZSH_VERSION" ] && HTTP_UA="$HTTP_UA zsh $ZSH_VERSION"
+            [ -n "$KSH_VERSION" ] && HTTP_UA="$HTTP_UA ksh $KSH_VERSION"
+            HTTP_UA="$HTTP_UA nc $NC_VERSION_STR $(uname -srv)"
+            HTTP_REQ_HOST="download.ecowitt.net"
+            HTTP_REQ_PATH="/down/filewave?v=FirwaveReadme.txt"
+            #HTTP_FIRMWARE_URL="http://$HTTP_REQ_HOST$HTTP_REQ_PATH"
+            #curl --silent --show-error --user-agent "$HTTP_UA" "$HTTP_FIRMWARE_URL"
+            { printf "GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\nConnection:close\r\n\r\n"  "$HTTP_REQ_PATH" "$HTTP_REQ_HOST" "$HTTP_UA"; sleep 1; } | "$NC_CMD" "$HTTP_REQ_HOST" 80
+            shift 
             ;;
 
         -g | --gw)
