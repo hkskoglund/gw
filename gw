@@ -4446,7 +4446,7 @@ initShell() {
         esac
     fi
     
-   if ! SHELL_DECIMAL_POINT=$(locale decimal_point); then
+   if ! SHELL_DECIMAL_POINT=$(locale decimal_point) 2>/dev/null; then
       SHELL_DECIMAL_POINT="."
    fi
     
@@ -5631,7 +5631,7 @@ while [ $# -gt 0 ]; do
             HTTP_REQ_PATH="/down/filewave?v=FirwaveReadme.txt"
             #HTTP_FIRMWARE_URL="http://$HTTP_REQ_HOST$HTTP_REQ_PATH"
             #curl --silent --show-error --user-agent "$HTTP_UA" "$HTTP_FIRMWARE_URL"
-            { printf "GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\nConnection:close\r\n\r\n"  "$HTTP_REQ_PATH" "$HTTP_REQ_HOST" "$HTTP_UA"; sleep 1; } | "$NC_CMD" "$HTTP_REQ_HOST" 80
+            { printf "GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\nConnection:close\r\n\r\n"  "$HTTP_REQ_PATH" "$HTTP_REQ_HOST" "$HTTP_UA"; sleep 2; } | "$NC_CMD" "$HTTP_REQ_HOST" 80
             shift 
             ;;
 
