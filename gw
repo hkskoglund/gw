@@ -55,17 +55,18 @@ UNICODE_RAINDAY=${UNICODE_RAINDAY:=⛆}
 UNICODE_RAINHOUR=${UNICODE_RAINHOUR:=☔}
 
 UNICODE_BATTERY=${UNICODE_BATTERY:=🔋}
+UNICODE_SIGNAL=${UNICODE_SIGNAL:=📶}
 
 UNICODE_BATTERY_LOW=${UNICODE_BATTERY_LOW:=🪫}
 UNICODE_PLUG=${UNICODE_PLUG:=🔌}
 UNICODE_WIND=${UNICODE_WIND:=💨} #https://emojipedia.org/dashing-away/
 
 #https://www.compart.com/en/unicode/block/U+2580
-UNICODE_SIGNAL_LEVEL1=${UNICODE_SIGNAL_LEVEL1:=📶1}
-UNICODE_SIGNAL_LEVEL2=${UNICODE_SIGNAL_LEVEL2:=📶2}
-UNICODE_SIGNAL_LEVEL3=${UNICODE_SIGNAL_LEVEL3:=📶3}
+UNICODE_SIGNAL_LEVEL1=${UNICODE_SIGNAL_LEVEL1:=${UNICODE_SIGNAL}1}
+UNICODE_SIGNAL_LEVEL2=${UNICODE_SIGNAL_LEVEL2:=${UNICODE_SIGNAL}2}
+UNICODE_SIGNAL_LEVEL3=${UNICODE_SIGNAL_LEVEL3:=${UNICODE_SIGNAL}3}
 #UNICODE_SIGNAL_LEVEL4=${UNICODE_SIGNAL_LEVEL4:=▁▂▃▄}
-UNICODE_SIGNAL_LEVEL4=${UNICODE_SIGNAL_LEVEL4:=📶}
+UNICODE_SIGNAL_LEVEL4=${UNICODE_SIGNAL_LEVEL4:=${UNICODE_SIGNAL}}
 
 #https://www.compart.com/en/unicode/block/U+2190
 UNICODE_WIND_DIRECTION_S=${UNICODE_WIND_DIRECTION_S:=↑}
@@ -1629,7 +1630,19 @@ printLivedataLine()
     if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then 
        
         status_line="$9"
+        case $status_line in # only use UNICODE battery icon/skip detailed battery levels
+          $UNICODE_BATTERY*V|$UNICODE_BATTERY??) status_line=$UNICODE_BATTERY
+          ;;
+        esac
+
         signal_line="${12}"
+         case $signal_line in 
+          $UNICODE_SIGNAL??) signal_line=$UNICODE_SIGNAL
+          ;;
+        esac
+
+        status_line="$status_line$signal_line" #merge for compact format
+        unset signal_line
   
         if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
             APPEND_FORMAT="$APPEND_FORMAT $header_fmt %s %s %s %s\n"
