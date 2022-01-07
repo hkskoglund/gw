@@ -3810,7 +3810,9 @@ convertScale10ToFloat() {
   fi
 }
 
-initnc() {
+initnc() 
+#different versions of nc use slightly different options
+{
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
         {
@@ -3820,52 +3822,42 @@ initnc() {
         local nc_ver nc_ver_header nc_status nc_exec ncat_exec busybox_exec
     fi
 
-    nc_type=$(type nc) # test: busybox sh ./gw -d -g 192.168.3.16
-    if [ "$nc_type" = "nc is nc" ]; then # probably busybox nc
-            busybox_exec=$(which busybox 2>/dev/null) # test busybox nc
-        if [ -n "$busybox_exec" ]; then
-            NC_CMD="nc"
-            NC_VERSION=$NC_BUSYBOX
-            NC_VERSION_STR="nc $($busybox_exec | head -n 1)"
+    nc_exec=$(which nc 2>/dev/null)
+    if [ -z "$nc_exec" ]; then
+        ncat_exec=$(which ncat 2>/dev/null) # try ncat, if nc not availale
+        if [ -n "$ncat_exec" ]; then
+            NC_CMD=$ncat_exec
         fi
     else
+        NC_CMD=$nc_exec
+    fi
 
-        nc_exec=$(which nc 2>/dev/null)
-        if [ -z "$nc_exec" ]; then
-            ncat_exec=$(which ncat 2>/dev/null) # try ncat, if nc not availale
-            if [ -n "$ncat_exec" ]; then
-                NC_CMD=$ncat_exec
-            fi
-        else
-            NC_CMD=$nc_exec
-        fi
+    if [ -n "$NC_CMD" ]; then #determine which version of nc
 
-        if [ -n "$NC_CMD" ] && [ -z $NC_VERSION ]; then
+        nc_ver=$("$NC_CMD" --version 2>&1) # ""-preserve space
+        nc_status=$?
 
-            nc_ver=$("$NC_CMD" --version 2>&1) # ""-preserve space
-            nc_status=$?
+        if [ "$nc_status" -eq 0 ]; then
 
-            if [ "$nc_status" -eq 0 ]; then
-
-                case "$nc_ver" in
+            case "$nc_ver" in
                 *nmap*)
                     NC_VERSION=$NC_NMAP
                     ;;
                 *toybox*)
                     NC_VERSION=$NC_TOYBOX
                     ;;
-                esac
+            esac
 
-                NC_VERSION_STR=$nc_ver
-            else
-                #            IFS=' ' read -r nc_ver_header << EOL
-                #$nc_ver
-                #EOL
-                IFS=' '
-                set -- "$nc_ver"
-                nc_ver_header=$1
+            NC_VERSION_STR=$nc_ver
+        else
+            #            IFS=' ' read -r nc_ver_header << EOL
+            #$nc_ver
+            #EOL
+            IFS=' '
+            set -- "$nc_ver"
+            nc_ver_header=$1
 
-                case "$nc_ver_header" in
+            case "$nc_ver_header" in
 
                 $nc_exec:\ invalid\ option*)
 
@@ -3878,16 +3870,24 @@ initnc() {
                     NC_VERSION=$NC_OPENBSD
                     NC_VERSION_STR="nc unknown"
                     ;;
-                esac
+            esac
 
-            fi
+        fi
 
-            [ "$DEBUG" -eq 1 ] && echo >&2 "nc version detection $NC_VERSION_STR"
+        [ "$DEBUG" -eq 1 ] && echo >&2 "nc version detection $NC_VERSION_STR"
 
-        
+        RETURNCODE_INITNC=0
+    
+    else
+
+        busybox_exec=$(which busybox 2>/dev/null) # test busybox nc
+        if [ -n "$busybox_exec" ]; then
+            NC_CMD="busybox nc"
+            NC_VERSION=$NC_BUSYBOX
+            NC_VERSION_STR="nc $($busybox_exec 2>&1 | head -n 1)"
             RETURNCODE_INITNC=0
         else
-            RETURNCODE_INITNC="$ERROR_DEPENDENCY_NC"
+          RETURNCODE_INITNC="$ERROR_DEPENDENCY_NC"
         fi
     fi
 
@@ -5389,11 +5389,13 @@ initShell
 initcoptCommands
 initConfigDir
 initTrap
-if ! initnc; then
-    echo >&2 Error nc/ncat not found
-    exit "$ERROR_DEPENDENCY_NC"
+if [ -z "$NC_CMD" ] && [ -z "$NC_VERSION" ]; then
+    
+    if ! initnc; then
+        echo >&2 Error nc/ncat not found
+        exit "$ERROR_DEPENDENCY_NC"
+    fi
 fi
-
 initTimezones
 
 initUnit
