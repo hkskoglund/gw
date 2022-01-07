@@ -2062,9 +2062,6 @@ printLivedata() {
         done
     fi
 
-    printAppendBuffer
-    return
-
     if [ -z "$HIDE_PM25_LIVEDATA" ]; then
 
         n=1
@@ -3829,7 +3826,9 @@ initnc() {
             if [ -n "$busybox_exec" ]; then
                 NC_CMD="nc"
                 NC_VERSION=$NC_BUSYBOX
-                NC_VERSION_STR="nc busybox"
+                set -x 
+                NC_VERSION_STR="nc $($busybox_exec | head -n 1)"
+                set +x
                 return 0
             fi
     fi
@@ -5388,12 +5387,10 @@ initShell
 initcoptCommands
 initConfigDir
 initTrap
-set -x 
 if ! initnc; then
     echo >&2 Error nc/ncat not found
     exit "$ERROR_DEPENDENCY_NC"
 fi
-set +x
 
 initTimezones
 
