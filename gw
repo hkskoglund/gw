@@ -41,9 +41,11 @@ OPTION_SHOW_TESTSENSOR=0
 
 MAX_16BIT_UINT=$(((2 << 16) - 1))
 
-GW_STYLE_FILE=${GW_STYLE_FILE:=./style/ansiesc.sh}
-GW_VIEW_BIG_FILE=${GW_VIEW_BIG_FILE=./view/big.sh}
-GW_STYLE_LIMITS_FILE=${GW_STYLE_LIMITS_FILE:=./style/limits.sh}
+GW_VIEW_BIG_FILE=${GW_VIEW_BIG_FILE="./view/big.sh"}
+GW_VIEW_CSV_FILE=${GW_VIEW_CSV_FILE:="./view/csv.sh"}
+
+GW_STYLE_LIMITS_FILE=${GW_STYLE_LIMITS_FILE:="./style/limits.sh"}
+GW_STYLE_FILE=${GW_STYLE_FILE:="./style/ansiesc.sh"}
 
 #shellcheck source=./style/limits.sh
 . "$GW_STYLE_LIMITS_FILE"
@@ -2031,7 +2033,8 @@ printLivedata() {
         done
     fi
    
-     if [ -z "$HIDE_TEMPUSR_LIVEDATA" ]; then
+    if [ -z "$HIDE_TEMPUSR_LIVEDATA" ]; then
+       
         n=1
         while [ "$n" -le "$WH31_TEMP_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_TF_USR$n" ]; then
@@ -2053,11 +2056,14 @@ printLivedata() {
                         #setSGIBatteryLowNormal \"\$LIVEDATA_LEAK${n}_BATTERY\"
                         [ \"\$LIVEDATA_LEAK$n\" -ne 0 ] && SGI_LIVE_VALUE=\"$STYLE_LEAK\" && VALUE_LEAK=$LIVEDATA_LEAK_YES
                         LIVEDATA_LEAK_HEADER$n=\"\$LIVEDATA_LEAK_HEADER$n \$VALUE_LEAK_DELIMITER \$VALUE_LEAK\"
-                        printLivedataLine \"LIVEDATA_LEAK_HEADER$n\" \"\$LIVEDATA_LEAK\" \"%6u\" \"\" \"%4s\" \"leak$n\" '' \"\$LIVEDATA_LEAK${n}_BATTERY\" \"\$LIVEDATA_LEAK${n}_BATTERY_STATE\" 
+                        printLivedataLine \"LIVEDATA_LEAK_HEADER$n\" \"\$LIVEDATA_LEAK$n\" \"%6u\" \"\" \"%4s\" \"leak$n\" '' \"\$LIVEDATA_LEAK${n}_BATTERY\" \"\$LIVEDATA_LEAK${n}_BATTERY_STATE\" 
                 fi"
             n=$((n + 1))
         done
     fi
+
+    printAppendBuffer
+    return
 
     if [ -z "$HIDE_PM25_LIVEDATA" ]; then
 
@@ -3308,7 +3314,7 @@ sendPacketnc() { #$1 - command
 
     elif [ "$NC_VERSION" -eq $NC_BUSYBOX ]; then
 
-        nccmdstr="$NC_CMD nc $host $port"
+        nccmdstr="$NC_CMD $host $port"
 
         if [ -z "$ncUDPOpt" ]; then
             cmdstr="printf %b \"$PACKET_TX_ESCAPE\" |  $nccmdstr | $odcmdstr"
@@ -3817,19 +3823,22 @@ initnc() {
         local nc_ver nc_ver_header nc_status nc_exec ncat_exec busybox_exec
     fi
 
+    nc_type=$(type nc) # test: busybox sh ./gw -d -g 192.168.3.16
+    if [ "$nc_type" = "nc is nc" ]; then # probably busybox nc
+             busybox_exec=$(which busybox 2>/dev/null) # test busybox nc
+            if [ -n "$busybox_exec" ]; then
+                NC_CMD="nc"
+                NC_VERSION=$NC_BUSYBOX
+                NC_VERSION_STR="nc busybox"
+                return 0
+            fi
+    fi
+
     nc_exec=$(which nc 2>/dev/null)
     if [ -z "$nc_exec" ]; then
         ncat_exec=$(which ncat 2>/dev/null) # try ncat, if nc not availale
         if [ -n "$ncat_exec" ]; then
             NC_CMD=$ncat_exec
-        else
-            busybox_exec=$(which busybox 2>/dev/null) # test busybox nc
-            if [ -n "$busybox_exec" ]; then
-                NC_CMD="$busybox_exec"
-                NC_VERSION=$NC_BUSYBOX
-                NC_VERSION_STR="nc busybox"
-                return 0
-            fi
         fi
     else
         NC_CMD=$nc_exec
@@ -4231,7 +4240,7 @@ processCommand() {
 
             ;;
 
-        livedata | ld | live | l)
+        livedata | l)
 
             sendPacket "$CMD_READ_SENSOR_ID_NEW" >/dev/null   #get battery and signal info as well
 
@@ -4731,30 +4740,12 @@ printOrLogLivedata()
            "$GW_VIEW_BIG_FILE" # must have execute permission chmod +x
        fi
     else
-      if [ -z "$LOG_CMD_INIT" ]; then
-        case "$LOG_CMD" in 
-            csv)
-               #shellcheck disable=SC2016
-               {
-                LOG_CMD='echo $(date -u +"%F %T"),$LIVEDATA_OUTTEMP,$LIVEDATA_INTEMP,$LIVEDATA_INHUMI,$LIVEDATA_OUTHUMI,$LIVEDATA_RELBARO,$LIVEDATA_ABSBARO'
-                if [ -n "$LIVEDATA_WINDSPEED" ]; then # assumes other variables are set
-                    LOG_CMD="$LOG_CMD"',$LIVEDATA_WINDDIRECTION,$LIVEDATA_WINDDIRECTION_COMPASS,$LIVEDATA_WINDSPEED,$LIVEDATA_WINDGUSTSPEED'
-                fi
-                if [ -n "$LIVEDATA_LIGHT" ]; then
-                    LOG_CMD="$LOG_CMD"'$LIVEDATA_LIGHT,$LIVEDATA_UV,$LIVEDATA_UVI'
-                fi
-                if [ -n "$LIVEDATA_RAINRATE" ]; then 
-                    LOG_CMD="$LOG_CMD"'$LIVEDATA_RAINRATE,$LIVEDATA_RAINDAY,$LIVEDATA_RAINWEEK,$LIVEDATA_RAINMONTH,$LIVEDATA_RAINYEAR'
-                fi
-               }
-               #[ "$DEBUG" -eq 1 ] && 
-               echo >&2 Log command  "$LOG_CMD"
-                LOG_CMD_INIT=1 #only built first time, assumes static format received
-                ;;
-        esac
-     fi
-     
-      eval "$LOG_CMD"
+      eval "$LOG_CMD" # would allow executing of anything inside 
+    # case "$LOG_CMD" in
+    #   csv) "$GW_VIEW_CSV_FILE"
+    #       ;;
+    #    *) echo >&2 Error Valid log formats are: csv
+     #esac
     fi
 }
 
@@ -4769,7 +4760,6 @@ parseEcowittHttpRequest()
    fi
 
     LIVEDATA_PROTOCOL=$LIVEDATA_PROTOCOL_ECOWITT_HTTP
-
 
     http_body=$(echo "$1" | tail -n 1) 
     [ "$DEBUG" -eq 1 ] && printf "HTTP BODY\n%s\n" "$http_body"
@@ -5250,12 +5240,15 @@ httpServer()
 
 cleanup()
 {
-   exit
+    :
+#   exit
 }
 
 initTrap()
 {
-    trap cleanup INT TERM #ctrl-c pressed by user, or TERM sent default by kill when script in background doing livedata logging 
+    :
+   #some info here: https://unix.stackexchange.com/questions/57940/trap-int-term-exit-really-necessary
+   # trap cleanup INT TERM #ctrl-c pressed by user, or TERM sent default by kill when script in background doing livedata logging 
 }
 
 #read -r -u 0 -t 0 STDIN
@@ -5395,10 +5388,12 @@ initShell
 initcoptCommands
 initConfigDir
 initTrap
+set -x 
 if ! initnc; then
     echo >&2 Error nc/ncat not found
     exit "$ERROR_DEPENDENCY_NC"
 fi
+set +x
 
 initTimezones
 
