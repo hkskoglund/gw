@@ -3822,79 +3822,81 @@ initnc() {
 
     nc_type=$(type nc) # test: busybox sh ./gw -d -g 192.168.3.16
     if [ "$nc_type" = "nc is nc" ]; then # probably busybox nc
-             busybox_exec=$(which busybox 2>/dev/null) # test busybox nc
-            if [ -n "$busybox_exec" ]; then
-                NC_CMD="nc"
-                NC_VERSION=$NC_BUSYBOX
-                set -x 
-                NC_VERSION_STR="nc $($busybox_exec | head -n 1)"
-                set +x
-                return 0
+            busybox_exec=$(which busybox 2>/dev/null) # test busybox nc
+        if [ -n "$busybox_exec" ]; then
+            NC_CMD="nc"
+            NC_VERSION=$NC_BUSYBOX
+            NC_VERSION_STR="nc $($busybox_exec | head -n 1)"
+        fi
+    else
+
+        nc_exec=$(which nc 2>/dev/null)
+        if [ -z "$nc_exec" ]; then
+            ncat_exec=$(which ncat 2>/dev/null) # try ncat, if nc not availale
+            if [ -n "$ncat_exec" ]; then
+                NC_CMD=$ncat_exec
             fi
-    fi
-
-    nc_exec=$(which nc 2>/dev/null)
-    if [ -z "$nc_exec" ]; then
-        ncat_exec=$(which ncat 2>/dev/null) # try ncat, if nc not availale
-        if [ -n "$ncat_exec" ]; then
-            NC_CMD=$ncat_exec
-        fi
-    else
-        NC_CMD=$nc_exec
-    fi
-
-    if [ -n "$NC_CMD" ] && [ -z $NC_VERSION ]; then
-
-        nc_ver=$("$NC_CMD" --version 2>&1) # ""-preserve space
-        nc_status=$?
-
-        if [ "$nc_status" -eq 0 ]; then
-
-            case "$nc_ver" in
-            *nmap*)
-                NC_VERSION=$NC_NMAP
-                ;;
-            *toybox*)
-                NC_VERSION=$NC_TOYBOX
-                ;;
-            esac
-
-            NC_VERSION_STR=$nc_ver
         else
-            #            IFS=' ' read -r nc_ver_header << EOL
-            #$nc_ver
-            #EOL
-            IFS=' '
-            set -- "$nc_ver"
-            nc_ver_header=$1
-
-            case "$nc_ver_header" in
-
-            $nc_exec:\ invalid\ option*)
-
-                NC_VERSION=$NC_OPENBSD
-                NC_VERSION_STR="nc openbsd (probably)"
-                ;;
-
-            *)
-                echo >&2 "Error Unknown nc version header $nc_ver"
-                NC_VERSION=$NC_OPENBSD
-                NC_VERSION_STR="nc unknown"
-                ;;
-            esac
-
+            NC_CMD=$nc_exec
         fi
 
-        [ "$DEBUG" -eq 1 ] && echo >&2 "nc version detection $NC_VERSION_STR"
+        if [ -n "$NC_CMD" ] && [ -z $NC_VERSION ]; then
 
-        if [ -n "$KSH_VERSION" ]; then
-           unset nc_ver nc_ver_header nc_status nc_exec ncat_exec busybox_exec
+            nc_ver=$("$NC_CMD" --version 2>&1) # ""-preserve space
+            nc_status=$?
+
+            if [ "$nc_status" -eq 0 ]; then
+
+                case "$nc_ver" in
+                *nmap*)
+                    NC_VERSION=$NC_NMAP
+                    ;;
+                *toybox*)
+                    NC_VERSION=$NC_TOYBOX
+                    ;;
+                esac
+
+                NC_VERSION_STR=$nc_ver
+            else
+                #            IFS=' ' read -r nc_ver_header << EOL
+                #$nc_ver
+                #EOL
+                IFS=' '
+                set -- "$nc_ver"
+                nc_ver_header=$1
+
+                case "$nc_ver_header" in
+
+                $nc_exec:\ invalid\ option*)
+
+                    NC_VERSION=$NC_OPENBSD
+                    NC_VERSION_STR="nc openbsd (probably)"
+                    ;;
+
+                *)
+                    echo >&2 "Error Unknown nc version header $nc_ver"
+                    NC_VERSION=$NC_OPENBSD
+                    NC_VERSION_STR="nc unknown"
+                    ;;
+                esac
+
+            fi
+
+            [ "$DEBUG" -eq 1 ] && echo >&2 "nc version detection $NC_VERSION_STR"
+
+        
+            RETURNCODE_INITNC=0
+        else
+            RETURNCODE_INITNC="$ERROR_DEPENDENCY_NC"
         fi
-
-        return 0
-    else
-        return "$ERROR_DEPENDENCY_NC"
     fi
+
+     if [ -n "$KSH_VERSION" ]; then
+           unset nc_ver nc_ver_header nc_status nc_exec ncat_exec busybox_exec
+     fi
+
+     return $RETURNCODE_INITNC
+
 }
 
 initConfigDir() {
