@@ -1,10 +1,6 @@
 #!/usr/bin/dash
 #Limits for triggering of ansi escape highlights
 
-export LIVEDATA_WINDSPEED_LIMIT=${LIVEDATA_WINDSPEED_LIMIT:=80}  # 8 m/s - set param if value unset/null
-export LIVEDATA_WINDGUSTSPEED_LIMIT=${LIVEDATA_WINDGUSTSPEED_LIMIT:=80}  # 8 m/s - set param if value unset/null
-export LIVEDATA_WINDDAILYMAX_LIMIT=${LIVEDATA_WINDDAILYMAX_LIMIT:=80}  # 8 m/s - set param if value unset/null
-
 export LIVEDATA_RAINRATE_LIMIT=${LIVEDATA_RAINRATE_LIMIT:=5} # 0.5 mm/h - scale x10
 export LIVEDATA_RAINHOUR_LIMIT=${LIVEDATA_RAINHOUR_LIMIT:=5}
 export LIVEDATA_RAINDAY_LIMIT=${LIMIT_LIVEDATA_RAINDAILY:=100} # 10.0 mm

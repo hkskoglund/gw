@@ -1747,19 +1747,6 @@ printLivedataRainLine()
     fi
 }
 
-printLivedataWindLine()
-#$1 - wind speed x 10, $2 wind limit x 10, $3 header, $4 wind speed, $5 unit, $6 short name, $7 style, $8 status, $9 status_fmt
-{
-    #echo >&2 "printLivedataWindLine $*"
-
-    if [ "$1" -ge "$2" ] && [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-        setLivedataValueStyleGt "$1" "$2" "$7"
-        printLivedataLine "$3" "$4" "%6.1f" "$5" "%4s" "$6" "%6.1f" "$1" 
-    else
-        printLivedataLine "$3" "$4" "%6.1f" "$5" "%4s" "$6" "%6.1f" "$4" "$8" "$9"
-    fi
-}
-
 printWHBatterySignal()
 {
     if [ -n "$2" ]; then
