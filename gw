@@ -509,6 +509,7 @@ VALUE_LEAK_DELIMITER='-'
 VALUE_UVI_DELIMITER='-'
 VALUE_COMPASS_DELIMITER='-'
 VALUE_BEUFORT_DELIMITER='-'
+VALUE_RAININTENSITY_DELIMITER='-'
 
 
 #is sent in http get request when data from sensors are not available, for example after reboot
@@ -520,6 +521,7 @@ WUNDERGROUND_UNDEFINED_VALUE="-9999"
 
 . ./gw-uv.sh
 . ./gw-pm25.sh
+. ./gw-rainintensity.sh
 
 eval "$GW_SETUVRISK_FUNC"
 eval "$GW_SETSTYLEUVI_FUNC"
@@ -1872,7 +1874,7 @@ printLivedata() {
             setBeufort "$LIVEDATA_WINDGUSTSPEED_RAW"
             setStyleBeufort "$LIVEDATA_WINDGUSTSPEED_RAW"
             STYLE_LIVE_VALUE=$STYLE_BEUFORT
-            printLivedataLine  "$LIVEDATA_WINDGUSTSPEED_HEADER $VALUE_BEUFORT_DELIMITER $VALUE_BEUFORT_DESCRIPTION" "$LIVEDATA_WINDGUSTSPEED" "%6.1f" "$UNIT_WIND" "%4s" 'wgspd' "%6.1f" "" "" "\t%s$LIVEVIEW_COMPASS_WE_FMT"
+            printLivedataLine  "$LIVEDATA_WINDGUSTSPEED_HEADER $VALUE_BEUFORT_DELIMITER $VALUE_BEUFORT $VALUE_BEUFORT_DESCRIPTION " "$LIVEDATA_WINDGUSTSPEED" "%6.1f" "$UNIT_WIND" "%4s" 'wgspd' "%6.1f" "" "" "\t%s$LIVEVIEW_COMPASS_WE_FMT"
         fi
 
         LIVEDATA_WINDDIRECTION_HEADER="$LIVEDATA_WINDDIRECTION_HEADER $VALUE_COMPASS_DELIMITER $LIVEDATA_WINDDIRECTION_COMPASS" #integrate direction in header
@@ -1884,7 +1886,7 @@ printLivedata() {
             setBeufort "$LIVEDATA_WINDDAILYMAX_RAW"
             setStyleBeufort "$LIVEDATA_WINDDAILYMAX_RAW"
             STYLE_LIVE_VALUE=$STYLE_BEUFORT
-            printLivedataLine  "$LIVEDATA_WINDDAILYMAX_HEADER $VALUE_BEUFORT_DELIMITER $VALUE_BEUFORT_DESCRIPTION"   "$LIVEDATA_WINDDAILYMAX"  "%6.1f" "$UNIT_WIND" "%4s" 'wdmax' "%6.1f" 
+            printLivedataLine  "$LIVEDATA_WINDDAILYMAX_HEADER $VALUE_BEUFORT_DELIMITER $VALUE_BEUFORT $VALUE_BEUFORT_DESCRIPTION"   "$LIVEDATA_WINDDAILYMAX"  "%6.1f" "$UNIT_WIND" "%4s" 'wdmax' "%6.1f" 
          fi 
       
         #[ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]    && printLivedataLine "LIVEDATA_WINDDIRECTION_COMPASS_HEADER"   "$LIVEDATA_WINDDIRECTION_COMPASS"  "%6s" "" "%5s" 'wdir' "%4s"
@@ -1902,8 +1904,7 @@ printLivedata() {
             setStyleUVI "$LIVEDATA_UVI"
             #shellcheck disable=SC2153
             STYLE_LIVE_VALUE=$STYLE_UVI
-            LIVEDATA_UVI_HEADER="$LIVEDATA_UVI_HEADER  $VALUE_UVI_DELIMITER $VALUE_UV_RISK"
-            printLivedataLine "$LIVEDATA_UVI_HEADER" "$LIVEDATA_UVI"      "%6u" "" "%4s" 'uvi' "%3u"
+            printLivedataLine "$LIVEDATA_UVI_HEADER $VALUE_UVI_DELIMITER $VALUE_UV_RISK" "$LIVEDATA_UVI"      "%6u" "" "%4s" 'uvi' "%3u"
         fi
     fi
 
@@ -1912,7 +1913,17 @@ printLivedata() {
     fi
 
     if [ -z "$HIDE_RAIN_LIVEDATA" ]; then
-        [ -n "$LIVEDATA_RAINRATE" ]     && printLivedataRainLine "$LIVEDATA_RAINRATE_RAW"   "$LIVEDATA_RAINRATE_LIMIT"      "$LIVEDATA_RAINRATE_HEADER"  "$LIVEDATA_RAINRATE"   "$UNIT_RAINRATE" 'rrate' "$UNICODE_RAINRATE" "$STYLE_LIMIT_LIVEDATA_RAINRATE"
+        if [ -n "$LIVEDATA_RAINRATE" ]; then
+            setRainIntensity "$LIVEDATA_RAINRATE_RAW"
+            setStyleRainIntensity "$LIVEDATA_RAINRATE_RAW"
+            STYLE_LIVE_VALUE=$STYLE_RAININTENSITY
+            if [ "$LIVEDATA_RAINRATE_RAW" -eq 0 ]; then
+                printLivedataLine "$LIVEDATA_RAINRATE_HEADER"  "$LIVEDATA_RAINRATE" "%6.1f"  "$UNIT_RAINRATE" "%4s" 'rrate'  '' "$UNICODE_RAINRATE" 
+            else
+                printLivedataLine "$LIVEDATA_RAINRATE_HEADER $VALUE_RAININTENSITY_DELIMITER $VALUE_RAININTENSITY"  "$LIVEDATA_RAINRATE" "%6.1f"  "$UNIT_RAINRATE" "%4s" 'rrate'  '' "$UNICODE_RAINRATE" 
+            fi
+           #                   "$LIVEDATA_RAINWEEK_HEADER" "$LIVEDATA_RAINWEEK"    "%6.1f" "$UNIT_RAIN" "%3s" 'rweek' ''  "$LIVEDATA_WH40_RAINFALL_BATTERY" "$LIVEDATA_WH40_RAINFALL_BATTERY_STATE" "" "$LIVEDATA_WH40_RAINFALL_SIGNAL" "$LIVEDATA_WH40_RAINFALL_SIGNAL_STATE"
+        fi 
         # rainhour available in Ecowitt http request
         [ -n "$LIVEDATA_RAINHOUR" ]     && printLivedataRainLine "$LIVEDATA_RAINHOUR_RAW"   "$LIVEDATA_RAINHOUR_LIMIT"      "$LIVEDATA_RAINHOUR_HEADER"  "$LIVEDATA_RAINHOUR" "$UNIT_RAIN" 'rhour' "" "$STYLE_LIMIT_LIVEDATA_RAINHOUR"
         [ -n "$LIVEDATA_RAINDAY" ]      && printLivedataRainLine "$LIVEDATA_RAINDAY_RAW"    "$LIVEDATA_RAINDAY_LIMIT"       "$LIVEDATA_RAINDAY_HEADER"   "$LIVEDATA_RAINDAY"  "$UNIT_RAIN" 'rday' "" "$STYLE_LIMIT_LIVEDATA_RAINDAY"
