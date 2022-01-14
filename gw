@@ -511,7 +511,6 @@ VALUE_COMPASS_DELIMITER='-'
 VALUE_BEUFORT_DELIMITER='-'
 VALUE_RAININTENSITY_DELIMITER='-'
 
-
 #is sent in http get request when data from sensors are not available, for example after reboot
 WUNDERGROUND_UNDEFINED_VALUE="-9999"
 
@@ -525,23 +524,6 @@ WUNDERGROUND_UNDEFINED_VALUE="-9999"
 
 eval "$GW_SETUVRISK_FUNC"
 eval "$GW_SETSTYLEUVI_FUNC"
-
-setANSI_CHA_CursorHorisontalAbsolute()
-#$1 column n
-{
-    ANSI_ESC=$ANSI_ESC$CSI$1G
-}
-
-setANSI_CUP_CursorPosition()
-#$1 row, $2 column
-{
-    ANSI_ESC=$ANSI_ESC$CSI$1;"$2"H
-}
-
-ANSI_rightjustifyString()
-{
-    setANSI_CHA_CursorHorisontalAbsolute $(( TERM_COLUMNS - ${#1} + 1))
-}
 
 setBatteryLowNormal()
 {
@@ -1733,23 +1715,26 @@ newLivedataCompass()
    fi
 }
 
+setRainValueFormat()
+{
+     if [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_MM ]; then
+      VALUE_RAIN_FMT="%6.1f"
+    elif [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_IN ]; then
+      VALUE_RAIN_FMT="%6.2f"
+    fi
+}
+
 printLivedataRainLine()
 {
     #echo "printLivedataRainLine $*"
-
-    if [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_MM ]; then
-      value_fmt="%6.1f"
-    elif [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_IN ]; then
-      value_fmt="%6.2f"
-    fi
 
     [ "$DEBUG" -eq 1 ] && echo >&2 printLivedataRainLine raw value : "$1" limit: "$2"
 
     if [ "$1" -gt "$2" ] && [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
         setLivedataValueStyleGt "$1" "$2" "$8"
-        printLivedataLine "$3" "$4" "$value_fmt" "$5" "%5s" "$6" "%6.1f" "$1" "$7"
+        printLivedataLine "$3" "$4" "$VALUE_RAIN_FMT" "$5" "%5s" "$6" "%6.1f" "$1" "$7"
     else
-        printLivedataLine "$3" "$4" "$value_fmt"  "$5" "%5s" "$6" "%6.1f"
+        printLivedataLine "$3" "$4" "$VALUE_RAIN_FMT"  "$5" "%5s" "$6" "%6.1f"
     fi
 }
 
@@ -1810,12 +1795,12 @@ printLivedataHeader()
     fi
 }
 
-printLivedata() {
-    
+printLivedata() 
+{
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        typeset n  
-        local n 
+        typeset n  delimiter
+        local n  delimiter
     fi
 
     #resetAppendBuffer
@@ -1913,26 +1898,25 @@ printLivedata() {
     fi
 
     if [ -z "$HIDE_RAIN_LIVEDATA" ]; then
-        if [ -n "$LIVEDATA_RAINRATE" ]; then
-            setRainIntensity "$LIVEDATA_RAINRATE_RAW"
-            setStyleRainIntensity "$LIVEDATA_RAINRATE_RAW"
-            STYLE_LIVE_VALUE=$STYLE_RAININTENSITY
-            if [ "$LIVEDATA_RAINRATE_RAW" -eq 0 ]; then
-                printLivedataLine "$LIVEDATA_RAINRATE_HEADER"  "$LIVEDATA_RAINRATE" "%6.1f"  "$UNIT_RAINRATE" "%4s" 'rrate'  '' "$UNICODE_RAINRATE" 
-            else
-                printLivedataLine "$LIVEDATA_RAINRATE_HEADER $VALUE_RAININTENSITY_DELIMITER $VALUE_RAININTENSITY"  "$LIVEDATA_RAINRATE" "%6.1f"  "$UNIT_RAINRATE" "%4s" 'rrate'  '' "$UNICODE_RAINRATE" 
-            fi
-           #                   "$LIVEDATA_RAINWEEK_HEADER" "$LIVEDATA_RAINWEEK"    "%6.1f" "$UNIT_RAIN" "%3s" 'rweek' ''  "$LIVEDATA_WH40_RAINFALL_BATTERY" "$LIVEDATA_WH40_RAINFALL_BATTERY_STATE" "" "$LIVEDATA_WH40_RAINFALL_SIGNAL" "$LIVEDATA_WH40_RAINFALL_SIGNAL_STATE"
-        fi 
-        # rainhour available in Ecowitt http request
-        [ -n "$LIVEDATA_RAINHOUR" ]     && printLivedataRainLine "$LIVEDATA_RAINHOUR_RAW"   "$LIVEDATA_RAINHOUR_LIMIT"      "$LIVEDATA_RAINHOUR_HEADER"  "$LIVEDATA_RAINHOUR" "$UNIT_RAIN" 'rhour' "" "$STYLE_LIMIT_LIVEDATA_RAINHOUR"
-        [ -n "$LIVEDATA_RAINDAY" ]      && printLivedataRainLine "$LIVEDATA_RAINDAY_RAW"    "$LIVEDATA_RAINDAY_LIMIT"       "$LIVEDATA_RAINDAY_HEADER"   "$LIVEDATA_RAINDAY"  "$UNIT_RAIN" 'rday' "" "$STYLE_LIMIT_LIVEDATA_RAINDAY"
-        [ -n "$LIVEDATA_RAINEVENT" ]    && printLivedataRainLine "$LIVEDATA_RAINEVENT_RAW"  "$LIVEDATA_RAINEVENT_LIMIT"     "$LIVEDATA_RAINEVENT_HEADER" "$LIVEDATA_RAINEVENT" "$UNIT_RAIN" 'revent' "" "$STYLE_LIMIT_LIVEDATA_RAINEVENT"
+      
+        setRainValueFormat # .2 decimals for inch or .1 decimals for mm
 
-        [ -n "$LIVEDATA_RAINWEEK" ]     && printLivedataLine "$LIVEDATA_RAINWEEK_HEADER" "$LIVEDATA_RAINWEEK"    "%6.1f" "$UNIT_RAIN" "%3s" 'rweek' ''  "$LIVEDATA_WH40_RAINFALL_BATTERY" "$LIVEDATA_WH40_RAINFALL_BATTERY_STATE" "" "$LIVEDATA_WH40_RAINFALL_SIGNAL" "$LIVEDATA_WH40_RAINFALL_SIGNAL_STATE"
-        [ -n "$LIVEDATA_RAINMONTH" ]    && printLivedataLine "$LIVEDATA_RAINMONTH_HEADER" "$LIVEDATA_RAINMONTH"  "%6.1f" "$UNIT_RAIN" "%3s" 'rmonth' "%6.1f"
-        [ -n "$LIVEDATA_RAINYEAR" ]     && printLivedataLine "$LIVEDATA_RAINYEAR_HEADER" "$LIVEDATA_RAINYEAR"    "%6.1f" "$UNIT_RAIN" "%3s" 'ryear'
-        [ -n "$LIVEDATA_RAINTOTAL" ]    && printLivedataLine "$LIVEDATA_RAINTOTAL_HEADER" "$LIVEDATA_RAINTOTAL"  "%6.1f" "$UNIT_RAIN" "%3s" 'rtotal' "%6.1f"
+        if [ -n "$LIVEDATA_RAINRATE" ]; then
+               setRainIntensity "$LIVEDATA_RAINRATE_RAW"
+               setStyleRainIntensity "$LIVEDATA_RAINRATE_RAW"
+               STYLE_LIVE_VALUE=$STYLE_RAININTENSITY
+               [ "$LIVEDATA_RAINRATE_RAW" -gt 0 ] && delimiter=$VALUE_RAININTENSITY_DELIMITER || delimiter=" "
+               printLivedataLine "$LIVEDATA_RAINRATE_HEADER $delimiter $VALUE_RAININTENSITY"  "$LIVEDATA_RAINRATE" "$VALUE_RAIN_FMT"  "$UNIT_RAINRATE" "%4s" 'rrate'  '' "$UNICODE_RAINRATE" 
+            fi
+        # rainhour available in Ecowitt http request
+        [ -n "$LIVEDATA_RAINHOUR" ]     && printLivedataRainLine "$LIVEDATA_RAINHOUR_RAW"  "$LIVEDATA_RAINHOUR_LIMIT"  "$LIVEDATA_RAINHOUR_HEADER"  "$LIVEDATA_RAINHOUR" "$UNIT_RAIN" 'rhour' "" "$STYLE_LIMIT_LIVEDATA_RAINHOUR"
+        [ -n "$LIVEDATA_RAINDAY" ]      && printLivedataRainLine "$LIVEDATA_RAINDAY_RAW"   "$LIVEDATA_RAINDAY_LIMIT"   "$LIVEDATA_RAINDAY_HEADER"   "$LIVEDATA_RAINDAY"  "$UNIT_RAIN" 'rday' "" "$STYLE_LIMIT_LIVEDATA_RAINDAY"
+        [ -n "$LIVEDATA_RAINEVENT" ]    && printLivedataRainLine "$LIVEDATA_RAINEVENT_RAW" "$LIVEDATA_RAINEVENT_LIMIT" "$LIVEDATA_RAINEVENT_HEADER" "$LIVEDATA_RAINEVENT" "$UNIT_RAIN" 'revent' "" "$STYLE_LIMIT_LIVEDATA_RAINEVENT"
+
+        [ -n "$LIVEDATA_RAINWEEK" ]     && printLivedataLine "$LIVEDATA_RAINWEEK_HEADER" "$LIVEDATA_RAINWEEK"    "$VALUE_RAIN_FMT" "$UNIT_RAIN" "%3s" 'rweek' ''  "$LIVEDATA_WH40_RAINFALL_BATTERY" "$LIVEDATA_WH40_RAINFALL_BATTERY_STATE" "" "$LIVEDATA_WH40_RAINFALL_SIGNAL" "$LIVEDATA_WH40_RAINFALL_SIGNAL_STATE"
+        [ -n "$LIVEDATA_RAINMONTH" ]    && printLivedataLine "$LIVEDATA_RAINMONTH_HEADER" "$LIVEDATA_RAINMONTH"  "$VALUE_RAIN_FMT" "$UNIT_RAIN" "%3s" 'rmonth' "$VALUE_RAIN_FMT"
+        [ -n "$LIVEDATA_RAINYEAR" ]     && printLivedataLine "$LIVEDATA_RAINYEAR_HEADER" "$LIVEDATA_RAINYEAR"    "$VALUE_RAIN_FMT" "$UNIT_RAIN" "%3s" 'ryear'
+        [ -n "$LIVEDATA_RAINTOTAL" ]    && printLivedataLine "$LIVEDATA_RAINTOTAL_HEADER" "$LIVEDATA_RAINTOTAL"  "$VALUE_RAIN_FMT" "$UNIT_RAIN" "%3s" 'rtotal' "$VALUE_RAIN_FMT"
     fi
 
      if [ -z "$HIDE_TEMP_LIVEDATA" ]; then 
@@ -2123,7 +2107,7 @@ printLivedata() {
     #https://www.unix.com/shell-programming-and-scripting/137435-ksh-different-syntax-function.html
     #man ksh93: ksh93 uses static scoping (one global scope, one local scope per function) and allows local variables only on Korn style functions
     if [ -n "$KSH_VERSION" ]; then
-         unset n 
+         unset n delimiter
     fi
 }
 

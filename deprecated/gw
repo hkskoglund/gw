@@ -2771,3 +2771,24 @@ initSearchPatternForCommand() {
         APPEND_FORMAT=$APPEND_FORMAT"$SGI_LIVE%-7s $3 %s$ANSIESC_SGI_NORMAL\n" #just use one printf call builtin/external -> builds up entire format and argument strings
         APPEND_ARGS=$APPEND_ARGS"\"$6\" \"$2\" \"$4\" "
     fi
+
+
+
+    setANSI_CHA_CursorHorisontalAbsolute()
+#$1 column n
+{
+    ANSI_ESC=$ANSI_ESC$CSI$1G
+}
+
+setANSI_CUP_CursorPosition()
+#$1 row, $2 column
+{
+    ANSI_ESC=$ANSI_ESC$CSI$1;"$2"H
+}
+
+ANSI_rightjustifyString()
+{
+    setANSI_CHA_CursorHorisontalAbsolute $(( TERM_COLUMNS - ${#1} + 1))
+}
+
+

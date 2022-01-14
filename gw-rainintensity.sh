@@ -1,6 +1,7 @@
 #!/usr/bin/dash
 #https://en.wikipedia.org/wiki/Rain#Intensity
 #added space at end when doing when refreshing screen with printf \e[H, otherwise status is merged with previous value if changed
+        RAININTENSITY_ZERO=${RAININTENSITY_ZERO:="        "} #clear
       RAININTENSITY_LIGHT=${RAININTENSITY_LIGHT:="LIGHT   "}
 RAININTENSITY_MODERATE=${RAININTENSITY_MODERATE:="MODERATE"}
       RAININTENSITY_HEAVY=${RAININTENSITY_HEAVY:="HEAVY   "}
@@ -12,7 +13,9 @@ RAININTENSITY_MODERATE=${RAININTENSITY_MODERATE:="MODERATE"}
 
 setRainIntensity()
 {
-    if [ "$1" -gt 0 ] &&  [ "$1" -lt $RAININTENSITY_LIGHT_LIMIT ]; then
+    if [ "$1" -eq 0 ]; then
+      VALUE_RAININTENSITY=$RAININTENSITY_ZERO
+    elif [ "$1" -gt 0 ] &&  [ "$1" -lt $RAININTENSITY_LIGHT_LIMIT ]; then
       VALUE_RAININTENSITY=$RAININTENSITY_LIGHT
     elif [ "$1" -ge $RAININTENSITY_LIGHT_LIMIT ] && [ "$1" -lt $RAININTENSITY_MODERATE_LIMIT ]; then
       VALUE_RAININTENSITY=$RAININTENSITY_MODERATE
@@ -25,7 +28,9 @@ setRainIntensity()
 
 setStyleRainIntensity()
 {
-    if [ "$1" -gt 0 ] && [ "$1" -lt "$RAININTENSITY_LIGHT_LIMIT" ]; then
+    if [ "$1" -eq 0 ]; then
+       unset STYLE_RAININTENSITY
+    elif [ "$1" -gt 0 ] && [ "$1" -lt "$RAININTENSITY_LIGHT_LIMIT" ]; then
        STYLE_RAININTENSITY="$STYLE_RAININTENSITY_LIGHT"
     elif [ "$1" -ge $RAININTENSITY_LIGHT_LIMIT ] && [ "$1" -lt $RAININTENSITY_MODERATE_LIMIT ]; then
         STYLE_RAININTENSITY=$STYLE_RAININTENSITY_MODERATE
