@@ -424,6 +424,20 @@ export LIVEDATA_RAINTOTAL_HEADER="${LIVEDATA_RAINTOTAL_HEADER:="Rain total"}"
 export LIVEDATA_LEAK_YES="${LIVEDATA_LEAK_YES:="YES"}"
 export  LIVEDATA_LEAK_NO="${LIVEDATA_LEAK_NO:="NO "}"
 
+export LIVEDATA_SOILMOISTURE_HEADER="${LIVEDATA_SOILMOISTURE_HEADER:="ＳＯＩＬＭＯＩＳＴＵＲＥ"}"
+export LIVEDATA_SOILTEMP_HEADER="${LIVEDATA_SOILTEMP_HEADER:="ＳＯＩＬＴＥＭＰＥＲＡＴＵＲＥ"}"
+export LIVEDATA_PM25_HEADER="${LIVEDATA_PM25_HEADER:="ＰＭ２５ ＡＩＲ ＱＵＡＬＩＴＹ"}"
+export LIVEDATA_LEAFWETNESS_HEADER="${LIVEDATA_LEAFWETNESS_HEADER:="ＬＥＡＦＷＥＴＮＥＳＳ"}"
+export LIVEDATA_TEMPUSR_HEADER="${LIVEDATA_TEMPUSR_HEADER:="ＴＥＭＰＵＳＲ"}"
+export LIVEDATA_WH45CO2_HEADER="${LIVEDATA_WH45CO2_HEADER:="ＣＯ２"}"
+export LIVEDATA_LIGHTNING_HEADER="${LIVEDATA_LIGHTNING_HEADER:="ＬＩＧＨＴＮＩＮＧ"}"
+export LIVEDATA_LEAK_HEADER="${LIVEDATA_LEAK_HEADER:="ＬＥＡＫ"}"
+export LIVEDATA_RAIN_HEADER="${LIVEDATA_RAIN_HEADER:="ＲＡＩＮ"}"
+export LIVEDATA_SOLAR_HEADER="${LIVEDATA_SOLAR_HEADER:="ＳＯＬＡＲ"}"
+export LIVEDATA_WIND_HEADER="${LIVEDATA_WIND_HEADER:="ＷＩＮＤ"}"
+export LIVEDATA_PRESSURE_HEADER="${LIVEDATA_PRESSURE_HEADER:="ＰＲＥＳＳＵＲＥ"}"
+export LIVEDATA_TEMP_HEADER="${LIVEDATA_TEMP_HEADER:="ＴＥＭＰＥＲＡＴＵＲＥ"}"
+
 export LIVEDATA_LIGHTNING_DISTANCE_HEADER="${LIVEDATA_LIGHTNING_DISTANCE_HEADER:="Lightning distance (last)"}"
 export LIVEDATA_LIGHTNING_TIME_UTC_HEADER="${LIVEDATA_LIGHTNING_TIME_UTC_HEADER:="Lightning time utc (last)"}"
 export LIVEDATA_LIGHTNING_POWER_HEADER="${LIVEDATA_LIGHTNING_POWER_HEADER:="Lightning count today"}"
@@ -1545,7 +1559,7 @@ printLivedataLine()
 # optimized to just use one printf call builtin/external -> builds up entire format and argument strings for entire livedata view
 {
     #[ "$DEBUG" -eq 1 ] && 
-   # echo >&2 "printLivedataLine $* length $#"
+    #echo >&2 "printLivedataLine $* length $#"
 
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
@@ -1756,7 +1770,7 @@ printWHBatterySignal()
     fi
 }
 
-printLivedataHeader()
+printLivedataSystem()
 {
      if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
@@ -1795,16 +1809,40 @@ printLivedataHeader()
     fi
 }
 
+setRainIntensityStatus()
+{
+      if [ "$1" -eq 0 ]; then
+      unset VALUE_RAININTENSITY_STATUS
+    elif [ "$1" -gt 0 ] &&  [ "$1" -lt $RAININTENSITY_LIGHT_LIMIT ]; then
+      VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE
+    elif [ "$1" -ge $RAININTENSITY_LIGHT_LIMIT ] && [ "$1" -lt $RAININTENSITY_MODERATE_LIMIT ]; then
+      VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE$UNICODE_RAINRATE
+    elif [ "$1" -ge  $RAININTENSITY_MODERATE_LIMIT ] && [ "$1" -lt $RAININTENSITY_HEAVY_LIMIT ]; then
+      VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE$UNICODE_RAINRATE$UNICODE_RAINRATE
+    elif [ "$1" -gt $RAININTENSITY_HEAVY_LIMIT ]; then
+      VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE$UNICODE_RAINRATE$UNICODE_RAINRATE$UNICODE_RAINRATE
+    fi
+}
+
+printLivedataHeader()
+{
+    [ -z "$1" ] && set -- "$STYLE_LIVEVIEW_NORMAL_HEADER%s$STYLE_RESET\n" "$2"  #use default when "" used as $1
+
+     APPEND_FORMAT="$APPEND_FORMAT$1"
+     APPEND_ARGS="$APPEND_ARGS '$2'"
+}
+
+
 printLivedata() 
 {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
         typeset n  delimiter
-        local n  delimiter
+        local n  delimiter 
     fi
 
     #resetAppendBuffer
-    printLivedataHeader
+    printLivedataSystem
     
      #for debugging:
    #printAppendBuffer
@@ -1832,6 +1870,8 @@ printLivedata()
      [ -n "$LIVEDATA_INHUMI" ]   && printLivedataLine "$LIVEDATA_INHUMI_HEADER" "$LIVEDATA_INHUMI"  "%6u" "$UNIT_HUMIDITY" "%s" 'ihum'   "%4u"
      [ -n "$LIVEDATA_OUTHUMI" ]  && printLivedataLine "$LIVEDATA_OUTHUMI_HEADER" "$LIVEDATA_OUTHUMI" "%6u" "$UNIT_HUMIDITY" "%s" 'ohum'  "%4u"
      if [ -n "$LIVEDATA_RELBARO" ]; then
+            
+            printLivedataHeader "" "$LIVEDATA_PRESSURE_HEADER"
              setLivedataValueStyleLt "$LIVEDATA_RELBARO_RAW" "$LIVEDATA_RELBARO_LIMIT_LOW"
          
          if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
@@ -1846,6 +1886,8 @@ printLivedata()
      fi
  
     if [ -z "$HIDE_WIND_LIVEDATA" ]; then
+      
+       [ -n "$LIVEDATA_WINDSPEED" ] && printLivedataHeader "" "$LIVEDATA_WIND_HEADER"
 
        [ -n "$LIVEDATA_WINDSPEED" ] && [ -n "$LIVEDATA_WINDGUSTSPEED" ] && [ -n "$LIVEDATA_WINDDIRECTION" ] && newLivedataCompass "$UNICODE_WIND" "$VALUE_COMPASS"
          
@@ -1882,6 +1924,7 @@ printLivedata()
     fi
 
     if [ -z "$HIDE_LIGHT_LIVEDATA" ]; then
+        [ -n "$LIVEDATA_LIGHT" ] && printLivedataHeader "" "$LIVEDATA_SOLAR_HEADER"
         [ -n "$LIVEDATA_LIGHT" ]    && printLivedataLine "$LIVEDATA_LIGHT_HEADER" "$LIVEDATA_LIGHT"  "%6.1f" "$UNIT_LIGHT" "%4s" 'light'
         [ -n "$LIVEDATA_UV" ]       && printLivedataLine "$LIVEDATA_UV_HEADER" "$LIVEDATA_UV"        "%6.1f" "$UNIT_UV" "%5s" 'uv'
         if [ -n "$LIVEDATA_UVI" ]; then
@@ -1899,14 +1942,23 @@ printLivedata()
 
     if [ -z "$HIDE_RAIN_LIVEDATA" ]; then
       
-        setRainValueFormat # .2 decimals for inch or .1 decimals for mm
+        setRainValueFormat # 2 decimals for inch or 1 decimals for mm
+
+        printLivedataHeader "" "$LIVEDATA_RAIN_HEADER"
 
         if [ -n "$LIVEDATA_RAINRATE" ]; then
                setRainIntensity "$LIVEDATA_RAINRATE_RAW"
                setStyleRainIntensity "$LIVEDATA_RAINRATE_RAW"
+               setRainIntensityStatus "$LIVEDATA_RAINRATE_RAW"
                STYLE_LIVE_VALUE=$STYLE_RAININTENSITY
-               [ "$LIVEDATA_RAINRATE_RAW" -gt 0 ] && delimiter=$VALUE_RAININTENSITY_DELIMITER || delimiter=" "
-               printLivedataLine "$LIVEDATA_RAINRATE_HEADER $delimiter $VALUE_RAININTENSITY"  "$LIVEDATA_RAINRATE" "$VALUE_RAIN_FMT"  "$UNIT_RAINRATE" "%4s" 'rrate'  '' "$UNICODE_RAINRATE" 
+              
+               if [ "$LIVEDATA_RAINRATE_RAW" -gt 0 ]; then
+                    delimiter=$VALUE_RAININTENSITY_DELIMITER 
+                else
+                    delimiter=" "
+                fi
+               
+               printLivedataLine "$LIVEDATA_RAINRATE_HEADER $delimiter $VALUE_RAININTENSITY"  "$LIVEDATA_RAINRATE" "$VALUE_RAIN_FMT"  "$UNIT_RAINRATE" "%4s" 'rrate'  '' '' "$VALUE_RAININTENSITY_STATUS" 
             fi
         # rainhour available in Ecowitt http request
         [ -n "$LIVEDATA_RAINHOUR" ]     && printLivedataRainLine "$LIVEDATA_RAINHOUR_RAW"  "$LIVEDATA_RAINHOUR_LIMIT"  "$LIVEDATA_RAINHOUR_HEADER"  "$LIVEDATA_RAINHOUR" "$UNIT_RAIN" 'rhour' "" "$STYLE_LIMIT_LIVEDATA_RAINHOUR"
@@ -1920,6 +1972,7 @@ printLivedata()
     fi
 
      if [ -z "$HIDE_TEMP_LIVEDATA" ]; then 
+        [ -n "$LIVEDATA_TEMP1" ] && printLivedataHeader "" "$LIVEDATA_TEMP_HEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
         #shellcheck disable=SC2153
@@ -1947,7 +2000,7 @@ printLivedata()
      fi
 
     if [ -z "$HIDE_SOILMOISTURE_LIVEDATA" ]; then
-
+        [ -n "$LIVEDATA_SOILMOISTURE1" ] && printLivedataHeader "" "$LIVEDATA_SOILMOISTURE_HEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH51SOILMOISTURE_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_SOILMOISTURE$n" ]; then
@@ -1960,6 +2013,7 @@ printLivedata()
 
     if [ -z "$HIDE_SOILTEMPERATURE_LIVEDATA" ]; then
 
+        [ -n "$LIVEDATA_SOILTEMP1" ] && printLivedataHeader "" "$LIVEDATA_SOILTEMP_HEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH34SOILTEMP_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_SOILTEMP$n" ]; then
@@ -1972,6 +2026,7 @@ printLivedata()
    
     if [ -z "$HIDE_TEMPUSR_LIVEDATA" ]; then
        
+       [ -n "$LIVEDATA_TF_USR1" ] && printLivedataHeader "" "$LIVEDATA_TEMPUSR_HEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_TF_USR$n" ]; then
@@ -1984,6 +2039,7 @@ printLivedata()
 
     if [ -z "$HIDE_LEAK_LIVEDATA" ]; then
 
+        [ -n "$LIVEDATA_LEAK1" ] && printLivedataHeader "" "$LIVEDATA_LEAK_HEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH55LEAK_MAXCH" ]; do
             #TEST eval LIVEDATA_LEAK$n=1
@@ -2001,6 +2057,7 @@ printLivedata()
 
     if [ -z "$HIDE_PM25_LIVEDATA" ]; then
 
+        [ -n "$LIVEDATA_PM251" ] && printLivedataHeader "" "$LIVEDATA_PM25_HEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH43PM25_MAXCH" ]; do
             #shellcheck disable=SC2153
@@ -2033,6 +2090,7 @@ printLivedata()
         #WH45
         if [ -n "$LIVEDATA_WH45CO2_TEMPF" ]; then
              #setSGIBatteryLowNormal "$LIVEDATA_WH45CO2_BATTERY"
+             printLivedataHeader "" "$LIVEDATA_WH45CO2_HEADER"
              printLivedataLine "$LIVEDATA_WH45CO2_TEMPF_HEADER" "$LIVEDATA_WH45CO2_TEMPF"  "%6.1f" "$UNIT_TEMP" "%2s" 'temp' '' "$LIVEDATA_WH45CO2_BATTERY" "$LIVEDATA_WH45CO2_BATTERY_STATE" "" "$LIVEDATA_WH45CO2_SIGNAL" "$LIVEDATA_WH45CO2_SIGNAL_STATE"
         fi
 
@@ -2060,6 +2118,7 @@ printLivedata()
     if [ -z "$HIDE_LIGHTNING_LIVEDATA" ]; then
 
         if [ -n "$LIVEDATA_LIGHTNING_DISTANCE" ]; then
+            printLivedataHeader "" "$LIVEDATA_LIGHTNING_HEADER"
             printLivedataLine "$LIVEDATA_LIGHTNING_DISTANCE_HEADER" "$LIVEDATA_LIGHTNING_DISTANCE"    "%6u" "km" "%5s" 'ldist' '' "$LIVEDATA_WH57_LIGHTNING_BATTERY" "$LIVEDATA_WH57_LIGHTNING_BATTERY_STATE" '' "$LIVEDATA_WH57_LIGHTNING_SIGNAL" "$LIVEDATA_WH57_LIGHTNING_SIGNAL_STATE" 
         fi
         [ -n "$LIVEDATA_LIGHTNING_TIME" ]       && printLivedataLine "$LIVEDATA_LIGHTNING_TIME_UTC_HEADER" "$LIVEDATA_LIGHTNING_TIME_UTC"    "%19s" "" "%5s" "lightningutc" 
@@ -2068,7 +2127,7 @@ printLivedata()
     fi
 
     if [ -z "$HIDE_LEAFWETNESS_LIVEDATA" ]; then
-   
+        [ -n "$LIVEDATA_LEAFWETNESS1" ] && printLivedataHeader "" "$LIVEDATA_LEAFWETNESS_HEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH35LEAFWETNESS_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_LEAFWETNESS$n" ]; then
@@ -2107,7 +2166,7 @@ printLivedata()
     #https://www.unix.com/shell-programming-and-scripting/137435-ksh-different-syntax-function.html
     #man ksh93: ksh93 uses static scoping (one global scope, one local scope per function) and allows local variables only on Korn style functions
     if [ -n "$KSH_VERSION" ]; then
-         unset n delimiter
+         unset n delimiter 
     fi
 }
 
