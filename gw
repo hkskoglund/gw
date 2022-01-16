@@ -182,6 +182,8 @@ LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP="wu"
 
 SYSTEM_TIMEZONE_AUTO_ON="on"
 SYSTEM_TIMEZONE_AUTO_OFF="off"
+SYSTEM_DST_STATUS_ON="on"
+SYSTEM_DST_STATUS_OFF="off"
 
 CMD_READ_VERSION=$((0x50)) #zsh - wont compare int with hex 16#50 in [ ] expression unless converted to decimal, works in [[ ]] expression
 CMD_REBOOT=$((0x40))
@@ -1341,19 +1343,17 @@ parseSystem() {
 
     eval "C_SYSTEM_TIMEZONE_INDEX_STATE=\$SYSTEM_TIMEZONE_$C_SYSTEM_TIMEZONE_INDEX" # set from SYSTEM_TIMEZONE "array" variable with index
 
-set -x
-    C_SYSTEM_TIMEZONE_HOURS=${C_SYSTEM_TIMEZONE_INDEX_STATE%%\)*} # remove )... 
-    C_SYSTEM_TIMEZONE_HOURS=${C_SYSTEM_TIMEZONE_HOURS#\(UTC} # remove (UTC
-    set +x
+    C_SYSTEM_TIMEZONE_OFFSET_HOURS=${C_SYSTEM_TIMEZONE_INDEX_STATE%%\)*} # remove )... 
+    C_SYSTEM_TIMEZONE_OFFSET_HOURS=${C_SYSTEM_TIMEZONE_OFFSET_HOURS#\(UTC} # remove (UTC
 
     readUInt8
 
     C_SYSTEM_DST_STATUS=$VALUE_UINT8
     C_SYSTEM_DST_STATUS_BIT=$((C_SYSTEM_DST_STATUS & 0x01))
     if [ "$C_SYSTEM_DST_STATUS_BIT" -eq 1 ]; then
-        C_SYSTEM_DST_STATUS_STATE="on"
+        C_SYSTEM_DST_STATUS_STATE=$SYSTEM_DST_STATUS_ON
     elif [ "$C_SYSTEM_DST_STATUS_BIT" -eq 0 ]; then
-        C_SYSTEM_DST_STATUS_STATE="off"
+        C_SYSTEM_DST_STATUS_STATE=$SYSTEM_DST_STATUS_OFF
     fi
 
     C_SYSTEM_TIMEZONE_AUTO_BIT=$(((C_SYSTEM_DST_STATUS & 0x2) >> 1)) # bit 2 1= off, 0=on ?
@@ -1774,7 +1774,7 @@ printWHBatterySignal()
 #$1 - WH?? $2 battery $3 signal
 {
     if [ -n "$2" ]; then
-        if [ "$1" = "WH65" ] && [ "$C_SENSORTYPE_STATE" = "WH24" ]; then
+        if [ "$1" = "WH65" ] && [ "$C_SYSTEM_SENSORTYPE_STATE" = "WH24" ]; then
             appendFormat " WH24 %s"
         else
             appendFormat " $1 %s"
@@ -1820,7 +1820,10 @@ printLivedataSystem()
     appendBuffer " %s" "'$LIVEDATA_SYSTEM_UTC'"
 
     if [ "$C_SYSTEM_TIMEZONE_AUTO_STATE" = "$SYSTEM_TIMEZONE_AUTO_OFF" ]; then
-      appendBuffer " %s" "'$C_SYSTEM_TIMEZONE_HOURS'"
+      appendBuffer " %s" "'$C_SYSTEM_TIMEZONE_OFFSET_HOURS'"
+      if [ $C_SYSTEM_DST_STATUS_STATE = $SYSTEM_DST_STATUS_ON ]; then
+        appendFormat " DST"
+      fi
     fi
 
     appendFormat "\n\n"
