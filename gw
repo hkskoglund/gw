@@ -22,6 +22,8 @@
 #ubuntu
 # sudo update-alternatives --config nc
 # sudo update-alternatives --query nc
+#more sensor info for Fine Offset clones:
+#https://www.wxforum.net/index.php?topic=40730.0
 
 #testing in android shell
 #adb push gw /sdcard && adb shell "sh  /sdcard/gw -h 192.168.3.80 -c livedata"
@@ -402,7 +404,7 @@ export LIVEDATA_RELBARO_HEADER="${LIVEDATA_RELBARO_HEADER:="Relative pressure"}"
 export LIVEDATA_WINDCHILL_HEADER="${LIVEDATA_WINDCHILL_HEADER:="Windchill"}"
 export LIVEDATA_DEWPOINT_HEADER="${LIVEDATA_DEWPOINT_HEADER:="Dewpoint"}"
 
-export LIVEDATA_WINDDAILYMAX_HEADER="${LIVEDATA_WINDDAILYMAX_HEADER:="Wind today max."}"
+export LIVEDATA_WINDDAILYMAX_HEADER="${LIVEDATA_WINDDAILYMAX_HEADER:="Wind max."}"
 export LIVEDATA_WINDDIRECTION_HEADER="${LIVEDATA_WINDDIRECTION_HEADER:="Wind direction"}"
 export LIVEDATA_WINDDIRECTION_COMPASS_HEADER="${LIVEDATA_WINDDIRECTION_COMPASS_HEADER:="Wind compass direction"}"
 export LIVEDATA_WINDGUSTSPEED_HEADER="${LIVEDATA_WINDGUSTSPEED_HEADER:="Wind gust"}"
@@ -425,18 +427,18 @@ export LIVEDATA_LEAK_YES="${LIVEDATA_LEAK_YES:="YES"}"
 export  LIVEDATA_LEAK_NO="${LIVEDATA_LEAK_NO:="NO "}"
 
 export LIVEDATA_SOILMOISTURE_HEADER="${LIVEDATA_SOILMOISTURE_HEADER:="ＳＯＩＬＭＯＩＳＴＵＲＥ"}"
-export LIVEDATA_SOILTEMP_HEADER="${LIVEDATA_SOILTEMP_HEADER:="ＳＯＩＬＴＥＭＰＥＲＡＴＵＲＥ"}"
-export LIVEDATA_PM25_HEADER="${LIVEDATA_PM25_HEADER:="ＰＭ２５ ＡＩＲ ＱＵＡＬＩＴＹ"}"
-export LIVEDATA_LEAFWETNESS_HEADER="${LIVEDATA_LEAFWETNESS_HEADER:="ＬＥＡＦＷＥＴＮＥＳＳ"}"
-export LIVEDATA_TEMPUSR_HEADER="${LIVEDATA_TEMPUSR_HEADER:="ＴＥＭＰＵＳＲ"}"
-export LIVEDATA_WH45CO2_HEADER="${LIVEDATA_WH45CO2_HEADER:="ＣＯ２"}"
-export LIVEDATA_LIGHTNING_HEADER="${LIVEDATA_LIGHTNING_HEADER:="ＬＩＧＨＴＮＩＮＧ"}"
-export LIVEDATA_LEAK_HEADER="${LIVEDATA_LEAK_HEADER:="ＬＥＡＫ"}"
-export LIVEDATA_RAIN_HEADER="${LIVEDATA_RAIN_HEADER:="ＲＡＩＮ"}"
-export LIVEDATA_SOLAR_HEADER="${LIVEDATA_SOLAR_HEADER:="ＳＯＬＡＲ"}"
-export LIVEDATA_WIND_HEADER="${LIVEDATA_WIND_HEADER:="ＷＩＮＤ"}"
-export LIVEDATA_PRESSURE_HEADER="${LIVEDATA_PRESSURE_HEADER:="ＰＲＥＳＳＵＲＥ"}"
-export LIVEDATA_TEMP_HEADER="${LIVEDATA_TEMP_HEADER:="ＴＥＭＰＥＲＡＴＵＲＥ"}"
+        export LIVEDATA_SOILTEMP_HEADER="${LIVEDATA_SOILTEMP_HEADER:="ＳＯＩＬＴＥＭＰＥＲＡＴＵＲＥ"}"
+                export LIVEDATA_PM25_HEADER="${LIVEDATA_PM25_HEADER:="ＰＭ２５ ＡＩＲ ＱＵＡＬＩＴＹ"}"
+  export LIVEDATA_LEAFWETNESS_HEADER="${LIVEDATA_LEAFWETNESS_HEADER:="ＬＥＡＦＷＥＴＮＥＳＳ"}"
+          export LIVEDATA_TEMPUSR_HEADER="${LIVEDATA_TEMPUSR_HEADER:="ＴＥＭＰＵＳＲ"}"
+          export LIVEDATA_WH45CO2_HEADER="${LIVEDATA_WH45CO2_HEADER:="ＣＯ２"}"
+      export LIVEDATA_LIGHTNING_HEADER="${LIVEDATA_LIGHTNING_HEADER:="ＬＩＧＨＴＮＩＮＧ"}"
+                export LIVEDATA_LEAK_HEADER="${LIVEDATA_LEAK_HEADER:="ＬＥＡＫ"}"
+                export LIVEDATA_RAIN_HEADER="${LIVEDATA_RAIN_HEADER:="ＲＡＩＮ"}"
+              export LIVEDATA_SOLAR_HEADER="${LIVEDATA_SOLAR_HEADER:="ＳＯＬＡＲ"}"
+                export LIVEDATA_WIND_HEADER="${LIVEDATA_WIND_HEADER:="ＷＩＮＤ"}"
+        export LIVEDATA_PRESSURE_HEADER="${LIVEDATA_PRESSURE_HEADER:="ＰＲＥＳＳＵＲＥ"}"
+                export LIVEDATA_TEMP_HEADER="${LIVEDATA_TEMP_HEADER:="ＴＥＭＰＥＲＡＴＵＲＥ"}"
 
 export LIVEDATA_LIGHTNING_DISTANCE_HEADER="${LIVEDATA_LIGHTNING_DISTANCE_HEADER:="Lightning distance (last)"}"
 export LIVEDATA_LIGHTNING_TIME_UTC_HEADER="${LIVEDATA_LIGHTNING_TIME_UTC_HEADER:="Lightning time utc (last)"}"
@@ -1178,117 +1180,117 @@ initTimezones() {
     # done <<EOF
     #shellcheck disable=SC2034
     {
-        SYSTEM_TIMEZONE_1='(UTC-12:00) International Date Line West'
-        SYSTEM_TIMEZONE_2='(UTC-11:00) Samoa'
-        SYSTEM_TIMEZONE_3='(UTC-11:00) Coordinated Universal Time-11'
-        SYSTEM_TIMEZONE_4='(UTC-10:00) Aleutian Islands'
-        SYSTEM_TIMEZONE_5='(UTC-10:00) Hawaii'
-        SYSTEM_TIMEZONE_6='(UTC-09:30) Marquesas Islands'
-        SYSTEM_TIMEZONE_7='(UTC-09:00) Alaska'
-        SYSTEM_TIMEZONE_8='(UTC-09:00) Coordinated Universal Time-9'
-        SYSTEM_TIMEZONE_9='(UTC-08:00) Pacific Time (US & Canada)'
-        SYSTEM_TIMEZONE_10='(UTC-08:00) Baja California'
-        SYSTEM_TIMEZONE_11='(UTC-08:00) Coordinated Universal Time-8'
-        SYSTEM_TIMEZONE_12='(UTC-07:00) Chihuahua, La Paz, Mazatlan'
-        SYSTEM_TIMEZONE_13='(UTC-07:00) Mountain Time (US & Canada)'
-        SYSTEM_TIMEZONE_14='(UTC-07:00) Arizona'
-        SYSTEM_TIMEZONE_15='(UTC-06:00) Guadalajara, Mexico City,Monterrey'
-        SYSTEM_TIMEZONE_16='(UTC-06:00) Saskatchewan'
-        SYSTEM_TIMEZONE_17='(UTC-06:00) Central Time (US & Canada)'
-        SYSTEM_TIMEZONE_18='(UTC-06:00) Central America'
-        SYSTEM_TIMEZONE_19='(UTC-05:00) Bogota, Lima, Quito'
-        SYSTEM_TIMEZONE_20='(UTC-05:00) Eastern Time (US & Canada)'
-        SYSTEM_TIMEZONE_21='(UTC-05:00) Havana'
-        SYSTEM_TIMEZONE_22='(UTC-05:00) Hayti'
-        SYSTEM_TIMEZONE_23='(UTC-05:00) Chetumal'
-        SYSTEM_TIMEZONE_24='(UTC-05:00) Indiana (East)'
-        SYSTEM_TIMEZONE_25='(UTC-04:30) Caracas'
-        SYSTEM_TIMEZONE_26='(UTC-04:00) Atlantic Time (Canada)'
-        SYSTEM_TIMEZONE_27='(UTC-04:00) Cuiaba'
-        SYSTEM_TIMEZONE_28='(UTC-04:00) Georgetown, La Paz, Manaus, San Juan'
-        SYSTEM_TIMEZONE_29='(UTC-04:00) Santiago'
-        SYSTEM_TIMEZONE_30='(UTC-04:00) Asuncion'
-        SYSTEM_TIMEZONE_31='(UTC-03:30) Newfoundland'
-        SYSTEM_TIMEZONE_32='(UTC-03:00) Brasilia'
-        SYSTEM_TIMEZONE_33='(UTC-03:00) Buenos Aires'
-        SYSTEM_TIMEZONE_34='(UTC-03:00) Greenland'
-        SYSTEM_TIMEZONE_35='(UTC-03:00) Cayenne, Fortaleza'
-        SYSTEM_TIMEZONE_36='(UTC-03:00) Montevideo'
-        SYSTEM_TIMEZONE_37='(UTC-02:00) Coordinated Universal Time-02'
-        SYSTEM_TIMEZONE_38='UTC-01:00) Cape Verde Is.'
-        SYSTEM_TIMEZONE_39='(UTC-01:00) Azores'
-        SYSTEM_TIMEZONE_40='(UTC) Dublin, Edinburgh, Lisbon, London'
-        SYSTEM_TIMEZONE_41='(UTC) Casablanca'
-        SYSTEM_TIMEZONE_42='(UTC) Monrovia, Reykjavik'
-        SYSTEM_TIMEZONE_43='(UTC) Coordinated Universal Time'
-        SYSTEM_TIMEZONE_44='(UTC+01:00) Amsterdam, Berlin, Bern, Rome, Stockholm, Vienna'
-        SYSTEM_TIMEZONE_45='(UTC+01:00) Belgrade, Bratislava, Budapest, Ljubljana, Prague'
-        SYSTEM_TIMEZONE_46='(UTC+01:00) Brussels, Copenhagen, Madrid, Paris'
-        SYSTEM_TIMEZONE_47='(UTC+01:00) Sarajevo, Skopje, Warsaw, Zagreb'
-        SYSTEM_TIMEZONE_48='(UTC+01:00) Windhoek'
-        SYSTEM_TIMEZONE_49='(UTC+01:00) West Central Africa'
-        SYSTEM_TIMEZONE_50='(UTC+02:00) Amman'
-        SYSTEM_TIMEZONE_51='(UTC+02:00) Beirut'
-        SYSTEM_TIMEZONE_52='(UTC+02:00) Damascus'
-        SYSTEM_TIMEZONE_53='(UTC+02:00) Harare, Pretoria'
-        SYSTEM_TIMEZONE_54='(UTC+02:00) Helsinki, Kyiv, Riga, Sofia, Talinn, Vilnius'
-        SYSTEM_TIMEZONE_55='(UTC+02:00) Cairo'
-        SYSTEM_TIMEZONE_56='(UTC+02:00) Athens, Bucharest, Istanbul'
-        SYSTEM_TIMEZONE_57='(UTC+02:00) Jerusalem'
-        SYSTEM_TIMEZONE_58='(UTC+03:00) Baghdad'
-        SYSTEM_TIMEZONE_59='(UTC+03:00) Kuwait, Riyadh'
-        SYSTEM_TIMEZONE_60='(UTC+03:00) Minsk'
-        SYSTEM_TIMEZONE_61='(UTC+03:00) Moscow, St.Petersburg, Volgograd'
-        SYSTEM_TIMEZONE_62='(UTC+03:00) Nairobi'
-        SYSTEM_TIMEZONE_63='(UTC+03:30) Tehran'
-        SYSTEM_TIMEZONE_64='(UTC+04:00) Abu Dhabi, Muscat'
-        SYSTEM_TIMEZONE_65='(UTC+04:00) Yerevan'
-        SYSTEM_TIMEZONE_66='(UTC+04:00) Baku'
-        SYSTEM_TIMEZONE_67='(UTC+04:00) Tbilisi'
-        SYSTEM_TIMEZONE_68='(UTC+04:00) Port Louis'
-        SYSTEM_TIMEZONE_69='(UTC+04:30) Kabul'
-        SYSTEM_TIMEZONE_70='(UTC+05:00) Tashkent'
-        SYSTEM_TIMEZONE_71='(UTC+05:00) Ekaterinburg'
-        SYSTEM_TIMEZONE_72='(UTC+05:00) Islamabad, Karachi'
-        SYSTEM_TIMEZONE_73='(UTC+05:30) Chennai, Kolkata, Mumbai, New Delhi'
-        SYSTEM_TIMEZONE_74='(UTC+05:30) Sri Jayawardenepura'
-        SYSTEM_TIMEZONE_75='(UTC+05:45) Kathmandu'
-        SYSTEM_TIMEZONE_76='(UTC+06:00) Astana'
-        SYSTEM_TIMEZONE_77='(UTC+06:00) Dhaka'
-        SYSTEM_TIMEZONE_78='(UTC+06:00) Novosibirsk'
-        SYSTEM_TIMEZONE_79='(UTC+06:30) Yangon (Rangoon)'
-        SYSTEM_TIMEZONE_80='(UTC+07:00) Kobdo'
-        SYSTEM_TIMEZONE_81='(UTC+07:00) Krasnoyarsk'
-        SYSTEM_TIMEZONE_82='(UTC+07:00) Bangkok, Hanoi, Jakarta'
-        SYSTEM_TIMEZONE_83='(UTC+08:00) Beijing, Chongqing, Hong Kong, Urumqi'
-        SYSTEM_TIMEZONE_84='(UTC+08:00) Kuala Lumpur, Singapore'
-        SYSTEM_TIMEZONE_85='(UTC+08:00) Perth'
-        SYSTEM_TIMEZONE_86='(UTC+08:00) Taipei'
-        SYSTEM_TIMEZONE_87='(UTC+08:00) Ulaanbaatar'
-        SYSTEM_TIMEZONE_88='(UTC+08:00) Irkutsk'
-        SYSTEM_TIMEZONE_89='(UTC+09:00) Pyongyang'
-        SYSTEM_TIMEZONE_90='(UTC+09:00) Osaka, Sapporo, Tokyo'
-        SYSTEM_TIMEZONE_91='(UTC+09:00) Seoul'
-        SYSTEM_TIMEZONE_92='(UTC+09:00) Yakutsk'
-        SYSTEM_TIMEZONE_93='(UTC+09:30) Adelaide'
-        SYSTEM_TIMEZONE_94='(UTC+09:30) Darwin'
-        SYSTEM_TIMEZONE_95='(UTC+10:00) Brisbane'
-        SYSTEM_TIMEZONE_96='(UTC+10:00) Vladivostok'
-        SYSTEM_TIMEZONE_97='(UTC+10:00) GuamPort Moresby'
-        SYSTEM_TIMEZONE_98='(UTC+10:00) Hobart'
-        SYSTEM_TIMEZONE_99='(UTC+10:00) Canberra, Melbourne, Sydney'
-        SYSTEM_TIMEZONE_100='(UTC+10:30) Lord Howe Island'
-        SYSTEM_TIMEZONE_101='(UTC+11:00) Magadan'
-        SYSTEM_TIMEZONE_102='(UTC+11:00) Solomon Is., New Caledonia'
-        SYSTEM_TIMEZONE_103='(UTC+12:00) Auckland, Wellington'
-        SYSTEM_TIMEZONE_104='(UTC+12:00) Fiji'
-        SYSTEM_TIMEZONE_105='(UTC+12:00) Coordinated Universal Time+12'
-        SYSTEM_TIMEZONE_106='(UTC+12:45) Chatham Islands'
-        SYSTEM_TIMEZONE_107='(UTC+13:00) Nuku'\''alofa'
-        SYSTEM_TIMEZONE_108='(UTC+14:00) Christmas Island'
+        SYSTEM_TIMEZONE_0='(UTC-12:00) International Date Line West'
+        SYSTEM_TIMEZONE_1='(UTC-11:00) Samoa'
+        SYSTEM_TIMEZONE_2='(UTC-11:00) Coordinated Universal Time-11'
+        SYSTEM_TIMEZONE_3='(UTC-10:00) Aleutian Islands'
+        SYSTEM_TIMEZONE_4='(UTC-10:00) Hawaii'
+        SYSTEM_TIMEZONE_5='(UTC-09:30) Marquesas Islands'
+        SYSTEM_TIMEZONE_6='(UTC-09:00) Alaska'
+        SYSTEM_TIMEZONE_7='(UTC-09:00) Coordinated Universal Time-9'
+        SYSTEM_TIMEZONE_8='(UTC-08:00) Pacific Time (US & Canada)'
+        SYSTEM_TIMEZONE_9='(UTC-08:00) Baja California'
+        SYSTEM_TIMEZONE_10='(UTC-08:00) Coordinated Universal Time-8'
+        SYSTEM_TIMEZONE_11='(UTC-07:00) Chihuahua, La Paz, Mazatlan'
+        SYSTEM_TIMEZONE_12='(UTC-07:00) Mountain Time (US & Canada)'
+        SYSTEM_TIMEZONE_13='(UTC-07:00) Arizona'
+        SYSTEM_TIMEZONE_14='(UTC-06:00) Guadalajara, Mexico City,Monterrey'
+        SYSTEM_TIMEZONE_15='(UTC-06:00) Saskatchewan'
+        SYSTEM_TIMEZONE_16='(UTC-06:00) Central Time (US & Canada)'
+        SYSTEM_TIMEZONE_17='(UTC-06:00) Central America'
+        SYSTEM_TIMEZONE_18='(UTC-05:00) Bogota, Lima, Quito'
+        SYSTEM_TIMEZONE_19='(UTC-05:00) Eastern Time (US & Canada)'
+        SYSTEM_TIMEZONE_20='(UTC-05:00) Havana'
+        SYSTEM_TIMEZONE_21='(UTC-05:00) Hayti'
+        SYSTEM_TIMEZONE_22='(UTC-05:00) Chetumal'
+        SYSTEM_TIMEZONE_23='(UTC-05:00) Indiana (East)'
+        SYSTEM_TIMEZONE_24='(UTC-04:30) Caracas'
+        SYSTEM_TIMEZONE_25='(UTC-04:00) Atlantic Time (Canada)'
+        SYSTEM_TIMEZONE_26='(UTC-04:00) Cuiaba'
+        SYSTEM_TIMEZONE_27='(UTC-04:00) Georgetown, La Paz, Manaus, San Juan'
+        SYSTEM_TIMEZONE_28='(UTC-04:00) Santiago'
+        SYSTEM_TIMEZONE_29='(UTC-04:00) Asuncion'
+        SYSTEM_TIMEZONE_30='(UTC-03:30) Newfoundland'
+        SYSTEM_TIMEZONE_31='(UTC-03:00) Brasilia'
+        SYSTEM_TIMEZONE_32='(UTC-03:00) Buenos Aires'
+        SYSTEM_TIMEZONE_33='(UTC-03:00) Greenland'
+        SYSTEM_TIMEZONE_34='(UTC-03:00) Cayenne, Fortaleza'
+        SYSTEM_TIMEZONE_35='(UTC-03:00) Montevideo'
+        SYSTEM_TIMEZONE_36='(UTC-02:00) Coordinated Universal Time-02'
+        SYSTEM_TIMEZONE_37='UTC-01:00) Cape Verde Is.'
+        SYSTEM_TIMEZONE_38='(UTC-01:00) Azores'
+        SYSTEM_TIMEZONE_39='(UTC) Dublin, Edinburgh, Lisbon, London'
+        SYSTEM_TIMEZONE_40='(UTC) Casablanca'
+        SYSTEM_TIMEZONE_41='(UTC) Monrovia, Reykjavik'
+        SYSTEM_TIMEZONE_42='(UTC) Coordinated Universal Time'
+        SYSTEM_TIMEZONE_43='(UTC+01:00) Amsterdam, Berlin, Bern, Rome, Stockholm, Vienna'
+        SYSTEM_TIMEZONE_44='(UTC+01:00) Belgrade, Bratislava, Budapest, Ljubljana, Prague'
+        SYSTEM_TIMEZONE_45='(UTC+01:00) Brussels, Copenhagen, Madrid, Paris'
+        SYSTEM_TIMEZONE_46='(UTC+01:00) Sarajevo, Skopje, Warsaw, Zagreb'
+        SYSTEM_TIMEZONE_47='(UTC+01:00) Windhoek'
+        SYSTEM_TIMEZONE_48='(UTC+01:00) West Central Africa'
+        SYSTEM_TIMEZONE_49='(UTC+02:00) Amman'
+        SYSTEM_TIMEZONE_50='(UTC+02:00) Beirut'
+        SYSTEM_TIMEZONE_51='(UTC+02:00) Damascus'
+        SYSTEM_TIMEZONE_52='(UTC+02:00) Harare, Pretoria'
+        SYSTEM_TIMEZONE_53='(UTC+02:00) Helsinki, Kyiv, Riga, Sofia, Talinn, Vilnius'
+        SYSTEM_TIMEZONE_54='(UTC+02:00) Cairo'
+        SYSTEM_TIMEZONE_55='(UTC+02:00) Athens, Bucharest, Istanbul'
+        SYSTEM_TIMEZONE_56='(UTC+02:00) Jerusalem'
+        SYSTEM_TIMEZONE_57='(UTC+03:00) Baghdad'
+        SYSTEM_TIMEZONE_58='(UTC+03:00) Kuwait, Riyadh'
+        SYSTEM_TIMEZONE_59='(UTC+03:00) Minsk'
+        SYSTEM_TIMEZONE_60='(UTC+03:00) Moscow, St.Petersburg, Volgograd'
+        SYSTEM_TIMEZONE_61='(UTC+03:00) Nairobi'
+        SYSTEM_TIMEZONE_62='(UTC+03:30) Tehran'
+        SYSTEM_TIMEZONE_63='(UTC+04:00) Abu Dhabi, Muscat'
+        SYSTEM_TIMEZONE_64='(UTC+04:00) Yerevan'
+        SYSTEM_TIMEZONE_65='(UTC+04:00) Baku'
+        SYSTEM_TIMEZONE_66='(UTC+04:00) Tbilisi'
+        SYSTEM_TIMEZONE_67='(UTC+04:00) Port Louis'
+        SYSTEM_TIMEZONE_68='(UTC+04:30) Kabul'
+        SYSTEM_TIMEZONE_69='(UTC+05:00) Tashkent'
+        SYSTEM_TIMEZONE_70='(UTC+05:00) Ekaterinburg'
+        SYSTEM_TIMEZONE_71='(UTC+05:00) Islamabad, Karachi'
+        SYSTEM_TIMEZONE_72='(UTC+05:30) Chennai, Kolkata, Mumbai, New Delhi'
+        SYSTEM_TIMEZONE_73='(UTC+05:30) Sri Jayawardenepura'
+        SYSTEM_TIMEZONE_74='(UTC+05:45) Kathmandu'
+        SYSTEM_TIMEZONE_75='(UTC+06:00) Astana'
+        SYSTEM_TIMEZONE_76='(UTC+06:00) Dhaka'
+        SYSTEM_TIMEZONE_77='(UTC+06:00) Novosibirsk'
+        SYSTEM_TIMEZONE_78='(UTC+06:30) Yangon (Rangoon)'
+        SYSTEM_TIMEZONE_79='(UTC+07:00) Kobdo'
+        SYSTEM_TIMEZONE_80='(UTC+07:00) Krasnoyarsk'
+        SYSTEM_TIMEZONE_81='(UTC+07:00) Bangkok, Hanoi, Jakarta'
+        SYSTEM_TIMEZONE_82='(UTC+08:00) Beijing, Chongqing, Hong Kong, Urumqi'
+        SYSTEM_TIMEZONE_83='(UTC+08:00) Kuala Lumpur, Singapore'
+        SYSTEM_TIMEZONE_84='(UTC+08:00) Perth'
+        SYSTEM_TIMEZONE_85='(UTC+08:00) Taipei'
+        SYSTEM_TIMEZONE_86='(UTC+08:00) Ulaanbaatar'
+        SYSTEM_TIMEZONE_87='(UTC+08:00) Irkutsk'
+        SYSTEM_TIMEZONE_88='(UTC+09:00) Pyongyang'
+        SYSTEM_TIMEZONE_89='(UTC+09:00) Osaka, Sapporo, Tokyo'
+        SYSTEM_TIMEZONE_90='(UTC+09:00) Seoul'
+        SYSTEM_TIMEZONE_91='(UTC+09:00) Yakutsk'
+        SYSTEM_TIMEZONE_92='(UTC+09:30) Adelaide'
+        SYSTEM_TIMEZONE_93='(UTC+09:30) Darwin'
+        SYSTEM_TIMEZONE_94='(UTC+10:00) Brisbane'
+        SYSTEM_TIMEZONE_95='(UTC+10:00) Vladivostok'
+        SYSTEM_TIMEZONE_96='(UTC+10:00) GuamPort Moresby'
+        SYSTEM_TIMEZONE_97='(UTC+10:00) Hobart'
+        SYSTEM_TIMEZONE_98='(UTC+10:00) Canberra, Melbourne, Sydney'
+        SYSTEM_TIMEZONE_99='(UTC+10:30) Lord Howe Island'
+        SYSTEM_TIMEZONE_100='(UTC+11:00) Magadan'
+        SYSTEM_TIMEZONE_101='(UTC+11:00) Solomon Is., New Caledonia'
+        SYSTEM_TIMEZONE_102='(UTC+12:00) Auckland, Wellington'
+        SYSTEM_TIMEZONE_103='(UTC+12:00) Fiji'
+        SYSTEM_TIMEZONE_104='(UTC+12:00) Coordinated Universal Time+12'
+        SYSTEM_TIMEZONE_105='(UTC+12:45) Chatham Islands'
+        SYSTEM_TIMEZONE_106='(UTC+13:00) Nuku'\''alofa'
+        SYSTEM_TIMEZONE_107='(UTC+14:00) Christmas Island'
     }
     #EOF
-    SYSTEM_TIMEZONE_MAX_INDEX=108
+    SYSTEM_TIMEZONE_MAX_INDEX=107
 }
 
 printSystem() {
@@ -1569,7 +1571,7 @@ printLivedataLine()
     fi
 
     # \r\t horizontal/absolute positioning is compatible with unicode in string
-    header_fmt="%s\r\t\t\t\t"
+    header_fmt=" %s\r\t\t\t\t"
     # unit_fmt="\r\t\t\t\t\t%s" 
     unit_fmt="%s"
     #status_fmt="\r\t\t\t\t\t\t%s"
@@ -1801,7 +1803,7 @@ printLivedataSystem()
     printWHBatterySignal "WH68" "$LIVEDATA_WH68_BATTERY_STATE" "$LIVEDATA_WH68_SIGNAL_STATE" #maybe multiple weather stations allowed?
     printWHBatterySignal "WH80" "$LIVEDATA_WH80_BATTERY_STATE" "$LIVEDATA_WH80_SIGNAL_STATE"
 
-    APPEND_FORMAT="$APPEND_FORMAT %s\n"
+    APPEND_FORMAT="$APPEND_FORMAT %s\n\n"
     APPEND_ARGS="$APPEND_ARGS '$LIVEDATA_SYSTEM_UTC' "
 
     if [ -n "$KSH_VERSION" ]; then
@@ -1826,12 +1828,12 @@ setRainIntensityStatus()
 
 printLivedataHeader()
 {
-    [ -z "$1" ] && set -- "$STYLE_LIVEVIEW_NORMAL_HEADER%s$STYLE_RESET\n" "$2"  #use default when "" used as $1
+    #unset STYLE_LIVEVIEW_NORMAL_HEADER
+    [ -z "$1" ] && set -- "\n$STYLE_LIVEVIEW_NORMAL_HEADER%s$STYLE_RESET\n\n" "$2"  #use default when "" used as $1
 
-     APPEND_FORMAT="$APPEND_FORMAT$1"
-     APPEND_ARGS="$APPEND_ARGS '$2'"
+     APPEND_FORMAT="$APPEND_FORMAT$STYLE_LIVEVIEW_NORMAL_HEADER%64s$STYLE_RESET\r$1"
+     APPEND_ARGS="$APPEND_ARGS ' ' '$2'"
 }
-
 
 printLivedata() 
 {
