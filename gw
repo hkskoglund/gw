@@ -1341,6 +1341,11 @@ parseSystem() {
 
     eval "C_SYSTEM_TIMEZONE_INDEX_STATE=\$SYSTEM_TIMEZONE_$C_SYSTEM_TIMEZONE_INDEX" # set from SYSTEM_TIMEZONE "array" variable with index
 
+set -x
+    C_SYSTEM_TIMEZONE_HOURS=${C_SYSTEM_TIMEZONE_INDEX_STATE%%\)*} # remove )... 
+    C_SYSTEM_TIMEZONE_HOURS=${C_SYSTEM_TIMEZONE_HOURS#\(UTC} # remove (UTC
+    set +x
+
     readUInt8
 
     C_SYSTEM_DST_STATUS=$VALUE_UINT8
@@ -1812,10 +1817,13 @@ printLivedataSystem()
     printWHBatterySignal "WH68" "$LIVEDATA_WH68_BATTERY_STATE" "$LIVEDATA_WH68_SIGNAL_STATE" #maybe multiple weather stations allowed?
     printWHBatterySignal "WH80" "$LIVEDATA_WH80_BATTERY_STATE" "$LIVEDATA_WH80_SIGNAL_STATE"
 
-    appendBuffer " %s\n\n" "'$LIVEDATA_SYSTEM_UTC'"
+    appendBuffer " %s" "'$LIVEDATA_SYSTEM_UTC'"
 
-    #if [ -n "$C_SYSTEM_TIMEZONE_AUTO_STATE" ]; then
-       
+    if [ "$C_SYSTEM_TIMEZONE_AUTO_STATE" = "$SYSTEM_TIMEZONE_AUTO_OFF" ]; then
+      appendBuffer " %s" "'$C_SYSTEM_TIMEZONE_HOURS'"
+    fi
+
+    appendFormat "\n\n"
 
     if [ -n "$KSH_VERSION" ]; then
          unset style_protocol 
