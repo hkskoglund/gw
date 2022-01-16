@@ -525,6 +525,7 @@ export LIVEDATA_SYSTEM_VERSION_HEADER="${LIVEDATA_SYSTEM_VERSION_HEADER:="System
 export LIVEDATA_SYSTEM_UTC_HEADER="${LIVEDATA_SYSTEM_UTC_HEADER:="System clock"}"
 export LIVEDATA_SYSTEM_FREQUENCY_HEADER="${LIVEDATA_SYSTEM_FREQUENCY_HEADER:="System frequency"}"
 export LIVEDATA_SYSTEM_MODEL_HEADER="${LIVEDATA_SYSTEM_MODEL_HEADER:="System model"}"
+export LIVEDATA_SYSTEM_SENSORTYPE_HEADER="${LIVEDATA_SYSTEM_SENSORTYPE_HEADER:="System type"}"
 
 VALUE_PM25_AQI_DELIMITER='-'
 #shellcheck disable=SC2034
@@ -1333,6 +1334,8 @@ parseSystem() {
         C_SYSTEM_SENSORTYPE_STATE="WH65"
     fi
 
+    LIVEDATA_SYSTEM_SENSORTYPE=$C_SYSTEM_SENSORTYPE_STATE
+
     readUInt32BE
 
     C_SYSTEM_UTC=$VALUE_UINT32BE
@@ -1666,18 +1669,30 @@ setLivedataValueStyleLt()
 
 appendFormat()
 {
-    APPEND_FORMAT="$APPEND_FORMAT$1"
+    #APPEND_FORMAT="$APPEND_FORMAT$1"
+    appendVar APPEND_FORMAT "$1"
 }
 
 appendArgs()
 {
-    APPEND_ARGS="$APPEND_ARGS $1" #keep space between arguments
+   # APPEND_ARGS="$APPEND_ARGS $1" #keep space between arguments
+   appendVar APPEND_ARGS " $1"
+}
+
+appendVar()
+#generic append to any variable
+{
+    #echo  "$1=\"\$$1$2\"" 
+    eval "$1=\"\$$1$2\""
+    set +x
 }
 
 appendBuffer()
 {
-    appendFormat "$1"
-    appendArgs "$2"
+    #appendFormat "$1"
+    appendVar APPEND_FORMAT "$1"
+    #appendArgs "$2"
+    appendVar APPEND_ARGS " $2"
 }
 
 printAppendBuffer()
@@ -2179,13 +2194,13 @@ printLivedata()
     fi
 
     #system
-
    
     printLivedataSystem
 
-
     if [ -z "$HIDE_SYSTEM_LIVEDATA" ]; then
-    printLivedataHeader "" "$LIVEDATA_SYSTEM_HEADER"
+        
+        printLivedataHeader "" "$LIVEDATA_SYSTEM_HEADER"
+
 
         [ -n "$LIVEDATA_SYSTEM_VERSION" ]   && printLivedataLine "$LIVEDATA_SYSTEM_VERSION_HEADER"   "$LIVEDATA_SYSTEM_VERSION"   "%-14s" "" "%5s" 'version'
         [ -n "$LIVEDATA_SYSTEM_MODEL" ]     && printLivedataLine "$LIVEDATA_SYSTEM_MODEL_HEADER"     "$LIVEDATA_SYSTEM_MODEL"     "%-7s"  "" "%5s" 'model'
@@ -2199,8 +2214,10 @@ printLivedata()
             else
                 printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER"       "$LIVEDATA_SYSTEM_UTC"       "%-20s" "" "%5s" 'utc'
             fi
-            [ -n "$LIVEDATA_SYSTEM_FREQUENCY" ] && printLivedataLine "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$LIVEDATA_SYSTEM_FREQUENCY" "%-7s"  "" "%5s" 'freq' 
         fi
+        
+        [ -n "$LIVEDATA_SYSTEM_FREQUENCY" ] && printLivedataLine "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$LIVEDATA_SYSTEM_FREQUENCY" "%-7s"  "" "%5s" 'freq' 
+        [ -n "$LIVEDATA_SYSTEM_SENSORTYPE" ] && printLivedataLine "$LIVEDATA_SYSTEM_SENSORTYPE_HEADER" "$LIVEDATA_SYSTEM_SENSORTYPE" "%4s" "" "%4s" 'type'           
     fi
    
     printAppendBuffer
