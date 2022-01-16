@@ -444,6 +444,8 @@ export LIVEDATA_SOILMOISTURE_HEADER="${LIVEDATA_SOILMOISTURE_HEADER:="ＳＯＩ�
                 export LIVEDATA_WIND_HEADER="${LIVEDATA_WIND_HEADER:="ＷＩＮＤ"}"
         export LIVEDATA_PRESSURE_HEADER="${LIVEDATA_PRESSURE_HEADER:="ＰＲＥＳＳＵＲＥ"}"
                 export LIVEDATA_TEMP_HEADER="${LIVEDATA_TEMP_HEADER:="ＴＥＭＰＥＲＡＴＵＲＥ"}"
+                    export LIVEDATA_HEADER="${LIVEDATA_HEADER:="ＴＥＭＰＥＲＡＴＵＲＥ"}"
+                    export LIVEDATA_SYSTEM_HEADER="${LIVEDATA_SYSTEM_HEADER:="ＳＹＳＴＥＭ"}"
 
 export LIVEDATA_LIGHTNING_DISTANCE_HEADER="${LIVEDATA_LIGHTNING_DISTANCE_HEADER:="Lightning distance (last)"}"
 export LIVEDATA_LIGHTNING_TIME_UTC_HEADER="${LIVEDATA_LIGHTNING_TIME_UTC_HEADER:="Lightning time utc (last)"}"
@@ -520,7 +522,7 @@ while [ "$N" -le "$SENSORTYPE_TF_USR_MAXCH" ]; do
 done
 
 export LIVEDATA_SYSTEM_VERSION_HEADER="${LIVEDATA_SYSTEM_VERSION_HEADER:="System version"}"
-export LIVEDATA_SYSTEM_UTC_HEADER="${LIVEDATA_SYSTEM_UTC_HEADER:="System utc"}"
+export LIVEDATA_SYSTEM_UTC_HEADER="${LIVEDATA_SYSTEM_UTC_HEADER:="System clock"}"
 export LIVEDATA_SYSTEM_FREQUENCY_HEADER="${LIVEDATA_SYSTEM_FREQUENCY_HEADER:="System frequency"}"
 export LIVEDATA_SYSTEM_MODEL_HEADER="${LIVEDATA_SYSTEM_MODEL_HEADER:="System model"}"
 
@@ -1866,11 +1868,12 @@ printLivedata()
     fi
 
     #resetAppendBuffer
-    printLivedataSystem
     
      #for debugging:
    #printAppendBuffer
    #return
+
+   printLivedataHeader "" "$LIVEDATA_HEADER"
 
      if [ -n "$LIVEDATA_INTEMP" ]; then
          
@@ -2177,12 +2180,28 @@ printLivedata()
 
     #system
 
-   # if [ -z "$HIDE_SYSTEM_LIVEDATA" ]; then
-   #     [ -n "$LIVEDATA_SYSTEM_VERSION" ]   && printLivedataLine "LIVEDATA_SYSTEM_VERSION_HEADER"   "$LIVEDATA_SYSTEM_VERSION"   "%-14s" "" "%5s" 'version'
-   #     [ -n "$LIVEDATA_SYSTEM_MODEL" ]     && printLivedataLine "LIVEDATA_SYSTEM_MODEL_HEADER"     "$LIVEDATA_SYSTEM_MODEL"     "%-7s"  "" "%5s" 'model'
-   #     [ -n "$LIVEDATA_SYSTEM_UTC" ]       && printLivedataLine "LIVEDATA_SYSTEM_UTC_HEADER"       "$LIVEDATA_SYSTEM_UTC"       "%-20s" "" "%5s" 'utc'
-   #     [ -n "$LIVEDATA_SYSTEM_FREQUENCY" ] && printLivedataLine "LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$LIVEDATA_SYSTEM_FREQUENCY" "%-7s"  "" "%5s" 'freq' 
-   # fi
+   
+    printLivedataSystem
+
+
+    if [ -z "$HIDE_SYSTEM_LIVEDATA" ]; then
+    printLivedataHeader "" "$LIVEDATA_SYSTEM_HEADER"
+
+        [ -n "$LIVEDATA_SYSTEM_VERSION" ]   && printLivedataLine "$LIVEDATA_SYSTEM_VERSION_HEADER"   "$LIVEDATA_SYSTEM_VERSION"   "%-14s" "" "%5s" 'version'
+        [ -n "$LIVEDATA_SYSTEM_MODEL" ]     && printLivedataLine "$LIVEDATA_SYSTEM_MODEL_HEADER"     "$LIVEDATA_SYSTEM_MODEL"     "%-7s"  "" "%5s" 'model'
+        if [ -n "$LIVEDATA_SYSTEM_UTC" ]; then
+            if [  $C_SYSTEM_TIMEZONE_AUTO_STATE = $SYSTEM_TIMEZONE_AUTO_OFF ]; then
+               if [ $C_SYSTEM_DST_STATUS_STATE = $SYSTEM_DST_STATUS_ON ]; then
+                    printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER" "$LIVEDATA_SYSTEM_UTC $C_SYSTEM_TIMEZONE_OFFSET_HOURS DST" "%-20s" "" "%5s" 'utc'
+               else
+                    printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER" "$LIVEDATA_SYSTEM_UTC $C_SYSTEM_TIMEZONE_OFFSET_HOURS" "%-20s" "" "%5s" 'utc'
+                fi     
+            else
+                printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER"       "$LIVEDATA_SYSTEM_UTC"       "%-20s" "" "%5s" 'utc'
+            fi
+            [ -n "$LIVEDATA_SYSTEM_FREQUENCY" ] && printLivedataLine "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$LIVEDATA_SYSTEM_FREQUENCY" "%-7s"  "" "%5s" 'freq' 
+        fi
+    fi
    
     printAppendBuffer
 
