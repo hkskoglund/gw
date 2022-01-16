@@ -180,6 +180,9 @@ LIVEDATA_PROTOCOL_ECOWITT_BINARY="eb"
 LIVEDATA_PROTOCOL_ECOWITT_HTTP="e"
 LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP="wu"
 
+SYSTEM_TIMEZONE_AUTO_ON="on"
+SYSTEM_TIMEZONE_AUTO_OFF="off"
+
 CMD_READ_VERSION=$((0x50)) #zsh - wont compare int with hex 16#50 in [ ] expression unless converted to decimal, works in [[ ]] expression
 CMD_REBOOT=$((0x40))
 CMD_READ_MAC=$((0x26))
@@ -629,17 +632,17 @@ getSensorNameShort()
     case "$1" in
         0) if [ "$C_SYSTEM_SENSORTYPE" -eq $SYSTEM_SENSOR_TYPE_WH24 ]; then
              SENSORNAME_WH='WH24'
-             SENSORNAME_SHORT='Wind/Temp./UV'
+             SENSORNAME_SHORT='Sensor Array'
             else
               SENSORNAME_WH='WH65'
-              SENSORNAME_SHORT="Wind/Temp./UV"
+              SENSORNAME_SHORT="Sensor Array"
             fi
             ;;
         1) SENSORNAME_WH='WH68'
-           SENSORNAME_SHORT="Wind/Temp./UV"
+           SENSORNAME_SHORT="Sensor Array"
             ;;
         2) SENSORNAME_WH="WH80"
-           SENSORNAME_SHORT='Wind/Temp./UV'
+           SENSORNAME_SHORT='Sensor Array'
             ;;
         3) SENSORNAME_WH="WH40"
            SENSORNAME_SHORT="Rainfall"
@@ -902,7 +905,6 @@ writeString()
     [ "$DEBUG" -eq 1 ] && >&2 echo  "writeString $PACKET_TX_BODY"
 
 }
-
 
 readString() { #https://bugs.launchpad.net/ubuntu/+source/dash/+bug/1499473
     #\x formatted printf not supported in dash -> must use \nnn-octal
@@ -1296,8 +1298,8 @@ initTimezones() {
 printSystem() {
     echo "system frequency  $C_SYSTEM_FREQUENCY $C_SYSTEM_FREQUENCY_STATE
 system sensortype $C_SYSTEM_SENSORTYPE $C_SYSTEM_SENSORTYPE_STATE
-system utc        $C_SYSTEM_UTC $C_SYSTEM_UTC_STATE
-system tz index   $C_SYSTEM_TIMEZONE_INDEX $C_SYSTEM_TIMEZONE_INDEX_STATE
+system clock      $C_SYSTEM_UTC $C_SYSTEM_UTC_STATE
+system timezone   $C_SYSTEM_TIMEZONE_INDEX $C_SYSTEM_TIMEZONE_INDEX_STATE
 system dst        $C_SYSTEM_DST_STATUS dst $C_SYSTEM_DST_STATUS_STATE auto $C_SYSTEM_TIMEZONE_AUTO_STATE"
 }
 
@@ -1331,7 +1333,7 @@ parseSystem() {
 
     C_SYSTEM_UTC=$VALUE_UINT32BE
     C_SYSTEM_UTC_STATE="$(date -u -d @"$VALUE_UINT32BE" +'%F %T')"
-    LIVEDATA_SYSTEM_UTC=$C_SYSTEM_UTC_STATE
+    LIVEDATA_SYSTEM_UTC=$C_SYSTEM_UTC_STATE #local time 
 
     readUInt8
 
@@ -1351,16 +1353,14 @@ parseSystem() {
 
     C_SYSTEM_TIMEZONE_AUTO_BIT=$(((C_SYSTEM_DST_STATUS & 0x2) >> 1)) # bit 2 1= off, 0=on ?
     if [ "$C_SYSTEM_TIMEZONE_AUTO_BIT" -eq 0 ]; then
-        C_SYSTEM_TIMEZONE_AUTO_STATE="on"
+        C_SYSTEM_TIMEZONE_AUTO_STATE=$SYSTEM_TIMEZONE_AUTO_ON
     elif [ "$C_SYSTEM_TIMEZONE_AUTO_BIT" -eq 1 ]; then
-        C_SYSTEM_TIMEZONE_AUTO_STATE="off"
+        C_SYSTEM_TIMEZONE_AUTO_STATE=$SYSTEM_TIMEZONE_AUTO_OFF
     fi
 
     printSystem
 
 }
-
-
 
 printEcowittInterval() {
 
@@ -1565,9 +1565,9 @@ printLivedataLine()
 
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        typeset header_fmt unit_fmt status_fmt status_line signal_fmt signal_line
+        typeset header_fmt unit_fmt status_fmt status_line signal_fmt signal_line 
     else
-        local  header_fmt unit_fmt status_fmt status_line signal_fmt signal_line
+        local  header_fmt unit_fmt status_fmt status_line signal_fmt signal_line 
     fi
 
     # \r\t horizontal/absolute positioning is compatible with unicode in string
@@ -1601,21 +1601,21 @@ printLivedataLine()
         unset signal_line
   
         if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
-            APPEND_FORMAT="$APPEND_FORMAT $header_fmt %s %s %s %s\n"
+            appendFormat " $header_fmt %s %s %s %s\n"
         fi
         
         if [ -n "$STYLE_LIVE_VALUE" ]; then
-            APPEND_FORMAT=$APPEND_FORMAT"$header_fmt $STYLE_LIVE_VALUE$3 $unit_fmt$STYLE_RESET $status_fmt $signal_fmt\n" #apply styling
+            appendFormat "$header_fmt $STYLE_LIVE_VALUE$3 $unit_fmt$STYLE_RESET $status_fmt $signal_fmt\n"
             unset STYLE_LIVE_VALUE
         else
-            APPEND_FORMAT=$APPEND_FORMAT"$header_fmt $3 $unit_fmt $status_fmt $signal_fmt\n" 
+            appendFormat "$header_fmt $3 $unit_fmt $status_fmt $signal_fmt\n"
         fi
 
         if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
-            APPEND_ARGS="$APPEND_ARGS '$header_fmt' '$3' '$unit_fmt' '$status_fmt' '$signal_fmt' "
+            appendArgs "'$header_fmt' '$3' '$unit_fmt' '$status_fmt' '$signal_fmt'"
         fi
     
-        APPEND_ARGS="$APPEND_ARGS '$1' '$2' '$4' '$status_line' '$signal_line'" # use '' for null/empty arguments
+       appendArgs "'$1' '$2' '$4' '$status_line' '$signal_line'"
     fi
    
     if [ -n "$KSH_VERSION" ]; then
@@ -1657,14 +1657,25 @@ setLivedataValueStyleLt()
     fi
 }
 
+appendFormat()
+{
+    APPEND_FORMAT="$APPEND_FORMAT$1"
+}
+
+appendArgs()
+{
+    APPEND_ARGS="$APPEND_ARGS $1" #keep space between arguments
+}
+
+appendBuffer()
+{
+    appendFormat "$1"
+    appendArgs "$2"
+}
+
 printAppendBuffer()
 {
     #special characters like 'æøå' gives wrong adjustment in %s 
-
-    if [ -n "$APPEND_HEADER_FORMAT" ]; then
-      APPEND_FORMAT=$APPEND_HEADER_FORMAT"\n"$APPEND_FORMAT
-      APPEND_ARGS=$APPEND_HEADER_ARGS$APPEND_ARGS
-    fi
 
     if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
         printf >&2 "%s\n" "APPEND_FORMAT/APPEND_ARGS printf '$APPEND_FORMAT' $APPEND_ARGS"
@@ -1755,20 +1766,20 @@ printLivedataRainLine()
 }
 
 printWHBatterySignal()
+#$1 - WH?? $2 battery $3 signal
 {
     if [ -n "$2" ]; then
         if [ "$1" = "WH65" ] && [ "$C_SENSORTYPE_STATE" = "WH24" ]; then
-            APPEND_FORMAT="$APPEND_FORMAT WH24 %s"
+            appendFormat " WH24 %s"
         else
-            APPEND_FORMAT="$APPEND_FORMAT $1 %s"
+            appendFormat " $1 %s"
         fi
 
-        APPEND_ARGS="$APPEND_ARGS '$2' "
+        appendArgs "'$2' "
     fi
         
     if [ -n "$3" ]; then
-        APPEND_FORMAT="$APPEND_FORMAT%s"
-        APPEND_ARGS="$APPEND_ARGS '$3' "
+        appendBuffer "%s" "'$3'"
     fi
 }
 
@@ -1791,24 +1802,25 @@ printLivedataSystem()
             ;;
     esac
 
-    APPEND_FORMAT="%s %s $style_protocol%s$STYLE_RESET"
-    APPEND_ARGS="'$LIVEDATA_SYSTEM_VERSION' '$LIVEDATA_SYSTEM_FREQUENCY' '$LIVEDATA_PROTOCOL' "
+    appendBuffer "%s %s $style_protocol%s$STYLE_RESET" "'$LIVEDATA_SYSTEM_VERSION' '$LIVEDATA_SYSTEM_FREQUENCY' '$LIVEDATA_PROTOCOL'"
     
     if [ -n "$LIVEDATA_SENSOR_COUNT_CONNECTED" ]; then
-       APPEND_FORMAT="$APPEND_FORMAT %s/$STYLE_SENSOR_SEARCH%s$STYLE_RESET/$STYLE_SENSOR_DISABLE%s$STYLE_RESET"
-       APPEND_ARGS="$APPEND_ARGS '$LIVEDATA_SENSOR_COUNT_CONNECTED' '$LIVEDATA_SENSOR_COUNT_SEARCHING' '$LIVEDATA_SENSOR_COUNT_DISABLED'"
+       appendBuffer " %s/$STYLE_SENSOR_SEARCH%s$STYLE_RESET/$STYLE_SENSOR_DISABLE%s$STYLE_RESET" "'$LIVEDATA_SENSOR_COUNT_CONNECTED' '$LIVEDATA_SENSOR_COUNT_SEARCHING' '$LIVEDATA_SENSOR_COUNT_DISABLED' "
     fi
    
     printWHBatterySignal "WH65" "$LIVEDATA_WH65_BATTERY_STATE" "$LIVEDATA_WH65_SIGNAL_STATE"
     printWHBatterySignal "WH68" "$LIVEDATA_WH68_BATTERY_STATE" "$LIVEDATA_WH68_SIGNAL_STATE" #maybe multiple weather stations allowed?
     printWHBatterySignal "WH80" "$LIVEDATA_WH80_BATTERY_STATE" "$LIVEDATA_WH80_SIGNAL_STATE"
 
-    APPEND_FORMAT="$APPEND_FORMAT %s\n\n"
-    APPEND_ARGS="$APPEND_ARGS '$LIVEDATA_SYSTEM_UTC' "
+    appendBuffer " %s\n\n" "'$LIVEDATA_SYSTEM_UTC'"
+
+    #if [ -n "$C_SYSTEM_TIMEZONE_AUTO_STATE" ]; then
+       
 
     if [ -n "$KSH_VERSION" ]; then
          unset style_protocol 
     fi
+
 }
 
 setRainIntensityStatus()
@@ -1831,8 +1843,7 @@ printLivedataHeader()
     #unset STYLE_LIVEVIEW_NORMAL_HEADER
     [ -z "$1" ] && set -- "\n$STYLE_LIVEVIEW_NORMAL_HEADER%s$STYLE_RESET\n\n" "$2"  #use default when "" used as $1
 
-     APPEND_FORMAT="$APPEND_FORMAT$STYLE_LIVEVIEW_NORMAL_HEADER%64s$STYLE_RESET\r$1"
-     APPEND_ARGS="$APPEND_ARGS ' ' '$2'"
+     appendBuffer "$STYLE_LIVEVIEW_NORMAL_HEADER%64s$STYLE_RESET\r$1" "' ' '$2'"
 }
 
 printLivedata() 
@@ -2902,10 +2913,9 @@ printSensorLine()
     
      # 1 battery unicode is field size 4 in printf format string. TEST printf  "🔋 1.3 V" | od -A n -t x1 | wc -w -> 10
      # use \r\t\t\t workaround for unicode alignment
-     APPEND_FORMAT=$APPEND_FORMAT"%6u %9x %3u %1u %4s %-17s $style_sensor%9s$style_sensor_off\r\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t%s\n" #just use one printf call builtin/external -> builds up entire format and argument strings
-
-     APPEND_ARGS=$APPEND_ARGS"\"$1\" \"$2\" \"$3\" \"$4\"  \"$SENSORNAME_WH\" \"$SENSORNAME_SHORT\" \"$sensorIdState\" \"$SBATTERY_STATE\" \"$sensorsignal_unicode\" "
   
+    appendBuffer "%6u %9x %3u %1u %4s %-17s $style_sensor%9s$style_sensor_off\r\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t%s\n" "'$1' '$2' '$3' '$4'  '$SENSORNAME_WH' '$SENSORNAME_SHORT' '$sensorIdState' '$SBATTERY_STATE' '$sensorsignal_unicode'"
+    
     if [ -n "$KSH_VERSION" ]; then
       unset sensorIdState sensorsignal_unicode style_sensor_off style_sensor
     fi
@@ -2973,10 +2983,9 @@ parseSensorIdNew()
 
     resetAppendBuffer
     
-    APPEND_FORMAT="%6s %9s %3s %1s %-4s %-17s %-9s %-7s %s\n%s\n"
-
     SENSORID_HEADER=${SENSORID_HEADER:="Sensor ID B S Type Name State Battery Signal"}
-    APPEND_ARGS="$SENSORID_HEADER ────────────────────────────────────────────────────────────────────── "
+
+    appendBuffer "%6s %9s %3s %1s %-4s %-17s %-9s %-7s %s\n%s\n" "$SENSORID_HEADER ──────────────────────────────────────────────────────────────────────"
 
     [ "$DEBUG" -eq  1 ] && >&2 echo "parseSensorIdNew SPATTERNID $SPATTERNID length od buffer ${#OD_BUFFER}"
     
@@ -4469,7 +4478,7 @@ initShell() {
 #https://www.gnu.org/software/gettext/manual/html_node/The-TERM-variable.html
 #https://www.gnu.org/software/gettext/libtextstyle/manual/html_node/The-NO_005fCOLOR-variable.html
 # TEST : msgcat --color=test
-    [ "$DEBUG" -eq 1 ] && >&2 echo TERM "$TERM"
+    [ "$DEBUG" -eq 1 ] && >&2 echo TERM "$TERM" NO_COLOR "$NO_COLOR"
 
     if [ -z "$NO_COLOR" ]; then
         case "$TERM" in
