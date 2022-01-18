@@ -136,9 +136,9 @@ ERROR_COMMAND_UNKNOWN=17
 #CRLF='\r\n'
 
 LIVEDATA_VIEW_NORMAL=0
-LIVEDATA_VIEW_BIG=1
-LIVEDATA_VIEW_TERSE=2
-LIVEDATA_VIEW=${LIVIEDATA_VIEW:=$LIVEDATA_VIEW_NORMAL}
+LIVEDATA_VIEW_BIG=2
+LIVEDATA_VIEW_TERSE=3
+LIVEDATA_VIEW=${LIVIEDATA_VIEW:=$LIVEDATA_VIEW_NORMAL} #current live view
 
 HIDE_RAIN_LIVEDATA_AUTO=${HIDE_RAIN_LIVEDATA_AUTO:=0} # auto hide when 0 today (0=off)
 HIDE_LIGHT_LIVEDATA_AUTO=${HIDE_LIGHT_LIVEDATA_AUTO:=0} # auto hide when 0/dark
@@ -177,8 +177,11 @@ LOG_INTERVAL=${LOG_INTERVAL:=60} # default 60 seconds
 SPATTERNID_CONNECTED=connected
 
 LIVEDATA_PROTOCOL_ECOWITT_BINARY="eb"
+LIVEDATA_PROTOCOL_ECOWITT_BINARY_LONG="Ecowitt binary"
 LIVEDATA_PROTOCOL_ECOWITT_HTTP="e"
+LIVEDATA_PROTOCOL_ECOWITT_HTTP_LONG="Ecowitt"
 LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP="wu"
+LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP_LONG="Wunderground"
 
 SYSTEM_TIMEZONE_AUTO_ON="on"
 SYSTEM_TIMEZONE_AUTO_OFF="off"
@@ -446,6 +449,7 @@ export LIVEDATA_SOILMOISTURE_HEADER="${LIVEDATA_SOILMOISTURE_HEADER:="ＳＯＩ�
                 export LIVEDATA_TEMP_HEADER="${LIVEDATA_TEMP_HEADER:="ＴＥＭＰＥＲＡＴＵＲＥ"}"
                     export LIVEDATA_HEADER="${LIVEDATA_HEADER:="ＴＥＭＰＥＲＡＴＵＲＥ"}"
                     export LIVEDATA_SYSTEM_HEADER="${LIVEDATA_SYSTEM_HEADER:="ＳＹＳＴＥＭ"}"
+                    export LIVEDATA_SENSOR_HEADER="${LIVEDATA_SENSOR_HEADER:="ＳＥＮＳＯＲ"}"
 
 export LIVEDATA_LIGHTNING_DISTANCE_HEADER="${LIVEDATA_LIGHTNING_DISTANCE_HEADER:="Lightning distance (last)"}"
 export LIVEDATA_LIGHTNING_TIME_UTC_HEADER="${LIVEDATA_LIGHTNING_TIME_UTC_HEADER:="Lightning time utc (last)"}"
@@ -468,6 +472,12 @@ export LIVEDATA_WH80_BATTERY_HEADER="${LIVEDATA_WH80_BATTERY_HEADER:="WH80 Weath
 export LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER="${LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER:="Temperature out battery"}"
 export LIVEDATA_WH40_RAINFALL_BATTERY_HEADER="${LIVEDATA_WH40_RAINFALL_BATTERY_HEADER:="Rainfall battery"}"
 export LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="${LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="Lightning battery"}" 
+
+export    LIVEDATA_SENSOR_HEADER_CONNECTED="${LIVEDATA_SENSOR_HEADER_CONNECTED:='Connected'}"
+export     LIVEDATA_SENSOR_HEADER_SEARCHING="${LIVEDATA_SENSOR_HEADER_SEARCHING:='Searching'}"
+export     LIVEDATA_SENSOR_HEADER_DISABLED="${LIVEDATA_SENSOR_HEADER_DISABLED:='Disabled'}"
+
+export LIVEDATA_SENSOR_HEADER_PROTOCOL="${LIVEDATA_SENSOR_PROTOCOL:="Protocol"}"
 
 N=1
 while [ "$N" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do 
@@ -637,17 +647,17 @@ getSensorNameShort()
     case "$1" in
         0) if [ "$C_SYSTEM_SENSORTYPE" -eq $SYSTEM_SENSOR_TYPE_WH24 ]; then
              SENSORNAME_WH='WH24'
-             SENSORNAME_SHORT='Sensor Array'
+             SENSORNAME_SHORT='Wether Station'
             else
               SENSORNAME_WH='WH65'
-              SENSORNAME_SHORT="Sensor Array"
+              SENSORNAME_SHORT="Wether Station"
             fi
             ;;
         1) SENSORNAME_WH='WH68'
-           SENSORNAME_SHORT="Sensor Array"
+           SENSORNAME_SHORT="Wether Station"
             ;;
         2) SENSORNAME_WH="WH80"
-           SENSORNAME_SHORT='Sensor Array'
+           SENSORNAME_SHORT='Wether Station'
             ;;
         3) SENSORNAME_WH="WH40"
            SENSORNAME_SHORT="Rainfall"
@@ -1805,26 +1815,24 @@ printWHBatterySignal()
     fi
 }
 
-printLivedataSystem()
+setLivedataProtocolStyle()
 {
-     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset style_protocol
-    else
-        local style_protocol
-    fi
-
-    case "$LIVEDATA_PROTOCOL" in
+    case "$1" in
 
       "$LIVEDATA_PROTOCOL_ECOWITT_HTTP"|"$LIVEDATA_PROTOCOL_ECOWITT_BINARY")
-            style_protocol=$STYLE_PROTOCOL_ECOWITT_HTTP
+            VALUE_STYLE_PROTOCOL=$STYLE_PROTOCOL_ECOWITT_HTTP
             ;;
       "$LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP")
-            style_protocol=$STYLE_PROTOCOL_WUNDERGROUND_HTTP
+            VALUE_STYLE_PROTOCOL=$STYLE_PROTOCOL_WUNDERGROUND_HTTP
             ;;
     esac
+}
 
-    appendBuffer "%s %s $style_protocol%s$STYLE_RESET" "'$LIVEDATA_SYSTEM_VERSION' '$LIVEDATA_SYSTEM_FREQUENCY' '$LIVEDATA_PROTOCOL'"
+printLivedataSystem()
+{
+    setLivedataProtocolStyle "$LIVEDATA_PROTOCOL"
+
+    appendBuffer "%s %s $VALUE_STYLE_PROTOCOL%s$STYLE_RESET" "'$LIVEDATA_SYSTEM_VERSION' '$LIVEDATA_SYSTEM_FREQUENCY' '$LIVEDATA_PROTOCOL'"
     
     if [ -n "$LIVEDATA_SENSOR_COUNT_CONNECTED" ]; then
        appendBuffer " %s/$STYLE_SENSOR_SEARCH%s$STYLE_RESET/$STYLE_SENSOR_DISABLE%s$STYLE_RESET" "'$LIVEDATA_SENSOR_COUNT_CONNECTED' '$LIVEDATA_SENSOR_COUNT_SEARCHING' '$LIVEDATA_SENSOR_COUNT_DISABLED' "
@@ -1843,17 +1851,12 @@ printLivedataSystem()
       fi
     fi
 
-    appendFormat "\n\n"
-
-    if [ -n "$KSH_VERSION" ]; then
-         unset style_protocol 
-    fi
-
+    #appendFormat "\n\n"
 }
 
 setRainIntensityStatus()
 {
-      if [ "$1" -eq 0 ]; then
+    if [ "$1" -eq 0 ]; then
       unset VALUE_RAININTENSITY_STATUS
     elif [ "$1" -gt 0 ] &&  [ "$1" -lt $RAININTENSITY_LIGHT_LIMIT ]; then
       VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE
@@ -1868,6 +1871,8 @@ setRainIntensityStatus()
 
 printLivedataHeader()
 {
+    [ -n "$HIDE_HEADERS_LIVEDATA" ] && return
+
     #unset STYLE_LIVEVIEW_NORMAL_HEADER
     [ -z "$1" ] && set -- "\n$STYLE_LIVEVIEW_NORMAL_HEADER%s$STYLE_RESET\n\n" "$2"  #use default when "" used as $1
 
@@ -1879,6 +1884,7 @@ printLivedata()
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
         typeset n  delimiter
+    else
         local n  delimiter 
     fi
 
@@ -2195,12 +2201,9 @@ printLivedata()
 
     #system
    
-    printLivedataSystem
-
     if [ -z "$HIDE_SYSTEM_LIVEDATA" ]; then
         
         printLivedataHeader "" "$LIVEDATA_SYSTEM_HEADER"
-
 
         [ -n "$LIVEDATA_SYSTEM_VERSION" ]   && printLivedataLine "$LIVEDATA_SYSTEM_VERSION_HEADER"   "$LIVEDATA_SYSTEM_VERSION"   "%-14s" "" "%5s" 'version'
         [ -n "$LIVEDATA_SYSTEM_MODEL" ]     && printLivedataLine "$LIVEDATA_SYSTEM_MODEL_HEADER"     "$LIVEDATA_SYSTEM_MODEL"     "%-7s"  "" "%5s" 'model'
@@ -2217,9 +2220,18 @@ printLivedata()
         fi
         
         [ -n "$LIVEDATA_SYSTEM_FREQUENCY" ] && printLivedataLine "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$LIVEDATA_SYSTEM_FREQUENCY" "%-7s"  "" "%5s" 'freq' 
-        [ -n "$LIVEDATA_SYSTEM_SENSORTYPE" ] && printLivedataLine "$LIVEDATA_SYSTEM_SENSORTYPE_HEADER" "$LIVEDATA_SYSTEM_SENSORTYPE" "%4s" "" "%4s" 'type'           
+        [ -n "$LIVEDATA_SYSTEM_SENSORTYPE" ] && printLivedataLine "$LIVEDATA_SYSTEM_SENSORTYPE_HEADER" "$LIVEDATA_SYSTEM_SENSORTYPE" "%4s" "" "%4s" 'type' '' "$LIVEDATA_WH65_BATTERY" "$LIVEDATA_WH65_BATTERY_STATE" "" "$LIVEDATA_WH65_SIGNAL" "$LIVEDATA_WH65_SIGNAL_STATE"
     fi
-   
+
+    printLivedataHeader "" "$LIVEDATA_SENSOR_HEADER" 
+    #WH68 sa,WH80 sa,WH40 rfall,WH32 tout
+   # printLivedataLine '' "$LIVEDATA_WH68_BATTERY" "$LIVEDATA_WH45CO2_BATTERY_STATE" "" "$LIVEDATA_WH45CO2_SIGNAL" "$LIVEDATA_WH45CO2_SIGNAL_STATE"
+   setLivedataProtocolStyle "$LIVEDATA_PROTOCOL"
+   STYLE_LIVE_VALUE=$VALUE_STYLE_PROTOCOL   printLivedataLine "$LIVEDATA_SENSOR_HEADER_PROTOCOL" "$LIVEDATA_PROTOCOL_LONG $LIVEDATA_PROTOCOL_VERSION" "%2s"
+                                            printLivedataLine "$LIVEDATA_SENSOR_HEADER_CONNECTED" "$LIVEDATA_SENSOR_COUNT_CONNECTED" "%2u"
+   STYLE_LIVE_VALUE=$STYLE_SENSOR_SEARCH    printLivedataLine "$LIVEDATA_SENSOR_HEADER_SEARCHING" "$LIVEDATA_SENSOR_COUNT_SEARCHING" "%2u"
+   STYLE_LIVE_VALUE=$STYLE_SENSOR_DISABLE   printLivedataLine "$LIVEDATA_SENSOR_HEADER_DISABLED" "$LIVEDATA_SENSOR_COUNT_DISABLED" "%2u"
+
     printAppendBuffer
 
     #unset local variables for ksh -> made global by using () function syntax without function keyword
@@ -2386,6 +2398,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
     fi
 
     LIVEDATA_PROTOCOL=$LIVEDATA_PROTOCOL_ECOWITT_BINARY
+    LIVEDATA_PROTOCOL_LONG=$LIVEDATA_PROTOCOL_ECOWITT_BINARY_LONG
 
     while [ "${#OD_BUFFER}" -gt 4 ]; do
 
@@ -3087,7 +3100,7 @@ parseSensorIdNew()
 }
 
 parsePacket() {
-
+   
     if [ -z "$1" ]; then
         [ "$DEBUG" -eq 1 ] && echo >&2 Empty od buffer
         return "$ERROR_OD_BUFFER_EMPTY"
@@ -3304,6 +3317,7 @@ sendPacket() {
 
 sendPacketnc() { #$1 - command
     #$2 - host
+
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
         typeset ncUDPOpt port host timeout_udp_broadcast timeout_nc od_buffer cmdstr nccmdstr odcmdstr
@@ -3416,6 +3430,7 @@ sendPacketnc() { #$1 - command
     if [ -n "$KSH_VERSION" ]; then
        unset ncUDPOpt ncIdleOpt port host timeout_udp_broadcast useTimeout timeout_nc od_buffer cmdstr nccmdstr odcmdstr
     fi
+
 }
 
 discovery() {
@@ -4411,6 +4426,12 @@ isHex()
 
 initTerm()
 {
+     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+    #shellcheck disable=SC3044
+       typeset size
+    else
+       local size
+    fi
     #https://stackoverflow.com/questions/1780483/lines-and-columns-environmental-variables-lost-in-a-script
     if [ -n "$COLUMNS" ] && [ -n "$LINES" ]; then
         TERM_COLUMNS=$COLUMNS
@@ -4422,6 +4443,10 @@ initTerm()
     elif type tput >/dev/null; then
        TERM_LINES=$(tput lines)
        TERM_COLUMNS=$(tput cols)
+    fi
+
+    if [ -n "$KSH_VERSION" ]; then
+      unset size
     fi
 
 }
@@ -4455,6 +4480,8 @@ initShell() {
     else
         SHELL_SUPPORT_TILDE_REGEX=0
     fi"
+
+    BIFS=$IFS
 
     #shellcheck disable=SC3044
     if type typeset >/dev/null; then
@@ -4830,23 +4857,83 @@ printOrLogLivedata()
     fi
 }
 
+parseHttpHeader()
+{
+    IFS=: read -r HTTP_KEY HTTP_VALUE <<EOH
+$1
+EOH
+   #echo "KEY $HTTP_KEY VALUE $HTTP_VALUE"
+    case $HTTP_KEY in
+        *-*) 
+                IFS=-
+                set -- $HTTP_KEY
+                echo PART1 "$1" PART2 "$2"
+                toLowercase "$1"
+                HTTP_KEY_PART1=$LOWERCASE
+                toLowercase "$2"
+                HTTP_KEY_PART2=$LOWERCASE
+                eval "HTTP_HEADER_${HTTP_KEY_PART1}_$HTTP_KEY_PART2=${HTTP_VALUE# }"
+                ;;
+        *)         
+                toLowercase "$HTTP_KEY"
+                HTTP_KEY=$LOWERCASE
+                eval "HTTP_HEADER_$HTTP_KEY=${HTTP_VALUE# }" # trim 1 leading space
+               ;;
+    esac
+
+    unset HTTP_KEY HTTP_VALUE
+   #IFS=- set -- $HTTP_KEY
+}
+
+parseHttpLines()
+{
+    #http://mywiki.wooledge.org/BashFAQ/001
+    N=0
+    NBODY=0 #line number to body
+    while eval IFS= read -r HTTP_LINE$((N + 1)); do
+        N=$(( N + 1 ))
+        [ $NBODY -eq 0 ] && eval HTTP_LINE$N="\${HTTP_LINE$N%?}" # remove trailing \r (\n removed by read), do not touch body
+        eval "if [ \"\${#HTTP_LINE$N}\" -eq 0 ]; then NBODY=$((N + 1 )); fi"
+      # eval echo LINE $N \"\$HTTP_LINE$N\"
+    done <<EOF
+$1
+EOF
+
+     if [ -n "$HTTP_LINE1" ]; then
+           IFS=' ' read -r HTTP_METHOD HTTP_URL HTTP_VERSION <<EOL
+$HTTP_LINE1
+EOL
+    fi
+
+    if [ "$NBODY" -gt 2 ]; then
+        eval HTTP_BODY="\$HTTP_LINE$NBODY"
+        for HTTP_LINE_I in $(seq -s ' ' 2 $(( NBODY - 2 )) ); do
+            eval parseHttpHeader \"\$HTTP_LINE"$HTTP_LINE_I"\"
+        done
+        unset HTTP_LINE_I
+    fi
+}
+
 parseEcowittHttpRequest()
-#$1 - http message
+#$1 - http request message (entire)
 {
    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-       typeset http_body f value key
+       typeset f value key 
    else
-       local http_body f value key
+       local f value key
    fi
 
-    LIVEDATA_PROTOCOL=$LIVEDATA_PROTOCOL_ECOWITT_HTTP
+    parseHttpLines "$1"
 
-    http_body=$(echo "$1" | tail -n 1) 
-    [ "$DEBUG" -eq 1 ] && printf "HTTP BODY\n%s\n" "$http_body"
+    LIVEDATA_PROTOCOL=$LIVEDATA_PROTOCOL_ECOWITT_HTTP
+    LIVEDATA_PROTOCOL_LONG=$LIVEDATA_PROTOCOL_ECOWITT_HTTP_LONG
+    LIVEDATA_PROTOCOL_VERSION=$HTTP_VERSION
+    
+    [ "$DEBUG" -eq 1 ] && printf "HTTP BODY\n%s\n" "$HTTP_BODY"
     IFS='&'
     
-    for f in $http_body; do
+    for f in $HTTP_BODY; do
         
         [ "$DEBUG" -eq  1 ] && echo >&2 Parsing field "$f" 
         value=${f##*=}  # remove largest prefix pattern
@@ -5073,7 +5160,7 @@ parseEcowittHttpRequest()
     printOrLogLivedata
 
     if [ -n "$KSH_VERSION" ]; then
-       unset http_body f key value
+       unset f key value
     fi
 }
 
@@ -5081,24 +5168,30 @@ parseWundergroundHttpRequest()
 {
    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-       typeset http_request f value key
+       typeset f value key
    else
-       local http_request f value key
+       local  f value key
    fi
 
+   parseHttpLines "$1"
+
    LIVEDATA_PROTOCOL=$LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP
+   LIVEDATA_PROTOCOL_LONG=$LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP_LONG
+   LIVEDATA_PROTOCOL_VERSION=$HTTP_VERSION
 
       #https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request
 
-    http_request=$(echo "$1" | head -n 1)
-    [ "$DEBUG" -eq 1 ] && printf "HTTP REQUEST\n%s\n" "$http_request"
+    #http_request=$(echo "$1" | head -n 1)
+    #[ "$DEBUG" -eq 1 ] && printf "HTTP REQUEST\n%s\n" "$http_request"
 
-    http_request=${http_request##GET*ID=} # remove method GET and directory prefix, assume qs always starts with ID=
-    http_request=${http_request%% HTTP*} # remove HTTP/1.0 at end
-    http_request="ID="$http_request
+   # http_request=${http_request##GET*ID=} # remove method GET and directory prefix, assume qs always starts with ID=
+   # LIVEDATA_PROTOCOL_VERSION=${http_request##*rtfreq=? } #assumes request always ends with rtfreq=
+   # http_request=${http_request%% HTTP*} # remove HTTP/1.0 at end
+    #http_request="ID="$http_request
 
     IFS='&'
-    for f in $http_request; do
+    #for f in $http_request; do
+    for f in ${HTTP_URL#*\?}; do #\? remove everything in front up to ?-> start at ID=
 
         [ "$DEBUG" -eq  1 ] && echo >&2 Parsing field "$f" 
 
@@ -5464,8 +5557,8 @@ parseUnitOptions()
     done
 }
 
-initTerm
 initShell
+initTerm
 initcoptCommands
 initConfigDir
 initTrap
@@ -5526,6 +5619,11 @@ while [ $# -gt 0 ]; do
 
            shift 2
            ;;
+
+       -Hh | --hide-headers)
+            HIDE_HEADERS_LIVEDATA=1
+            shift
+            ;;
 
        -Hb | --hide-battery)
             HIDE_BATTERY_LIVEDATA=1
@@ -5607,12 +5705,10 @@ while [ $# -gt 0 ]; do
             [ "$DEBUG" -eq 1 ] &&  echo >&2 Logging each "$LOG_INTERVAL" seconds
             ;;
 
-
        -L  | --log)
           
            if ! argEmptyOrOption "$2"; then
                LOG_CMD="$2"
-              
               shift 2
             else
               shift
