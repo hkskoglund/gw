@@ -183,10 +183,6 @@ LIVEDATA_PROTOCOL_ECOWITT_HTTP_LONG="Ecowitt"
 LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP="wu"
 LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP_LONG="Wunderground"
 
-SYSTEM_TIMEZONE_AUTO_ON="on"
-SYSTEM_TIMEZONE_AUTO_OFF="off"
-SYSTEM_DST_STATUS_ON="on"
-SYSTEM_DST_STATUS_OFF="off"
 
 CMD_READ_VERSION=$((0x50)) #zsh - wont compare int with hex 16#50 in [ ] expression unless converted to decimal, works in [[ ]] expression
 CMD_REBOOT=$((0x40))
@@ -473,11 +469,22 @@ export LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER="${LIVEDATA_WH32_TEMPERATURE_BAT
 export LIVEDATA_WH40_RAINFALL_BATTERY_HEADER="${LIVEDATA_WH40_RAINFALL_BATTERY_HEADER:="Rainfall battery"}"
 export LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="${LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="Lightning battery"}" 
 
-export    LIVEDATA_SENSOR_HEADER_CONNECTED="${LIVEDATA_SENSOR_HEADER_CONNECTED:='Connected'}"
-export     LIVEDATA_SENSOR_HEADER_SEARCHING="${LIVEDATA_SENSOR_HEADER_SEARCHING:='Searching'}"
-export     LIVEDATA_SENSOR_HEADER_DISABLED="${LIVEDATA_SENSOR_HEADER_DISABLED:='Disabled'}"
+export    LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER="${LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER:='Sensor connected'}"
+export     LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER="${LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER:='Sensor searching'}"
+export     LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER="${LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER:='Sensor disabled'}"
 
-export LIVEDATA_SENSOR_HEADER_PROTOCOL="${LIVEDATA_SENSOR_PROTOCOL:="Protocol"}"
+export LIVEDATA_SYSTEM_PROTOCOL_HEADER="${LIVEDATA_SYSTEM_PROTOCOL_HEADER:="System protocol"}"
+export LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER:="System timezone AUTO"}"
+export LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER:="System timezone DST"}"
+export LIVEDATA_SYSTEM_TIMEZONE_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_HEADER:="System timezone"}"
+
+export LIVEDATA_STATE_ON="${LIVEDATA_STATE_ON:="on"}"
+export LIVEDATA_STATE_OFF="${LIVEDATA_STATE_OFF:="off"}"
+
+export LIVEDATA_SYSTEM_TIMEZONE_AUTO_ON="$LIVEDATA_STATE_ON"
+export LIVEDATA_SYSTEM_TIMEZONE_AUTO_OFF="$LIVEDATA_STATE_OFF"
+export LIVEDATA_SYSTEM_DST_STATUS_ON="$LIVEDATA_STATE_ON"
+export LIVEDATA_SYSTEM_DST_STATUS_OFF="$LIVEDATA_STATE_OFF"
 
 N=1
 while [ "$N" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do 
@@ -532,7 +539,7 @@ while [ "$N" -le "$SENSORTYPE_TF_USR_MAXCH" ]; do
 done
 
 export LIVEDATA_SYSTEM_VERSION_HEADER="${LIVEDATA_SYSTEM_VERSION_HEADER:="System version"}"
-export LIVEDATA_SYSTEM_UTC_HEADER="${LIVEDATA_SYSTEM_UTC_HEADER:="System clock"}"
+export LIVEDATA_SYSTEM_UTC_HEADER="${LIVEDATA_SYSTEM_UTC_HEADER:="System utc"}"
 export LIVEDATA_SYSTEM_FREQUENCY_HEADER="${LIVEDATA_SYSTEM_FREQUENCY_HEADER:="System frequency"}"
 export LIVEDATA_SYSTEM_MODEL_HEADER="${LIVEDATA_SYSTEM_MODEL_HEADER:="System model"}"
 export LIVEDATA_SYSTEM_SENSORTYPE_HEADER="${LIVEDATA_SYSTEM_SENSORTYPE_HEADER:="System type"}"
@@ -1310,12 +1317,20 @@ initTimezones() {
     SYSTEM_TIMEZONE_MAX_INDEX=107
 }
 
-printSystem() {
-    echo "system frequency  $C_SYSTEM_FREQUENCY $C_SYSTEM_FREQUENCY_STATE
-system sensortype $C_SYSTEM_SENSORTYPE $C_SYSTEM_SENSORTYPE_STATE
-system clock      $C_SYSTEM_UTC $C_SYSTEM_UTC_STATE
-system timezone   $C_SYSTEM_TIMEZONE_INDEX $C_SYSTEM_TIMEZONE_INDEX_STATE
-system dst        $C_SYSTEM_DST_STATUS dst $C_SYSTEM_DST_STATUS_STATE auto $C_SYSTEM_TIMEZONE_AUTO_STATE"
+printSystem() 
+{
+    printf "%-24.24s%10u\t%s\n\
+%-24.24s%10u\t%s\n\
+%-24.24s%10u\t%s\n\
+%-24.24s%10u\t%.24s\n\
+%-24.24s%10u\t%s\n\
+%-24.24s%10u\t%s\n"\
+            "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$C_SYSTEM_FREQUENCY" "$C_SYSTEM_FREQUENCY_STATE"\
+            "$LIVEDATA_SYSTEM_SENSORTYPE_HEADER"    "$C_SYSTEM_SENSORTYPE" "$C_SYSTEM_SENSORTYPE_STATE"\
+            "$LIVEDATA_SYSTEM_UTC_HEADER" "$C_SYSTEM_UTC" "$C_SYSTEM_UTC_STATE"\
+            "$LIVEDATA_SYSTEM_TIMEZONE_HEADER"  "$C_SYSTEM_TIMEZONE_INDEX" "$C_SYSTEM_TIMEZONE_INDEX_STATE"\
+            "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER" "$C_SYSTEM_TIMEZONE_AUTO_BIT" "$C_SYSTEM_TIMEZONE_AUTO_STATE"\
+            "$LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER" "$C_SYSTEM_TIMEZONE_DST_STATUS_BIT" "$C_SYSTEM_TIMEZONE_DST_STATUS_STATE"
 }
 
 parseSystem() {
@@ -1357,26 +1372,30 @@ parseSystem() {
     C_SYSTEM_TIMEZONE_INDEX=$VALUE_UINT8
 
     eval "C_SYSTEM_TIMEZONE_INDEX_STATE=\$SYSTEM_TIMEZONE_$C_SYSTEM_TIMEZONE_INDEX" # set from SYSTEM_TIMEZONE "array" variable with index
+    LIVEDATA_SYSTEM_TIMEZONE=$C_SYSTEM_TIMEZONE_INDEX_STATE
 
     C_SYSTEM_TIMEZONE_OFFSET_HOURS=${C_SYSTEM_TIMEZONE_INDEX_STATE%%\)*} # remove )... 
     C_SYSTEM_TIMEZONE_OFFSET_HOURS=${C_SYSTEM_TIMEZONE_OFFSET_HOURS#\(UTC} # remove (UTC
 
     readUInt8
 
-    C_SYSTEM_DST_STATUS=$VALUE_UINT8
-    C_SYSTEM_DST_STATUS_BIT=$((C_SYSTEM_DST_STATUS & 0x01))
-    if [ "$C_SYSTEM_DST_STATUS_BIT" -eq 1 ]; then
-        C_SYSTEM_DST_STATUS_STATE=$SYSTEM_DST_STATUS_ON
-    elif [ "$C_SYSTEM_DST_STATUS_BIT" -eq 0 ]; then
-        C_SYSTEM_DST_STATUS_STATE=$SYSTEM_DST_STATUS_OFF
-    fi
+    C_SYSTEM_TIMEZONE_DST_STATUS=$VALUE_UINT8
 
-    C_SYSTEM_TIMEZONE_AUTO_BIT=$(((C_SYSTEM_DST_STATUS & 0x2) >> 1)) # bit 2 1= off, 0=on ?
-    if [ "$C_SYSTEM_TIMEZONE_AUTO_BIT" -eq 0 ]; then
-        C_SYSTEM_TIMEZONE_AUTO_STATE=$SYSTEM_TIMEZONE_AUTO_ON
-    elif [ "$C_SYSTEM_TIMEZONE_AUTO_BIT" -eq 1 ]; then
-        C_SYSTEM_TIMEZONE_AUTO_STATE=$SYSTEM_TIMEZONE_AUTO_OFF
+    C_SYSTEM_TIMEZONE_DST_STATUS_BIT=$((C_SYSTEM_TIMEZONE_DST_STATUS & 0x01))
+    if [ "$C_SYSTEM_TIMEZONE_DST_STATUS_BIT" -eq 1 ]; then
+        C_SYSTEM_TIMEZONE_DST_STATUS_STATE=$LIVEDATA_SYSTEM_DST_STATUS_ON
+    elif [ "$C_SYSTEM_TIMEZONE_DST_STATUS_BIT" -eq 0 ]; then
+        C_SYSTEM_TIMEZONE_DST_STATUS_STATE=$LIVEDATA_SYSTEM_DST_STATUS_OFF
     fi
+    LIVEDATA_SYSTEM_TIMEZONE_DST=$C_SYSTEM_TIMEZONE_DST_STATUS_STATE
+
+    C_SYSTEM_TIMEZONE_AUTO_BIT=$(((C_SYSTEM_TIMEZONE_DST_STATUS & 0x2) >> 1)) # bit 2 1= off, 0=on ?
+    if [ "$C_SYSTEM_TIMEZONE_AUTO_BIT" -eq 0 ]; then
+        C_SYSTEM_TIMEZONE_AUTO_STATE=$LIVEDATA_SYSTEM_TIMEZONE_AUTO_ON
+    elif [ "$C_SYSTEM_TIMEZONE_AUTO_BIT" -eq 1 ]; then
+        C_SYSTEM_TIMEZONE_AUTO_STATE=$LIVEDATA_SYSTEM_TIMEZONE_AUTO_OFF
+    fi
+    LIVEDATA_SYSTEM_TIMEZONE_AUTO=$C_SYSTEM_TIMEZONE_AUTO_STATE
 
     printSystem
 
@@ -1577,6 +1596,14 @@ setRainMode()
 }
 
 printLivedataLine()
+#allows to intercept/disable printing during debugging
+{
+    #echo "$*"
+    printLivedataLineFinal "$@"
+    #:
+}
+
+printLivedataLineFinal()
 #$1 -header variable name, $2 value, $3 - value format, $4 unit, $5 unit format,$6 terse header, $7 terse format, $8 status value $9 status  $10 status fmt $11 signal value $12 signal state
 # optimized to just use one printf call builtin/external -> builds up entire format and argument strings for entire livedata view
 {
@@ -1585,19 +1612,24 @@ printLivedataLine()
 
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        typeset header_fmt unit_fmt status_fmt status_line signal_fmt signal_line 
+        typeset header_fmt unit_fmt status_fmt status_line signal_fmt signal_line space
     else
-        local  header_fmt unit_fmt status_fmt status_line signal_fmt signal_line 
+        local  header_fmt unit_fmt status_fmt status_line signal_fmt signal_line space
     fi
 
     # \r\t horizontal/absolute positioning is compatible with unicode in string
-    header_fmt=" %s\r\t\t\t\t"
+    if [ "$HIDE_HEADERS_LIVEDATA" -eq 0 ]; then 
+        header_fmt=" %s\r\t\t\t\t" #indent with headers
+    else
+       header_fmt="%s\r\t\t\t\t"
+    fi
     # unit_fmt="\r\t\t\t\t\t%s" 
     unit_fmt="%s"
     #status_fmt="\r\t\t\t\t\t\t%s"
     status_fmt=${10}
     status_fmt=${status_fmt:="\t%s"}
     signal_fmt="\t%s"
+    space=' ' #do not use space for unitless values
 
     #TEST UTF-8: for f in $(seq -s' ' 255); do eval printf "\\\x$(printf "%x" "$f")"; done
 
@@ -1625,7 +1657,8 @@ printLivedataLine()
         fi
         
         if [ -n "$STYLE_LIVE_VALUE" ]; then
-            appendFormat "$header_fmt $STYLE_LIVE_VALUE$3 $unit_fmt$STYLE_RESET $status_fmt $signal_fmt\n"
+            [ -z "$4" ] && unset space # skip space if unit empty
+            appendFormat "$header_fmt $STYLE_LIVE_VALUE$3$space$unit_fmt$STYLE_RESET $status_fmt $signal_fmt\n"
             unset STYLE_LIVE_VALUE
         else
             appendFormat "$header_fmt $3 $unit_fmt $status_fmt $signal_fmt\n"
@@ -1694,7 +1727,6 @@ appendVar()
 {
     #echo  "$1=\"\$$1$2\"" 
     eval "$1=\"\$$1$2\""
-    set +x
 }
 
 appendBuffer()
@@ -1765,9 +1797,19 @@ newLivedataCompass()
 
     style_needle=$STYLE_COMPASS_WIND$1$STYLE_RESET
     
-    LIVEVIEW_COMPASS_N_FMT="╭─$STYLE_COMPASS_NORTH$WIND_DIRECTION_N$STYLE_RESET─╮" #styling must be in the format of printf
+    if [ -z "$KSH_VERSION" ]; then
+       LIVEVIEW_COMPASS_N_FMT="╭─$STYLE_COMPASS_NORTH$WIND_DIRECTION_N$STYLE_RESET─╮" #styling must be in the format of printf
+    else
+        LIVEVIEW_COMPASS_N_FMT="╭─$STYLE_COMPASS_NORTH$WIND_DIRECTION_N$STYLE_RESET\u2500╮" #ksh Version AJM 93u+ 2012-08-01 insert \x80 instead of unicode 2500 ?! bug?
+    fi
+       
     LIVEVIEW_COMPASS_WE_FMT="$WIND_DIRECTION_W $style_needle $WIND_DIRECTION_E"
-    LIVEVIEW_COMPASS_S_FMT="╰─$WIND_DIRECTION_S─╯"
+
+    if [ -z "$KSH_VERSION" ]; then
+        LIVEVIEW_COMPASS_S_FMT="╰─$WIND_DIRECTION_S─╯"
+    else
+        LIVEVIEW_COMPASS_S_FMT="╰─$WIND_DIRECTION_S\u2500╯"
+    fi
 
    if [ -n "$KSH_VERSION" ]; then
      unset style_needle
@@ -1830,9 +1872,9 @@ setLivedataProtocolStyle()
 
 printLivedataSystem()
 {
-    setLivedataProtocolStyle "$LIVEDATA_PROTOCOL"
+    setLivedataProtocolStyle "$LIVEDATA_SYSTEM_PROTOCOL"
 
-    appendBuffer "%s %s $VALUE_STYLE_PROTOCOL%s$STYLE_RESET" "'$LIVEDATA_SYSTEM_VERSION' '$LIVEDATA_SYSTEM_FREQUENCY' '$LIVEDATA_PROTOCOL'"
+    appendBuffer "%s %s $VALUE_STYLE_PROTOCOL%s$STYLE_RESET" "'$LIVEDATA_SYSTEM_VERSION' '$LIVEDATA_SYSTEM_FREQUENCY' '$LIVEDATA_SYSTEM_PROTOCOL'"
     
     if [ -n "$LIVEDATA_SENSOR_COUNT_CONNECTED" ]; then
        appendBuffer " %s/$STYLE_SENSOR_SEARCH%s$STYLE_RESET/$STYLE_SENSOR_DISABLE%s$STYLE_RESET" "'$LIVEDATA_SENSOR_COUNT_CONNECTED' '$LIVEDATA_SENSOR_COUNT_SEARCHING' '$LIVEDATA_SENSOR_COUNT_DISABLED' "
@@ -1846,7 +1888,7 @@ printLivedataSystem()
 
     if [ "$C_SYSTEM_TIMEZONE_AUTO_STATE" = "$SYSTEM_TIMEZONE_AUTO_OFF" ]; then
       appendBuffer " %s" "'$C_SYSTEM_TIMEZONE_OFFSET_HOURS'"
-      if [ $C_SYSTEM_DST_STATUS_STATE = $SYSTEM_DST_STATUS_ON ]; then
+      if [ $C_SYSTEM_TIMEZONE_DST_STATUS_STATE = $SYSTEM_DST_STATUS_ON ]; then
         appendFormat " DST"
       fi
     fi
@@ -1883,9 +1925,9 @@ printLivedata()
 {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        typeset n  delimiter
+        typeset n  delimiter space
     else
-        local n  delimiter 
+        local n  delimiter space
     fi
 
     #resetAppendBuffer
@@ -2208,8 +2250,8 @@ printLivedata()
         [ -n "$LIVEDATA_SYSTEM_VERSION" ]   && printLivedataLine "$LIVEDATA_SYSTEM_VERSION_HEADER"   "$LIVEDATA_SYSTEM_VERSION"   "%-14s" "" "%5s" 'version'
         [ -n "$LIVEDATA_SYSTEM_MODEL" ]     && printLivedataLine "$LIVEDATA_SYSTEM_MODEL_HEADER"     "$LIVEDATA_SYSTEM_MODEL"     "%-7s"  "" "%5s" 'model'
         if [ -n "$LIVEDATA_SYSTEM_UTC" ]; then
-            if [  $C_SYSTEM_TIMEZONE_AUTO_STATE = $SYSTEM_TIMEZONE_AUTO_OFF ]; then
-               if [ $C_SYSTEM_DST_STATUS_STATE = $SYSTEM_DST_STATUS_ON ]; then
+            if [  "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" = $SYSTEM_TIMEZONE_AUTO_OFF ]; then
+               if [ "$LIVEDATA_SYSTEM_TIMEZONE_DST" = $SYSTEM_DST_STATUS_ON ]; then
                     printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER" "$LIVEDATA_SYSTEM_UTC $C_SYSTEM_TIMEZONE_OFFSET_HOURS DST" "%-20s" "" "%5s" 'utc'
                else
                     printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER" "$LIVEDATA_SYSTEM_UTC $C_SYSTEM_TIMEZONE_OFFSET_HOURS" "%-20s" "" "%5s" 'utc'
@@ -2217,28 +2259,37 @@ printLivedata()
             else
                 printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER"       "$LIVEDATA_SYSTEM_UTC"       "%-20s" "" "%5s" 'utc'
             fi
+
+            [ -n "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" ] && printLivedataLine "System timezone AUTO" "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" "%s"
+            [ -n "$LIVEDATA_SYSTEM_TIMEZONE_DST" ] && printLivedataLine "System timezone DST" "$LIVEDATA_SYSTEM_TIMEZONE_DST" "%s"
+
+            [ -n "$LIVEDATA_SYSTEM_TIMEZONE" ] && printLivedataLine "System timezone" "$LIVEDATA_SYSTEM_TIMEZONE" "%-24.24s"
         fi
         
         [ -n "$LIVEDATA_SYSTEM_FREQUENCY" ] && printLivedataLine "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$LIVEDATA_SYSTEM_FREQUENCY" "%-7s"  "" "%5s" 'freq' 
         [ -n "$LIVEDATA_SYSTEM_SENSORTYPE" ] && printLivedataLine "$LIVEDATA_SYSTEM_SENSORTYPE_HEADER" "$LIVEDATA_SYSTEM_SENSORTYPE" "%4s" "" "%4s" 'type' '' "$LIVEDATA_WH65_BATTERY" "$LIVEDATA_WH65_BATTERY_STATE" "" "$LIVEDATA_WH65_SIGNAL" "$LIVEDATA_WH65_SIGNAL_STATE"
+   
+        setLivedataProtocolStyle "$LIVEDATA_SYSTEM_PROTOCOL"
+        space=' '
+        [ -z "$LIVEDATA_SYSTEM_PROTOCOL_VERSION" ] && unset space
+           STYLE_LIVE_VALUE=$VALUE_STYLE_PROTOCOL   printLivedataLine "$LIVEDATA_SYSTEM_PROTOCOL_HEADER" "$LIVEDATA_SYSTEM_PROTOCOL_LONG$space$LIVEDATA_SYSTEM_PROTOCOL_VERSION" "%s" 
+        
+   [ -n "$LIVEDATA_SENSOR_COUNT_CONNECTED" ] && printLivedataLine "$LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER" "$LIVEDATA_SENSOR_COUNT_CONNECTED" "%2u"
+   [ -n "$LIVEDATA_SENSOR_COUNT_SEARCHING" ] && STYLE_LIVE_VALUE=$STYLE_SENSOR_SEARCH    printLivedataLine "$LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER" "$LIVEDATA_SENSOR_COUNT_SEARCHING" "%2u"
+   [ -n "$LIVEDATA_SENSOR_COUNT_DISABLED" ] && STYLE_LIVE_VALUE=$STYLE_SENSOR_DISABLE   printLivedataLine "$LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER" "$LIVEDATA_SENSOR_COUNT_DISABLED" "%2u"
+
     fi
 
-    printLivedataHeader "" "$LIVEDATA_SENSOR_HEADER" 
     #WH68 sa,WH80 sa,WH40 rfall,WH32 tout
    # printLivedataLine '' "$LIVEDATA_WH68_BATTERY" "$LIVEDATA_WH45CO2_BATTERY_STATE" "" "$LIVEDATA_WH45CO2_SIGNAL" "$LIVEDATA_WH45CO2_SIGNAL_STATE"
-   setLivedataProtocolStyle "$LIVEDATA_PROTOCOL"
-   STYLE_LIVE_VALUE=$VALUE_STYLE_PROTOCOL   printLivedataLine "$LIVEDATA_SENSOR_HEADER_PROTOCOL" "$LIVEDATA_PROTOCOL_LONG $LIVEDATA_PROTOCOL_VERSION" "%2s"
-                                            printLivedataLine "$LIVEDATA_SENSOR_HEADER_CONNECTED" "$LIVEDATA_SENSOR_COUNT_CONNECTED" "%2u"
-   STYLE_LIVE_VALUE=$STYLE_SENSOR_SEARCH    printLivedataLine "$LIVEDATA_SENSOR_HEADER_SEARCHING" "$LIVEDATA_SENSOR_COUNT_SEARCHING" "%2u"
-   STYLE_LIVE_VALUE=$STYLE_SENSOR_DISABLE   printLivedataLine "$LIVEDATA_SENSOR_HEADER_DISABLED" "$LIVEDATA_SENSOR_COUNT_DISABLED" "%2u"
-
+  
     printAppendBuffer
 
     #unset local variables for ksh -> made global by using () function syntax without function keyword
     #https://www.unix.com/shell-programming-and-scripting/137435-ksh-different-syntax-function.html
     #man ksh93: ksh93 uses static scoping (one global scope, one local scope per function) and allows local variables only on Korn style functions
     if [ -n "$KSH_VERSION" ]; then
-         unset n delimiter 
+         unset n delimiter space
     fi
 }
 
@@ -2388,7 +2439,6 @@ getDateUTC()
     VALUE_DATE_UTC=$(date -u -d @"$1" +'%F %T') #add field
 }
 
-
 parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 5d 0a 01 59 0b 00 00 0c 00 00 15 00 00 93 bc 16 00 20 17 00 2c 12 1a 00 87 22 32 1b 00 b0 23 27 1c 00 dd 24 31 58 00 19 00 47 0e 00 00 10 00 08 11 00 42 12 00 00 02 9a 13 00 00 0f 8b 0d 00 42 63
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
@@ -2397,8 +2447,8 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         local ldf channel checksum
     fi
 
-    LIVEDATA_PROTOCOL=$LIVEDATA_PROTOCOL_ECOWITT_BINARY
-    LIVEDATA_PROTOCOL_LONG=$LIVEDATA_PROTOCOL_ECOWITT_BINARY_LONG
+    LIVEDATA_SYSTEM_PROTOCOL=$LIVEDATA_PROTOCOL_ECOWITT_BINARY
+    LIVEDATA_SYSTEM_PROTOCOL_LONG=$LIVEDATA_PROTOCOL_ECOWITT_BINARY_LONG
 
     while [ "${#OD_BUFFER}" -gt 4 ]; do
 
@@ -4866,6 +4916,7 @@ EOH
     case $HTTP_KEY in
         *-*) 
                 IFS=-
+                #shellcheck disable=SC2086
                 set -- $HTTP_KEY
                 echo PART1 "$1" PART2 "$2"
                 toLowercase "$1"
@@ -4926,9 +4977,9 @@ parseEcowittHttpRequest()
 
     parseHttpLines "$1"
 
-    LIVEDATA_PROTOCOL=$LIVEDATA_PROTOCOL_ECOWITT_HTTP
-    LIVEDATA_PROTOCOL_LONG=$LIVEDATA_PROTOCOL_ECOWITT_HTTP_LONG
-    LIVEDATA_PROTOCOL_VERSION=$HTTP_VERSION
+    LIVEDATA_SYSTEM_PROTOCOL=$LIVEDATA_PROTOCOL_ECOWITT_HTTP
+    LIVEDATA_SYSTEM_PROTOCOL_LONG=$LIVEDATA_PROTOCOL_ECOWITT_HTTP_LONG
+    LIVEDATA_SYSTEM_PROTOCOL_VERSION=$HTTP_VERSION
     
     [ "$DEBUG" -eq 1 ] && printf "HTTP BODY\n%s\n" "$HTTP_BODY"
     IFS='&'
@@ -5175,9 +5226,9 @@ parseWundergroundHttpRequest()
 
    parseHttpLines "$1"
 
-   LIVEDATA_PROTOCOL=$LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP
-   LIVEDATA_PROTOCOL_LONG=$LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP_LONG
-   LIVEDATA_PROTOCOL_VERSION=$HTTP_VERSION
+   LIVEDATA_SYSTEM_PROTOCOL=$LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP
+   LIVEDATA_SYSTEM_PROTOCOL_LONG=$LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP_LONG
+   LIVEDATA_SYSTEM_PROTOCOL_VERSION=$HTTP_VERSION
 
       #https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request
 
@@ -5185,7 +5236,7 @@ parseWundergroundHttpRequest()
     #[ "$DEBUG" -eq 1 ] && printf "HTTP REQUEST\n%s\n" "$http_request"
 
    # http_request=${http_request##GET*ID=} # remove method GET and directory prefix, assume qs always starts with ID=
-   # LIVEDATA_PROTOCOL_VERSION=${http_request##*rtfreq=? } #assumes request always ends with rtfreq=
+   # LIVEDATA_SYSTEM_PROTOCOL_VERSION=${http_request##*rtfreq=? } #assumes request always ends with rtfreq=
    # http_request=${http_request%% HTTP*} # remove HTTP/1.0 at end
     #http_request="ID="$http_request
 
@@ -5562,6 +5613,7 @@ initTerm
 initcoptCommands
 initConfigDir
 initTrap
+
 if [ -z "$NC_CMD" ] && [ -z "$NC_VERSION" ]; then
     
     if ! initnc; then
@@ -5569,8 +5621,8 @@ if [ -z "$NC_CMD" ] && [ -z "$NC_VERSION" ]; then
         exit "$ERROR_DEPENDENCY_NC"
     fi
 fi
-initTimezones
 
+initTimezones
 initUnit
 initWinddirectionCompass
 
@@ -5609,7 +5661,7 @@ while [ $# -gt 0 ]; do
        -A | --lang)
 
            if [ -n "$2" ] && [ -s "$2" ]; then
-           #shellcheck disable=SC1090
+              #shellcheck disable=SC1090
               . "$2"
                initUnit # update UNIT_HOUR
                initWinddirectionCompass
