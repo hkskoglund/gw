@@ -476,7 +476,7 @@ export     LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER="${LIVEDATA_SYSTEM_SENSOR_DISA
 export LIVEDATA_SYSTEM_PROTOCOL_HEADER="${LIVEDATA_SYSTEM_PROTOCOL_HEADER:="System protocol"}"
 export LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER:="System timezone AUTO"}"
 export LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER:="System timezone DST"}"
-export LIVEDATA_SYSTEM_TIMEZONE_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_HEADER:="System timezone"}"
+export LIVEDATA_SYSTEM_TIMEZONE_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_HEADER:="System timezone (manual)"}"
 
 export LIVEDATA_STATE_ON="${LIVEDATA_STATE_ON:="on"}"
 export LIVEDATA_STATE_OFF="${LIVEDATA_STATE_OFF:="off"}"
@@ -1319,12 +1319,12 @@ initTimezones() {
 
 printSystem() 
 {
-    printf "%-24.24s%10u\t%s\n\
-%-24.24s%10u\t%s\n\
-%-24.24s%10u\t%s\n\
-%-24.24s%10u\t%.24s\n\
-%-24.24s%10u\t%s\n\
-%-24.24s%10u\t%s\n"\
+    printf "%-32.32s%10u\t%s\n\
+%-32.32s%10u\t%s\n\
+%-32.32s%10u\t%s\n\
+%-32.32s%10u\t%.24s\n\
+%-32.32s%10u\t%s\n\
+%-32.32s%10u\t%s\n"\
             "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$C_SYSTEM_FREQUENCY" "$C_SYSTEM_FREQUENCY_STATE"\
             "$LIVEDATA_SYSTEM_SENSORTYPE_HEADER"    "$C_SYSTEM_SENSORTYPE" "$C_SYSTEM_SENSORTYPE_STATE"\
             "$LIVEDATA_SYSTEM_UTC_HEADER" "$C_SYSTEM_UTC" "$C_SYSTEM_UTC_STATE"\
@@ -2260,10 +2260,10 @@ printLivedata()
                 printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER"       "$LIVEDATA_SYSTEM_UTC"       "%-20s" "" "%5s" 'utc'
             fi
 
-            [ -n "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" ] && printLivedataLine "System timezone AUTO" "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" "%s"
-            [ -n "$LIVEDATA_SYSTEM_TIMEZONE_DST" ] && printLivedataLine "System timezone DST" "$LIVEDATA_SYSTEM_TIMEZONE_DST" "%s"
+            [ -n "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" ] && printLivedataLine "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER" "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" "%s"
+            [ -n "$LIVEDATA_SYSTEM_TIMEZONE_DST" ] && printLivedataLine "$LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER" "$LIVEDATA_SYSTEM_TIMEZONE_DST" "%s"
 
-            [ -n "$LIVEDATA_SYSTEM_TIMEZONE" ] && printLivedataLine "System timezone" "$LIVEDATA_SYSTEM_TIMEZONE" "%-24.24s"
+            [ -n "$LIVEDATA_SYSTEM_TIMEZONE" ] && printLivedataLine "$LIVEDATA_SYSTEM_TIMEZONE_HEADER" "$LIVEDATA_SYSTEM_TIMEZONE" "%-32.32s"
         fi
         
         [ -n "$LIVEDATA_SYSTEM_FREQUENCY" ] && printLivedataLine "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$LIVEDATA_SYSTEM_FREQUENCY" "%-7s"  "" "%5s" 'freq' 
@@ -3621,6 +3621,73 @@ newPathPacket() {
     writeString "$C_WS_CUSTOMIZED_PATH_ECOWITT"
 }
 
+parseSystemOption()
+#format : t=wh65,tz=3,dst=1|on,auto=on|1'
+{
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+        #shellcheck disable=SC3044
+        typeset systemtype systemtzindex systemdst systemauto
+    else
+        local systemtype systemtzindex systemdst systemauto
+    fi
+
+    IFS=','
+    set -- $1
+    
+    for opt in "$@"; do
+      IFS='='
+      set -- $opt
+      case "$1" in 
+        t) case "$2" in
+                0|wh24)    systemtype=0
+                        ;;
+                1|wh65)     systemtype=1
+                        ;;
+                *)          echo >&2 "Error: Systemtype: only 0|wh24 or 1|wh65 allowed"
+                            return $ERROR_SYSTEMPARAM_NOTSPECIFIED
+                            ;;
+            esac
+            ;;
+        tz) systemtzindex=$2
+            ;;
+        dst) case "$2" in
+                0|off)  systemdst=0
+                        ;;
+                1|on)   systemdst=1
+                        ;;
+                 *)          echo >&2 "Error: Systemdst: only 0|off|1|on"
+                            return $ERROR_SYSTEMPARAM_NOTSPECIFIED
+                            ;;
+            esac
+            ;;
+        auto) case "$2" in
+                0|off)  systemauto=0
+                        ;;
+                1|on)   systemauto=1
+                        ;;
+                 *)          echo >&2 "Error: Systemauto: only 0|off|1|on"
+                            return $ERROR_SYSTEMPARAM_NOTSPECIFIED
+                            ;;
+            esac
+            ;; 
+         
+        *) echo >&2 "Unknown key '$1', use t=0|1|wh24|wh65 tz=index dst=0|1|off|on auto=0|1|off|on"
+        ;;
+      esac
+    done
+
+    if [ -z "$systemtype" ] || [ -z "$systemtzindex" ] || [ -z "$systemdst" ] || [ -z "$systemauto" ]; then
+        echo >&2 "Error: Missing options, please specify all ; t=0|1|wh24|wh65 tz=index dst=0|1|off|on auto=0|1|off|on"
+        return $ERROR_SYSTEMPARAM_NOTSPECIFIED
+    fi
+
+    sendSystem "$systemtype" "$systemtzindex" "$systemdst" "$systemauto"
+
+     if [ -n "$KSH_VERSION" ]; then
+      unset systemtype systemtzindex systemdst systemauto
+    fi
+}
+
 sendSystem() {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
@@ -4283,11 +4350,11 @@ processCommand() {
 
             if argEmptyOrOption "$1"; then
                 sendPacket $CMD_READ_SYSTEM
- #           else
+            else
  #               if [ $# -lt 4 ]; then
  #                   echo >&2 "Error {sensortype} {timezoneindex} {dst} {autotimezone} must be specified"
  #               else
- #                   sendSystem "$1" "$2" "$3" "$4"
+                    parseSystemOption "$1"
  #               fi
             fi
             ;;
