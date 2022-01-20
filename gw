@@ -3138,12 +3138,8 @@ parseSensorIdNew()
 
         if [ "$SPATTERNID" = "$SPATTERNID_CONNECTED" ] && [ $sensor_connected -eq 1  ]; then # connected sensor
             printSensorLine $stype $SID $battery $signal
-        elif [ "$SPATTERNID" = "$SPATTERNID_RANGE" ]; then
-            if [ -z "$SPATTERNID_RANGE_HIGH" ] && [ $stype -eq "$SPATTERID_RANGE_LOW" ]; then
+        elif [ "$SPATTERNID" = "$SPATTERNID_RANGE" ] && [ -n "$SPATTERNID_RANGE_LOW" ] && [ -n "$SPATTERNID_RANGE_HIGH" ] && [ $stype -ge "$SPATTERNID_RANGE_LOW" ] && [ $stype -le "$SPATTERNID_RANGE_HIGH" ]; then 
                  printSensorLine $stype $SID $battery $signal
-            elif [ -n "$SPATTERNID_RANGE_LOW" ] && [ -n "$SPATTERNID_RANGE_HIGH" ] && [ $stype -ge "$SPATTERNID_RANGE_LOW" ] && [ $stype -le "$SPATTERNID_RANGE_HIGH" ]; then 
-                 printSensorLine $stype $SID $battery $signal
-            fi      
         elif [ -n "$SPATTERNID" ] && [ "$SPATTERNID" != "$SPATTERNID_CONNECTED" ] && [ "$SPATTERNID" -eq "$SID" ]; then #specific sensors (searching/disabled)
             printSensorLine $stype $SID $battery $signal
         elif [ -z "$SPATTERNID" ]; then #all sensors
