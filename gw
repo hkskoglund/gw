@@ -176,6 +176,7 @@ PORT_CLIENT_UDP=59387
 LOG_INTERVAL=${LOG_INTERVAL:=60} # default 60 seconds
 
 SPATTERNID_CONNECTED=connected
+SPATTERNID_RANGE=range
 
 LIVEDATA_PROTOCOL_ECOWITT_BINARY="eb"
 LIVEDATA_PROTOCOL_ECOWITT_BINARY_LONG="Ecowitt binary"
@@ -3137,6 +3138,12 @@ parseSensorIdNew()
 
         if [ "$SPATTERNID" = "$SPATTERNID_CONNECTED" ] && [ $sensor_connected -eq 1  ]; then # connected sensor
             printSensorLine $stype $SID $battery $signal
+        elif [ "$SPATTERNID" = "$SPATTERNID_RANGE" ]; then
+            if [ -z "$SPATTERNID_RANGE_HIGH" ] && [ $stype -eq "$SPATTERID_RANGE_LOW" ]; then
+                 printSensorLine $stype $SID $battery $signal
+            elif [ -n "$SPATTERNID_RANGE_LOW" ] && [ -n "$SPATTERNID_RANGE_HIGH" ] && [ $stype -ge "$SPATTERNID_RANGE_LOW" ] && [ $stype -le "$SPATTERNID_RANGE_HIGH" ]; then 
+                 printSensorLine $stype $SID $battery $signal
+            fi      
         elif [ -n "$SPATTERNID" ] && [ "$SPATTERNID" != "$SPATTERNID_CONNECTED" ] && [ "$SPATTERNID" -eq "$SID" ]; then #specific sensors (searching/disabled)
             printSensorLine $stype $SID $battery $signal
         elif [ -z "$SPATTERNID" ]; then #all sensors
@@ -3531,7 +3538,7 @@ discovery_udp_subnet() { #$1 - subnet, for example 192.168.3
     hostnumber=1
     while [ $hostnumber -le 254 ]; do
         #[ $DEBUG -eq 1 ] && 
-        printf >&2 "%s\n" "$1.$hostnumber"
+        printf >&2 "\r%s " "$1.$hostnumber"
         sendPacket $CMD_BROADCAST "$1.$hostnumber" 
         hostnumber=$((hostnumber + 1))
     done
@@ -4236,6 +4243,16 @@ writeSensorId()
     sendPacket
 }
 
+parseRangeExpression()
+{
+    IFS=- # range with hyphen, for example 31-33
+            #shellcheck disable=SC2086
+    set -- $1
+    VALUE_RANGE_LOW=$1 #global for use if 
+    VALUE_RANGE_HIGH=$2
+}
+
+
 processSensorOptions()
 # format: 31-38=disable,40-47=disable
 {
@@ -4245,40 +4262,41 @@ processSensorOptions()
         typeset f  sensortypeexpr cmdexpr
         case "$KSH_VERSION" in
 
-          *MIRBSD?KSH*) typeset -iU sensorid
+          *MIRBSD?KSH*) typeset -iU sensorid sensorid_hex
                         ;;
-                    *) typeset sensorid
+                    *) typeset sensorid sensorid_hex
                     ;;
         esac
        }  
     else
-       local f sensorid sensortypeexpr cmdexpr
+       local f sensorid sensortypeexpr cmdexpr sensorid_hex
     fi
 
     [ "$DEBUG" -eq 1 ] && echo >&2 processSensorOptions "$*"
 
      IFS=,
-     for f in $1; do
+     for f in $1; do #parse , expressions
        IFS='='
        #shellcheck disable=SC2086
-       set -- $f
+       set -- $f #parse = expression -> set to $1 $2 ...
        sensortypeexpr=$1
        cmdexpr=$2
-       unset sensorType_low sensorType_high
+
+       unset sensorType_low sensorType_high 
 
         case $sensortypeexpr in
-         *-*)  IFS=- # range with hyphen, for example 31-33
-                #shellcheck disable=SC2086
-                set -- $sensortypeexpr
-                sensorType_low=$1
-                sensorType_high=$2
-                [ "$DEBUG" -eq 1 ] && >&2 echo "Sensor type low $sensorType_low sensor type high $sensorType_high"
-               
+            *-*) 
+                parseRangeExpression "$sensortypeexpr" 
+                sensorType_low=$VALUE_RANGE_LOW
+                sensorType_high=$VALUE_RANGE_HIGH
+                [ "$DEBUG" -eq 1 ] &&  >&2 echo "Sensor type low $sensorType_low sensor type high $sensorType_high"
                 ;;
             *) 
                sensorType_low=$sensortypeexpr # only a single number
                ;;
        esac
+
+       #validation
 
        if [ -z "$sensorType_low" ]; then
           echo >&2 "Error Empty sensor id low $sensorType_low"
@@ -4301,16 +4319,21 @@ processSensorOptions()
             return "$ERROR_INVALID_SENSORID"
           fi
 
-          if [ "$sensorid" -ne $SENSORID_DISABLE ] && [ "$sensorid" -ne $SENSORID_SEARCH ] && [ "$sensorType_low" -ne "$sensorType_high" ]; then
-                    echo >&2 "Error Cannot set sensortype range to same sensorid $cmdexpr"
-                    return $ERROR_INVALID_SENSORID
-          fi
        fi
 
+       if [ -n "$sensorType_low" ] || [ -n "$sensorType_high" ] && [ -z "$cmdexpr" ]; then #only range without command
+           SPATTERNID=$SPATTERNID_RANGE
+           SPATTERNID_RANGE_LOW=$sensorType_low
+           SPATTERNID_RANGE_HIGH=$sensorType_high
+           sendPacket $CMD_READ_SENSOR_ID_NEW
+           return 
+        fi
+
+       sensorid_hex=0
        case $cmdexpr in 
-          disable|d) sensorid=$SENSORID_DISABLE
+          disable|d|disabled) sensorid=$SENSORID_DISABLE
                    ;;
-          search|s|enable|e)  sensorid=$SENSORID_SEARCH
+          search|s|enable|e|searching|enabled)  sensorid=$SENSORID_SEARCH
                    ;;
           '')   echo >&2 "Error Empty command, use sensortype=disable|search|d|s"
                 return "$ERROR_INVALID_SENSORID_COMMAND"
@@ -4320,17 +4343,23 @@ processSensorOptions()
                echo >&2 "Error Invalid hex number for sensor id $cmdexpr"
                return "$ERROR_INVALID_SENSORID_COMMAND"
               else
+                 sensorid_hex=1
                  sensorid=$(( "0x$cmdexpr" ))
               fi
              ;;
        esac
+
+         if [ "$sensorid_hex" -eq 1 ] && [ "$sensorType_low" -lt "$sensorType_high" ]; then
+                    echo >&2 "Error Cannot set sensortype range to same sensorid $cmdexpr"
+                    return $ERROR_INVALID_SENSORID
+          fi
 
        writeSensorId "$sensorType_low" "$sensorType_high" "$sensorid"
           
     done
 
     if [ -n "$KSH_VERSION" ]; then
-       unset f sensorid sensortypeexpr cmdexpr
+       unset f sensorid sensortypeexpr cmdexpr sensorid_hex
     fi
 }
 
@@ -4512,7 +4541,7 @@ processCommand() {
         sensor_id_new | sensor | s) # for new SENSOR_TYPE types
 
             if ! argEmptyOrOption "$1"; then
-             #filter for senorid; -c sensor connected|-c s c
+             #filter for senorid; -c sensor connected|-c s co
               case "$1" in 
                 connected|co)
                    SPATTERNID=$SPATTERNID_CONNECTED #matches connected sensors
