@@ -474,8 +474,9 @@ export     LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER="${LIVEDATA_SYSTEM_SENSOR_SEA
 export     LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER="${LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER:='Sensor disabled'}"
 
 export LIVEDATA_SYSTEM_PROTOCOL_HEADER="${LIVEDATA_SYSTEM_PROTOCOL_HEADER:="System protocol"}"
-export LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER:="System timezone AUTO"}"
-export LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER:="System timezone DST"}"
+export LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER:="System timezone AUTO OFF (2 bit)"}"
+export LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER:="System timezone DST (1 bit)"}"
+export LIVEDATA_SYSTEM_TIMEZONE_DST_STATUS_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_DST_STATUS_HEADER:="System timezone DST"}"
 export LIVEDATA_SYSTEM_TIMEZONE_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_HEADER:="System timezone (manual)"}"
 
 export LIVEDATA_STATE_ON="${LIVEDATA_STATE_ON:="on"}"
@@ -1324,13 +1325,15 @@ printSystem()
 %-32.32s%10u\t%s\n\
 %-32.32s%10u\t%.24s\n\
 %-32.32s%10u\t%s\n\
-%-32.32s%10u\t%s\n"\
+%-32.32s%10u\t%s\n\
+%-32.32s%10x\n"\
             "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$C_SYSTEM_FREQUENCY" "$C_SYSTEM_FREQUENCY_STATE"\
             "$LIVEDATA_SYSTEM_SENSORTYPE_HEADER"    "$C_SYSTEM_SENSORTYPE" "$C_SYSTEM_SENSORTYPE_STATE"\
             "$LIVEDATA_SYSTEM_UTC_HEADER" "$C_SYSTEM_UTC" "$C_SYSTEM_UTC_STATE"\
             "$LIVEDATA_SYSTEM_TIMEZONE_HEADER"  "$C_SYSTEM_TIMEZONE_INDEX" "$C_SYSTEM_TIMEZONE_INDEX_STATE"\
             "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER" "$C_SYSTEM_TIMEZONE_AUTO_BIT" "$C_SYSTEM_TIMEZONE_AUTO_STATE"\
-            "$LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER" "$C_SYSTEM_TIMEZONE_DST_STATUS_BIT" "$C_SYSTEM_TIMEZONE_DST_STATUS_STATE"
+            "$LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER" "$C_SYSTEM_TIMEZONE_DST_BIT" "$C_SYSTEM_TIMEZONE_DST_STATUS_STATE"\
+            "$LIVEDATA_SYSTEM_TIMEZONE_DST_STATUS_HEADER" "$C_SYSTEM_TIMEZONE_DST_STATUS"
 }
 
 parseSystem() {
@@ -1381,10 +1384,10 @@ parseSystem() {
 
     C_SYSTEM_TIMEZONE_DST_STATUS=$VALUE_UINT8
 
-    C_SYSTEM_TIMEZONE_DST_STATUS_BIT=$((C_SYSTEM_TIMEZONE_DST_STATUS & 0x01))
-    if [ "$C_SYSTEM_TIMEZONE_DST_STATUS_BIT" -eq 1 ]; then
+    C_SYSTEM_TIMEZONE_DST_BIT=$((C_SYSTEM_TIMEZONE_DST_STATUS & 0x01))
+    if [ "$C_SYSTEM_TIMEZONE_DST_BIT" -eq 1 ]; then
         C_SYSTEM_TIMEZONE_DST_STATUS_STATE=$LIVEDATA_SYSTEM_DST_STATUS_ON
-    elif [ "$C_SYSTEM_TIMEZONE_DST_STATUS_BIT" -eq 0 ]; then
+    elif [ "$C_SYSTEM_TIMEZONE_DST_BIT" -eq 0 ]; then
         C_SYSTEM_TIMEZONE_DST_STATUS_STATE=$LIVEDATA_SYSTEM_DST_STATUS_OFF
     fi
     LIVEDATA_SYSTEM_TIMEZONE_DST=$C_SYSTEM_TIMEZONE_DST_STATUS_STATE
@@ -1888,7 +1891,7 @@ printLivedataSystem()
 
     if [ "$C_SYSTEM_TIMEZONE_AUTO_STATE" = "$SYSTEM_TIMEZONE_AUTO_OFF" ]; then
       appendBuffer " %s" "'$C_SYSTEM_TIMEZONE_OFFSET_HOURS'"
-      if [ $C_SYSTEM_TIMEZONE_DST_STATUS_STATE = $SYSTEM_DST_STATUS_ON ]; then
+      if [ $C_SYSTEM_TIMEZONE_DST_STATUS_STATE = "$SYSTEM_DST_STATUS_ON" ]; then
         appendFormat " DST"
       fi
     fi
@@ -2250,8 +2253,8 @@ printLivedata()
         [ -n "$LIVEDATA_SYSTEM_VERSION" ]   && printLivedataLine "$LIVEDATA_SYSTEM_VERSION_HEADER"   "$LIVEDATA_SYSTEM_VERSION"   "%-14s" "" "%5s" 'version'
         [ -n "$LIVEDATA_SYSTEM_MODEL" ]     && printLivedataLine "$LIVEDATA_SYSTEM_MODEL_HEADER"     "$LIVEDATA_SYSTEM_MODEL"     "%-7s"  "" "%5s" 'model'
         if [ -n "$LIVEDATA_SYSTEM_UTC" ]; then
-            if [  "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" = $SYSTEM_TIMEZONE_AUTO_OFF ]; then
-               if [ "$LIVEDATA_SYSTEM_TIMEZONE_DST" = $SYSTEM_DST_STATUS_ON ]; then
+            if [  "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" = "$SYSTEM_TIMEZONE_AUTO_OFF" ]; then
+               if [ "$LIVEDATA_SYSTEM_TIMEZONE_DST" = "$SYSTEM_DST_STATUS_ON" ]; then
                     printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER" "$LIVEDATA_SYSTEM_UTC $C_SYSTEM_TIMEZONE_OFFSET_HOURS DST" "%-20s" "" "%5s" 'utc'
                else
                     printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER" "$LIVEDATA_SYSTEM_UTC $C_SYSTEM_TIMEZONE_OFFSET_HOURS" "%-20s" "" "%5s" 'utc'
@@ -3367,7 +3370,6 @@ sendPacket() {
 
 sendPacketnc() { #$1 - command
     #$2 - host
-
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
         typeset ncUDPOpt port host timeout_udp_broadcast timeout_nc od_buffer cmdstr nccmdstr odcmdstr
@@ -3496,24 +3498,27 @@ discovery_udp_client() { #$1 - subnet, for example 192.168.3
     #host reply with ICMP host/port unreachable or broadcast response
     #send broadcast cmd to port 46000
     #some host responses take a long time > 175ms, but most take only 4-8ms, so -s should be run multiple times to get all hosts on the subnet
-    #wireshark filter: ip.addr == 192.168.3.80 or ip.addr == 192.168.3.49 or ip.addr == 192.168.3.204
+    #wireshark filter: ip.addr == 192.168.3.80 || ip.addr == 192.168.3.49 || ip.addr == 192.168.3.204
     #wireshark: Time field: "Delta time displayed"
     #testing environment: vEthernet WSL adapter/ubuntu, Windows 11, Realtek RTL8852AE WiFi 6 802.11ax PCIe, Huawei AX mesh router 5Ghz channel 36,WPA2
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        typeset host
+        #http://www.binaryphile.com/bash/2018/09/01/approach-bash-like-a-developer-part-20-scoping.html
+        typeset -i hostnumber #hostnumber is also availbale in called function sendPacket and futher down the call stack (dynamic scoping/execution scoping)
     else
-        local host
+        local hostnumber
     fi
-    host=1
-    while [ $host -le 254 ]; do
-        [ $DEBUG -eq 1 ] && echo >&2 Discovery sending broadcast command to "$1.$host"
-        sendPacket $CMD_BROADCAST "$1.$host"
-        host=$((host + 1))
+    
+    hostnumber=1
+    while [ $hostnumber -le 254 ]; do
+        #[ $DEBUG -eq 1 ] && 
+        printf >&2 "\r%s " "$1.$hostnumber"
+        sendPacket $CMD_BROADCAST "$1.$hostnumber" 2>/dev/null
+        hostnumber=$((hostnumber + 1))
     done
 
     if [ -n "$KSH_VERSION" ]; then
-      unset host
+      unset hostnumber
     fi
 }
 
@@ -3631,11 +3636,20 @@ parseSystemOption()
         local systemtype systemtzindex systemdst systemauto
     fi
 
+set -x
+    systemtype=$C_SYSTEM_SENSORTYPE
+    systemtzindex=$C_SYSTEM_TIMEZONE_INDEX
+    systemdst=$C_SYSTEM_TIMEZONE_DST_BIT
+    systemauto=$C_SYSTEM_TIMEZONE_AUTO_BIT
+set +x
+
     IFS=','
+    #shellcheck disable=SC2086
     set -- $1
     
     for opt in "$@"; do
       IFS='='
+      #shellcheck disable=SC2086
       set -- $opt
       case "$1" in 
         t) case "$2" in
@@ -3676,19 +3690,16 @@ parseSystemOption()
       esac
     done
 
-    if [ -z "$systemtype" ] || [ -z "$systemtzindex" ] || [ -z "$systemdst" ] || [ -z "$systemauto" ]; then
-        echo >&2 "Error: Missing options, please specify all ; t=0|1|wh24|wh65 tz=index dst=0|1|off|on auto=0|1|off|on"
-        return $ERROR_SYSTEMPARAM_NOTSPECIFIED
-    fi
-
-    sendSystem "$systemtype" "$systemtzindex" "$systemdst" "$systemauto"
+    sendSystemPacket "$systemtype" "$systemtzindex" "$systemdst" "$systemauto"
 
      if [ -n "$KSH_VERSION" ]; then
       unset systemtype systemtzindex systemdst systemauto
     fi
 }
 
-sendSystem() {
+sendSystemPacket() 
+#$1 sysmtemtype, $2 tz index, $3 dst bit, $4 autooff bit
+{
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
         typeset dst
@@ -3715,14 +3726,12 @@ sendSystem() {
     fi
 
     if ! isNumber "$4" || [ "$4" -gt 1 ]; then
-        echo Error: Auto timezone must be 0 for disabled, or 1 for enabled - "$4" invalid
+        echo Error: Auto timezone must be 0 for enabled, or 1 for disabled - "$4" invalid
         return "$ERROR_SYSTEMPARAM_NOTSPECIFIED"
     fi
 
-    #TODO dst=
-
-    #        CONFIGURATION[$CONF_system_dst_status_bit]=$(( "${CONFIGURATION[$CONF_system_dst_status]}" & 0x1 ))
-    #     CONFIGURATION[$CONF_system_timezone_auto_bit]=$(( ( "${CONFIGURATION[$CONF_system_dst_status]}" & 0x2 ) >> 1 )) # bit 2 1= off, 0=on ?
+    #autooff 0->auto 1
+    #autooff 1->auto 0
 
     if [ "$4" -eq 0 ]; then
         dst=$(($3 | 2))
@@ -3734,8 +3743,9 @@ sendSystem() {
     writeUInt8 0      #frequency - only read
     writeUInt8 "$1"   #sensortype 0=WH24, 1=WH65
     writeUInt32BE 0   #UTC time - only read
-    writeUInt8 "$2"   #timezone index
+    writeUInt8 "$2"   #timezone index/manual -> not updated by setting auto timezone
     writeUInt8 "$dst" #daylight saving - dst
+    
     sendPacket
 
     if [ -n "$KSH_VERSION" ]; then
@@ -4349,11 +4359,12 @@ processCommand() {
         system | sys)
 
             if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_SYSTEM
+                     sendPacket $CMD_READ_SYSTEM
             else
  #               if [ $# -lt 4 ]; then
  #                   echo >&2 "Error {sensortype} {timezoneindex} {dst} {autotimezone} must be specified"
  #               else
+                    sendPacket $CMD_READ_SYSTEM >/dev/null
                     parseSystemOption "$1"
  #               fi
             fi
