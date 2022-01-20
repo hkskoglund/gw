@@ -131,6 +131,7 @@ ERROR_LISTEN_INVALID_PORTNUMBER=14
 ERROR_LISTEN_NOPORT=15
 ERROR_LISTEN_UNSUPPORTED_NC=16
 ERROR_COMMAND_UNKNOWN=17
+ERROR_INVALID_SUBNET=18
 
 #HTTP_RESPONSE_200_OK="HTTP/1.1 200 OK"
 #CRLF='\r\n'
@@ -3493,33 +3494,53 @@ discovery() {
     fi
 }
 
-discovery_udp_client() { #$1 - subnet, for example 192.168.3
+discovery_udp_subnet() { #$1 - subnet, for example 192.168.3
     #issue: nc fails to read when sending to subnet broadcast address 192.168.3.255
     #host reply with ICMP host/port unreachable or broadcast response
     #send broadcast cmd to port 46000
-    #some host responses take a long time > 175ms, but most take only 4-8ms, so -s should be run multiple times to get all hosts on the subnet
+    #some host responses take a long time > 175ms, but most take only 4-8ms, so -s subnet should be run multiple times to get all hosts on the subnet
     #wireshark filter: ip.addr == 192.168.3.80 || ip.addr == 192.168.3.49 || ip.addr == 192.168.3.204
     #wireshark: Time field: "Delta time displayed"
     #testing environment: vEthernet WSL adapter/ubuntu, Windows 11, Realtek RTL8852AE WiFi 6 802.11ax PCIe, Huawei AX mesh router 5Ghz channel 36,WPA2
+    
+    EXITCODE_DISCOVERY=0
+
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
         #http://www.binaryphile.com/bash/2018/09/01/approach-bash-like-a-developer-part-20-scoping.html
-        typeset -i hostnumber #hostnumber is also availbale in called function sendPacket and futher down the call stack (dynamic scoping/execution scoping)
+        typeset -i hostnumber subnet_valid #hostnumber is also availbale in called function sendPacket and futher down the call stack (dynamic scoping/execution scoping)
     else
-        local hostnumber
+        local hostnumber subnet_valid
     fi
+
+    case $1 in
+        *.*.*) 
+                subnet_valid=1
+                ;;
+            *)
+                subnet_valid=0 
+                ;;
+    esac
+
+   if [ $subnet_valid -eq 0 ]; then
+        echo >&2 "Error: Invalid subnet address, use ddd.ddd.ddd"
+        EXITCODE_DISCOVERY=$ERROR_INVALID_SUBNET
+        return "$ERROR_INVALID_SUBNET"
+   fi
     
     hostnumber=1
     while [ $hostnumber -le 254 ]; do
         #[ $DEBUG -eq 1 ] && 
-        printf >&2 "\r%s " "$1.$hostnumber"
-        sendPacket $CMD_BROADCAST "$1.$hostnumber" 2>/dev/null
+        printf >&2 "%s\n" "$1.$hostnumber"
+        sendPacket $CMD_BROADCAST "$1.$hostnumber" 
         hostnumber=$((hostnumber + 1))
     done
 
     if [ -n "$KSH_VERSION" ]; then
       unset hostnumber
     fi
+
+    return $EXITCODE_DISCOVERY
 }
 
 discovery_nc() { #$1 - subnet for udp scan
@@ -3574,12 +3595,14 @@ discovery_nc() { #$1 - subnet for udp scan
             echo >&2 Error failed to obtain scan result while listening on UDP port $PORT_CLIENT_UDP, error code $?
         fi
     else
-        discovery_udp_client "$1"
+        discovery_udp_subnet "$1"
     fi
 
     if [ -n "$KSH_VERSION" ]; then
       unset scan_max_iterations scan_nc_idle_timeout n broadcast
     fi
+
+    return $EXITCODE_DISCOVERY
 }
 
 checksum() {
@@ -5999,6 +6022,8 @@ while [ $# -gt 0 ]; do
                 discovery "$2"
                 shift 2
             fi
+            
+            EXITCODE_MAIN=$EXITCODE_DISCOVERY
 
             ;;
 
