@@ -3141,7 +3141,7 @@ parseSensorIdNew()
             printSensorLine $stype $SID $battery $signal
         elif [ "$SPATTERNID" = "$SPATTERNID_SEARCHING" ] && [ $SID -eq "$SENSORID_SEARCH"  ]; then 
             printSensorLine $stype $SID $battery $signal
-        elif [ "$SPATTERNID" = "$SPATTERNID_HEX" ] && [ "$SID" -eq "$SPATTERNID_INT" ]; then
+        elif [ "$SPATTERNID" = "$SPATTERNID_DISABLED" ] && [ "$SID" -eq "$SENSORID_DISABLE" ]; then
             printSensorLine $stype $SID $battery $signal
         elif [ -z "$SPATTERNID" ]; then #all sensors
             printSensorLine $stype $SID $battery $signal
@@ -4545,7 +4545,7 @@ processCommand() {
             if ! argEmptyOrOption "$1"; then
              #filter for senorid; -c sensor connected|-c s co
               case "$1" in 
-                connected|co)
+                connected|c)
                    SPATTERNID=$SPATTERNID_CONNECTED #matches connected sensors
                    sendPacket $CMD_READ_SENSOR_ID_NEW
                    ;;
@@ -4554,7 +4554,7 @@ processCommand() {
                    SPATTERNID_INT=$SENSORID_SEARCH
                    sendPacket $CMD_READ_SENSOR_ID_NEW
                    ;;
-                disabled|di)
+                disabled|d)
                    SPATTERNID=$SPATTERNID_DISABLED
                    sendPacket $CMD_READ_SENSOR_ID_NEW
                    ;;
