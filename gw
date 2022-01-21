@@ -3006,9 +3006,6 @@ printSensorLine()
         unset style_sensor
        getSensorBatteryState "$1" "$3"
        sensorIdState=$SENSORIDSTATE_CONNECTED
-       if [ "$4" -le 1 ]; then # poor signal
-           style_sensor=$STYLE_SIGNAL_LOW
-       fi
 
        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
             getSignalUnicode "$4"
@@ -3024,7 +3021,8 @@ printSensorLine()
      # 1 battery unicode is field size 4 in printf format string. TEST printf  "🔋 1.3 V" | od -A n -t x1 | wc -w -> 10
      # use \r\t\t\t workaround for unicode alignment
   
-    appendBuffer "%6u %9x %3u %1u %4s %-17s $style_sensor%9s$style_sensor_off\r\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t%s\n" "'$1' '$2' '$3' '$4'  '$SENSORNAME_WH' '$SENSORNAME_SHORT' '$sensorIdState' '$SBATTERY_STATE' '$sensorsignal_unicode'"
+    appendBuffer "%6u %9x %3u %1u %4s %-17s $style_sensor%9s$style_sensor_off\r\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t%s\n"\
+"'$1' '$2' '$3' '$4'  '$SENSORNAME_WH' '$SENSORNAME_SHORT' '$sensorIdState' '$SBATTERY_STATE' '$sensorsignal_unicode'"
     
     if [ -n "$KSH_VERSION" ]; then
       unset sensorIdState sensorsignal_unicode style_sensor_off style_sensor
