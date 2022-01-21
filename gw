@@ -176,7 +176,10 @@ PORT_CLIENT_UDP=59387
 LOG_INTERVAL=${LOG_INTERVAL:=60} # default 60 seconds
 
 SPATTERNID_CONNECTED=connected
+SPATTERNID_SEARCHING=searching
+SPATTERNID_DISABLED=disabled
 SPATTERNID_RANGE=range
+SPATTERNID_HEX=hex
 
 LIVEDATA_PROTOCOL_ECOWITT_BINARY="eb"
 LIVEDATA_PROTOCOL_ECOWITT_BINARY_LONG="Ecowitt binary"
@@ -184,6 +187,8 @@ LIVEDATA_PROTOCOL_ECOWITT_HTTP="e"
 LIVEDATA_PROTOCOL_ECOWITT_HTTP_LONG="Ecowitt"
 LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP="wu"
 LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP_LONG="Wunderground"
+
+
 
 
 CMD_READ_VERSION=$((0x50)) #zsh - wont compare int with hex 16#50 in [ ] expression unless converted to decimal, works in [[ ]] expression
@@ -434,7 +439,7 @@ export  LIVEDATA_LEAK_NO="${LIVEDATA_LEAK_NO:="NO "}"
 
 export LIVEDATA_SOILMOISTURE_HEADER="${LIVEDATA_SOILMOISTURE_HEADER:="ＳＯＩＬＭＯＩＳＴＵＲＥ"}"
         export LIVEDATA_SOILTEMP_HEADER="${LIVEDATA_SOILTEMP_HEADER:="ＳＯＩＬＴＥＭＰＥＲＡＴＵＲＥ"}"
-                export LIVEDATA_PM25_HEADER="${LIVEDATA_PM25_HEADER:="ＰＭ２５ ＡＩＲ ＱＵＡＬＩＴＹ"}"
+                export LIVEDATA_PM25_HEADER="${LIVEDATA_PM25_HEADER:="ＰＭ２.５ ＡＩＲＱＵＡＬＩＴＹ"}"
   export LIVEDATA_LEAFWETNESS_HEADER="${LIVEDATA_LEAFWETNESS_HEADER:="ＬＥＡＦＷＥＴＮＥＳＳ"}"
           export LIVEDATA_TEMPUSR_HEADER="${LIVEDATA_TEMPUSR_HEADER:="ＴＥＭＰＵＳＲ"}"
           export LIVEDATA_WH45CO2_HEADER="${LIVEDATA_WH45CO2_HEADER:="ＣＯ２"}"
@@ -471,12 +476,12 @@ export LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER="${LIVEDATA_WH32_TEMPERATURE_BAT
 export LIVEDATA_WH40_RAINFALL_BATTERY_HEADER="${LIVEDATA_WH40_RAINFALL_BATTERY_HEADER:="Rainfall battery"}"
 export LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="${LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="Lightning battery"}" 
 
-export    LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER="${LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER:='Sensor connected'}"
-export     LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER="${LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER:='Sensor searching'}"
-export     LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER="${LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER:='Sensor disabled'}"
+export    LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER="${LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER:='Sensors connected'}"
+export     LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER="${LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER:='Sensors searching'}"
+export     LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER="${LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER:='Sensors disabled'}"
 
 export LIVEDATA_SYSTEM_PROTOCOL_HEADER="${LIVEDATA_SYSTEM_PROTOCOL_HEADER:="System protocol"}"
-export LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER:="System timezone AUTO OFF (2 bit)"}"
+export LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER:="System timezone AUTO (2 bit)"}"
 export LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER:="System timezone DST (1 bit)"}"
 export LIVEDATA_SYSTEM_TIMEZONE_DST_STATUS_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_DST_STATUS_HEADER:="System timezone DST"}"
 export LIVEDATA_SYSTEM_TIMEZONE_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_HEADER:="System timezone (manual)"}"
@@ -484,10 +489,10 @@ export LIVEDATA_SYSTEM_TIMEZONE_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_HEADER:="Syst
 export LIVEDATA_STATE_ON="${LIVEDATA_STATE_ON:="on"}"
 export LIVEDATA_STATE_OFF="${LIVEDATA_STATE_OFF:="off"}"
 
-export LIVEDATA_SYSTEM_TIMEZONE_AUTO_ON="$LIVEDATA_STATE_ON"
-export LIVEDATA_SYSTEM_TIMEZONE_AUTO_OFF="$LIVEDATA_STATE_OFF"
-export LIVEDATA_SYSTEM_DST_STATUS_ON="$LIVEDATA_STATE_ON"
-export LIVEDATA_SYSTEM_DST_STATUS_OFF="$LIVEDATA_STATE_OFF"
+export LIVEDATA_SYSTEM_TIMEZONE_AUTO_ON=0
+export LIVEDATA_SYSTEM_TIMEZONE_AUTO_OFF=1 #inverted
+export LIVEDATA_SYSTEM_DST_STATUS_ON=1
+export LIVEDATA_SYSTEM_DST_STATUS_OFF=0
 
 N=1
 while [ "$N" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do 
@@ -657,17 +662,17 @@ getSensorNameShort()
     case "$1" in
         0) if [ "$C_SYSTEM_SENSORTYPE" -eq $SYSTEM_SENSOR_TYPE_WH24 ]; then
              SENSORNAME_WH='WH24'
-             SENSORNAME_SHORT='Wether Station'
+             SENSORNAME_SHORT='Weather Station'
             else
               SENSORNAME_WH='WH65'
-              SENSORNAME_SHORT="Wether Station"
+              SENSORNAME_SHORT="Weather Station"
             fi
             ;;
         1) SENSORNAME_WH='WH68'
-           SENSORNAME_SHORT="Wether Station"
+           SENSORNAME_SHORT="Weather Station"
             ;;
         2) SENSORNAME_WH="WH80"
-           SENSORNAME_SHORT='Wether Station'
+           SENSORNAME_SHORT='Weather Station'
             ;;
         3) SENSORNAME_WH="WH40"
            SENSORNAME_SHORT="Rainfall"
@@ -1387,20 +1392,12 @@ parseSystem() {
     C_SYSTEM_TIMEZONE_DST_STATUS=$VALUE_UINT8
 
     C_SYSTEM_TIMEZONE_DST_BIT=$((C_SYSTEM_TIMEZONE_DST_STATUS & 0x01))
-    if [ "$C_SYSTEM_TIMEZONE_DST_BIT" -eq 1 ]; then
-        C_SYSTEM_TIMEZONE_DST_STATUS_STATE=$LIVEDATA_SYSTEM_DST_STATUS_ON
-    elif [ "$C_SYSTEM_TIMEZONE_DST_BIT" -eq 0 ]; then
-        C_SYSTEM_TIMEZONE_DST_STATUS_STATE=$LIVEDATA_SYSTEM_DST_STATUS_OFF
-    fi
-    LIVEDATA_SYSTEM_TIMEZONE_DST=$C_SYSTEM_TIMEZONE_DST_STATUS_STATE
+    
+    LIVEDATA_SYSTEM_TIMEZONE_DST_BIT=$C_SYSTEM_TIMEZONE_DST_BIT
 
     C_SYSTEM_TIMEZONE_AUTO_BIT=$(((C_SYSTEM_TIMEZONE_DST_STATUS & 0x2) >> 1)) # bit 2 1= off, 0=on ?
-    if [ "$C_SYSTEM_TIMEZONE_AUTO_BIT" -eq 0 ]; then
-        C_SYSTEM_TIMEZONE_AUTO_STATE=$LIVEDATA_SYSTEM_TIMEZONE_AUTO_ON
-    elif [ "$C_SYSTEM_TIMEZONE_AUTO_BIT" -eq 1 ]; then
-        C_SYSTEM_TIMEZONE_AUTO_STATE=$LIVEDATA_SYSTEM_TIMEZONE_AUTO_OFF
-    fi
-    LIVEDATA_SYSTEM_TIMEZONE_AUTO=$C_SYSTEM_TIMEZONE_AUTO_STATE
+
+    LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT=$C_SYSTEM_TIMEZONE_AUTO_BIT
 
     printSystem
 
@@ -1623,7 +1620,7 @@ printLivedataLineFinal()
     fi
 
     # \r\t horizontal/absolute positioning is compatible with unicode in string
-    if [ "$HIDE_HEADERS_LIVEDATA" -eq 0 ]; then 
+    if [ -n "$HIDE_HEADERS_LIVEDATA" ] && [ "$HIDE_HEADERS_LIVEDATA" -eq 0 ]; then 
         header_fmt=" %s\r\t\t\t\t" #indent with headers
     else
        header_fmt="%s\r\t\t\t\t"
@@ -1891,9 +1888,9 @@ printLivedataSystem()
 
     appendBuffer " %s" "'$LIVEDATA_SYSTEM_UTC'"
 
-    if [ "$C_SYSTEM_TIMEZONE_AUTO_STATE" = "$SYSTEM_TIMEZONE_AUTO_OFF" ]; then
+    if [ "$C_SYSTEM_TIMEZONE_AUTO_STATE" = "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_OFF" ]; then
       appendBuffer " %s" "'$C_SYSTEM_TIMEZONE_OFFSET_HOURS'"
-      if [ $C_SYSTEM_TIMEZONE_DST_STATUS_STATE = "$SYSTEM_DST_STATUS_ON" ]; then
+      if [ $C_SYSTEM_TIMEZONE_DST_STATUS_STATE = "$LIVEDATA_SYSTEM_DST_STATUS_ON" ]; then
         appendFormat " DST"
       fi
     fi
@@ -2038,10 +2035,10 @@ printLivedata()
     if [ -z "$HIDE_RAIN_LIVEDATA" ]; then
       
         setRainValueFormat # 2 decimals for inch or 1 decimals for mm
-
-        printLivedataHeader "" "$LIVEDATA_RAIN_HEADER"
-
+       
         if [ -n "$LIVEDATA_RAINRATE" ]; then
+              printLivedataHeader "" "$LIVEDATA_RAIN_HEADER"
+
                setRainIntensity "$LIVEDATA_RAINRATE_RAW"
                setStyleRainIntensity "$LIVEDATA_RAINRATE_RAW"
                setRainIntensityStatus "$LIVEDATA_RAINRATE_RAW"
@@ -2255,8 +2252,9 @@ printLivedata()
         [ -n "$LIVEDATA_SYSTEM_VERSION" ]   && printLivedataLine "$LIVEDATA_SYSTEM_VERSION_HEADER"   "$LIVEDATA_SYSTEM_VERSION"   "%-14s" "" "%5s" 'version'
         [ -n "$LIVEDATA_SYSTEM_MODEL" ]     && printLivedataLine "$LIVEDATA_SYSTEM_MODEL_HEADER"     "$LIVEDATA_SYSTEM_MODEL"     "%-7s"  "" "%5s" 'model'
         if [ -n "$LIVEDATA_SYSTEM_UTC" ]; then
-            if [  "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" = "$SYSTEM_TIMEZONE_AUTO_OFF" ]; then
-               if [ "$LIVEDATA_SYSTEM_TIMEZONE_DST" = "$SYSTEM_DST_STATUS_ON" ]; then
+       
+            if [  "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT" = "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_OFF" ]; then
+               if [ "$LIVEDATA_SYSTEM_TIMEZONE_DST_BIT" = "$LIVEDATA_SYSTEM_DST_STATUS_ON" ]; then
                     printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER" "$LIVEDATA_SYSTEM_UTC $C_SYSTEM_TIMEZONE_OFFSET_HOURS DST" "%-20s" "" "%5s" 'utc'
                else
                     printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER" "$LIVEDATA_SYSTEM_UTC $C_SYSTEM_TIMEZONE_OFFSET_HOURS" "%-20s" "" "%5s" 'utc'
@@ -2265,23 +2263,23 @@ printLivedata()
                 printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER"       "$LIVEDATA_SYSTEM_UTC"       "%-20s" "" "%5s" 'utc'
             fi
 
-            [ -n "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" ] && printLivedataLine "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER" "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" "%s"
-            [ -n "$LIVEDATA_SYSTEM_TIMEZONE_DST" ] && printLivedataLine "$LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER" "$LIVEDATA_SYSTEM_TIMEZONE_DST" "%s"
+        #    [ -n "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" ] && printLivedataLine "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER" "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" "%s"
+        #    [ -n "$LIVEDATA_SYSTEM_TIMEZONE_DST" ] && printLivedataLine "$LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER" "$LIVEDATA_SYSTEM_TIMEZONE_DST" "%s"
 
-            [ -n "$LIVEDATA_SYSTEM_TIMEZONE" ] && printLivedataLine "$LIVEDATA_SYSTEM_TIMEZONE_HEADER" "$LIVEDATA_SYSTEM_TIMEZONE" "%-32.32s"
+        #    [ -n "$LIVEDATA_SYSTEM_TIMEZONE" ] && printLivedataLine "$LIVEDATA_SYSTEM_TIMEZONE_HEADER" "$LIVEDATA_SYSTEM_TIMEZONE" "%-32.32s"
         fi
         
         [ -n "$LIVEDATA_SYSTEM_FREQUENCY" ] && printLivedataLine "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$LIVEDATA_SYSTEM_FREQUENCY" "%-7s"  "" "%5s" 'freq' 
         [ -n "$LIVEDATA_SYSTEM_SENSORTYPE" ] && printLivedataLine "$LIVEDATA_SYSTEM_SENSORTYPE_HEADER" "$LIVEDATA_SYSTEM_SENSORTYPE" "%4s" "" "%4s" 'type' '' "$LIVEDATA_WH65_BATTERY" "$LIVEDATA_WH65_BATTERY_STATE" "" "$LIVEDATA_WH65_SIGNAL" "$LIVEDATA_WH65_SIGNAL_STATE"
    
-        setLivedataProtocolStyle "$LIVEDATA_SYSTEM_PROTOCOL"
-        space=' '
-        [ -z "$LIVEDATA_SYSTEM_PROTOCOL_VERSION" ] && unset space
-           STYLE_LIVE_VALUE=$VALUE_STYLE_PROTOCOL   printLivedataLine "$LIVEDATA_SYSTEM_PROTOCOL_HEADER" "$LIVEDATA_SYSTEM_PROTOCOL_LONG$space$LIVEDATA_SYSTEM_PROTOCOL_VERSION" "%s" 
+       # setLivedataProtocolStyle "$LIVEDATA_SYSTEM_PROTOCOL"
+       # space=' '
+       # [ -z "$LIVEDATA_SYSTEM_PROTOCOL_VERSION" ] && unset space
+       #    STYLE_LIVE_VALUE=$VALUE_STYLE_PROTOCOL   printLivedataLine "$LIVEDATA_SYSTEM_PROTOCOL_HEADER" "$LIVEDATA_SYSTEM_PROTOCOL_LONG$space$LIVEDATA_SYSTEM_PROTOCOL_VERSION" "%s" 
         
-   [ -n "$LIVEDATA_SENSOR_COUNT_CONNECTED" ] && printLivedataLine "$LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER" "$LIVEDATA_SENSOR_COUNT_CONNECTED" "%2u"
-   [ -n "$LIVEDATA_SENSOR_COUNT_SEARCHING" ] && STYLE_LIVE_VALUE=$STYLE_SENSOR_SEARCH    printLivedataLine "$LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER" "$LIVEDATA_SENSOR_COUNT_SEARCHING" "%2u"
-   [ -n "$LIVEDATA_SENSOR_COUNT_DISABLED" ] && STYLE_LIVE_VALUE=$STYLE_SENSOR_DISABLE   printLivedataLine "$LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER" "$LIVEDATA_SENSOR_COUNT_DISABLED" "%2u"
+        [ -n "$LIVEDATA_SENSOR_COUNT_CONNECTED" ] && printLivedataLine "$LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER" "$LIVEDATA_SENSOR_COUNT_CONNECTED" "%2u"
+        [ -n "$LIVEDATA_SENSOR_COUNT_SEARCHING" ] && STYLE_LIVE_VALUE=$STYLE_SENSOR_SEARCH    printLivedataLine "$LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER" "$LIVEDATA_SENSOR_COUNT_SEARCHING" "%2u"
+        [ -n "$LIVEDATA_SENSOR_COUNT_DISABLED" ] && STYLE_LIVE_VALUE=$STYLE_SENSOR_DISABLE   printLivedataLine "$LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER" "$LIVEDATA_SENSOR_COUNT_DISABLED" "%2u"
 
     fi
 
@@ -3009,6 +3007,7 @@ printSensorLine()
       style_sensor=$STYLE_SENSOR_SEARCH
       sensorIdState=$SENSORIDSTATE_SEARCHING
     else
+        unset style_sensor
        getSensorBatteryState "$1" "$3"
        sensorIdState=$SENSORIDSTATE_CONNECTED
        if [ "$4" -le 1 ]; then # poor signal
@@ -3091,16 +3090,18 @@ parseSensorIdNew()
 {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
-        typeset stype signal battery sensor_connected
+        typeset stype signal battery 
     else
-        local stype signal battery sensor_connected
+        local stype signal battery 
     fi
 
     resetAppendBuffer
     
     SENSORID_HEADER=${SENSORID_HEADER:="Sensor ID B S Type Name State Battery Signal"}
 
-    appendBuffer "%6s %9s %3s %1s %-4s %-17s %-9s %-7s %s\n%s\n" "$SENSORID_HEADER ──────────────────────────────────────────────────────────────────────"
+    if [ -z "$HIDE_SENSORID_HEADER" ]; then 
+        appendBuffer "%6s %9s %3s %1s %-4s %-17s %-9s %-7s %s\n%s\n" "$SENSORID_HEADER ──────────────────────────────────────────────────────────────────────"
+    fi
 
     [ "$DEBUG" -eq  1 ] && >&2 echo "parseSensorIdNew SPATTERNID $SPATTERNID length od buffer ${#OD_BUFFER}"
     
@@ -3115,14 +3116,13 @@ parseSensorIdNew()
        
         readUInt32BE         #id
         SID=$VALUE_UINT32BE
-       
+
         readUInt8   
         battery=$VALUE_UINT8
         
         readUInt8
         signal=$VALUE_UINT8
 
-        sensor_connected=0
 
         if [ $SID -eq $SENSORID_SEARCH ]; then
             LIVEDATA_SENSOR_COUNT_SEARCHING=$(( LIVEDATA_SENSOR_COUNT_SEARCHING + 1 ))
@@ -3130,17 +3130,18 @@ parseSensorIdNew()
             LIVEDATA_SENSOR_COUNT_DISABLED=$(( LIVEDATA_SENSOR_COUNT_DISABLED + 1 ))
         else  
             LIVEDATA_SENSOR_COUNT_CONNECTED=$(( LIVEDATA_SENSOR_COUNT_CONNECTED + 1 ))
-            sensor_connected=1
             setLivedataSignal "$stype" "$signal"
         fi
 
         #pattern matching
 
-        if [ "$SPATTERNID" = "$SPATTERNID_CONNECTED" ] && [ $sensor_connected -eq 1  ]; then # connected sensor
+        if [ "$SPATTERNID" = "$SPATTERNID_CONNECTED" ] && [ $SID -ne $SENSORID_SEARCH ] && [ $SID -ne $SENSORID_DISABLE ]; then # connected sensor
             printSensorLine $stype $SID $battery $signal
         elif [ "$SPATTERNID" = "$SPATTERNID_RANGE" ] && [ -n "$SPATTERNID_RANGE_LOW" ] && [ -n "$SPATTERNID_RANGE_HIGH" ] && [ $stype -ge "$SPATTERNID_RANGE_LOW" ] && [ $stype -le "$SPATTERNID_RANGE_HIGH" ]; then 
-                 printSensorLine $stype $SID $battery $signal
-        elif [ -n "$SPATTERNID" ] && [ "$SPATTERNID" != "$SPATTERNID_CONNECTED" ] && [ "$SPATTERNID" -eq "$SID" ]; then #specific sensors (searching/disabled)
+            printSensorLine $stype $SID $battery $signal
+        elif [ "$SPATTERNID" = "$SPATTERNID_SEARCHING" ] && [ $SID -eq "$SENSORID_SEARCH"  ]; then 
+            printSensorLine $stype $SID $battery $signal
+        elif [ "$SPATTERNID" = "$SPATTERNID_HEX" ] && [ "$SID" -eq "$SPATTERNID_INT" ]; then
             printSensorLine $stype $SID $battery $signal
         elif [ -z "$SPATTERNID" ]; then #all sensors
             printSensorLine $stype $SID $battery $signal
@@ -3152,7 +3153,7 @@ parseSensorIdNew()
     printAppendBuffer
 
     if [ -n "$KSH_VERSION" ]; then
-        unset stype signal battery sensor_connected
+        unset stype signal battery 
     fi
 }
 
@@ -3260,9 +3261,11 @@ convertUInt8ToHex() {
     else
         local lsb lsb_hexdigit msb
     fi
+    
     lsb=$(($1 & 0xf))
     getHexDigit "$lsb"
     lsb_hexdigit=$VALUE_HEX_DIGIT
+
     if [ "$1" -gt 15 ]; then
         msb=$(($1 >> 4))
         getHexDigit "$msb"
@@ -3434,11 +3437,11 @@ sendPacketnc() { #$1 - command
     if [ "$NC_VERSION" -eq $NC_OPENBSD ]; then
 
         # -N shutdown(2) the network socket after EOF on the input / from man nc - otherwise nc hangs
-        nccmdstr="$NC_CMD -4 -N $ncUDPOpt $host $port" 
+        nccmdstr="$NC_CMD -4 -N -w 1 $ncUDPOpt $host $port" 
        
-        if [ "$useTimeout" -eq 1 ]; then
-           nccmdstr="timeout $timeout_nc $nccmdstr"
-        fi
+       # if [ "$useTimeout" -eq 1 ]; then
+       #    nccmdstr="timeout $timeout_nc $nccmdstr"
+       # fi
         
         cmdstr="printf %b \"$PACKET_TX_ESCAPE\" | $nccmdstr | $odcmdstr"
 
@@ -3446,7 +3449,7 @@ sendPacketnc() { #$1 - command
 
         #sleep to disable immediate EOF and shutdown of ncat -> which leads to data not received from udp socket
        
-        nccmdstr="$NC_CMD -4 -w 1 $ncUDPOpt $host $port"
+        nccmdstr="$NC_CMD -4 -w 1 -i 1  $ncUDPOpt $host $port"
         cmdstr="{ printf %b \"$PACKET_TX_ESCAPE\"; sleep $timeout_nc; } |  $nccmdstr | $odcmdstr"
 
     elif [ "$NC_VERSION" -eq $NC_TOYBOX ]; then
@@ -3662,12 +3665,10 @@ parseSystemOption()
         local systemtype systemtzindex systemdst systemauto
     fi
 
-set -x
     systemtype=$C_SYSTEM_SENSORTYPE
     systemtzindex=$C_SYSTEM_TIMEZONE_INDEX
     systemdst=$C_SYSTEM_TIMEZONE_DST_BIT
     systemauto=$C_SYSTEM_TIMEZONE_AUTO_BIT
-set +x
 
     IFS=','
     #shellcheck disable=SC2086
@@ -3690,7 +3691,7 @@ set +x
             ;;
         tz) systemtzindex=$2
             ;;
-        dst) case "$2" in
+        dst|d) case "$2" in
                 0|off)  systemdst=0
                         ;;
                 1|on)   systemdst=1
@@ -3700,7 +3701,7 @@ set +x
                             ;;
             esac
             ;;
-        auto) case "$2" in
+        auto|a) case "$2" in
                 0|off)  systemauto=0
                         ;;
                 1|on)   systemauto=1
@@ -4271,6 +4272,9 @@ processSensorOptions()
     [ "$DEBUG" -eq 1 ] && echo >&2 processSensorOptions "$*"
 
      IFS=,
+
+     unset HIDE_SENSORID_HEADER
+
      for f in $1; do #parse , expressions
        IFS='='
        #shellcheck disable=SC2086
@@ -4281,15 +4285,16 @@ processSensorOptions()
        unset sensorType_low sensorType_high 
 
         case $sensortypeexpr in
-            *-*) 
-                parseRangeExpression "$sensortypeexpr" 
-                sensorType_low=$VALUE_RANGE_LOW
-                sensorType_high=$VALUE_RANGE_HIGH
-                [ "$DEBUG" -eq 1 ] &&  >&2 echo "Sensor type low $sensorType_low sensor type high $sensorType_high"
-                ;;
-            *) 
-               sensorType_low=$sensortypeexpr # only a single number
-               ;;
+            *-*)    parseRangeExpression "$sensortypeexpr" 
+                    sensorType_low=$VALUE_RANGE_LOW
+                    sensorType_high=$VALUE_RANGE_HIGH
+                    [ "$DEBUG" -eq 1 ] &&  >&2 echo "Sensor type low $sensorType_low sensor type high $sensorType_high"
+                    ;;
+            all)    sensorType_low=0
+                    sensorType_high=$SENSORTYPE_MAX
+                    ;;
+            *)      sensorType_low=$sensortypeexpr # only a single sensortype
+                    ;;
        esac
 
        #validation
@@ -4317,12 +4322,17 @@ processSensorOptions()
 
        fi
 
-       if [ -n "$sensorType_low" ] || [ -n "$sensorType_high" ] && [ -z "$cmdexpr" ]; then #only range without command
+        if [ -n "$sensorType_low" ] && [ -z "$sensorType_high" ] && [ -z "$cmdexpr" ]; then #single sensortype
+            sensorType_high=$sensorType_low
+        fi
+
+       if [ -n "$sensorType_low" ] && [ -n "$sensorType_high" ] && [ -z "$cmdexpr" ]; then #only range without command
            SPATTERNID=$SPATTERNID_RANGE
            SPATTERNID_RANGE_LOW=$sensorType_low
            SPATTERNID_RANGE_HIGH=$sensorType_high
-           sendPacket $CMD_READ_SENSOR_ID_NEW
-           return 
+           sendPacket $CMD_READ_SENSOR_ID_NEW #improvement : create array
+           HIDE_SENSORID_HEADER=1 #disabled header for next , expression
+           continue
         fi
 
        sensorid_hex=0
@@ -4407,14 +4417,10 @@ processCommand() {
         system | sys)
 
             if argEmptyOrOption "$1"; then
-                     sendPacket $CMD_READ_SYSTEM
+                sendPacket $CMD_READ_SYSTEM
             else
- #               if [ $# -lt 4 ]; then
- #                   echo >&2 "Error {sensortype} {timezoneindex} {dst} {autotimezone} must be specified"
- #               else
-                    sendPacket $CMD_READ_SYSTEM >/dev/null
-                    parseSystemOption "$1"
- #               fi
+                sendPacket $CMD_READ_SYSTEM >/dev/null
+                parseSystemOption "$1"
             fi
             ;;
 
@@ -4544,21 +4550,17 @@ processCommand() {
                    sendPacket $CMD_READ_SENSOR_ID_NEW
                    ;;
                 searching|s)
-                   SPATTERNID=$SENSORID_SEARCH
+                   SPATTERNID=$SPATTERNID_SEARCHING
+                   SPATTERNID_INT=$SENSORID_SEARCH
                    sendPacket $CMD_READ_SENSOR_ID_NEW
                    ;;
                 disabled|di)
-                   SPATTERNID=$SENSORID_DISABLE
+                   SPATTERNID=$SPATTERNID_DISABLED
                    sendPacket $CMD_READ_SENSOR_ID_NEW
                    ;;
                    
-                *)  
-                    if isHex "$1"; then #search on hexid (without 0x prefix)
-                       SPATTERNID=$(( 0x$1 ))
-                       sendPacket $CMD_READ_SENSOR_ID_NEW
-                    else
-                      processSensorOptions "$1"
-                    fi
+                *) 
+                   processSensorOptions "$1"
                    ;;
               esac
             else
