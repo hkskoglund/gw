@@ -1620,10 +1620,10 @@ printLivedataLineFinal()
     fi
 
     # \r\t horizontal/absolute positioning is compatible with unicode in string
-    if [ -n "$HIDE_HEADERS_LIVEDATA" ] && [ "$HIDE_HEADERS_LIVEDATA" -eq 0 ]; then 
-        header_fmt=" %s\r\t\t\t\t" #indent with headers
+    if [ -n "$HIDE_HEADERS_LIVEDATA" ] && [ "$HIDE_HEADERS_LIVEDATA" -eq 1 ]; then 
+        header_fmt="%s\r\t\t\t\t" 
     else
-       header_fmt="%s\r\t\t\t\t"
+       header_fmt=" %s\r\t\t\t\t"
     fi
     # unit_fmt="\r\t\t\t\t\t%s" 
     unit_fmt="%s"
