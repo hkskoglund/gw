@@ -1820,7 +1820,7 @@ printLivedataSystem()
 
     if [ "$C_SYSTEM_TIMEZONE_AUTO_STATE" = "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_OFF" ]; then
       appendBuffer " %s" "'$C_SYSTEM_TIMEZONE_OFFSET_HOURS'"
-      if [ $C_SYSTEM_TIMEZONE_DST_STATUS_STATE = "$LIVEDATA_SYSTEM_DST_STATUS_ON" ]; then
+      if [ "$C_SYSTEM_TIMEZONE_DST_STATUS_STATE" = "$LIVEDATA_SYSTEM_DST_STATUS_ON" ]; then
         appendFormat " DST"
       fi
     fi
@@ -3202,6 +3202,7 @@ parsePacket() {
     fi
 
     newBuffer "OD_BUFFER" "$1"
+    OD_BUFFER_BACKUP="$1"
 
     readSlice 4
 
@@ -4288,12 +4289,12 @@ parseRangeExpression()
 
 
 processSensorOptions()
-# format: 31-38=disable,40-47=disable
+# process -c sensor command option; format: 31-38=disable,40-47=disable
 {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
        #shellcheck disable=SC3044
        {
-        typeset f  sensortypeexpr cmdexpr
+        typeset f  sensortypeexpr cmdexpr sentReadSensorIdCommand
         case "$KSH_VERSION" in
 
           *MIRBSD?KSH*) typeset -iU sensorid sensorid_hex
@@ -4303,10 +4304,12 @@ processSensorOptions()
         esac
        }  
     else
-       local f sensorid sensortypeexpr cmdexpr sensorid_hex
+       local f sensorid sensortypeexpr cmdexpr sensorid_hex sentReadSensorIdCommand
     fi
 
     [ "$DEBUG" -eq 1 ] && echo >&2 processSensorOptions "$*"
+
+    sentReadSensorIdCommand=0
 
      IFS=,
 
@@ -4361,39 +4364,48 @@ processSensorOptions()
             sensorType_high=$sensorType_low
         fi
 
-       if [ -n "$sensorType_low" ] && [ -n "$sensorType_high" ] && [ -z "$cmdexpr" ]; then #only range without command
-           SPATTERNID=$SPATTERNID_RANGE
-           SPATTERNID_RANGE_LOW=$sensorType_low
-           SPATTERNID_RANGE_HIGH=$sensorType_high
-           sendPacket $CMD_READ_SENSOR_ID_NEW #improvement : create array
-           HIDE_SENSORID_HEADER=1 #disabled header for next , expression
-           continue
+        if [ -n "$sensorType_low" ] && [ -n "$sensorType_high" ] && [ -z "$cmdexpr" ]; then #only range without command
+            SPATTERNID=$SPATTERNID_RANGE
+            SPATTERNID_RANGE_LOW=$sensorType_low
+            SPATTERNID_RANGE_HIGH=$sensorType_high
+            if [ $sentReadSensorIdCommand -eq 0 ]; then 
+                sendPacket $CMD_READ_SENSOR_ID_NEW #improvement : create array ?
+                sentReadSensorIdCommand=1
+            else # yet another read, use in-memory buffer backup
+               IFS=" " parsePacket "$OD_BUFFER_BACKUP" 
+            fi
+            HIDE_SENSORID_HEADER=1 #disabled header for next , expression
+            continue
         fi
 
        sensorid_hex=0
+       
        case $cmdexpr in 
-          disable|d|disabled) sensorid=$SENSORID_DISABLE
-                   ;;
+
+          disable|d|disabled)                   sensorid=$SENSORID_DISABLE
+                                                 ;;
+
           search|s|enable|e|searching|enabled)  sensorid=$SENSORID_SEARCH
-                   ;;
-          '')   echo >&2 "Error Empty command, use sensortype=disable|search|d|s"
-                return "$ERROR_INVALID_SENSORID_COMMAND"
-                ;;
+                                                 ;;
+
+          '')                                   echo >&2 "Error Empty command, use sensortype=disable|search|d|s"
+                                                return "$ERROR_INVALID_SENSORID_COMMAND"
+                                                ;;
           *) 
-              if ! isHex "$cmdexpr"; then
-               echo >&2 "Error Invalid hex number for sensor id $cmdexpr"
-               return "$ERROR_INVALID_SENSORID_COMMAND"
-              else
-                 sensorid_hex=1
-                 sensorid=$(( 0x$cmdexpr ))
-              fi
-             ;;
+                                                if ! isHex "$cmdexpr"; then
+                                                echo >&2 "Error Invalid hex number for sensor id $cmdexpr"
+                                                return "$ERROR_INVALID_SENSORID_COMMAND"
+                                                else
+                                                    sensorid_hex=1
+                                                    sensorid=$(( 0x$cmdexpr ))
+                                                fi
+                                                ;;
        esac
 
-         if [ "$sensorid_hex" -eq 1 ] && [ "$sensorType_low" -lt "$sensorType_high" ]; then
-                    echo >&2 "Error Cannot set sensortype range to same sensorid $cmdexpr"
-                    return $ERROR_INVALID_SENSORID
-          fi
+        if [ "$sensorid_hex" -eq 1 ] && [ "$sensorType_low" -lt "$sensorType_high" ]; then
+            echo >&2 "Error Cannot set sensortype range to same sensorid $cmdexpr"
+            return $ERROR_INVALID_SENSORID
+        fi
 
        writeSensorId "$sensorType_low" "$sensorType_high" "$sensorid"
           
@@ -4591,7 +4603,6 @@ processCommand() {
                         ;;
                     searching|s)
                         SPATTERNID=$SPATTERNID_SEARCHING
-                        SPATTERNID_INT=$SENSORID_SEARCH
                         sendPacket $CMD_READ_SENSOR_ID_NEW
                     ;;
                     disabled|d)
