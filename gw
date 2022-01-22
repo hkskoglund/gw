@@ -66,11 +66,11 @@ UNICODE_PLUG=${UNICODE_PLUG:=🔌}
 UNICODE_WIND=${UNICODE_WIND:=💨} #https://emojipedia.org/dashing-away/
 
 #https://www.compart.com/en/unicode/block/U+2580
-UNICODE_SIGNAL_LEVEL1=${UNICODE_SIGNAL_LEVEL1:=${UNICODE_SIGNAL}1}
-UNICODE_SIGNAL_LEVEL2=${UNICODE_SIGNAL_LEVEL2:=${UNICODE_SIGNAL}2}
-UNICODE_SIGNAL_LEVEL3=${UNICODE_SIGNAL_LEVEL3:=${UNICODE_SIGNAL}3}
+UNICODE_SIGNAL_LEVEL1=${UNICODE_SIGNAL_LEVEL1:="${UNICODE_SIGNAL}  25%"} # 1/4 packets received, seems to be a counter thats incremented/decremented after a timeout
+UNICODE_SIGNAL_LEVEL2=${UNICODE_SIGNAL_LEVEL2:="${UNICODE_SIGNAL}  50%"}
+UNICODE_SIGNAL_LEVEL3=${UNICODE_SIGNAL_LEVEL3:="${UNICODE_SIGNAL}  75%"}
 #UNICODE_SIGNAL_LEVEL4=${UNICODE_SIGNAL_LEVEL4:=▁▂▃▄}
-UNICODE_SIGNAL_LEVEL4=${UNICODE_SIGNAL_LEVEL4:=${UNICODE_SIGNAL}}
+UNICODE_SIGNAL_LEVEL4=${UNICODE_SIGNAL_LEVEL4:="${UNICODE_SIGNAL} 100%"} # 4/4 packets
 
 #https://www.compart.com/en/unicode/block/U+2190
 UNICODE_WIND_DIRECTION_S=${UNICODE_WIND_DIRECTION_S:=↑}
@@ -176,6 +176,7 @@ PORT_CLIENT_UDP=59387
 LOG_INTERVAL=${LOG_INTERVAL:=60} # default 60 seconds
 
 SPATTERNID_CONNECTED=connected
+SPATTERNID_DISCONNECTED=disconnected
 SPATTERNID_SEARCHING=searching
 SPATTERNID_DISABLED=disabled
 SPATTERNID_RANGE=range
@@ -396,8 +397,11 @@ SENSORTYPE_WH35LEAFWETNESS=40
 SENSORTYPE_MAX=47 
 
 SENSORIDSTATE_CONNECTED=${SENSORIDSTATE_CONNECTED:="connected"}
+SENSORIDSTATE_DISCONNECTED=${SENSORIDSTATE_DISCONNECTED:="disconnected"} #sensortype specified, but signal still 0
 SENSORIDSTATE_SEARCHING=${SENSORIDSTATE_SEARCHING:="searching"}
 SENSORIDSTATE_DISABLED=${SENSORIDSTATE_DISABLED:="disabled"}
+SENSORID_HEADER=${SENSORID_HEADER:="Sensor ID B S Type Name State Battery Signal"}
+
 
 #default livedata headers, may be overridden by -A language file or environment variables on cmd line
 export LIVEDATA_INTEMP_HEADER="${LIVEDATA_INTEMP_HEADER:="Indoor temperature"}"
@@ -472,9 +476,10 @@ export LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER="${LIVEDATA_WH32_TEMPERATURE_BAT
 export LIVEDATA_WH40_RAINFALL_BATTERY_HEADER="${LIVEDATA_WH40_RAINFALL_BATTERY_HEADER:="Rainfall battery"}"
 export LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="${LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="Lightning battery"}" 
 
-export    LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER="${LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER:='Sensors connected'}"
-export     LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER="${LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER:='Sensors searching'}"
-export     LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER="${LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER:='Sensors disabled'}"
+export    LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER="${LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER:="System sensors connected"}"
+export    LIVEDATA_SYSTEM_SENSOR_DISCONNECTED_HEADER="${LIVEDATA_SYSTEM_SENSOR_DISCONNECTED_HEADER:="System sensors disconnected"}"
+export    LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER="${LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER:="System sensors searching"}"
+export    LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER="${LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER:="System sensors disabled"}"
 
 export LIVEDATA_SYSTEM_PROTOCOL_HEADER="${LIVEDATA_SYSTEM_PROTOCOL_HEADER:="System protocol"}"
 export LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER:="System timezone AUTO (2 bit)"}"
@@ -1593,86 +1598,7 @@ setRainMode()
     
 }
 
-printLivedataLine()
-#allows to intercept/disable printing during debugging
-{
-    #echo "$*"
-    printLivedataLineFinal "$@"
-    #:
-}
 
-printLivedataLineFinal()
-#$1 -header variable name, $2 value, $3 - value format, $4 unit, $5 unit format,$6 terse header, $7 terse format, $8 status value $9 status  $10 status fmt $11 signal value $12 signal state
-# optimized to just use one printf call builtin/external -> builds up entire format and argument strings for entire livedata view
-{
-    #[ "$DEBUG" -eq 1 ] && 
-    #echo >&2 "printLivedataLine $* length $#"
-
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset header_fmt unit_fmt status_fmt status_line signal_fmt signal_line space
-    else
-        local  header_fmt unit_fmt status_fmt status_line signal_fmt signal_line space
-    fi
-
-    # \r\t horizontal/absolute positioning is compatible with unicode in string
-    if [ -n "$HIDE_HEADERS_LIVEDATA" ] && [ "$HIDE_HEADERS_LIVEDATA" -eq 1 ]; then 
-        header_fmt="%s\r\t\t\t\t" 
-    else
-       header_fmt=" %s\r\t\t\t\t"
-    fi
-    # unit_fmt="\r\t\t\t\t\t%s" 
-    unit_fmt="%s"
-    #status_fmt="\r\t\t\t\t\t\t%s"
-    status_fmt=${10}
-    status_fmt=${status_fmt:="\t%s"}
-    signal_fmt="\t%s"
-    space=' ' #do not use space for unitless values
-
-    #TEST UTF-8: for f in $(seq -s' ' 255); do eval printf "\\\x$(printf "%x" "$f")"; done
-
-    if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then 
-       
-        status_line="$9"
-        case $status_line in # only use UNICODE battery icon/skip detailed battery levels
-             $UNICODE_BATTERY*) status_line=$UNICODE_BATTERY
-                                ;;
-             $UNICODE_BATTERY_LOW*) status_line=$UNICODE_BATTERY_LOW 
-                                ;;
-        esac
-
-        signal_line="${12}"
-        case $signal_line in 
-             $UNICODE_SIGNAL*) signal_line=$UNICODE_SIGNAL
-                             ;;
-        esac
-
-        status_line="$status_line$signal_line" #merge for compact format
-        unset signal_line
-  
-        if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
-            appendFormat " $header_fmt %s %s %s %s\n"
-        fi
-        
-        if [ -n "$STYLE_LIVE_VALUE" ]; then
-            [ -z "$4" ] && unset space # skip space if unit empty
-            appendFormat "$header_fmt $STYLE_LIVE_VALUE$3$space$unit_fmt$STYLE_RESET $status_fmt $signal_fmt\n"
-            unset STYLE_LIVE_VALUE
-        else
-            appendFormat "$header_fmt $3 $unit_fmt $status_fmt $signal_fmt\n"
-        fi
-
-        if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
-            appendArgs "'$header_fmt' '$3' '$unit_fmt' '$status_fmt' '$signal_fmt'"
-        fi
-    
-       appendArgs "'$1' '$2' '$4' '$status_line' '$signal_line'"
-    fi
-   
-    if [ -n "$KSH_VERSION" ]; then
-        unset header_fmt ch status_fmt unit_fmt status_line signal_fmt signal_line
-    fi
-}
 
 setLivedataValueStyleLtGt()
 #$1 - raw value, $2 low limit, 3$ high limit, $4 sgi low, $5 sgi high
@@ -1742,8 +1668,16 @@ printAppendBuffer()
     if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
         printf >&2 "%s\n" "APPEND_FORMAT/APPEND_ARGS printf '$APPEND_FORMAT' $APPEND_ARGS"
     fi
+
+    if [ -n "$DEBUG_LIVEDATA_LINE" ]; then
+      set -x
+    fi
     
     eval printf \""$APPEND_FORMAT"\" "$APPEND_ARGS"
+
+     if [ -n "$DEBUG_LIVEDATA_LINE" ]; then
+      set +x
+    fi
 
     resetAppendBuffer
 }
@@ -1919,8 +1853,100 @@ printLivedataHeader()
      appendBuffer "$STYLE_LIVEVIEW_NORMAL_HEADER%64s$STYLE_RESET\r$1" "' ' '$2'"
 }
 
+printLivedataLine()
+#allows to intercept/disable printing during debugging
+{
+    #echo "$*"
+    if [ -n "$DEBUG_LIVEDATA_LINE" ]; then
+        :
+    else
+        printLivedataLineFinal "$@"
+    fi
+
+
+}
+
+printLivedataLineFinal()
+#$1 -header variable name, $2 value, $3 - value format, $4 unit, $5 unit format,$6 terse header, $7 terse format, $8 status value $9 status  $10 status fmt $11 signal value $12 signal state
+# optimized to just use one printf call builtin/external -> builds up entire format and argument strings for entire livedata view
+{
+    if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_LIVEDATA_LINE" ]; then
+        echo >&2 "printLivedataLine $* length $#"
+    fi
+
+    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+        #shellcheck disable=SC3044
+        typeset header_fmt unit_fmt status_fmt status_line signal_fmt signal_line space
+    else
+        local  header_fmt unit_fmt status_fmt status_line signal_fmt signal_line space
+    fi
+
+    # \r\t horizontal/absolute positioning is compatible with unicode in string
+    if [ -n "$HIDE_HEADERS_LIVEDATA" ] && [ "$HIDE_HEADERS_LIVEDATA" -eq 1 ]; then 
+        header_fmt="%s\r\t\t\t\t" 
+    else
+       header_fmt=" %s\r\t\t\t\t"
+    fi
+    # unit_fmt="\r\t\t\t\t\t%s" 
+    unit_fmt="%s"
+    #status_fmt="\r\t\t\t\t\t\t%s"
+    status_fmt=${10}
+    status_fmt=${status_fmt:="\t%s"}
+    signal_fmt="\t%s"
+    space=' ' #do not use space for unitless values
+
+    #TEST UTF-8: for f in $(seq -s' ' 255); do eval printf "\\\x$(printf "%x" "$f")"; done
+
+    if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then 
+       
+        status_line="$9"
+        case $status_line in # only use UNICODE battery icon/skip detailed battery levels
+             $UNICODE_BATTERY*) status_line=$UNICODE_BATTERY
+                                ;;
+             $UNICODE_BATTERY_LOW*) status_line=$UNICODE_BATTERY_LOW 
+                                ;;
+        esac
+
+        signal_line="${12}"
+        case $signal_line in 
+             $UNICODE_SIGNAL*) signal_line=$UNICODE_SIGNAL
+                             ;;
+        esac
+
+        status_line="$status_line$signal_line" #merge for compact format
+        unset signal_line
+  
+        if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
+            appendFormat " $header_fmt %s %s %s %s\n"
+        fi
+        
+        if [ -n "$STYLE_LIVE_VALUE" ]; then
+            [ -z "$4" ] && unset space # skip space if unit empty
+            appendFormat "$header_fmt $STYLE_LIVE_VALUE$3$space$unit_fmt$STYLE_RESET $status_fmt $signal_fmt\n"
+        else
+            appendFormat "$header_fmt $3 $unit_fmt $status_fmt $signal_fmt\n"
+        fi
+
+        unset STYLE_LIVE_VALUE
+
+        if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
+            appendArgs "'$header_fmt' '$3' '$unit_fmt' '$status_fmt' '$signal_fmt'"
+        fi
+    
+       appendArgs "'$1' '$2' '$4' '$status_line' '$signal_line'"
+    fi
+   
+    if [ -n "$KSH_VERSION" ]; then
+        unset header_fmt ch status_fmt unit_fmt status_line signal_fmt signal_line
+    fi
+
+}
+
 printLivedata() 
 {
+    #debugging: call printLivedataFinal directly for problematic line and set DEBUG_LIVEDATA_LINE=1
+    #DEBUG_LIVEDATA_LINE=1
+
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
         typeset n  delimiter space
@@ -1930,10 +1956,6 @@ printLivedata()
 
     #resetAppendBuffer
     
-     #for debugging:
-   #printAppendBuffer
-   #return
-
    printLivedataHeader "" "$LIVEDATA_HEADER"
 
      if [ -n "$LIVEDATA_INTEMP" ]; then
@@ -2272,8 +2294,9 @@ printLivedata()
        # space=' '
        # [ -z "$LIVEDATA_SYSTEM_PROTOCOL_VERSION" ] && unset space
        #    STYLE_LIVE_VALUE=$VALUE_STYLE_PROTOCOL   printLivedataLine "$LIVEDATA_SYSTEM_PROTOCOL_HEADER" "$LIVEDATA_SYSTEM_PROTOCOL_LONG$space$LIVEDATA_SYSTEM_PROTOCOL_VERSION" "%s" 
-        
-        [ -n "$LIVEDATA_SENSOR_COUNT_CONNECTED" ] && printLivedataLine "$LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER" "$LIVEDATA_SENSOR_COUNT_CONNECTED" "%2u"
+       
+        [ -n "$LIVEDATA_SENSOR_COUNT_CONNECTED" ] && STYLE_LIVE_VALUE=$STYLE_SENSOR_CONNECTED printLivedataLineFinal "$LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER" "$LIVEDATA_SENSOR_COUNT_CONNECTED" "%2u"
+        [ -n "$LIVEDATA_SENSOR_COUNT_DISCONNECTED" ] && STYLE_LIVE_VALUE=$STYLE_SENSOR_DISCONNECTED printLivedataLineFinal "$LIVEDATA_SYSTEM_SENSOR_DISCONNECTED_HEADER" "$LIVEDATA_SENSOR_COUNT_DISCONNECTED" "%2u"
         [ -n "$LIVEDATA_SENSOR_COUNT_SEARCHING" ] && STYLE_LIVE_VALUE=$STYLE_SENSOR_SEARCH    printLivedataLine "$LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER" "$LIVEDATA_SENSOR_COUNT_SEARCHING" "%2u"
         [ -n "$LIVEDATA_SENSOR_COUNT_DISABLED" ] && STYLE_LIVE_VALUE=$STYLE_SENSOR_DISABLE   printLivedataLine "$LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER" "$LIVEDATA_SENSOR_COUNT_DISABLED" "%2u"
 
@@ -2978,7 +3001,7 @@ parseWow() {
 printSensorLine()
 #$1 - sensortype, $2 sensor id, $3 battery, $4 signal
 {
-
+#observation: leak sensor signal -> starts at level 1 after search state, then increases +1 each time a new rf message is received
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
       typeset sensorIdState sensorsignal_unicode style_sensor_off style_sensor
@@ -3005,7 +3028,12 @@ printSensorLine()
     else
         unset style_sensor
        getSensorBatteryState "$1" "$3"
-       sensorIdState=$SENSORIDSTATE_CONNECTED
+       if [ "$4" -gt 0 ]; then 
+            sensorIdState=$SENSORIDSTATE_CONNECTED
+        else
+            style_sensor=$STYLE_SENSOR_DISCONNECTED
+            sensorIdState=$SENSORIDSTATE_DISCONNECTED
+        fi
 
        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
             getSignalUnicode "$4"
@@ -3022,7 +3050,7 @@ printSensorLine()
      # use \r\t\t\t workaround for unicode alignment
   
     appendBuffer "%6u %9x %3u %1u %4s %-17s $style_sensor%9s$style_sensor_off\r\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t%s\n"\
-"'$1' '$2' '$3' '$4'  '$SENSORNAME_WH' '$SENSORNAME_SHORT' '$sensorIdState' '$SBATTERY_STATE' '$sensorsignal_unicode'"
+ "'$1' '$2' '$3' '$4'  '$SENSORNAME_WH' '$SENSORNAME_SHORT' '$sensorIdState' '$SBATTERY_STATE' '$sensorsignal_unicode'"
     
     if [ -n "$KSH_VERSION" ]; then
       unset sensorIdState sensorsignal_unicode style_sensor_off style_sensor
@@ -3084,16 +3112,21 @@ parseSensorIdNew()
 {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
     #shellcheck disable=SC3044
-        typeset stype signal battery 
+        typeset stype signal battery printSensorMatch printSensorHeader
     else
-        local stype signal battery 
+        local stype signal battery printSensorMatch printSensorHeader
     fi
 
     resetAppendBuffer
-    
-    SENSORID_HEADER=${SENSORID_HEADER:="Sensor ID B S Type Name State Battery Signal"}
 
-    if [ -z "$HIDE_SENSORID_HEADER" ]; then 
+    printSensorHeader=0
+    if [ -z "$HIDE_SENSORID_HEADER" ];  then 
+       printSensorHeader=1
+    elif [ "$HIDE_SENSORID_HEADER" -eq 0 ]; then
+       printSensorHeader=1
+    fi
+
+    if [ $printSensorHeader -eq 1 ]; then
         appendBuffer "%6s %9s %3s %1s %-4s %-17s %-9s %-7s %s\n%s\n" "$SENSORID_HEADER ──────────────────────────────────────────────────────────────────────"
     fi
 
@@ -3101,6 +3134,7 @@ parseSensorIdNew()
     
      LIVEDATA_SENSOR_COUNT_SEARCHING=0
      LIVEDATA_SENSOR_COUNT_CONNECTED=0
+     LIVEDATA_SENSOR_COUNT_DISCONNECTED=0
      LIVEDATA_SENSOR_COUNT_DISABLED=0
 
     while [ ${#OD_BUFFER} -ge 7 ]; do
@@ -3122,22 +3156,31 @@ parseSensorIdNew()
             LIVEDATA_SENSOR_COUNT_SEARCHING=$(( LIVEDATA_SENSOR_COUNT_SEARCHING + 1 ))
         elif [ $SID -eq $SENSORID_DISABLE ]; then
             LIVEDATA_SENSOR_COUNT_DISABLED=$(( LIVEDATA_SENSOR_COUNT_DISABLED + 1 ))
-        else  
+        elif [ $signal -gt 0 ]; then
             LIVEDATA_SENSOR_COUNT_CONNECTED=$(( LIVEDATA_SENSOR_COUNT_CONNECTED + 1 ))
             setLivedataSignal "$stype" "$signal"
+        elif [ $signal -eq 0 ]; then
+            LIVEDATA_SENSOR_COUNT_DISCONNECTED=$(( LIVEDATA_SENSOR_COUNT_DISCONNECTED + 1 ))
         fi
 
         #pattern matching
+        printSensorMatch=0
 
         if [ "$SPATTERNID" = "$SPATTERNID_CONNECTED" ] && [ $SID -ne $SENSORID_SEARCH ] && [ $SID -ne $SENSORID_DISABLE ]; then # connected sensor
-            printSensorLine $stype $SID $battery $signal
+            printSensorMatch=1
+        elif [ "$SPATTERNID" = "$SPATTERNID_DISCONNECTED" ] && [ $SID -ne $SENSORID_SEARCH ] && [ $SID -ne $SENSORID_DISABLE ] && [ $signal -eq 0 ]; then
+            printSensorMatch=1
         elif [ "$SPATTERNID" = "$SPATTERNID_RANGE" ] && [ -n "$SPATTERNID_RANGE_LOW" ] && [ -n "$SPATTERNID_RANGE_HIGH" ] && [ $stype -ge "$SPATTERNID_RANGE_LOW" ] && [ $stype -le "$SPATTERNID_RANGE_HIGH" ]; then 
-            printSensorLine $stype $SID $battery $signal
+            printSensorMatch=1
         elif [ "$SPATTERNID" = "$SPATTERNID_SEARCHING" ] && [ $SID -eq "$SENSORID_SEARCH"  ]; then 
-            printSensorLine $stype $SID $battery $signal
+            printSensorMatch=1
         elif [ "$SPATTERNID" = "$SPATTERNID_DISABLED" ] && [ "$SID" -eq "$SENSORID_DISABLE" ]; then
-            printSensorLine $stype $SID $battery $signal
+            printSensorMatch=1
         elif [ -z "$SPATTERNID" ]; then #all sensors
+            printSensorMatch=1
+        fi
+
+        if [ $printSensorMatch -eq 1 ]; then
             printSensorLine $stype $SID $battery $signal
         fi
         
@@ -3147,7 +3190,7 @@ parseSensorIdNew()
     printAppendBuffer
 
     if [ -n "$KSH_VERSION" ]; then
-        unset stype signal battery 
+        unset stype signal battery printSensorHeader printSensorMatch
     fi
 }
 
@@ -4267,8 +4310,6 @@ processSensorOptions()
 
      IFS=,
 
-     unset HIDE_SENSORID_HEADER
-
      for f in $1; do #parse , expressions
        IFS='='
        #shellcheck disable=SC2086
@@ -4538,25 +4579,31 @@ processCommand() {
 
             if ! argEmptyOrOption "$1"; then
              #filter for senorid; -c sensor connected|-c s co
-              case "$1" in 
-                connected|c)
-                   SPATTERNID=$SPATTERNID_CONNECTED #matches connected sensors
-                   sendPacket $CMD_READ_SENSOR_ID_NEW
-                   ;;
-                searching|s)
-                   SPATTERNID=$SPATTERNID_SEARCHING
-                   SPATTERNID_INT=$SENSORID_SEARCH
-                   sendPacket $CMD_READ_SENSOR_ID_NEW
-                   ;;
-                disabled|d)
-                   SPATTERNID=$SPATTERNID_DISABLED
-                   sendPacket $CMD_READ_SENSOR_ID_NEW
-                   ;;
-                   
-                *) 
-                   processSensorOptions "$1"
-                   ;;
-              esac
+
+                case "$1" in 
+                    connected|c)
+                        SPATTERNID=$SPATTERNID_CONNECTED #matches connected sensors
+                        sendPacket $CMD_READ_SENSOR_ID_NEW
+                        ;;
+                    disconnected)
+                        SPATTERNID=$SPATTERNID_DISCONNECTED
+                        sendPacket $CMD_READ_SENSOR_ID_NEW
+                        ;;
+                    searching|s)
+                        SPATTERNID=$SPATTERNID_SEARCHING
+                        SPATTERNID_INT=$SENSORID_SEARCH
+                        sendPacket $CMD_READ_SENSOR_ID_NEW
+                    ;;
+                    disabled|d)
+                        SPATTERNID=$SPATTERNID_DISABLED
+                        sendPacket $CMD_READ_SENSOR_ID_NEW
+                    ;;
+                    
+                    *) 
+                        processSensorOptions "$1"
+                    ;;
+                esac
+
             else
                 sendPacket $CMD_READ_SENSOR_ID_NEW
             fi
@@ -5792,6 +5839,11 @@ while [ $# -gt 0 ]; do
            fi
 
            shift 2
+           ;;
+
+       -Hhs | --hide-sensor-header)
+           HIDE_SENSORID_HEADER=1
+           shift
            ;;
 
        -Hh | --hide-headers)
