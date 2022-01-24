@@ -146,8 +146,8 @@ LIVEDATA_VIEW_BIG=2
 LIVEDATA_VIEW_TERSE=3
 LIVEDATA_VIEW=${LIVIEDATA_VIEW:=$LIVEDATA_VIEW_NORMAL} #current live view
 
-HIDE_RAIN_LIVEDATA_AUTO=${HIDE_RAIN_LIVEDATA_AUTO:=0} # auto hide when 0 today (0=off)
-HIDE_LIGHT_LIVEDATA_AUTO=${HIDE_LIGHT_LIVEDATA_AUTO:=0} # auto hide when 0/dark
+HIDE_RAIN_LIVEDATA_AUTO=${HIDE_RAIN_LIVEDATA_AUTO:=0} # auto hide_liveview when 0 today (0=off)
+HIDE_LIGHT_LIVEDATA_AUTO=${HIDE_LIGHT_LIVEDATA_AUTO:=0} # auto hide_liveview when 0/dark
 
 UNIT_TEMPERATURE_CELCIUS=0
 UNIT_TEMPERATURE_FARENHEIT=1
@@ -2045,7 +2045,7 @@ printLivedata()
     fi
 
     if [ -n "$LIVEDATA_LIGHT" ] && [ "$LIVEDATA_LIGHT_RAW" -eq 0 ] && [ "$HIDE_LIGHT_LIVEDATA_AUTO" -eq 1 ]; then
-      HIDE_LIGHT_LIVEDATA=1 # auto hide, when dark
+      HIDE_LIGHT_LIVEDATA=1 # auto hide_liveview, when dark
     fi
 
     if [ -z "$HIDE_LIGHT_LIVEDATA" ]; then
@@ -2062,7 +2062,7 @@ printLivedata()
     fi
 
     if [ -n "$LIVEDATA_RAINDAY_RAW" ] && [ "$LIVEDATA_RAINDAY_RAW" -eq 0 ] && [ "$HIDE_RAIN_LIVEDATA_AUTO" -eq 1 ]; then
-       HIDE_RAIN_LIVEDATA=1 #auto hide, if no rain today
+       HIDE_RAIN_LIVEDATA=1 #auto hide_liveview, if no rain today
     fi
 
     if [ -z "$HIDE_RAIN_LIVEDATA" ]; then
@@ -5116,6 +5116,8 @@ printOrLogLivedata()
             printLivedata
        elif [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_BIG ]; then
            "$GW_VIEW_BIG_FILE" # must have execute permission chmod +x
+       else
+          echo >&2 Not implemented liveview $LIVEDATA_VIEW
        fi
     else
       eval "$LOG_CMD" # would allow executing of anything inside 
@@ -5869,20 +5871,21 @@ while [ $# -gt 0 ]; do
 
     case $KEY in
 
-       -vb | --view-big)
-           LIVEDATA_VIEW=$LIVEDATA_VIEW_BIG
-           shift
-           ;;
-
-       -vt | --view-terse)
-
-           LIVEDATA_VIEW=$LIVEDATA_VIEW_TERSE
-           #if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-           #     SHELL_SUPPORT_UNICODE=0 #turn off battery unicode -> printf not compatible
-           #     sendPacket $CMD_READ_SENSOR_ID_NEW >/dev/null #reparse (also done -g option)
-           #fi
-           shift
-           ;;
+       -v | --view) IFS=,
+                    for liveview in $2; do
+                       case "$liveview" in
+                           b | big) LIVEDATA_VIEW=$LIVEDATA_VIEW_BIG
+                                    ;;
+                           t | terse) LIVEDATA_VIEW=$LIVEDATA_VIEW_TERSE
+                                    ;;
+                            *) echo >&2 Error: Unknown livedata view, use terse|t,big|b
+                               ;;
+                        esac
+                    done
+                    [ -n "$2" ] && shift
+                    shift
+                    unset livewview
+                    ;;
 
        -A | --lang)
 
@@ -5898,13 +5901,13 @@ while [ $# -gt 0 ]; do
            shift 2
            ;;
 
-       -H | --hide)
+       -H | --hide_liveview--livewview)
 
           IFS=,
 
-          for hide in $2; do 
+          for hide_liveview in $2; do 
 
-            case "$hide" in
+            case "$hide_liveview" in
 
                     sh | sensor-header)
                         HIDE_SENSORTYPE_HEADER=1
@@ -5970,7 +5973,7 @@ while [ $# -gt 0 ]; do
                         HIDE_LIGHTNING_LIVEDATA=1
                         ;;
 
-                    *) echo >&2 "Error: Unknown hide option $hide; use sensor-header|sh,headers|h,rain|r,wind|w,temperature|t,light|l,system|s,soilmoisture|sm,soiltemperature|st,leak,co2,pm25,leafwetness|leafw,lightning,tempusr|tusr"
+                    *) echo >&2 "Error: Unknown hide_liveview option $hide_liveview; use sensor-header|sh,headers|h,rain|r,wind|w,temperature|t,light|l,system|s,soilmoisture|sm,soiltemperature|st,leak,co2,pm25,leafwetness|leafw,lightning,tempusr|tusr"
                        ;;
                     esac
                 done
@@ -5978,6 +5981,7 @@ while [ $# -gt 0 ]; do
                  [ -n "$2" ] && shift
                  shift
 
+                 unset hide_liveview
                 ;;
 
       -n   | --log-interval)
