@@ -59,14 +59,17 @@ UNICODE_RAINDAY=${UNICODE_RAINDAY:=⛆}
 UNICODE_RAINHOUR=${UNICODE_RAINHOUR:=☔}
 
 UNICODE_BATTERY=${UNICODE_BATTERY:=🔋}
-UNICODE_SIGNAL=${UNICODE_SIGNAL:=📶}
-
 UNICODE_BATTERY_LOW=${UNICODE_BATTERY_LOW:=🪫}
 UNICODE_PLUG=${UNICODE_PLUG:=🔌}
+
+UNICODE_SIGNAL=${UNICODE_SIGNAL:=📶}
+UNICODE_SIGNAL_LOW=${UNICODE_SIGNAL_LOW:=🛑}
+
 UNICODE_WIND=${UNICODE_WIND:=💨} #https://emojipedia.org/dashing-away/
 
 #https://www.compart.com/en/unicode/block/U+2580
-UNICODE_SIGNAL_LEVEL1=${UNICODE_SIGNAL_LEVEL1:="${UNICODE_SIGNAL}  25%"} # 1/4 packets received, seems to be a counter thats incremented/decremented after a timeout
+UNICODE_SIGNAL_LEVEL0=${UNICODE_SIGNAL_LEVEL0:="$UNICODE_SIGNAL_LOW"}
+UNICODE_SIGNAL_LEVEL1=${UNICODE_SIGNAL_LEVEL1:="${UNICODE_SIGNAL}  25%"} # 1/4 packets received, seems to be a counter thats incremented/decremented after a each sensor periode
 UNICODE_SIGNAL_LEVEL2=${UNICODE_SIGNAL_LEVEL2:="${UNICODE_SIGNAL}  50%"}
 UNICODE_SIGNAL_LEVEL3=${UNICODE_SIGNAL_LEVEL3:="${UNICODE_SIGNAL}  75%"}
 #UNICODE_SIGNAL_LEVEL4=${UNICODE_SIGNAL_LEVEL4:=▁▂▃▄}
@@ -132,6 +135,8 @@ ERROR_LISTEN_NOPORT=15
 ERROR_LISTEN_UNSUPPORTED_NC=16
 ERROR_COMMAND_UNKNOWN=17
 ERROR_INVALID_SUBNET=18
+ERROR_SSID_EMPTY=19
+ERROR_PARSEPACKET_UNSUPPORTED_COMMAND=20
 
 #HTTP_RESPONSE_200_OK="HTTP/1.1 200 OK"
 #CRLF='\r\n'
@@ -170,6 +175,7 @@ NC_TOYBOX=2
 NC_BUSYBOX=3
 
 PORT_GW_TCP=45000
+PORT_WIFICONFIG_SERVER_TCP=49123 # method 1: in wifi configuration part 3 in spec.
 PORT_GW_UDP=46000
 PORT_CLIENT_UDP=59387
 
@@ -482,18 +488,12 @@ export    LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER="${LIVEDATA_SYSTEM_SENSOR_SEAR
 export    LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER="${LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER:="System sensors disabled"}"
 
 export LIVEDATA_SYSTEM_PROTOCOL_HEADER="${LIVEDATA_SYSTEM_PROTOCOL_HEADER:="System protocol"}"
-export LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER:="System timezone AUTO (2 bit)"}"
-export LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER:="System timezone DST (1 bit)"}"
-export LIVEDATA_SYSTEM_TIMEZONE_DST_STATUS_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_DST_STATUS_HEADER:="System timezone DST"}"
+export LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER:="System timezone AUTO"}"
+export LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER:="System timezone DST"}"
 export LIVEDATA_SYSTEM_TIMEZONE_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_HEADER:="System timezone (manual)"}"
 
 export LIVEDATA_STATE_ON="${LIVEDATA_STATE_ON:="on"}"
 export LIVEDATA_STATE_OFF="${LIVEDATA_STATE_OFF:="off"}"
-
-export LIVEDATA_SYSTEM_TIMEZONE_AUTO_ON=0
-export LIVEDATA_SYSTEM_TIMEZONE_AUTO_OFF=1 #inverted
-export LIVEDATA_SYSTEM_DST_STATUS_ON=1
-export LIVEDATA_SYSTEM_DST_STATUS_OFF=0
 
 N=1
 while [ "$N" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do 
@@ -1333,15 +1333,13 @@ printSystem()
 %-32.32s%10u\t%s\n\
 %-32.32s%10u\t%.24s\n\
 %-32.32s%10u\t%s\n\
-%-32.32s%10u\t%s\n\
-%-32.32s%10x\n"\
+%-32.32s%10u\t%s\n"\
             "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$C_SYSTEM_FREQUENCY" "$C_SYSTEM_FREQUENCY_STATE"\
             "$LIVEDATA_SYSTEM_SENSORTYPE_HEADER"    "$C_SYSTEM_SENSORTYPE" "$C_SYSTEM_SENSORTYPE_STATE"\
             "$LIVEDATA_SYSTEM_UTC_HEADER" "$C_SYSTEM_UTC" "$C_SYSTEM_UTC_STATE"\
             "$LIVEDATA_SYSTEM_TIMEZONE_HEADER"  "$C_SYSTEM_TIMEZONE_INDEX" "$C_SYSTEM_TIMEZONE_INDEX_STATE"\
             "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER" "$C_SYSTEM_TIMEZONE_AUTO_BIT" "$C_SYSTEM_TIMEZONE_AUTO_STATE"\
-            "$LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER" "$C_SYSTEM_TIMEZONE_DST_BIT" "$C_SYSTEM_TIMEZONE_DST_STATUS_STATE"\
-            "$LIVEDATA_SYSTEM_TIMEZONE_DST_STATUS_HEADER" "$C_SYSTEM_TIMEZONE_DST_STATUS"
+            "$LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER" "$C_SYSTEM_TIMEZONE_DST_BIT" "$C_SYSTEM_TIMEZONE_DST_STATUS_STATE"
 }
 
 parseSystem() {
@@ -1358,8 +1356,6 @@ parseSystem() {
         C_SYSTEM_FREQUENCY_STATE="920"
     fi
 
-    LIVEDATA_SYSTEM_FREQUENCY=$C_SYSTEM_FREQUENCY_STATE
-
     readUInt8
 
     C_SYSTEM_SENSORTYPE=$VALUE_UINT8
@@ -1370,20 +1366,16 @@ parseSystem() {
         C_SYSTEM_SENSORTYPE_STATE="WH65"
     fi
 
-    LIVEDATA_SYSTEM_SENSORTYPE=$C_SYSTEM_SENSORTYPE_STATE
-
     readUInt32BE
 
     C_SYSTEM_UTC=$VALUE_UINT32BE
     C_SYSTEM_UTC_STATE="$(date -u -d @"$VALUE_UINT32BE" +'%F %T')"
-    LIVEDATA_SYSTEM_UTC=$C_SYSTEM_UTC_STATE #local time 
 
     readUInt8
 
     C_SYSTEM_TIMEZONE_INDEX=$VALUE_UINT8
 
     eval "C_SYSTEM_TIMEZONE_INDEX_STATE=\$SYSTEM_TIMEZONE_$C_SYSTEM_TIMEZONE_INDEX" # set from SYSTEM_TIMEZONE "array" variable with index
-    LIVEDATA_SYSTEM_TIMEZONE=$C_SYSTEM_TIMEZONE_INDEX_STATE
 
     C_SYSTEM_TIMEZONE_OFFSET_HOURS=${C_SYSTEM_TIMEZONE_INDEX_STATE%%\)*} # remove )... 
     C_SYSTEM_TIMEZONE_OFFSET_HOURS=${C_SYSTEM_TIMEZONE_OFFSET_HOURS#\(UTC} # remove (UTC
@@ -1393,14 +1385,29 @@ parseSystem() {
     C_SYSTEM_TIMEZONE_DST_STATUS=$VALUE_UINT8
 
     C_SYSTEM_TIMEZONE_DST_BIT=$((C_SYSTEM_TIMEZONE_DST_STATUS & 0x01))
-    
+
+    C_SYSTEM_TIMEZONE_AUTOOFF_BIT=$(((C_SYSTEM_TIMEZONE_DST_STATUS & 0x2) >> 1)) # bit 2 1= off, 0=on ?
+
+    if [ $C_SYSTEM_TIMEZONE_AUTOOFF_BIT = 0 ]; then #invert
+       C_SYSTEM_TIMEZONE_AUTO_BIT=1;
+    else
+        C_SYSTEM_TIMEZONE_AUTO_BIT=0
+    fi
+
+     [ -z "$C_NOPRINT" ] && printSystem
+
+}
+
+copySystemToLivedata()
+#copies system info to UI variables
+{
+    LIVEDATA_SYSTEM_FREQUENCY=$C_SYSTEM_FREQUENCY_STATE
+    LIVEDATA_SYSTEM_SENSORTYPE=$C_SYSTEM_SENSORTYPE_STATE
+    LIVEDATA_SYSTEM_UTC=$C_SYSTEM_UTC_STATE #local time 
+    LIVEDATA_SYSTEM_TIMEZONE=$C_SYSTEM_TIMEZONE_INDEX_STATE
     LIVEDATA_SYSTEM_TIMEZONE_DST_BIT=$C_SYSTEM_TIMEZONE_DST_BIT
-
-    C_SYSTEM_TIMEZONE_AUTO_BIT=$(((C_SYSTEM_TIMEZONE_DST_STATUS & 0x2) >> 1)) # bit 2 1= off, 0=on ?
-
     LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT=$C_SYSTEM_TIMEZONE_AUTO_BIT
-
-    printSystem
+    LIVEDATA_SYSTEM_TIMEZONE_OFFSET_HOURS=$C_SYSTEM_TIMEZONE_OFFSET_HOURS
 
 }
 
@@ -1424,10 +1431,14 @@ printKeyValue() {
     printf "%-25s %s\n" "$1" "$2"
 }
 
+copyVersionToLivedata()
+{
+    LIVEDATA_SYSTEM_VERSION="$C_VERSION"
+}
+
 parseVersion() {
     readString
     C_VERSION="$VALUE_STRING"
-    LIVEDATA_SYSTEM_VERSION="$VALUE_STRING"
     echo "$C_VERSION"
 }
 
@@ -1481,10 +1492,10 @@ isWriteCommand() {
 
 printBroadcast() {
    # if [ "$SHELL_SUPPORT_BULTIN_PRINTF" -eq 1 ]; then
-   #    printf "%-25s %s\n%-25s %s\n%-25s %s\n%-25s %s\n%-25s %s\n" "broadcast mac" "$C_broadcast_mac"\
-   #    "broadcast ip" "$C_broadcast_ip" "broadcast port" "$C_broadcast_port" "broadcast ssid" "$C_broadcast_ssid" "broadcast version" "$C_broadcast_version"
+   #    printf "%-25s %s\n%-25s %s\n%-25s %s\n%-25s %s\n%-25s %s\n" "broadcast mac" "$C_BROADCAST_MAC"\
+   #    "broadcast ip" "$C_BROADCAST_IP" "broadcast port" "$C_BROADCAST_PORT" "broadcast ssid" "$C_BROADCAST_SSID" "broadcast version" "$C_BROADCAST_VERSION"
    # else
-      echo "$C_broadcast_mac $C_broadcast_ip $C_broadcast_port $C_broadcast_ssid $C_broadcast_version"
+      echo "$C_BROADCAST_MAC $C_BROADCAST_IP $C_BROADCAST_PORT $C_BROADCAST_SSID $C_BROADCAST_VERSION"
     #fi
 }
 
@@ -1494,16 +1505,16 @@ parseBroadcast() {
     #this is the station MAC/ip on local network.
     #Observation: when device is reset its annoncing hotspot accesspoint/AP with first byte of MAC changed
 
-    C_broadcast_mac="$B1HEX:$B2HEX:$B3HEX:$B4HEX:$B5HEX:$B6HEX"
-    C_broadcast_ip="$B7.$B8.$B9.$B10"
-    C_broadcast_port="$(( (B11 << 8) | B12 ))"
+    C_BROADCAST_MAC="$B1HEX:$B2HEX:$B3HEX:$B4HEX:$B5HEX:$B6HEX"
+    C_BROADCAST_IP="$B7.$B8.$B9.$B10"
+    C_BROADCAST_PORT="$(( (B11 << 8) | B12 ))"
 
     readString
     #https://stackoverflow.com/questions/1469849/how-to-split-one-string-into-multiple-strings-separated-by-at-least-one-space-in
     #shellcheck disable=SC2086
     set -- $VALUE_STRING # -- assign words to positional parameters
-    C_broadcast_ssid=$1
-    C_broadcast_version=$2
+    C_BROADCAST_SSID=$1
+    C_BROADCAST_VERSION=$2
 
     printBroadcast
 }
@@ -1818,9 +1829,13 @@ printLivedataSystem()
 
     appendBuffer " %s" "'$LIVEDATA_SYSTEM_UTC'"
 
-    if [ "$C_SYSTEM_TIMEZONE_AUTO_STATE" = "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_OFF" ]; then
-      appendBuffer " %s" "'$C_SYSTEM_TIMEZONE_OFFSET_HOURS'"
-      if [ "$C_SYSTEM_TIMEZONE_DST_STATUS_STATE" = "$LIVEDATA_SYSTEM_DST_STATUS_ON" ]; then
+    $LIVEDATA_SYSTEM_TIMEZONE
+
+
+    if [ "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" = "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_OFF" ]; then
+      appendBuffer " %s" "'$LIVEDATA_SYSTEM_TIMEZONE_OFFSET_HOURS'"
+      
+      if [ "$LIVEDATA_SYSTEM_TIMEZONE_DST_BIT" -eq 1 ]; then
         appendFormat " DST"
       fi
     fi
@@ -2042,7 +2057,7 @@ printLivedata()
             setStyleUVI "$LIVEDATA_UVI"
             #shellcheck disable=SC2153
             STYLE_LIVE_VALUE=$STYLE_UVI
-            printLivedataLine "$LIVEDATA_UVI_HEADER $VALUE_UVI_DELIMITER $VALUE_UV_RISK" "$LIVEDATA_UVI"      "%6u" "" "%4s" 'uvi' "%3u"
+            printLivedataLine "$LIVEDATA_UVI_HEADER $VALUE_UVI_DELIMITER $VALUE_UV_RISK" "$LIVEDATA_UVI"      "%6u" "    " "%4s" 'uvi' "%3u"
         fi
     fi
 
@@ -2271,11 +2286,11 @@ printLivedata()
         [ -n "$LIVEDATA_SYSTEM_MODEL" ]     && printLivedataLine "$LIVEDATA_SYSTEM_MODEL_HEADER"     "$LIVEDATA_SYSTEM_MODEL"     "%-7s"  "" "%5s" 'model'
         if [ -n "$LIVEDATA_SYSTEM_UTC" ]; then
        
-            if [  "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT" = "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_OFF" ]; then
-               if [ "$LIVEDATA_SYSTEM_TIMEZONE_DST_BIT" = "$LIVEDATA_SYSTEM_DST_STATUS_ON" ]; then
-                    printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER" "$LIVEDATA_SYSTEM_UTC $C_SYSTEM_TIMEZONE_OFFSET_HOURS DST" "%-20s" "" "%5s" 'utc'
+            if [  "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT" -eq 0 ]; then
+               if [ "$LIVEDATA_SYSTEM_TIMEZONE_DST_BIT" -eq 1 ]; then
+                    printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER" "$LIVEDATA_SYSTEM_UTC $LIVEDATA_SYSTEM_TIMEZONE_OFFSET_HOURS DST" "%-20s" "" "%5s" 'utc'
                else
-                    printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER" "$LIVEDATA_SYSTEM_UTC $C_SYSTEM_TIMEZONE_OFFSET_HOURS" "%-20s" "" "%5s" 'utc'
+                    printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER" "$LIVEDATA_SYSTEM_UTC $LIVEDATA_SYSTEM_TIMEZONE_OFFSET_HOURS" "%-20s" "" "%5s" 'utc'
                 fi     
             else
                 printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER"       "$LIVEDATA_SYSTEM_UTC"       "%-20s" "" "%5s" 'utc'
@@ -2283,7 +2298,6 @@ printLivedata()
 
         #    [ -n "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" ] && printLivedataLine "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER" "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" "%s"
         #    [ -n "$LIVEDATA_SYSTEM_TIMEZONE_DST" ] && printLivedataLine "$LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER" "$LIVEDATA_SYSTEM_TIMEZONE_DST" "%s"
-
         #    [ -n "$LIVEDATA_SYSTEM_TIMEZONE" ] && printLivedataLine "$LIVEDATA_SYSTEM_TIMEZONE_HEADER" "$LIVEDATA_SYSTEM_TIMEZONE" "%-32.32s"
         fi
         
@@ -3049,7 +3063,7 @@ printSensorLine()
      # 1 battery unicode is field size 4 in printf format string. TEST printf  "🔋 1.3 V" | od -A n -t x1 | wc -w -> 10
      # use \r\t\t\t workaround for unicode alignment
   
-    appendBuffer "%6u %9x %3u %1u %4s %-17s $style_sensor%9s$style_sensor_off\r\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t%s\n"\
+    appendBuffer "%6u %9x %3u %1u %4s %-17s $style_sensor%-12s$style_sensor_off\t%s\t%s\n"\
  "'$1' '$2' '$3' '$4'  '$SENSORNAME_WH' '$SENSORNAME_SHORT' '$sensorIdState' '$SBATTERY_STATE' '$sensorsignal_unicode'"
     
     if [ -n "$KSH_VERSION" ]; then
@@ -3127,7 +3141,8 @@ parseSensorIdNew()
     fi
 
     if [ $printSensorHeader -eq 1 ]; then
-        appendBuffer "%6s %9s %3s %1s %-4s %-17s %-9s %-7s %s\n%s\n" "$SENSORID_HEADER ──────────────────────────────────────────────────────────────────────"
+                      #1:Sensortype 2:sid 3:battery 4:signal 5:type 6:name 7:state 8:battery 9:signal
+        appendBuffer "%6s %9s %3s %1s %-4s %-17s %-12s\t%s\t%s\n%s\n" "$SENSORID_HEADER ───────────────────────────────────────────────────────────────────────────────"
     fi
 
     [ "$DEBUG" -eq  1 ] && >&2 echo "parseSensorIdNew SPATTERNID $SPATTERNID length od buffer ${#OD_BUFFER}"
@@ -3150,7 +3165,6 @@ parseSensorIdNew()
         
         readUInt8
         signal=$VALUE_UINT8
-
 
         if [ $SID -eq $SENSORID_SEARCH ]; then
             LIVEDATA_SENSOR_COUNT_SEARCHING=$(( LIVEDATA_SENSOR_COUNT_SEARCHING + 1 ))
@@ -3195,6 +3209,8 @@ parseSensorIdNew()
 }
 
 parsePacket() {
+   
+    EXITCODE_PARSEPACKET=0
    
     if [ -z "$1" ]; then
         [ "$DEBUG" -eq 1 ] && echo >&2 Empty od buffer
@@ -3260,9 +3276,12 @@ parsePacket() {
         parseSensorIdNew
     else
         echo >&2 ERROR Parsing of command "$COMMAND_NAME" not supported
+        EXITCODE_PARSEPACKET=$ERROR_PARSEPACKET_UNSUPPORTED_COMMAND
     fi
 
     [ $DEBUG -eq 1 ] && echo >&2 "Received command $PRX_CMD integer cmd $PRX_CMD_UINT8"
+
+    return "$EXITCODE_PARSEPACKET"
 }
 
 getHexDigit() {
@@ -3405,12 +3424,19 @@ convertBufferFromDecToOctalEscape() {
     [ $DEBUG -eq 1 ] && echo >&2 "Octal buffer $VALUE_OCTAL_BUFFER_ESCAPE"
 }
 
+createPacketTX()
+{
+    checksumPacketTX
+    convertBufferFromDecToOctalEscape "$PACKET_TX" # \0377 \0377 \0nnn
+
+    PACKET_TX_ESCAPE=$VALUE_OCTAL_BUFFER_ESCAPE
+}
+
 sendPacket() {
     sendPacketnc "$@" # $@ each arg expands to a separate word
-    EXITCODE_SENDPACKET=$?
     
     [ "$EXITCODE_SENDPACKET" -ne 0 ] && [ "$DEBUG" -eq 1 ] && echo >&2 "Sendpacket failed with error code $EXITCODE_SENDPACKET"
-    return $EXITCODE_SENDPACKET
+    return "$EXITCODE_SENDPACKET"
 }
 
 sendPacketnc() { #$1 - command
@@ -3442,10 +3468,7 @@ sendPacketnc() { #$1 - command
       return "$ERROR_NO_HOST_SPECIFIED"
     fi
 
-    checksumPacketTX
-
-    convertBufferFromDecToOctalEscape "$PACKET_TX" # \0377 \0377 \0nnn
-    PACKET_TX_ESCAPE=$VALUE_OCTAL_BUFFER_ESCAPE
+    createPacketTX
 
     { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_SHOW_OD_BUFFER" ] ; } &&
     {
@@ -3706,7 +3729,7 @@ parseSystemOption()
     systemtype=$C_SYSTEM_SENSORTYPE
     systemtzindex=$C_SYSTEM_TIMEZONE_INDEX
     systemdst=$C_SYSTEM_TIMEZONE_DST_BIT
-    systemauto=$C_SYSTEM_TIMEZONE_AUTO_BIT
+    systemauto=$C_SYSTEM_TIMEZONE_AUTOOFF_BIT
 
     IFS=','
     #shellcheck disable=SC2086
@@ -4369,15 +4392,16 @@ processSensorOptions()
             SPATTERNID_RANGE_LOW=$sensorType_low
             SPATTERNID_RANGE_HIGH=$sensorType_high
             if [ $sentReadSensorIdCommand -eq 0 ]; then 
-                sendPacket $CMD_READ_SENSOR_ID_NEW #improvement : create array ?
+                sendPacket $CMD_READ_SENSOR_ID_NEW #only sent for first , expression
                 sentReadSensorIdCommand=1
-            else # yet another read, use in-memory buffer backup
+            else # yet another read (for example -c sensor 1-10,40-47) use in-memory buffer backup 
                IFS=" " parsePacket "$OD_BUFFER_BACKUP" 
             fi
             HIDE_SENSORID_HEADER=1 #disabled header for next , expression
             continue
         fi
 
+       sentReadSensorIdCommand=0 #reset for WRITE
        sensorid_hex=0
        
        case $cmdexpr in 
@@ -4432,17 +4456,22 @@ processCommand() {
 
         "$CMDOPT_RESET")
 
-            sendPacket $CMD_BROADCAST >/dev/null
+set -x
+            if sendPacket $CMD_BROADCAST >/dev/null; then
 
-            echo "Reset $C_broadcast_mac $C_broadcast_ssid (Y/N)? "
-            read -r
+                printf "%s" "Reset $C_BROADCAST_MAC $C_BROADCAST_SSID (Y/N)? "
+                read -r REPLY
 
-            case $REPLY in
-                Y)
-                    sendPacket $CMD_WRITE_RESET # 3 blink in red LED
-                    connectGW                   # assume user wants to reconnect for setting up new WIFI
-                    ;;
-            esac
+                case $REPLY in
+                    Y)
+                        sendPacket $CMD_WRITE_RESET # 3 blink in red LED
+                        ;;
+                esac
+
+            else
+               echo >&2 Error: Failed to receive broadcast with MAC and SSID
+               EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
+            fi
 
             ;;
 
@@ -4466,7 +4495,9 @@ processCommand() {
             if argEmptyOrOption "$1"; then
                 sendPacket $CMD_READ_SYSTEM
             else
-                sendPacket $CMD_READ_SYSTEM >/dev/null
+                C_NOPRINT=1
+                sendPacket $CMD_READ_SYSTEM 
+                unset C_NOPRINT
                 parseSystemOption "$1"
             fi
             ;;
@@ -5069,8 +5100,17 @@ setPressureHttpLivedata()
     fi
 }
 
+copyConfigurationToLivedata()
+#copies low-level configuration variables to UI-level variables
+{
+    copyVersionToLivedata
+    copySystemToLivedata
+}
+
 printOrLogLivedata()
 {
+    copyConfigurationToLivedata
+
     if [ -z "$LOG_CMD" ]; then
        if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then
             printLivedata
@@ -5788,6 +5828,18 @@ parseUnitOptions()
     done
 }
 
+createWIFIpacket()
+#$1 SSID, $2 password
+{
+    [ $DEBUG -eq 1 ] && echo >&2 "createWIFIpacket SSID $1 Password $2"
+    newPacketBody $CMD_WRITE_SSID
+    #ssid packet has two byte length
+    # TEST wsview android app, wireshark: ffff | 11 |001b| 
+    #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/ConfigrouterFragment.java - SaveData
+    writeString "$1" # ssid
+    writeString "$2" # password
+}
+
 initShell
 initTerm
 initcoptCommands
@@ -6115,17 +6167,34 @@ while [ $# -gt 0 ]; do
             printTimezones
             ;;
 
+        -ws | --wifi-server) # method 1 in spec. part 3
+
+            if [ -z "$2" ]; then
+                echo >&2 Error: Empty SSID not allowed
+                shift
+                EXITCODE_MAIN=$ERROR_SSID_EMPTY
+           else
+                createWIFIpacket "$2" "$3"
+                createPacketTX
+                printf "PACKET TX ESCAPE %s\n" "$PACKET_TX_ESCAPE"
+                set -x
+                { printf %b "$PACKET_TX_ESCAPE"; sleep 1; } | nc -l "$PORT_WIFICONFIG_SERVER_TCP"
+                set +x
+            fi
+            ;;
+
+
         -w | --wifi)
 
-            newPacketBody $CMD_WRITE_SSID
-            #ssid packet has two byte length
-            # TEST wsview android app, wireshark: ffff | 11 |001b| 08536b6f676c756e640d6c756775626572313934322d2e | a9
-            #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/ConfigrouterFragment.java - SaveData
-            writeString "$2" # ssid
-            writeString "$3" # password
-            sendPacket
-
-            shift 3
+           if [ -z "$2" ]; then
+            echo >&2 Error: Empty SSID not allowed
+            shift
+            EXITCODE_MAIN=$ERROR_SSID_EMPTY
+           else
+                createWIFIpacket "$2" "$3"
+                sendPacket
+                shift 3
+            fi
             ;;
 
         *)        # unknown option
