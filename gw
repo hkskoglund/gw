@@ -1930,6 +1930,8 @@ printLivedataLineFinal()
 
         status_line="$status_line$signal_line" #merge for compact format
         unset signal_line
+
+        [ -n "$LIVEVIEW_HIDE_STATUSLINE" ] && unset status_line
   
         if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
             appendFormat " $header_fmt %s %s %s %s\n"
@@ -2014,18 +2016,25 @@ printLivedata()
       
        [ -n "$LIVEDATA_WINDSPEED" ] && printLivedataHeader "" "$LIVEDATA_WIND_HEADER"
 
-       [ -n "$LIVEDATA_WINDSPEED" ] && [ -n "$LIVEDATA_WINDGUSTSPEED" ] && [ -n "$LIVEDATA_WINDDIRECTION" ] && newLivedataCompass "$UNICODE_WIND" "$VALUE_COMPASS"
+       [ -z "$LIVEVIEW_HIDE_COMPASS" ] && [ -n "$LIVEDATA_WINDSPEED" ] && [ -n "$LIVEDATA_WINDGUSTSPEED" ] && [ -n "$LIVEDATA_WINDDIRECTION" ] && newLivedataCompass "$UNICODE_WIND" "$VALUE_COMPASS"
          
         if [ -n "$LIVEDATA_WINDSPEED" ]; then
-            setStyleBeufort "$LIVEDATA_WINDSPEED_RAW"
-            STYLE_LIVE_VALUE=$STYLE_BEUFORT
+            if [ -z "$LIVEVIEW_HIDE_BEUFORT" ]; then
+                setStyleBeufort "$LIVEDATA_WINDSPEED_RAW"
+                STYLE_LIVE_VALUE=$STYLE_BEUFORT
+            fi
             printLivedataLine "$LIVEDATA_WINDSPEED_HEADER" "$LIVEDATA_WINDSPEED" "%6.1f" "$UNIT_WIND"  "%4s" 'wspd' "%6.1f" '' '' "\t%s$LIVEVIEW_COMPASS_N_FMT" 
+           
         fi
 
         if [ -n "$LIVEDATA_WINDGUSTSPEED" ]; then
-            setBeufort "$LIVEDATA_WINDGUSTSPEED_RAW"
-            setStyleBeufort "$LIVEDATA_WINDGUSTSPEED_RAW"
-            STYLE_LIVE_VALUE=$STYLE_BEUFORT
+           if [ -z "$LIVEVIEW_HIDE_BEUFORT" ]; then
+                setBeufort "$LIVEDATA_WINDGUSTSPEED_RAW"
+                setStyleBeufort "$LIVEDATA_WINDGUSTSPEED_RAW"
+                STYLE_LIVE_VALUE=$STYLE_BEUFORT
+           else
+             unset VALUE_BEUFORT_DELIMITER
+            fi
             printLivedataLine  "$LIVEDATA_WINDGUSTSPEED_HEADER $VALUE_BEUFORT_DELIMITER $VALUE_BEUFORT $VALUE_BEUFORT_DESCRIPTION " "$LIVEDATA_WINDGUSTSPEED" "%6.1f" "$UNIT_WIND" "%4s" 'wgspd' "%6.1f" "" "" "\t%s$LIVEVIEW_COMPASS_WE_FMT"
         fi
 
@@ -2035,9 +2044,13 @@ printLivedata()
          "%5s" 'wdeg' "%4u" "$LIVEDATA_WINDDIRECTION" "" "\t%s$LIVEVIEW_COMPASS_S_FMT"
         
         if [ -n "$LIVEDATA_WINDDAILYMAX" ]; then
-            setBeufort "$LIVEDATA_WINDDAILYMAX_RAW"
-            setStyleBeufort "$LIVEDATA_WINDDAILYMAX_RAW"
-            STYLE_LIVE_VALUE=$STYLE_BEUFORT
+            if [ -z "$LIVEVIEW_HIDE_BEUFORT" ]; then
+                setBeufort "$LIVEDATA_WINDDAILYMAX_RAW"
+                setStyleBeufort "$LIVEDATA_WINDDAILYMAX_RAW"
+                STYLE_LIVE_VALUE=$STYLE_BEUFORT
+            else
+                unset VALUE_BEUFORT_DELIMITER
+            fi
             printLivedataLine  "$LIVEDATA_WINDDAILYMAX_HEADER $VALUE_BEUFORT_DELIMITER $VALUE_BEUFORT $VALUE_BEUFORT_DESCRIPTION"   "$LIVEDATA_WINDDAILYMAX"  "%6.1f" "$UNIT_WIND" "%4s" 'wdmax' "%6.1f" 
          fi 
       
@@ -2053,10 +2066,14 @@ printLivedata()
         [ -n "$LIVEDATA_LIGHT" ]    && printLivedataLine "$LIVEDATA_LIGHT_HEADER" "$LIVEDATA_LIGHT"  "%6.1f" "$UNIT_LIGHT" "%4s" 'light'
         [ -n "$LIVEDATA_UV" ]       && printLivedataLine "$LIVEDATA_UV_HEADER" "$LIVEDATA_UV"        "%6.1f" "$UNIT_UV" "%5s" 'uv'
         if [ -n "$LIVEDATA_UVI" ]; then
-            setUVRisk "$LIVEDATA_UVI"
-            setStyleUVI "$LIVEDATA_UVI"
-            #shellcheck disable=SC2153
-            STYLE_LIVE_VALUE=$STYLE_UVI
+           if [ -z "$LIVEVIEW_HIDE_UVI" ]; then
+                setUVRisk "$LIVEDATA_UVI"
+                setStyleUVI "$LIVEDATA_UVI"
+                #shellcheck disable=SC2153
+                STYLE_LIVE_VALUE=$STYLE_UVI
+            else
+              unset VALUE_UVI_DELIMITER
+            fi
             printLivedataLine "$LIVEDATA_UVI_HEADER $VALUE_UVI_DELIMITER $VALUE_UV_RISK" "$LIVEDATA_UVI"      "%6u" "    " "%4s" 'uvi' "%3u"
         fi
     fi
@@ -2188,9 +2205,13 @@ printLivedata()
             #shellcheck disable=SC2153
             eval "if [ -n ''"\$LIVEDATA_PM25$n" ]; then
                             #setSGIBatteryLowNormal \"\$LIVEDATA_PM25${n}_BATTERY\"
-                            setAQI \"\$LIVEDATA_PM25${n}_RAW\"
-                            setStyleAQI \"\$LIVEDATA_PM25${n}_RAW\"
-                            STYLE_LIVE_VALUE=\$STYLE_AQI
+                            if [ -z \"\$LIVEVIEW_HIDE_PM25AQI\" ]; then
+                                setAQI \"\$LIVEDATA_PM25${n}_RAW\"
+                                setStyleAQI \"\$LIVEDATA_PM25${n}_RAW\"
+                                STYLE_LIVE_VALUE=\$STYLE_AQI
+                            else
+                              unset VALUE_PM25_AQI_DELIMITER
+                            fi
                             LIVEDATA_PM25_HEADER$n=\"\$LIVEDATA_PM25_HEADER$n \$VALUE_PM25_AQI_DELIMITER \$VALUE_PM25_AQI\"
                             printLivedataLine \"\$LIVEDATA_PM25_HEADER$n\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$UNIT_PM25\" \"%6s\" \"pm25$n\" '' \"\$LIVEDATA_PM25${n}_BATTERY\" \"\$LIVEDATA_PM25${n}_BATTERY_STATE\" '' \"\$LIVEDATA_PM25${n}_SIGNAL\" \"\$LIVEDATA_PM25${n}_SIGNAL_STATE\"
                  fi"
@@ -2200,9 +2221,13 @@ printLivedata()
         n=1
         while [ "$n" -le "$SENSORTYPE_WH43PM25_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_PM25_24HAVG$n" ]; then
-                        setAQI \"\$LIVEDATA_PM25_24HAVG${n}_RAW\"
-                        setStyleAQI \"\$LIVEDATA_PM25_24HAVG${n}_RAW\"
-                        STYLE_LIVE_VALUE=\$STYLE_AQI
+                        if [ -z \"\$LIVEVIEW_HIDE_PM25AQI\" ]; then
+                            setAQI \"\$LIVEDATA_PM25_24HAVG${n}_RAW\"
+                            setStyleAQI \"\$LIVEDATA_PM25_24HAVG${n}_RAW\"
+                            STYLE_LIVE_VALUE=\$STYLE_AQI
+                        else
+                            unset VALUE_PM25_AQI_DELIMITER
+                        fi
                         LIVEDATA_PM25_24HAVG_HEADER$n=\"\$LIVEDATA_PM25_24HAVG_HEADER$n \$VALUE_PM25_AQI_DELIMITER \$VALUE_PM25_AQI\"
                         printLivedataLine \"\$LIVEDATA_PM25_24HAVG_HEADER$n\" \"\$LIVEDATA_PM25_24HAVG$n\" \"%6.1f\" \"\$UNIT_PM25\" \"%6s\" \"pm25a$n\" \"%6.1f\"
              fi"
@@ -5974,7 +5999,7 @@ while [ $# -gt 0 ]; do
            shift 2
            ;;
 
-       -H | --hide_liveview--livewview)
+       -H | --hide-liveview)
           
           #default is show all information gathered, these options allows to filter output/turn off display of sensors
 
@@ -5983,6 +6008,26 @@ while [ $# -gt 0 ]; do
           for hide_liveview in $2; do 
 
             case "$hide_liveview" in
+
+                    uvi)
+                      LIVEVIEW_HIDE_UVI=1
+                      ;;
+
+                    pm25aqi)
+                      LIVEVIEW_HIDE_PM25AQI=1 #hides PM 2.5 AQI  styling/description
+                      ;;
+
+                    beufort)
+                      LIVEVIEW_HIDE_BEUFORT=1 # hides beufort styling and description
+                      ;;
+
+                    status) #battery/signal status unicode icons
+                       LIVEVIEW_HIDE_STATUSLINE=1
+                       ;;
+
+                    c | compass)
+                        LIVEVIEW_HIDE_COMPASS=1
+                        ;;
 
                     sh | sensor-header)
                         SENSORVIEW_HIDE_HEADER=1
@@ -6048,7 +6093,7 @@ while [ $# -gt 0 ]; do
                         LIVEVIEW_HIDE_LIGHTNING=1
                         ;;
 
-                    *) echo >&2 "Warning: Unknown hide_liveview option $hide_liveview; use sensor-header|sh,headers|h,rain|r,wind|w,temperature|t,light|l,system|s,soilmoisture|sm,soiltemperature|st,leak,co2,pm25,leafwetness|leafw,lightning,tempusr|tusr"
+                    *) echo >&2 "Warning: Unknown hide_liveview option $hide_liveview; use sensor-header|sh,headers|h,rain|r,wind|w,temperature|t,light|l,system|s,soilmoisture|sm,soiltemperature|st,leak,co2,pm25,leafwetness|leafw,lightning,tempusr|tusr,compass,status,beufort,pm25aqi,uvi"
                        ;;
                     esac
                 done
@@ -6244,7 +6289,7 @@ while [ $# -gt 0 ]; do
             printTimezones
             ;;
 
-        -ws | --wifi-server) # method 1 in spec. part 3
+        -ws | --wifi-server) # method 1 in spec. part 3, only saw this 1 time in wireshark packet tracing, then it disappeared
 
             if [ -z "$2" ]; then
                 echo >&2 Error: Empty SSID not allowed
