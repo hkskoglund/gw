@@ -3134,9 +3134,9 @@ parseSensorIdNew()
     resetAppendBuffer
 
     printSensorHeader=0
-    if [ -z "$HIDE_SENSORID_HEADER" ];  then 
+    if [ -z "$HIDE_SENSORTYPE_HEADER" ];  then 
        printSensorHeader=1
-    elif [ "$HIDE_SENSORID_HEADER" -eq 0 ]; then
+    elif [ "$HIDE_SENSORTYPE_HEADER" -eq 0 ]; then
        printSensorHeader=1
     fi
 
@@ -4397,7 +4397,7 @@ processSensorOptions()
             else # yet another read (for example -c sensor 1-10,40-47) use in-memory buffer backup 
                IFS=" " parsePacket "$OD_BUFFER_BACKUP" 
             fi
-            HIDE_SENSORID_HEADER=1 #disabled header for next , expression
+            HIDE_SENSORTYPE_HEADER=1 #disabled header for next , expression
             continue
         fi
 
@@ -5874,12 +5874,6 @@ while [ $# -gt 0 ]; do
            shift
            ;;
 
-       -vtr | --view-terse-row)
-
-           LIVEDATA_VIEW=$LIVEDATA_VIEW_TERSE_ROW
-           shift
-           ;;
-
        -vt | --view-terse)
 
            LIVEDATA_VIEW=$LIVEDATA_VIEW_TERSE
@@ -5904,84 +5898,87 @@ while [ $# -gt 0 ]; do
            shift 2
            ;;
 
-       -Hhs | --hide-sensor-header)
-           HIDE_SENSORID_HEADER=1
-           shift
-           ;;
+       -H | --hide)
 
-       -Hh | --hide-headers)
-            HIDE_HEADERS_LIVEDATA=1
-            shift
-            ;;
+          IFS=,
 
-       -Hb | --hide-battery)
-            HIDE_BATTERY_LIVEDATA=1
-            shift
-            ;;
-        
-       -Hs | --hide-system)
-           HIDE_SYSTEM_LIVEDATA=1
-           shift
-           ;;
+          for hide in $2; do 
 
-       -Hr | --hide-rain)
-           HIDE_RAIN_LIVEDATA=1
-           shift
-           ;;
+            case "$hide" in
 
-       -Hl | --hide-light)
-           HIDE_LIGHT_LIVEDATA=1
-           shift
-           ;;
-        
-       -Ht | --hide-temp)
-          HIDE_TEMP_LIVEDATA=1
-          shift
-          ;;
+                    sh | sensor-header)
+                        HIDE_SENSORTYPE_HEADER=1
+                        ;;
 
-       -Hw | --hide-wind)
-          HIDE_WIND_LIVEDATA=1
-          shift
-          ;;
+                    h | headers)
+                        HIDE_HEADERS_LIVEDATA=1
+                        ;;
 
-       -Hsm | --hide-soilmoisture)
-          HIDE_SOILMOISTURE_LIVEDATA=1
-          shift
-          ;;
+                   # b | battery)
+                    #    HIDE_BATTERY_LIVEDATA=1
+                      #  ;;
+                        
+                    s | system)
+                        HIDE_SYSTEM_LIVEDATA=1
+                        ;;
 
-       -Hst | --hide-soiltemperature)
-          HIDE_SOILTEMPERATURE_LIVEDATA=1
-          shift
-          ;;
+                    r | rain)
+                        HIDE_RAIN_LIVEDATA=1
+                        ;;
 
-        -Hleak | --hide-leak)
-          HIDE_LEAK_LIVEDATA=1
-          shift
-          ;;
+                    l | light)
+                        HIDE_LIGHT_LIVEDATA=1
+                        ;;
+                        
+                    t | temperature)
+                        HIDE_TEMP_LIVEDATA=1
+                        ;;
 
-        -Htusr | --hide-tempusr)
-           HIDE_TEMPUSR_LIVEDATA=1
-           shift
-           ;;
+                    w | wind)
+                        HIDE_WIND_LIVEDATA=1
+                        ;;
 
-        -Hpm25 | --hide-pm25)
-           HIDE_PM25_LIVEDATA=1
-           shift
-           ;;
+                    sm | soilmoisture)
+                        HIDE_SOILMOISTURE_LIVEDATA=1
+                        ;;
 
-        -Hco2 | --hide-co2)
-           HIDE_CO2_LIVEDATA=1
-           shift
-           ;;
+                    st | soiltemperature)
+                        HIDE_SOILTEMPERATURE_LIVEDATA=1
+                        ;;
 
-        -Hleaf | --hide-leafwetness)
-           HIDE_LEAFWETNESS_LIVEDATA=1
-           ;;
+                    leak)
+                        HIDE_LEAK_LIVEDATA=1
+                        ;;
 
-        -Hlightning | --hide-lightning)
-            HIDE_LIGHTNING_LIVEDATA=1
-            shift
-            ;;
+                    tusr | tempusr)
+                        HIDE_TEMPUSR_LIVEDATA=1
+                        ;;
+
+                    pm25)
+                        HIDE_PM25_LIVEDATA=1
+                        ;;
+
+                    co2)
+                        HIDE_CO2_LIVEDATA=1
+                        ;;
+
+                    leafw | leafwetness)
+                        HIDE_LEAFWETNESS_LIVEDATA=1
+                        ;;
+
+                    lightning)
+                        HIDE_LIGHTNING_LIVEDATA=1
+                        ;;
+
+                    *) echo >&2 "Error: Unknown hide option $hide; use sensor-header|sh,headers|h,rain|r,wind|w,temperature|t,light|l,system|s,soilmoisture|sm,soiltemperature|st,leak,co2,pm25,leafwetness|leafw,lightning,tempusr|tusr"
+                       ;;
+                    esac
+                done
+
+                 [ -n "$2" ] && shift
+                 shift
+
+                ;;
 
       -n   | --log-interval)
             if ! argEmptyOrOption "$2"; then
