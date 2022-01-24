@@ -1860,7 +1860,7 @@ setRainIntensityStatus()
 
 printLivedataHeader()
 {
-    [ -n "$HIDE_HEADERS_LIVEDATA" ] && return
+    [ -n "$LIVEVIEW_HIDE_HEADERS" ] && return
 
     #unset STYLE_LIVEVIEW_NORMAL_HEADER
     [ -z "$1" ] && set -- "\n$STYLE_LIVEVIEW_NORMAL_HEADER%s$STYLE_RESET\n\n" "$2"  #use default when "" used as $1
@@ -1897,7 +1897,7 @@ printLivedataLineFinal()
     fi
 
     # \r\t horizontal/absolute positioning is compatible with unicode in string
-    if [ -n "$HIDE_HEADERS_LIVEDATA" ] && [ "$HIDE_HEADERS_LIVEDATA" -eq 1 ]; then 
+    if [ -n "$LIVEVIEW_HIDE_HEADERS" ] && [ "$LIVEVIEW_HIDE_HEADERS" -eq 1 ]; then 
         header_fmt="%s\r\t\t\t\t" 
     else
        header_fmt=" %s\r\t\t\t\t"
@@ -2010,7 +2010,7 @@ printLivedata()
          fi
      fi
  
-    if [ -z "$HIDE_WIND_LIVEDATA" ]; then
+    if [ -z "$LIVEVIEW_HIDE_WIND" ]; then
       
        [ -n "$LIVEDATA_WINDSPEED" ] && printLivedataHeader "" "$LIVEDATA_WIND_HEADER"
 
@@ -2045,10 +2045,10 @@ printLivedata()
     fi
 
     if [ -n "$LIVEDATA_LIGHT" ] && [ "$LIVEDATA_LIGHT_RAW" -eq 0 ] && [ "$HIDE_LIGHT_LIVEDATA_AUTO" -eq 1 ]; then
-      HIDE_LIGHT_LIVEDATA=1 # auto hide_liveview, when dark
+      LIVEVIEW_HIDE_LIGHT=1 # auto hide_liveview, when dark
     fi
 
-    if [ -z "$HIDE_LIGHT_LIVEDATA" ]; then
+    if [ -z "$LIVEVIEW_HIDE_LIGHT" ]; then
         [ -n "$LIVEDATA_LIGHT" ] && printLivedataHeader "" "$LIVEDATA_SOLAR_HEADER"
         [ -n "$LIVEDATA_LIGHT" ]    && printLivedataLine "$LIVEDATA_LIGHT_HEADER" "$LIVEDATA_LIGHT"  "%6.1f" "$UNIT_LIGHT" "%4s" 'light'
         [ -n "$LIVEDATA_UV" ]       && printLivedataLine "$LIVEDATA_UV_HEADER" "$LIVEDATA_UV"        "%6.1f" "$UNIT_UV" "%5s" 'uv'
@@ -2062,10 +2062,10 @@ printLivedata()
     fi
 
     if [ -n "$LIVEDATA_RAINDAY_RAW" ] && [ "$LIVEDATA_RAINDAY_RAW" -eq 0 ] && [ "$HIDE_RAIN_LIVEDATA_AUTO" -eq 1 ]; then
-       HIDE_RAIN_LIVEDATA=1 #auto hide_liveview, if no rain today
+       LIVEVIEW_HIDE_RAIN=1 #auto hide_liveview, if no rain today
     fi
 
-    if [ -z "$HIDE_RAIN_LIVEDATA" ]; then
+    if [ -z "$LIVEVIEW_HIDE_RAIN" ]; then
       
         setRainValueFormat # 2 decimals for inch or 1 decimals for mm
        
@@ -2096,7 +2096,7 @@ printLivedata()
         [ -n "$LIVEDATA_RAINTOTAL" ]    && printLivedataLine "$LIVEDATA_RAINTOTAL_HEADER" "$LIVEDATA_RAINTOTAL"  "$VALUE_RAIN_FMT" "$UNIT_RAIN" "%3s" 'rtotal' "$VALUE_RAIN_FMT"
     fi
 
-     if [ -z "$HIDE_TEMP_LIVEDATA" ]; then 
+     if [ -z "$LIVEVIEW_HIDE_TEMP" ]; then 
         [ -n "$LIVEDATA_TEMP1" ] && printLivedataHeader "" "$LIVEDATA_TEMP_HEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
@@ -2124,7 +2124,7 @@ printLivedata()
 
      fi
 
-    if [ -z "$HIDE_SOILMOISTURE_LIVEDATA" ]; then
+    if [ -z "$LIVEVIEW_HIDE_SOILMOISTURE" ]; then
         [ -n "$LIVEDATA_SOILMOISTURE1" ] && printLivedataHeader "" "$LIVEDATA_SOILMOISTURE_HEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH51SOILMOISTURE_MAXCH" ]; do
@@ -2136,7 +2136,7 @@ printLivedata()
         done
     fi
 
-    if [ -z "$HIDE_SOILTEMPERATURE_LIVEDATA" ]; then
+    if [ -z "$LIVEVIEW_HIDE_SOILTEMPERATURE" ]; then
 
         [ -n "$LIVEDATA_SOILTEMP1" ] && printLivedataHeader "" "$LIVEDATA_SOILTEMP_HEADER"
         n=1
@@ -2149,7 +2149,7 @@ printLivedata()
         done
     fi
    
-    if [ -z "$HIDE_TEMPUSR_LIVEDATA" ]; then
+    if [ -z "$LIVEVIEW_HIDE_TEMPUSR" ]; then
        
        [ -n "$LIVEDATA_TF_USR1" ] && printLivedataHeader "" "$LIVEDATA_TEMPUSR_HEADER"
         n=1
@@ -2162,7 +2162,7 @@ printLivedata()
         done
     fi
 
-    if [ -z "$HIDE_LEAK_LIVEDATA" ]; then
+    if [ -z "$LIVEVIEW_HIDE_LEAK" ]; then
 
         [ -n "$LIVEDATA_LEAK1" ] && printLivedataHeader "" "$LIVEDATA_LEAK_HEADER"
         n=1
@@ -2180,7 +2180,7 @@ printLivedata()
         done
     fi
 
-    if [ -z "$HIDE_PM25_LIVEDATA" ]; then
+    if [ -z "$LIVEVIEW_HIDE_PM25" ]; then
 
         [ -n "$LIVEDATA_PM251" ] && printLivedataHeader "" "$LIVEDATA_PM25_HEADER"
         n=1
@@ -2210,7 +2210,7 @@ printLivedata()
         done
     fi
 
-    if [ -z "$HIDE_CO2_LIVEDATA" ]; then
+    if [ -z "$LIVEVIEW_HIDE_CO2" ]; then
 
         #WH45
         if [ -n "$LIVEDATA_WH45CO2_TEMPF" ]; then
@@ -2240,7 +2240,7 @@ printLivedata()
         [ -n "$LIVEDATA_WH45CO2_CO2_24HAVG" ]   && printLivedataLine "$LIVEDATA_WH45CO2_CO2_24HAVG_HEADER" "$LIVEDATA_WH45CO2_CO2_24HAVG"           "%6u" "$UNIT_CO2" "%6s" 'co2a'
     fi
 
-    if [ -z "$HIDE_LIGHTNING_LIVEDATA" ]; then
+    if [ -z "$LIVEVIEW_HIDE_LIGHTNING" ]; then
 
         if [ -n "$LIVEDATA_LIGHTNING_DISTANCE" ]; then
             printLivedataHeader "" "$LIVEDATA_LIGHTNING_HEADER"
@@ -2251,7 +2251,7 @@ printLivedata()
     
     fi
 
-    if [ -z "$HIDE_LEAFWETNESS_LIVEDATA" ]; then
+    if [ -z "$LIVEVIEW_HIDE_LEAFWETNESS" ]; then
         [ -n "$LIVEDATA_LEAFWETNESS1" ] && printLivedataHeader "" "$LIVEDATA_LEAFWETNESS_HEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH35LEAFWETNESS_MAXCH" ]; do
@@ -2278,7 +2278,7 @@ printLivedata()
 
     #system
    
-    if [ -z "$HIDE_SYSTEM_LIVEDATA" ]; then
+    if [ -z "$LIVEVIEW_HIDE_SYSTEM" ]; then
         
         printLivedataHeader "" "$LIVEDATA_SYSTEM_HEADER"
 
@@ -3134,9 +3134,9 @@ parseSensorIdNew()
     resetAppendBuffer
 
     printSensorHeader=0
-    if [ -z "$HIDE_SENSORTYPE_HEADER" ];  then 
+    if [ -z "$SENSORVIEW_HIDE_HEADER" ];  then 
        printSensorHeader=1
-    elif [ "$HIDE_SENSORTYPE_HEADER" -eq 0 ]; then
+    elif [ "$SENSORVIEW_HIDE_HEADER" -eq 0 ]; then
        printSensorHeader=1
     fi
 
@@ -3460,7 +3460,7 @@ sendPacketnc() { #$1 - command
     if [ -n "$2" ]; then
         host="$2" # for udp broadcast probing on subnet
     else
-        host="$C_host" # -h option
+        host="$C_HOST" # -h option
     fi
 
     if [ -z "$host" ]; then
@@ -3856,7 +3856,10 @@ sendRaindata() {
     writeUInt32BE "$3" #rainmonth
     writeUInt32BE "$4" #rainyear
     [ $DEBUG -eq 1 ] && echo >&2 "Sending raindata rd $1 rw $2 rm $3 ry $4"
-    sendPacket
+   
+   if ! sendPacket; then
+        echo >&2 "Error: Failed to send rain data $?"
+   fi
 }
 
 sendCalibration() {
@@ -4397,7 +4400,7 @@ processSensorOptions()
             else # yet another read (for example -c sensor 1-10,40-47) use in-memory buffer backup 
                IFS=" " parsePacket "$OD_BUFFER_BACKUP" 
             fi
-            HIDE_SENSORTYPE_HEADER=1 #disabled header for next , expression
+            SENSORVIEW_HIDE_HEADER=1 #disabled header for next , expression
             continue
         fi
 
@@ -4440,6 +4443,79 @@ processSensorOptions()
     fi
 }
 
+convertRainOptmmToScale10()
+{
+    rain_int=${1%%.*}
+    rain_dec=${1##*.}
+    
+    if [ "$rain_int" = "$rain_dec" ]; then
+       unset rain_dec
+    else
+        rain_dec_suffix=${rain_dec#?} #deletes first digit
+        rain_dec=${rain_dec%%"$rain_dec_suffix"} # no rounding, just cut off
+    fi
+
+    if isNumber "$rain_int$rain_dec"; then
+        VALUE_RAINOPT_SCALE10=$rain_int$rain_dec
+    else
+      unset VALUE_RAINOPT_SCALE10
+      return 1
+    fi
+}
+
+parseRaindataOptions()
+#parse options to -c rain command
+{
+    
+    #copy read values
+    rainday=$C_RAINDAILY
+    rainweek=$C_RAINWEEK
+    rainmonth=$C_RAINMONTH
+    rainyear=$C_RAINYEAR
+
+    rain_needsupdate=0
+
+    IFS=,
+    for rainexpr in $1; do
+        IFS='='
+        #shellcheck disable=SC2086
+        set -- $rainexpr
+            case "$1" in
+                d|day)   if [ -n "$2" ] && convertRainOptmmToScale10 "$2"; then
+                             [ "$VALUE_RAINOPT_SCALE10" -ne "$rainday" ]  &&  { rainday="$VALUE_RAINOPT_SCALE10"; rain_needsupdate=1; }
+                         else
+                           >&2 echo Warning: Invalid value for "$1"
+                         fi
+                            ;;
+                w|week)  if [ -n "$2" ] && convertRainOptmmToScale10 "$2"; then
+                             [ "$VALUE_RAINOPT_SCALE10" -ne "$rainweek" ]  &&  { rainweek="$VALUE_RAINOPT_SCALE10"; rain_needsupdate=1; }
+                         else
+                           >&2 echo Warning: Invalid value for "$1"
+                         fi
+                            ;;
+                m|month) if [ -n "$2" ] && convertRainOptmmToScale10 "$2"; then
+                             [ "$VALUE_RAINOPT_SCALE10" -ne "$rainmonth" ] &&  { rainmonth="$VALUE_RAINOPT_SCALE10"; rain_needsupdate=1; }
+                         else
+                           >&2 echo Warning: Invalid value for "$1"
+                         fi
+                            ;;
+                y|year)  if [ -n "$2" ] && convertRainOptmmToScale10 "$2"; then
+                             [ "$VALUE_RAINOPT_SCALE10" -ne "$rainyear" ] &&  { rainyear="$VALUE_RAINOPT_SCALE10"; rain_needsupdate=1; }
+                        else
+                           >&2 echo Warning: Invalid value for "$1"
+                         fi
+                            ;;
+                *) >&2 echo "Warning: use day|d,week|w,month|m,year|y, for example d=100 sets daily rain to 10.0 mm"
+                    ;;
+            esac
+    done
+
+    [ $rain_needsupdate -eq 1 ] &&  sendRaindata "$rainday" "$rainweek" "$rainmonth" "$rainyear"
+
+    unset rain_needsupdate
+    
+}
+
 processCommand() {
 
    [ "$DEBUG" -eq 1 ] && >&2 echo ARGS to processCommand "$@" length "$#" COMMAND "$COMMAND"
@@ -4456,7 +4532,6 @@ processCommand() {
 
         "$CMDOPT_RESET")
 
-set -x
             if sendPacket $CMD_BROADCAST >/dev/null; then
 
                 printf "%s" "Reset $C_BROADCAST_MAC $C_BROADCAST_SSID (Y/N)? "
@@ -4584,14 +4659,12 @@ set -x
 
             if argEmptyOrOption "$1"; then
                 sendPacket $CMD_READ_RAINDATA
-#            else
-
-#                if [ $# -lt 4 ]; then # validate rain input
-#                    echo >&2 "Error: {rainday} {week} {month} {year} parameters not specified"
-#                else
-#                    sendRaindata "$1" "$2" "$3" "$4"
-#                fi
-
+            else
+                if sendPacket $CMD_READ_RAINDATA >/dev/null ; then #refresh
+                    parseRaindataOptions "$1"
+                else
+                  echo >&2 Error: Failed to get raindata from "$C_HOST"
+                fi
             fi
 
             ;;
@@ -4659,7 +4732,7 @@ set -x
 
         *)
 
-            echo >&2 Error Unknown command "$COMMAND" "$@"
+            echo >&2 "Error Unknown command $COMMAND $@"
             return "$ERROR_COMMAND_UNKNOWN"
             ;;
     esac
@@ -5878,8 +5951,8 @@ while [ $# -gt 0 ]; do
                                     ;;
                            t | terse) LIVEDATA_VIEW=$LIVEDATA_VIEW_TERSE
                                     ;;
-                            *) echo >&2 Error: Unknown livedata view, use terse|t,big|b
-                               ;;
+                            *) >&2 echo "Warning: Unknown livedata view $liveview, use terse|t,big|g"
+                            ;;
                         esac
                     done
                     [ -n "$2" ] && shift
@@ -5902,6 +5975,8 @@ while [ $# -gt 0 ]; do
            ;;
 
        -H | --hide_liveview--livewview)
+          
+          #default is show all information gathered, these options allows to filter output/turn off display of sensors
 
           IFS=,
 
@@ -5910,11 +5985,11 @@ while [ $# -gt 0 ]; do
             case "$hide_liveview" in
 
                     sh | sensor-header)
-                        HIDE_SENSORTYPE_HEADER=1
+                        SENSORVIEW_HIDE_HEADER=1
                         ;;
 
                     h | headers)
-                        HIDE_HEADERS_LIVEDATA=1
+                        LIVEVIEW_HIDE_HEADERS=1
                         ;;
 
                    # b | battery)
@@ -5922,58 +5997,58 @@ while [ $# -gt 0 ]; do
                       #  ;;
                         
                     s | system)
-                        HIDE_SYSTEM_LIVEDATA=1
+                        LIVEVIEW_HIDE_SYSTEM=1
                         ;;
 
                     r | rain)
-                        HIDE_RAIN_LIVEDATA=1
+                        LIVEVIEW_HIDE_RAIN=1
                         ;;
 
                     l | light)
-                        HIDE_LIGHT_LIVEDATA=1
+                        LIVEVIEW_HIDE_LIGHT=1
                         ;;
                         
                     t | temperature)
-                        HIDE_TEMP_LIVEDATA=1
+                        LIVEVIEW_HIDE_TEMP=1
                         ;;
 
                     w | wind)
-                        HIDE_WIND_LIVEDATA=1
+                        LIVEVIEW_HIDE_WIND=1
                         ;;
 
                     sm | soilmoisture)
-                        HIDE_SOILMOISTURE_LIVEDATA=1
+                        LIVEVIEW_HIDE_SOILMOISTURE=1
                         ;;
 
                     st | soiltemperature)
-                        HIDE_SOILTEMPERATURE_LIVEDATA=1
+                        LIVEVIEW_HIDE_SOILTEMPERATURE=1
                         ;;
 
                     leak)
-                        HIDE_LEAK_LIVEDATA=1
+                        LIVEVIEW_HIDE_LEAK=1
                         ;;
 
                     tusr | tempusr)
-                        HIDE_TEMPUSR_LIVEDATA=1
+                        LIVEVIEW_HIDE_TEMPUSR=1
                         ;;
 
                     pm25)
-                        HIDE_PM25_LIVEDATA=1
+                        LIVEVIEW_HIDE_PM25=1
                         ;;
 
                     co2)
-                        HIDE_CO2_LIVEDATA=1
+                        LIVEVIEW_HIDE_CO2=1
                         ;;
 
                     leafw | leafwetness)
-                        HIDE_LEAFWETNESS_LIVEDATA=1
+                        LIVEVIEW_HIDE_LEAFWETNESS=1
                         ;;
 
                     lightning)
-                        HIDE_LIGHTNING_LIVEDATA=1
+                        LIVEVIEW_HIDE_LIGHTNING=1
                         ;;
 
-                    *) echo >&2 "Error: Unknown hide_liveview option $hide_liveview; use sensor-header|sh,headers|h,rain|r,wind|w,temperature|t,light|l,system|s,soilmoisture|sm,soiltemperature|st,leak,co2,pm25,leafwetness|leafw,lightning,tempusr|tusr"
+                    *) echo >&2 "Warning: Unknown hide_liveview option $hide_liveview; use sensor-header|sh,headers|h,rain|r,wind|w,temperature|t,light|l,system|s,soilmoisture|sm,soiltemperature|st,leak,co2,pm25,leafwetness|leafw,lightning,tempusr|tusr"
                        ;;
                     esac
                 done
@@ -5985,6 +6060,7 @@ while [ $# -gt 0 ]; do
                 ;;
 
       -n   | --log-interval)
+
             if ! argEmptyOrOption "$2"; then
                 LOG_INTERVAL="$2"
                 shift 2
@@ -6099,10 +6175,10 @@ while [ $# -gt 0 ]; do
 
         -g | --gw)
 
-            C_host="$2"
+            C_HOST="$2"
             #sendPacket "$CMD_READ_MAC" >/dev/null
-            sendPacket "$CMD_READ_VERSION" >/dev/null
-            sendPacket "$CMD_READ_SYSTEM" >/dev/null # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
+            sendPacket "$CMD_READ_VERSION" >/dev/null; 
+            sendPacket "$CMD_READ_SYSTEM" >/dev/null;  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
             #sendPacket "$CMD_READ_SENSOR_ID_NEW" >/dev/null
 
             shift 2
