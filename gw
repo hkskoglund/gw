@@ -42,6 +42,7 @@ OPTION_SHOW_HTTP_REQUEST=0
 OPTION_SHOW_TESTSENSOR=0
 
 MAX_16BIT_UINT=$(((2 << 16) - 1))
+TIMEOUT_WIFICONFIG_SERVER=${TIMEOUT_WIFICONFIG_SERVER:=10} # timeout in seconds for wifi-server configuration of GW1000
 
 GW_VIEW_BIG_FILE=${GW_VIEW_BIG_FILE="./view/big.sh"}
 GW_VIEW_CSV_FILE=${GW_VIEW_CSV_FILE:="./view/csv.sh"}
@@ -137,6 +138,7 @@ ERROR_COMMAND_UNKNOWN=17
 ERROR_INVALID_SUBNET=18
 ERROR_SSID_EMPTY=19
 ERROR_PARSEPACKET_UNSUPPORTED_COMMAND=20
+ERROR_WIFICONFIG_SERVER_FAILED=21 # fail response code 1 from GW
 
 #HTTP_RESPONSE_200_OK="HTTP/1.1 200 OK"
 #CRLF='\r\n'
@@ -1460,6 +1462,7 @@ parseResult() {
 
     readUInt8
     write_result=$VALUE_UINT8
+    VALUE_PACKET_WRITE_RESULT=$write_result
 
     if [ "$write_result" -eq 0 ]; then
     :
@@ -4543,7 +4546,9 @@ parseRaindataOptions()
 
 processCommand() {
 
-   [ "$DEBUG" -eq 1 ] && >&2 echo ARGS to processCommand "$@" length "$#" COMMAND "$COMMAND"
+   unset EXITCODE_PROCESSCOMMAND
+   #[ "$DEBUG" -eq 1 ] && >&2 
+   echo ARGS to processCommand "$@" length "$#" COMMAND "$COMMAND"
 
    if [ "$#" -ge 1 ]; then
       shift # remove {command} (to -c option) -> all args to {command} starts at $1
@@ -4554,6 +4559,42 @@ processCommand() {
         "")
             printCommands
             ;;
+
+         w-s | wifi-server) # method 1 in spec. part 3
+            #open tcp 49123 in windows firewall for private network, set GW1000-WIFI???? network as private-network 
+            #inside wsl2: setup tcp portproxy (allow external tcp 49123 -> wsl tcp 49123)
+            #    iex "netsh interface portproxy add v4tov4 listenaddress=(Get-NetIPAddress -InterfaceAlias Wi-Fi -AddressFamily IPv4).IPAddress connectaddress=$(wsl -e hostname -I) connectport=49123 listenport=49123"
+            #windows: netsh wlan connect GW1000-WIFI????
+
+            if [ -z "$1" ]; then
+                echo >&2 Error: Empty SSID not allowed
+                shift
+                EXITCODE_PROCESSCOMMAND=$ERROR_SSID_EMPTY
+           else
+                createWIFIpacket "$1" "$2"
+                createPacketTX
+                od_buffer=$(printf %b "$PACKET_TX_ESCAPE" | timeout "$TIMEOUT_WIFICONFIG_SERVER" nc -v -l "$PORT_WIFICONFIG_SERVER_TCP" | od -A n -t u1 -w$MAX_16BIT_UINT) 
+                parsePacket "$od_buffer"
+                [ $VALUE_PACKET_WRITE_RESULT -eq 1 ] && EXITCODE_PROCESSCOMMAND=$ERROR_WIFICONFIG_SERVER_FAILED
+            fi
+            ;;
+
+
+        #w-c | wifi-client)
+#
+#           case "$2" in
+#             server)
+
+         #  if [ -z "$2" ]; then
+         #   echo >&2 Error: Empty SSID not allowed
+         #   shift
+         #   EXITCODE_MAIN=$ERROR_SSID_EMPTY
+         #  else
+         #       createWIFIpacket "$2" "$3"
+         #       sendPacket
+         #       shift 3
+         #   fi
+         #   ;;
 
         "$CMDOPT_RESET")
 
@@ -4757,12 +4798,12 @@ processCommand() {
 
         *)
 
-            echo >&2 "Error Unknown command $COMMAND $@"
+            echo >&2 "Error Unknown command $COMMAND $*"
             return "$ERROR_COMMAND_UNKNOWN"
             ;;
     esac
 
-    EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
+    [ -z "$EXITCODE_PROCESSCOMMAND" ] && EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
 
     return $EXITCODE_PROCESSCOMMAND
 }
@@ -6017,7 +6058,7 @@ while [ $# -gt 0 ]; do
                       LIVEVIEW_HIDE_PM25AQI=1 #hides PM 2.5 AQI  styling/description
                       ;;
 
-                    beufort)
+                    b|beufort)
                       LIVEVIEW_HIDE_BEUFORT=1 # hides beufort styling and description
                       ;;
 
@@ -6093,7 +6134,7 @@ while [ $# -gt 0 ]; do
                         LIVEVIEW_HIDE_LIGHTNING=1
                         ;;
 
-                    *) echo >&2 "Warning: Unknown hide_liveview option $hide_liveview; use sensor-header|sh,headers|h,rain|r,wind|w,temperature|t,light|l,system|s,soilmoisture|sm,soiltemperature|st,leak,co2,pm25,leafwetness|leafw,lightning,tempusr|tusr,compass,status,beufort,pm25aqi,uvi"
+                    *) echo >&2 "Warning: Unknown hide_liveview option $hide_liveview; use sensor-header|sh,headers|h,rain|r,wind|w,temperature|t,light|l,system|s,soilmoisture|sm,soiltemperature|st,leak,co2,pm25,leafwetness|leafw,lightning,tempusr|tusr,compass|c,status,beufort|b,pm25aqi,uvi"
                        ;;
                     esac
                 done
@@ -6289,35 +6330,7 @@ while [ $# -gt 0 ]; do
             printTimezones
             ;;
 
-        -ws | --wifi-server) # method 1 in spec. part 3, only saw this 1 time in wireshark packet tracing, then it disappeared
-
-            if [ -z "$2" ]; then
-                echo >&2 Error: Empty SSID not allowed
-                shift
-                EXITCODE_MAIN=$ERROR_SSID_EMPTY
-           else
-                createWIFIpacket "$2" "$3"
-                createPacketTX
-                printf "PACKET TX ESCAPE %s\n" "$PACKET_TX_ESCAPE"
-                set -x
-                { printf %b "$PACKET_TX_ESCAPE"; sleep 1; } | nc -l "$PORT_WIFICONFIG_SERVER_TCP"
-                set +x
-            fi
-            ;;
-
-
-        -w | --wifi)
-
-           if [ -z "$2" ]; then
-            echo >&2 Error: Empty SSID not allowed
-            shift
-            EXITCODE_MAIN=$ERROR_SSID_EMPTY
-           else
-                createWIFIpacket "$2" "$3"
-                sendPacket
-                shift 3
-            fi
-            ;;
+       
 
         *)        # unknown option
             shift # past argument
