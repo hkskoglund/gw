@@ -4582,9 +4582,13 @@ processCommand() {
            else
                 createWIFIpacket "$1" "$2"
                 createPacketTX
-                od_buffer=$(printf %b "$PACKET_TX_ESCAPE" | timeout "$TIMEOUT_WIFICONFIG_SERVER" nc -v -l "$PORT_WIFICONFIG_SERVER_TCP" | od -A n -t u1 -w$MAX_16BIT_UINT) 
-                parsePacket "$od_buffer"
-                [ $VALUE_PACKET_WRITE_RESULT -eq 1 ] && EXITCODE_PROCESSCOMMAND=$ERROR_WIFICONFIG_SERVER_FAILED
+                od_buffer=$(printf %b "$PACKET_TX_ESCAPE" | timeout "$TIMEOUT_WIFICONFIG_SERVER" nc -l "$PORT_WIFICONFIG_SERVER_TCP" | od -A n -t u1 -w$MAX_16BIT_UINT) 
+                if parsePacket "$od_buffer"; then
+                    [ $VALUE_PACKET_WRITE_RESULT -eq 1 ] && EXITCODE_PROCESSCOMMAND=$ERROR_WIFICONFIG_SERVER_FAILED
+                else
+                   echo >&2 "Error: No connection received for ${TIMEOUT_WIFICONFIG_SERVER}s on $PORT_WIFICONFIG_SERVER_TCP"
+                   EXITCODE_PROCESSCOMMAND=$EXITCODE_PARSEPACKET
+                fi
                 shift && [ -n "$2" ] && shift
             fi
             ;;
