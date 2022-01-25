@@ -3242,7 +3242,8 @@ parsePacket() {
    
     if [ -z "$1" ]; then
         [ "$DEBUG" -eq 1 ] && echo >&2 Empty od buffer
-        return "$ERROR_OD_BUFFER_EMPTY"
+        EXITCODE_PARSEPACKET="$ERROR_OD_BUFFER_EMPTY"
+        return "$EXITCODE_PARSEPACKET"
     fi
 
     newBuffer "OD_BUFFER" "$1"
@@ -3252,7 +3253,8 @@ parsePacket() {
 
     PRX_PREAMBLE="$B1 $B2"
     if [ "$PRX_PREAMBLE" != "255 255" ]; then
-        return "$ERROR_PRX_PREAMBLE"
+        EXITCODE_PARSEPACKET="$ERROR_PRX_PREAMBLE"
+        return $EXITCODE_PARSEPACKET
     fi
 
     PRX_CMD_UINT8=$((B3))
@@ -3461,13 +3463,18 @@ createPacketTX()
 }
 
 sendPacket() {
-    sendPacketnc "$@" # $@ each arg expands to a separate word
+    EXITCODE_SENDPACKET=0
+
+   if ! sendPacketnc "$@"; then # $@ each arg expands to a separate word
+      EXITCODE_SENDPACKET=$EXITCODE_SENDPACKETNC
+      [ "$DEBUG" -eq 1 ] && echo >&2 "Sendpacket failed with error code $EXITCODE_SENDPACKET"
+   fi
     
-    [ "$EXITCODE_SENDPACKET" -ne 0 ] && [ "$DEBUG" -eq 1 ] && echo >&2 "Sendpacket failed with error code $EXITCODE_SENDPACKET"
     return "$EXITCODE_SENDPACKET"
 }
 
 sendPacketnc() { #$1 - command
+    EXITCODE_SENDPACKETNC=0
     #$2 - host
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
@@ -3488,12 +3495,13 @@ sendPacketnc() { #$1 - command
     if [ -n "$2" ]; then
         host="$2" # for udp broadcast probing on subnet
     else
-        host="$C_HOST" # -h option
+        host="$C_HOST" # -g option
     fi
 
     if [ -z "$host" ]; then
-      echo >&2 No host specified
-      return "$ERROR_NO_HOST_SPECIFIED"
+      echo >&2 Error: No host specified
+      EXITCODE_SENDPACKETNC="$ERROR_NO_HOST_SPECIFIED"
+      return $EXITCODE_SENDPACKETNC
     fi
 
     createPacketTX
@@ -3572,12 +3580,14 @@ sendPacketnc() { #$1 - command
        od_buffer=$(eval "$cmdstr" )
        #maybe use: https://stackoverflow.com/questions/1550933/catching-error-codes-in-a-shell-pipe
        parsePacket "$od_buffer"
-       EXITCODE_SENDPACKET=$?
+       EXITCODE_SENDPACKETNC=$?
     fi
 
     if [ -n "$KSH_VERSION" ]; then
        unset ncUDPOpt ncIdleOpt port host timeout_udp_broadcast useTimeout timeout_nc od_buffer cmdstr nccmdstr odcmdstr
     fi
+
+    return $EXITCODE_SENDPACKETNC
 
 }
 
@@ -4545,10 +4555,9 @@ parseRaindataOptions()
 }
 
 processCommand() {
+   EXITCODE_PROCESSCOMMAND=0
 
-   unset EXITCODE_PROCESSCOMMAND
-   #[ "$DEBUG" -eq 1 ] && >&2 
-   echo ARGS to processCommand "$@" length "$#" COMMAND "$COMMAND"
+   [ "$DEBUG" -eq 1 ] && >&2 echo ARGS to processCommand "$@" length "$#" COMMAND "$COMMAND"
 
    if [ "$#" -ge 1 ]; then
       shift # remove {command} (to -c option) -> all args to {command} starts at $1
@@ -4576,25 +4585,26 @@ processCommand() {
                 od_buffer=$(printf %b "$PACKET_TX_ESCAPE" | timeout "$TIMEOUT_WIFICONFIG_SERVER" nc -v -l "$PORT_WIFICONFIG_SERVER_TCP" | od -A n -t u1 -w$MAX_16BIT_UINT) 
                 parsePacket "$od_buffer"
                 [ $VALUE_PACKET_WRITE_RESULT -eq 1 ] && EXITCODE_PROCESSCOMMAND=$ERROR_WIFICONFIG_SERVER_FAILED
+                shift && [ -n "$2" ] && shift
             fi
             ;;
 
 
-        #w-c | wifi-client)
-#
-#           case "$2" in
-#             server)
+        w-c | wifi-client)
 
-         #  if [ -z "$2" ]; then
-         #   echo >&2 Error: Empty SSID not allowed
-         #   shift
-         #   EXITCODE_MAIN=$ERROR_SSID_EMPTY
-         #  else
-         #       createWIFIpacket "$2" "$3"
-         #       sendPacket
-         #       shift 3
-         #   fi
-         #   ;;
+           if [ -z "$2" ]; then
+                echo >&2 Error: Empty SSID not allowed
+                shift
+                EXITCODE_PROCESSCOMMAND=$ERROR_SSID_EMPTY
+           else
+                createWIFIpacket "$1" "$2"
+                if ! sendPacket; then
+                  echo >&2 Error: Failed to send wifi configuration to "$C_HOST"
+                  EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
+                fi
+                shift && [ -n "$2" ] && shift
+            fi
+            ;;
 
         "$CMDOPT_RESET")
 
