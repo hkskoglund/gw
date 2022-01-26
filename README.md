@@ -194,5 +194,5 @@ Press capital Y to reset, settings are destroyed, be careful.
 https://www.markdownguide.org/basic-syntax/
 https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes
 -->
-
-![Screenshot Windows Terminal](.\img\Skjermbilde 2022-01-26 144206.jpg)
+## Screenshots
+![Screenshot Liveview with headings - Windows Terminal](./img/Skjermbilde%202022-01-26%20144206.png)
