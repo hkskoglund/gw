@@ -2245,6 +2245,8 @@ printLivedata()
  
      if [ -n "$LIVEDATA_OUTTEMP" ]; then
          setLivedataValueStyleLtGt "$LIVEDATA_OUTTEMP_RAW" "$LIVEDATA_OUTTEMP_LIMIT_LOW" "$LIVEDATA_OUTTEMP_LIMIT_HIGH" "$STYLE_LIMIT_LIVEDATA_OUTTEMP" "$STYLE_LIVEDATA_OUTTEMP_LIMIT_HIGH"
+         #WH32 battery and state may be set by injectWH32 testdata or if available
+         #shellcheck disable=SC2153
          printLivedataLine "$LIVEDATA_OUTTEMP_HEADER" "$LIVEDATA_OUTTEMP" "%6.1f" "$UNIT_TEMP" "%s" 'out' '' "$LIVEDATA_WH32_BATTERY"  "$LIVEDATA_WH32_BATTERY_STATE" "" "$LIVEDATA_WH32_SIGNAL" "$LIVEDATA_WH32_SIGNAL_STATE"
      fi
  
