@@ -116,7 +116,108 @@ WIND_WNW=14
 WIND_NW=15
 WIND_NNW=16
 
-. ./gw-beufort.sh
+BEUFORT_0=5  #0.5 m/s
+BEUFORT_1=16
+BEUFORT_2=34
+BEUFORT_3=55
+BEUFORT_4=80
+BEUFORT_5=108
+BEUFORT_6=139
+BEUFORT_7=172
+BEUFORT_8=208
+BEUFORT_9=245
+BEUFORT_10=285
+BEUFORT_11=327
+
+  BEUFORT_0_DESCRIPTION=${BEUFORT_0_DESCRIPTION:="CALM           "}
+  BEUFORT_1_DESCRIPTION=${BEUFORT_1_DESCRIPTION:="LIGHT AIR      "}
+  BEUFORT_2_DESCRIPTION=${BEUFORT_2_DESCRIPTION:="LIGHT BREEZE   "}
+  BEUFORT_3_DESCRIPTION=${BEUFORT_3_DESCRIPTION:="GENTLE BREEZE  "}
+  BEUFORT_4_DESCRIPTION=${BEUFORT_4_DESCRIPTION:="MODERATE BREEZE"}
+  BEUFORT_5_DESCRIPTION=${BEUFORT_5_DESCRIPTION:="FRESH BREEZE   "}
+  BEUFORT_6_DESCRIPTION=${BEUFORT_6_DESCRIPTION:="STRONG BREEZE  "}
+  BEUFORT_7_DESCRIPTION=${BEUFORT_7_DESCRIPTION:="NEAR GALE      "}
+  BEUFORT_8_DESCRIPTION=${BEUFORT_8_DESCRIPTION:="GALE           "}
+  BEUFORT_9_DESCRIPTION=${BEUFORT_9_DESCRIPTION:="STRONG GALE    "}
+BEUFORT_10_DESCRIPTION=${BEUFORT_10_DESCRIPTION:="STORM          "}
+BEUFORT_11_DESCRIPTION=${BEUFORT_11_DESCRIPTION:="VIOLENT STORM  "}
+BEUFORT_12_DESCRIPTION=${BEUFORT_12_DESCRIPTION:="HURRICANE      "}
+
+setBeufort()
+{
+   if   [ "$1" -lt $BEUFORT_0 ]; then
+      VALUE_BEUFORT=0
+      VALUE_BEUFORT_DESCRIPTION=$BEUFORT_0_DESCRIPTION
+   elif [ "$1" -lt $BEUFORT_1 ]; then
+     VALUE_BEUFORT=1
+     VALUE_BEUFORT_DESCRIPTION=$BEUFORT_1_DESCRIPTION
+   elif [ "$1" -lt $BEUFORT_2 ]; then
+     VALUE_BEUFORT=2
+     VALUE_BEUFORT_DESCRIPTION=$BEUFORT_2_DESCRIPTION
+   elif [ "$1" -lt $BEUFORT_3 ]; then
+     VALUE_BEUFORT=3
+     VALUE_BEUFORT_DESCRIPTION=$BEUFORT_3_DESCRIPTION
+   elif [ "$1" -lt $BEUFORT_4 ]; then
+     VALUE_BEUFORT=4
+     VALUE_BEUFORT_DESCRIPTION=$BEUFORT_4_DESCRIPTION
+   elif [ "$1" -lt $BEUFORT_5 ]; then
+     VALUE_BEUFORT=5
+     VALUE_BEUFORT_DESCRIPTION=$BEUFORT_5_DESCRIPTION
+   elif [ "$1" -lt $BEUFORT_6 ]; then
+     VALUE_BEUFORT=6
+     VALUE_BEUFORT_DESCRIPTION=$BEUFORT_6_DESCRIPTION
+   elif [ "$1" -lt $BEUFORT_7 ]; then
+     VALUE_BEUFORT=7
+     VALUE_BEUFORT_DESCRIPTION=$BEUFORT_7_DESCRIPTION
+   elif [ "$1" -lt $BEUFORT_8 ]; then
+     VALUE_BEUFORT=8
+     VALUE_BEUFORT_DESCRIPTION=$BEUFORT_8_DESCRIPTION
+   elif [ "$1" -lt $BEUFORT_9 ]; then
+     VALUE_BEUFORT=9
+     VALUE_BEUFORT_DESCRIPTION=$BEUFORT_9_DESCRIPTION
+   elif [ "$1" -lt $BEUFORT_10 ]; then
+     VALUE_BEUFORT=10
+     VALUE_BEUFORT_DESCRIPTION=$BEUFORT_10_DESCRIPTION
+   elif [ "$1" -lt $BEUFORT_11 ]; then
+     VALUE_BEUFORT=11
+     VALUE_BEUFORT_DESCRIPTION=$BEUFORT_11_DESCRIPTION
+   elif [ "$1" -ge $BEUFORT_11 ]; then
+     VALUE_BEUFORT=12
+     VALUE_BEUFORT_DESCRIPTION=$BEUFORT_12_DESCRIPTION
+   fi
+}
+
+setStyleBeufort()
+{
+if   [ "$1" -lt $BEUFORT_0 ]; then
+      STYLE_BEUFORT=$STYLE_BEUFORT_0
+   elif [ "$1" -lt $BEUFORT_1 ]; then
+     STYLE_BEUFORT=$STYLE_BEUFORT_1
+   elif [ "$1" -lt $BEUFORT_2 ]; then
+     STYLE_BEUFORT=$STYLE_BEUFORT_2
+   elif [ "$1" -lt $BEUFORT_3 ]; then
+     STYLE_BEUFORT=$STYLE_BEUFORT_3
+   elif [ "$1" -lt $BEUFORT_4 ]; then
+     STYLE_BEUFORT=$STYLE_BEUFORT_4
+   elif [ "$1" -lt $BEUFORT_5 ]; then
+     STYLE_BEUFORT=$STYLE_BEUFORT_5
+   elif [ "$1" -lt $BEUFORT_6 ]; then
+     STYLE_BEUFORT=$STYLE_BEUFORT_6
+   elif [ "$1" -lt $BEUFORT_7 ]; then
+     STYLE_BEUFORT=$STYLE_BEUFORT_7
+   elif [ "$1" -lt $BEUFORT_8 ]; then
+     STYLE_BEUFORT=$STYLE_BEUFORT_8
+   elif [ "$1" -lt $BEUFORT_9 ]; then
+     STYLE_BEUFORT=$STYLE_BEUFORT_9
+   elif [ "$1" -lt $BEUFORT_10 ]; then
+     STYLE_BEUFORT=$STYLE_BEUFORT_10
+   elif [ "$1" -lt $BEUFORT_11 ]; then
+     STYLE_BEUFORT=$STYLE_BEUFORT_11
+   elif [ "$1" -lt $BEUFORT_12 ]; then
+     STYLE_BEUFORT=$STYLE_BEUFORT_12
+   fi
+}
+
 
 #ERROR_CONNECTION=1
 #ERROR_NO_NMCLI=2
@@ -570,12 +671,179 @@ WUNDERGROUND_UNDEFINED_VALUE="-9999"
 # it capability = tab size = 8 for xterm-256
 # watch -c command only supports 3-bit colors in wsl2/ubuntu, other ansi escapes codes are filtered
 
-. ./gw-uv.sh
-. ./gw-pm25.sh
-. ./gw-rainintensity.sh
+export          UV_RISK_LOW="${UV_RISK_LOW:="LOW      "}"
+export UV_RISK_MODERATE="${UV_RISK_MODERATE:="MODERATE "}"
+export         UV_RISK_HIGH="${UV_RISK_HIGH:="HIGH     "}"
+export UV_RISK_VERYHIGH="${UV_RISK_VERYHIGH:="VERY HIGH"}"
+export   UV_RISK_EXTREME="${UV_RISK_EXTREME:="EXTREME  "}"
 
-eval "$GW_SETUVRISK_FUNC"
-eval "$GW_SETSTYLEUVI_FUNC"
+#allows export of function in dash using eval https://groups.google.com/g/comp.unix.shell/c/6SENx-9V7NU?pli=1
+setUVRisk()
+#$1 UVI
+{
+    if [ "$1" -ge 0 ] && [ "$1" -le 2 ]; then
+       VALUE_UV_RISK=$UV_RISK_LOW
+    elif [ "$1" -ge 3 ] && [ "$1" -le 5 ]; then
+        VALUE_UV_RISK=$UV_RISK_MODERATE
+    elif [ "$1" -ge 6 ] && [ "$1" -le 7 ]; then
+        VALUE_UV_RISK=$UV_RISK_HIGH
+    elif [ "$1" -ge 8 ] && [ "$1" -le 10 ]; then
+        VALUE_UV_RISK="$UV_RISK_VERYHIGH"
+    elif [ "$1" -ge 11 ]; then
+        VALUE_UV_RISK=$UV_RISK_EXTREME
+    fi
+}
+
+setStyleUVI()
+#$1 UVI
+#https://en.wikipedia.org/wiki/Ultraviolet_index
+{
+    #TEST set -- 11
+    if [ "$1" -ge 0 ] && [ "$1" -le 2 ]; then
+       STYLE_UVI=$STYLE_UVI_LOW
+    elif [ "$1" -ge 3 ] && [ "$1" -le 5 ]; then
+        STYLE_UVI=$STYLE_UVI_MODERATE
+    elif [ "$1" -ge 6 ] && [ "$1" -le 7 ]; then
+        STYLE_UVI=$STYLE_UVI_HIGH
+    elif [ "$1" -ge 8 ] && [ "$1" -le 10 ]; then
+        STYLE_UVI=$STYLE_UVI_VERY_HIGH
+    elif [ "$1" -ge 11 ]; then
+        STYLE_UVI=$STYLE_UVI_EXTERME
+    fi
+}
+
+# https://www.airnow.gov/aqi/aqi-basics/
+#added space at end when doing when refreshing screen with printf \e[H, otherwise status is merged if changed
+                              PM25_AQI_GOOD=${PM25_AQI_GOOD:="GOOD         "}
+                      PM25_AQI_MODERATE=${PM25_AQI_MODERATE:="MODERATE     "}
+PM25_AQI_UNHEALTHY_SENSITIVE=${PM25_AQI_UNHEALTHY_SENSITIVE:="UNHEALTHY S. "}
+                    PM25_AQI_UNHEALTHY=${PM25_AQI_UNHEALTHY:="UNHEALTY     "}
+          PM25_AQI_VERY_UNHEALTHY=${PM25_AQI_VERY_UNHEALTHY:="VERY UNHEALTY"}
+                    PM25_AQI_HAZARDOUS=${PM25_AQI_HAZARDOUS:="HAZARDOUS    "}
+
+               PM25_AQI_GOOD_LIMIT=121
+           PM25_AQI_MODERATE_LIMIT=355
+PM25_AQI_UNHEALTHY_SENSITIVE_LIMIT=555
+         PM25_AQI_UNHEALTHY_LIMIT=1505
+    PM25_AQI_VERY_UNHEALTHY_LIMIT=2505
+
+setAQI()
+#https://blissair.com/what-is-pm-2-5.htm
+{
+    if [ "$1" -lt $PM25_AQI_GOOD_LIMIT ]; then
+      VALUE_PM25_AQI=$PM25_AQI_GOOD
+    elif [ "$1" -ge $PM25_AQI_GOOD_LIMIT ] && [ "$1" -lt $PM25_AQI_MODERATE_LIMIT ]; then
+      VALUE_PM25_AQI=$PM25_AQI_MODERATE
+    elif [ "$1" -ge $PM25_AQI_MODERATE_LIMIT ] && [ "$1" -lt $PM25_AQI_UNHEALTHY_SENSITIVE_LIMIT ]; then
+      VALUE_PM25_AQI=$PM25_AQI_UNHEALTHY_SENSITIVE
+    elif [ "$1" -ge $PM25_AQI_UNHEALTHY_SENSITIVE_LIMIT ] && [ "$1" -lt $PM25_AQI_UNHEALTHY_LIMIT ]; then
+      VALUE_PM25_AQI=$PM25_AQI_UNHEALTHY
+    elif [ "$1" -ge $PM25_AQI_UNHEALTHY_LIMIT ] && [ "$1" -lt $PM25_AQI_VERY_UNHEALTHY_LIMIT ]; then
+      VALUE_PM25_AQI=$PM25_AQI_VERY_UNHEALTHY
+    elif [ "$1" -ge $PM25_AQI_VERY_UNHEALTHY_LIMIT ]; then
+      VALUE_PM25_AQI=$PM25_AQI_HAZARDOUS
+    fi
+}
+
+setStyleAQI()
+{
+    if [ "$1" -lt 121 ]; then
+       STYLE_AQI="$STYLE_PM25_AQI_GOOD"
+    elif [ "$1" -ge 121 ] && [ "$1" -lt $PM25_AQI_MODERATE_LIMIT ]; then
+        STYLE_AQI=$STYLE_PM25_AQI_MODERATE
+    elif [ "$1" -ge $PM25_AQI_MODERATE_LIMIT ] && [ "$1" -lt $PM25_AQI_UNHEALTHY_SENSITIVE_LIMIT ]; then
+        STYLE_AQI=$STYLE_PM25_AQI_UNHEALTHY_SENSITIVE
+    elif [ "$1" -ge $PM25_AQI_UNHEALTHY_SENSITIVE_LIMIT ] && [ "$1" -lt $PM25_AQI_UNHEALTHY_LIMIT ]; then
+        STYLE_AQI=$STYLE_PM25_AQI_UNHEALTHY
+    elif [ "$1" -ge $PM25_AQI_UNHEALTHY_LIMIT ] && [ "$1" -lt $PM25_AQI_VERY_UNHEALTHY_LIMIT ]; then
+        STYLE_AQI=$STYLE_PM25_AQI_VERY_UNHEALTHY
+    elif [ "$1" -ge $PM25_AQI_VERY_UNHEALTHY_LIMIT ]; then
+       #STYLE_AQI="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;${SGI_BACKGC_24BIT}126;0;35m" #7f0023
+       STYLE_AQI=$STYLE_PM25_AQI_HAZARDOUS
+    fi
+}
+
+#https://en.wikipedia.org/wiki/Rain#Intensity
+#added space at end when doing when refreshing screen with printf \e[H, otherwise status is merged with previous value if changed
+        RAININTENSITY_ZERO=${RAININTENSITY_ZERO:="        "} #clear
+      RAININTENSITY_LIGHT=${RAININTENSITY_LIGHT:="LIGHT   "}
+RAININTENSITY_MODERATE=${RAININTENSITY_MODERATE:="MODERATE"}
+      RAININTENSITY_HEAVY=${RAININTENSITY_HEAVY:="HEAVY   "}
+  RAININTENSITY_EXTREME=${RAININTENSITY_EXTREME:="EXTREME "}
+
+  RAININTENSITY_LIGHT_LIMIT=${RAININTENSITY_LIGHT_LIMIT:=25}
+  RAININTENSITY_MODERATE_LIMIT=${RAINTENSITY_MODERATE_LIMIT:=76}
+  RAININTENSITY_HEAVY_LIMIT=${RAINTENSITY_HEAVY_LIMIT:=500}
+
+setRainIntensity()
+{
+    if [ "$1" -eq 0 ]; then
+      VALUE_RAININTENSITY=$RAININTENSITY_ZERO
+    elif [ "$1" -gt 0 ] &&  [ "$1" -lt $RAININTENSITY_LIGHT_LIMIT ]; then
+      VALUE_RAININTENSITY=$RAININTENSITY_LIGHT
+    elif [ "$1" -ge $RAININTENSITY_LIGHT_LIMIT ] && [ "$1" -lt $RAININTENSITY_MODERATE_LIMIT ]; then
+      VALUE_RAININTENSITY=$RAININTENSITY_MODERATE
+    elif [ "$1" -ge  $RAININTENSITY_MODERATE_LIMIT ] && [ "$1" -lt $RAININTENSITY_HEAVY_LIMIT ]; then
+      VALUE_RAININTENSITY=$RAININTENSITY_HEAVY
+    elif [ "$1" -gt $RAININTENSITY_HEAVY_LIMIT ]; then
+      VALUE_RAININTENSITY=$RAININTENSITY_EXTREME
+    fi
+}
+
+setStyleRainIntensity()
+{
+    if [ "$1" -eq 0 ]; then
+       unset STYLE_RAININTENSITY
+    elif [ "$1" -gt 0 ] && [ "$1" -lt "$RAININTENSITY_LIGHT_LIMIT" ]; then
+       STYLE_RAININTENSITY="$STYLE_RAININTENSITY_LIGHT"
+    elif [ "$1" -ge $RAININTENSITY_LIGHT_LIMIT ] && [ "$1" -lt $RAININTENSITY_MODERATE_LIMIT ]; then
+        STYLE_RAININTENSITY=$STYLE_RAININTENSITY_MODERATE
+    elif [ "$1" -ge $RAININTENSITY_MODERATE_LIMIT ] && [ "$1" -lt $RAININTENSITY_HEAVY_LIMIT ]; then
+        STYLE_RAININTENSITY=$STYLE_RAININTENSITY_HEAVY
+    elif [ "$1" -ge $RAININTENSITY_HEAVY_LIMIT ]; then
+        STYLE_RAININTENSITY=$STYLE_RAININTENSITY_EXTREME
+    fi
+}
+
+export          UV_RISK_LOW="${UV_RISK_LOW:="LOW      "}"
+export UV_RISK_MODERATE="${UV_RISK_MODERATE:="MODERATE "}"
+export         UV_RISK_HIGH="${UV_RISK_HIGH:="HIGH     "}"
+export UV_RISK_VERYHIGH="${UV_RISK_VERYHIGH:="VERY HIGH"}"
+export   UV_RISK_EXTREME="${UV_RISK_EXTREME:="EXTREME  "}"
+
+setUVRisk()
+#$1 UVI
+{
+    if [ "$1" -ge 0 ] && [ "$1" -le 2 ]; then
+       VALUE_UV_RISK=$UV_RISK_LOW
+    elif [ "$1" -ge 3 ] && [ "$1" -le 5 ]; then
+        VALUE_UV_RISK=$UV_RISK_MODERATE
+    elif [ "$1" -ge 6 ] && [ "$1" -le 7 ]; then
+        VALUE_UV_RISK=$UV_RISK_HIGH
+    elif [ "$1" -ge 8 ] && [ "$1" -le 10 ]; then
+        VALUE_UV_RISK="$UV_RISK_VERYHIGH"
+    elif [ "$1" -ge 11 ]; then
+        VALUE_UV_RISK=$UV_RISK_EXTREME
+    fi
+}
+
+setStyleUVI()
+#$1 UVI
+#https://en.wikipedia.org/wiki/Ultraviolet_index
+{
+    #TEST set -- 11
+    if [ "$1" -ge 0 ] && [ "$1" -le 2 ]; then
+       STYLE_UVI=$STYLE_UVI_LOW
+    elif [ "$1" -ge 3 ] && [ "$1" -le 5 ]; then
+        STYLE_UVI=$STYLE_UVI_MODERATE
+    elif [ "$1" -ge 6 ] && [ "$1" -le 7 ]; then
+        STYLE_UVI=$STYLE_UVI_HIGH
+    elif [ "$1" -ge 8 ] && [ "$1" -le 10 ]; then
+        STYLE_UVI=$STYLE_UVI_VERY_HIGH
+    elif [ "$1" -ge 11 ]; then
+        STYLE_UVI=$STYLE_UVI_EXTERME
+    fi
+}
 
 setBatteryLowNormal()
 {
