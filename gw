@@ -4384,7 +4384,6 @@ updateCustomized() {
 }
 
 convertScale10ToFloat() {
-
     if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 1 ]; then
         #shellcheck disable=SC2079
         VALUE_SCALE10_FLOAT=$(( $1 / 10.0 ))
@@ -5166,8 +5165,6 @@ initShell() {
         SHELL_SUPPORT_TILDE_REGEX=0
     fi"
 
-    BIFS=$IFS
-
     #shellcheck disable=SC3044
     if type typeset >/dev/null; then
         export SHELL_SUPPORT_TYPESET=1 # allows function in subprocess/ui-view to access it
@@ -5222,7 +5219,7 @@ initShell() {
     
     if [ -n "$BASH_VERSION" ] || [ -n "$ZSH_VERSION" ] || [ "$KSH_VERSION" = "Version AJM 93u+ 2012-08-01" ]; then
       SHELL_SUPPORT_MATH_POWER=1
-      SHELL_SUPPORT_FLOATINGPOINT=1
+      [ -z "$BASH_VERSION" ] && SHELL_SUPPORT_FLOATINGPOINT=1 || SHELL_SUPPORT_FLOATINGPOINT=0 #set 0 for bash
     else
       SHELL_SUPPORT_MATH_POWER=0 #probably
       SHELL_SUPPORT_FLOATINGPOINT=0 #probably
