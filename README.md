@@ -3,6 +3,7 @@
 It designed to be very **portable** and tested on bash,zsh,ksh93,mksh and dash. The primary testing has been done in the **dash** shell. Is uses terminal ansi escape codes to style solar,pm25 and wind data according to uvi index, aqi index and beufort scales.</p>
 <p>I initially started to program the tool in javascript/nodejs which would have been easier due to standard libraries for arrays,readUint and http parsing, but decided to test if its possible to do it without arrays in the shell/terminal using the standard unix nc/ncat and od utilities.</p>
 
+
 ## Examples
 
 ### Viewing livedata
@@ -195,9 +196,15 @@ path wunderground  /data/report/
 Press capital Y to reset, settings are destroyed, be careful.
 <pre>Reset 48:3f:da:54:14:ec GW1000A-WIFI14EC (Y/N)?</pre>
 
+## Screenshots
+### Default liveview
+![Screenshot Liveview with headings - Windows Terminal v1.11.3471.0](./img/Skjermbilde%202022-01-26%20144206.png)
+### Liveview without headings (-H headers option)
+![Screenshot Liveview with headings - Windows Terminal v1.11.3471.0](./img/Skjermbilde%202022-01-26%20162949.jpg)
+
 <!---
 https://www.markdownguide.org/basic-syntax/
 https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes
 -->
-## Screenshots
-![Screenshot Liveview with headings - Windows Terminal](./img/Skjermbilde%202022-01-26%20144206.png)
+
+
