@@ -56,6 +56,11 @@ System sensors searching         29
 System sensors disabled          11
 </pre>
 
+#### Status line indicators
+1. 🔋 - battery ok
+2. 📶 - signal ok
+3. 🔌 - plug/electric power
+
 ### Continous monitoring each 1 minute -H option to hide
 <code> while true; do clear;./gw -g 192.168.3.16 -H rain,system,t,leak  -c l; sleep 60; done</code>
 
@@ -120,7 +125,7 @@ Sensor        ID   B S Type Name              State             Battery Signal
 
 ### Setting all leafwetness sensors to disabled and disable temperature sensor 6, next reset temp sensor 6 to id 'ba'.
 
-The signal will increase to 100% if 4 packets are received during 4 periods.
+The signal will increase to 100% if 4 packets are received during 4 consequtive periods.
 
 <code>./gw -g 192.168.3.16 -c s 40-47=d,40-47,6=d,6=ba,6</code>
 
