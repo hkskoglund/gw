@@ -192,6 +192,7 @@ Press capital Y to reset, settings are destroyed, be careful.
 
 <!---
 https://www.markdownguide.org/basic-syntax/
+https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes
 -->
 
-![Screenshot Windows Terminal](img\Skjermbilde 2022-01-26 144206.png)
+![Screenshot Windows Terminal](./img/Skjermbilde 2022-01-26 144206.png)
