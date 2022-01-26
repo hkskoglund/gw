@@ -175,7 +175,7 @@ path wunderground  /data/report/
 </pre>
 
 ### Configuring new wifi ssid/pw -method 1 - server
-<p>Connect to GW1000-WIFI???? network in your preferred operating system. Verify ip address of gw.</p> 
+<p>Connect to GW1000-WIFI???? network in your preferred operating system. Verify ip address of gw. Verify firewall settings for tcp port 49123</p> 
 <code>./gw -g 192.168.4.1 -c wifi-server ssid pw</code>
 <br>
 
