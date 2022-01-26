@@ -24,7 +24,7 @@ gw is a shell tool for viewing realtime weather data and sensor configuration of
  Wind                               0.7 m/s     ╭─<span style="color:red">N</span>─╮
  Wind gust - 1 LIGHT AIR            1.0 m/s     W ↖ E
  Wind direction - ESE               114 °       ╰─S─╯
- Wind max. - 4 MODERATE BREEZE      5.6 m/s
+ Wind max. - 4 MODERATE BREEZE      <span style="background-color:cyan; color: black">5.6 m/s</span>
 
 ＳＯＬＡＲ
 
@@ -38,8 +38,8 @@ gw is a shell tool for viewing realtime weather data and sensor configuration of
 
 ＰＭ２.５ ＡＩＲ ＱＵＡＬＩＴＹ
 
- PM 2.5 1 - GOOD                    3.0 µg/㎥   🔌📶
- PM 2.5 24h avg. 1 - GOOD           3.0 µg/㎥
+ PM 2.5 1 - GOOD                    <span style="background-color:green; color: black">3.0 µg/㎥</span>   🔌📶
+ PM 2.5 24h avg. 1 - GOOD           <span style="background-color:green; color: black">3.0 µg/㎥</span>
 
 ＳＹＳＴＥＭ
 
