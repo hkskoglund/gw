@@ -178,7 +178,7 @@ path wunderground  /data/report/
 </pre>
 
 ### Configuring new wifi ssid/pw - method 1 - server
-<p>Connect to GW1000-WIFI???? network in your preferred operating system. Verify ip address of gw. Verify firewall settings for tcp port 49123</p> 
+<p>Connect to GW1000-WIFI???? network in your preferred os. Verify ip address of gw. Verify firewall settings for tcp port 49123</p> 
 <code>./gw -g 192.168.4.1 -c wifi-server ssid pw</code>
 <br>
 
@@ -189,3 +189,9 @@ path wunderground  /data/report/
 <code>./gw -g 192.168.3.15 -c reset</code>
 Press capital Y to reset, settings are destroyed, be careful.
 <pre>Reset 48:3f:da:54:14:ec GW1000A-WIFI14EC (Y/N)?</pre>
+
+<!---
+https://www.markdownguide.org/basic-syntax/
+-->
+
+![Screenshot Windows Terminal](img\Skjermbilde 2022-01-26 144206.png)
