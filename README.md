@@ -1,4 +1,4 @@
-# gw - shell tool for viewing live weather data from gw-1000 or compatible devices
+# gw - shell tool for viewing live weather data and configuration of gw-1000 or compatible devices
 
 It designed to be very **portable** and tested on bash,zsh,ksh93,mksh and dash. The primary testing has been done in the **dash** shell. Is uses terminal ansi escape codes to style solar,pm25 and wind data according to uvi index, aqi index and beufort scales.</p>
 <p>I initially started to program the tool in javascript/nodejs which would have been easier due to standard libraries for arrays,readUint and http parsing, but decided to test if its possible to do it without arrays in the shell/terminal using the standard unix nc/ncat and od utilities.</p>
