@@ -447,7 +447,7 @@ export  LIVEDATA_LEAK_NO="${LIVEDATA_LEAK_NO:="NO "}"
 
 export LIVEDATA_SOILMOISTURE_HEADER="${LIVEDATA_SOILMOISTURE_HEADER:="ＳＯＩＬＭＯＩＳＴＵＲＥ"}"
         export LIVEDATA_SOILTEMP_HEADER="${LIVEDATA_SOILTEMP_HEADER:="ＳＯＩＬＴＥＭＰＥＲＡＴＵＲＥ"}"
-                export LIVEDATA_PM25_HEADER="${LIVEDATA_PM25_HEADER:="ＰＭ２.５ ＡＩＲＱＵＡＬＩＴＹ"}"
+                export LIVEDATA_PM25_HEADER="${LIVEDATA_PM25_HEADER:="ＰＭ２.５ ＡＩＲ ＱＵＡＬＩＴＹ"}"
   export LIVEDATA_LEAFWETNESS_HEADER="${LIVEDATA_LEAFWETNESS_HEADER:="ＬＥＡＦＷＥＴＮＥＳＳ"}"
           export LIVEDATA_TEMPUSR_HEADER="${LIVEDATA_TEMPUSR_HEADER:="ＴＥＭＰＵＳＲ"}"
           export LIVEDATA_WH45CO2_HEADER="${LIVEDATA_WH45CO2_HEADER:="ＣＯ２"}"
@@ -2394,8 +2394,10 @@ convertPressureLivedata()
     if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
         convertScale10ToFloat "$1"
     elif [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_INHG ]; then
+      set -x
         convert_hpaScale10_To_inhgScale10 "$1"
         convertScale10ToFloat "$VALUE_INHG_SCALE10"
+      set +x
     fi
 }
 
@@ -4124,6 +4126,17 @@ updateCustomized() {
 }
 
 convertScale10ToFloat() {
+
+    if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 1 ]; then
+        #shellcheck disable=SC2079
+        VALUE_SCALE10_FLOAT=$(( $1 / 10.0 ))
+    else
+        convertScale10ToFloatInt "$1"
+    fi
+
+}
+
+convertScale10ToFloatInt() {
     # $1 - number to convert
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
@@ -4949,10 +4962,12 @@ initShell() {
   # I=$(( 10 ** 1 )) 2>/dev/null;
   #dash shell exit with: arithmetic expression: expecting primary: " 10 ** 1 "
     
-    if [ -n "$BASH_VERSION" ] || [ -n "$ZSH_VERSION" ]; then
+    if [ -n "$BASH_VERSION" ] || [ -n "$ZSH_VERSION" ] || [ "$KSH_VERSION" = "Version AJM 93u+ 2012-08-01" ]; then
       SHELL_SUPPORT_MATH_POWER=1
+      SHELL_SUPPORT_FLOATINGPOINT=1
     else
       SHELL_SUPPORT_MATH_POWER=0 #probably
+      SHELL_SUPPORT_FLOATINGPOINT=0 #probably
     fi
     
     #https://stackoverflow.com/questions/602912/how-do-you-echo-a-4-digit-unicode-character-in-bash/602924#602924
@@ -5058,14 +5073,24 @@ convert_farenheit_to_celciusScale10()
 convert_celcius_to_farenheitScale10()
 {
    # VALUE_CELCIUS_SCALE10=$(printf %.0f "$(echo "($1 - 32 )*50/9" | bc)")
-   getFloatAsIntDecmial "$1"
+   if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 0 ]; then
+    getFloatAsIntDecmial "$1"
+    VALUE_FARENHEIT_SCALE10=$(( (FLOAT_AS_INT*9/5) + 32*CONVERT_10MULTIPLIER ))
+   else
+    #shellcheck disable=SC2079
+     VALUE_FARENHEIT_SCALE10=$(( ( $1 - 32.0) *50/9 ))
+   fi
    
-   VALUE_FARENHEIT_SCALE10=$(( (FLOAT_AS_INT*9/5) + 32*CONVERT_10MULTIPLIER ))
 }
 
 convert_celciusScale10_to_farenheitScale10()
 {
-   VALUE_FARENHEIT_SCALE10=$(( ($1*9/5) + 320 ))
+    if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 0 ]; then
+        VALUE_FARENHEIT_SCALE10=$(( ($1*9/5) + 320 ))
+    else
+        #shellcheck disable=SC2079
+        VALUE_FARENHEIT_SCALE10=$(( ( $1*9.0/5) + 320 ))
+    fi
 }
 
 convert_inhg_to_hpa()
@@ -5099,8 +5124,16 @@ convert_inhg_to_hpa()
 convert_hpaScale10_To_inhgScale10()
 #using: SI unit 1 inHg = 3.38639 kPa
 {
-   round $(( $1 * 100000 / 338639  ))
-   VALUE_INHG_SCALE10=$VALUE_ROUND
+    if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 0 ]; then
+        round $(( $1 * 100000 / 338639  ))
+        VALUE_INHG_SCALE10=$VALUE_ROUND
+    else
+                set -x
+            #shellcheck disable=SC2079
+       VALUE_INHG_SCALE10=$(( $1 * 1/ 33.8639 ))
+       set +x
+    fi
+
     [ "$DEBUG" -eq 1 ] && echo >&2 "Converted (Scale * 10)  $1 hpa to $VALUE_INHG_SCALE10"
 }
 
@@ -5147,23 +5180,47 @@ convert_mph_To_mps()
 
 convert_mpsScale10_To_kmhScale10()
 {
-    round "$(( $1 * 36 ))" # really scale * 100
-    VALUE_KMH_SCALE10=$VALUE_ROUND
+    if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 0 ]; then
+        round "$(( $1 * 36 ))" # really scale * 100
+        VALUE_KMH_SCALE10=$VALUE_ROUND
+    else
+        #shellcheck disable=SC2079
+         VALUE_KMH_SCALE10=$(( $1 * 3.6 ))
+    fi
+        [ $DEBUG -eq 1 ] && echo >&2 "Convert mps $1 to mph $VALUE_KMH_SCALE10 scale 10"
+
 }
 
 convcert_mpsScale10_to_mphScale10()
 {
-    #factorize:  10000000 = 32*312500, 44704 = 32*1397 $(( 10000000/44704 )) -> $ (( 312500 / 1397))
-    round "$(( $1*31250 / 1397))"
-    VALUE_MPH_SCALE10=$VALUE_ROUND
+
+    if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 0 ]; then
+        #factorize:  10000000 = 32*312500, 44704 = 32*1397 $(( 10000000/44704 )) -> $ (( 312500 / 1397))
+        round "$(( $1*31250 / 1397))"
+        VALUE_MPH_SCALE10=$VALUE_ROUND
+    else
+        #shellcheck disable=SC2079
+        VALUE_MPH_SCALE10=$(( $1 * 3125/ 1397.0 ))
+    fi
+    [ $DEBUG -eq 1 ] && echo >&2 "Convert mps $1 to mph $VALUE_MPH_SCALE10 scale 10"
 }
 
 convert_mph_to_kmhScale10()
+#http request: wind is in mph, -u w=kmh to convert
 {
-    getFloatAsIntDecmial "$1"     #format: speedmph=5.82 -> 582
-    #1mph=1.609344 km/h -> 1609344/1000000 -> largerst factor = 64 -> 64*25146/64*15625 -> 25146/15625
-    round "$(( FLOAT_AS_INT * 251467/156250 ))"
-    VALUE_KMH_SCALE10=$VALUE_ROUND
+    #if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 0 ]; then
+        getFloatAsIntDecmial "$1"     #format: speedmph=5.82 -> 582
+        #1mph=1.609344 km/h -> 1609344/1000000 -> largerst factor = 64 -> 64*25146/64*15625 -> 25146/15625
+        round "$(( FLOAT_AS_INT * 251467/156250 ))"
+     set -x
+        VALUE_KMH_SCALE10=$VALUE_ROUND
+    #else
+        VALUE_KMH_SCALE10=$(( $1 * 16.09344 ))
+    #fi
+    set +x
+    #[ $DEBUG -eq 1 ] && 
+    echo >&2 "Convert mph $1 to kmh $VALUE_KMH_SCALE10 scale 10"
+
 }
 
 convert_in_to_mm()
@@ -5284,6 +5341,8 @@ printOrLogLivedata()
 
 parseHttpHeader()
 {
+    [ $DEBUG -eq 1 ] &&  echo >&2 "parseHttpHeader $1"
+    
     IFS=: read -r HTTP_KEY HTTP_VALUE <<EOH
 $1
 EOH
@@ -5293,7 +5352,7 @@ EOH
                 IFS=-
                 #shellcheck disable=SC2086
                 set -- $HTTP_KEY
-                echo PART1 "$1" PART2 "$2"
+                #echo KEY PART1 "$1" KEY PART2 "$2"
                 toLowercase "$1"
                 HTTP_KEY_PART1=$LOWERCASE
                 toLowercase "$2"
@@ -5319,8 +5378,8 @@ parseHttpLines()
     while eval IFS= read -r HTTP_LINE$((N + 1)); do
         N=$(( N + 1 ))
         [ $NBODY -eq 0 ] && eval HTTP_LINE$N="\${HTTP_LINE$N%?}" # remove trailing \r (\n removed by read), do not touch body
-        eval "if [ \"\${#HTTP_LINE$N}\" -eq 0 ]; then NBODY=$((N + 1 )); fi"
-      # eval echo LINE $N \"\$HTTP_LINE$N\"
+        eval "if [ \"\${#HTTP_LINE$N}\" -eq 0 ]; then NBODY=$((N + 1 )); fi" 
+      [ $DEBUG -eq 1 ] &&  eval echo >&2 HTTP LINE $N \"\$HTTP_LINE$N\"
     done <<EOF
 $1
 EOF
@@ -5333,10 +5392,11 @@ EOL
 
     if [ "$NBODY" -gt 2 ]; then
         eval HTTP_BODY="\$HTTP_LINE$NBODY"
-        for HTTP_LINE_I in $(seq -s ' ' 2 $(( NBODY - 2 )) ); do
-            eval parseHttpHeader \"\$HTTP_LINE"$HTTP_LINE_I"\"
+        IFS=' '
+        for linenr in $(seq -s ' ' 2 $(( NBODY - 2 )) ); do
+            eval parseHttpHeader \"\$HTTP_LINE"$linenr"\"
         done
-        unset HTTP_LINE_I
+        unset linenr
     fi
 }
 
