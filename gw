@@ -1683,15 +1683,7 @@ printAppendBuffer()
         printf >&2 "%s\n" "APPEND_FORMAT/APPEND_ARGS printf '$APPEND_FORMAT' $APPEND_ARGS"
     fi
 
-    if [ -n "$DEBUG_LIVEDATA_LINE" ]; then
-      set -x
-    fi
-    
     eval printf \""$APPEND_FORMAT"\" "$APPEND_ARGS"
-
-     if [ -n "$DEBUG_LIVEDATA_LINE" ]; then
-      set +x
-    fi
 
     resetAppendBuffer
 }
@@ -2394,10 +2386,8 @@ convertPressureLivedata()
     if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
         convertScale10ToFloat "$1"
     elif [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_INHG ]; then
-      set -x
         convert_hpaScale10_To_inhgScale10 "$1"
         convertScale10ToFloat "$VALUE_INHG_SCALE10"
-      set +x
     fi
 }
 
@@ -4832,7 +4822,7 @@ processCommand() {
 
     [ -z "$EXITCODE_PROCESSCOMMAND" ] && EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
 
-    return $EXITCODE_PROCESSCOMMAND
+    return "$EXITCODE_PROCESSCOMMAND"
 }
 
 isNumber() {
@@ -5062,25 +5052,32 @@ convert_farenheit_to_celciusScale10()
 #tempinf=72.7
 #$2 - number of digits after . -> using power to scale value
 {
-   
-   # VALUE_CELCIUS_SCALE10=$(printf %.0f "$(echo "($1 - 32 )*50/9" | bc)")
-   getFloatAsIntDecmial "$1"
-   
-   VALUE_CELCIUS_SCALE10=$(( (FLOAT_AS_INT - 32*CONVERT_10MULTIPLIER) * 50 / (9*CONVERT_10MULTIPLIER) ))
+    if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 0 ]; then
+        # VALUE_CELCIUS_SCALE10=$(printf %.0f "$(echo "($1 - 32 )*50/9" | bc)")
+        getFloatAsIntDecmial "$1"
+        VALUE_CELCIUS_SCALE10=$(( (FLOAT_AS_INT - 32*CONVERT_10MULTIPLIER) * 500 / (9*CONVERT_10MULTIPLIER) ))
+        round "$VALUE_CELCIUS_SCALE10"
+        VALUE_CELCIUS_SCALE10=$VALUE_ROUND
+    else
+        #shellcheck disable=SC2079
+        VALUE_CELCIUS_SCALE10=$(( ($1 - 32 )*50/9.0 ))
+    fi
+    [ "$DEBUG" -eq 1 ] && echo >&2 "Converted $1 farenheit to $VALUE_CELCIUS_SCALE10 celcius - scale 10"
 
 }
 
 convert_celcius_to_farenheitScale10()
 {
-   # VALUE_CELCIUS_SCALE10=$(printf %.0f "$(echo "($1 - 32 )*50/9" | bc)")
-   if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 0 ]; then
-    getFloatAsIntDecmial "$1"
-    VALUE_FARENHEIT_SCALE10=$(( (FLOAT_AS_INT*9/5) + 32*CONVERT_10MULTIPLIER ))
-   else
-    #shellcheck disable=SC2079
-     VALUE_FARENHEIT_SCALE10=$(( ( $1 - 32.0) *50/9 ))
-   fi
-   
+    # VALUE_CELCIUS_SCALE10=$(printf %.0f "$(echo "($1 - 32 )*50/9" | bc)")
+    if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 0 ]; then
+        getFloatAsIntDecmial "$1"
+        VALUE_FARENHEIT_SCALE10=$(( (FLOAT_AS_INT*9/5) + 32*CONVERT_10MULTIPLIER ))
+    else
+        #shellcheck disable=SC2079
+        VALUE_FARENHEIT_SCALE10=$(( ( $1 - 32.0) *50/9 ))
+    fi
+    [ "$DEBUG" -eq 1 ] && echo >&2 "Converted $1 celcius to $VALUE_FARENHEIT_SCALE10 farenheit - scale 10"
+
 }
 
 convert_celciusScale10_to_farenheitScale10()
@@ -5091,6 +5088,8 @@ convert_celciusScale10_to_farenheitScale10()
         #shellcheck disable=SC2079
         VALUE_FARENHEIT_SCALE10=$(( ( $1*9.0/5) + 320 ))
     fi
+     [ "$DEBUG" -eq 1 ] && echo >&2 "Converted $1 celcius to $VALUE_FARENHEIT_SCALE10 farenheit - scale 10"
+
 }
 
 convert_inhg_to_hpa()
@@ -5103,22 +5102,29 @@ convert_inhg_to_hpa()
 {
        # VALUE_INHG_HPA_SCALE10=$(printf %.0f "$(echo "338.639 * $1" | bc)")
 
-   getFloatAsIntDecmial "$1"
+    if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 0 ]; then
 
-   case "$KSH_VERSION" in 
-         *MIRBSD?KSH*)
-            # maybe use $((# )) for 32-bit usigned int expression
-             VALUE_INHG_HPA_SCALE10=$(( (4233 * FLOAT_AS_INT)/ 1250)) # round conversion constant/scale down 10 -> 338639 -> 338640
-             #factorize 33864=8*4233, 10000=8*1250, $(( (33864 * FLOAT_AS_INT)/ 10000)) -> $(( (4233 * FLOAT_AS_INT)/ 1250))
-             ;;
-         *)
-            #does not work with 32-bit unsigned integer arithmetic as used by mksh with $((# ... ))
-             VALUE_INHG_HPA_SCALE10=$(( (338639 * FLOAT_AS_INT) / 100000)) # use interger arithmetic
-             ;;
-    esac
-   
-   round "$VALUE_INHG_HPA_SCALE10"
-   VALUE_INHG_HPA_SCALE10=$VALUE_ROUND
+        getFloatAsIntDecmial "$1"
+
+        case "$KSH_VERSION" in 
+                *MIRBSD?KSH*)
+                    # maybe use $((# )) for 32-bit usigned int expression
+                    VALUE_INHG_HPA_SCALE10=$(( (4233 * FLOAT_AS_INT)/ 1250)) # round conversion constant/scale down 10 -> 338639 -> 338640
+                    #factorize 33864=8*4233, 10000=8*1250, $(( (33864 * FLOAT_AS_INT)/ 10000)) -> $(( (4233 * FLOAT_AS_INT)/ 1250))
+                    ;;
+                *)
+                    #does not work with 32-bit unsigned integer arithmetic as used by mksh with $((# ... ))
+                    VALUE_INHG_HPA_SCALE10=$(( (338639 * FLOAT_AS_INT) / 100000)) # use interger arithmetic
+                    ;;
+            esac
+        
+        round "$VALUE_INHG_HPA_SCALE10"
+        VALUE_INHG_HPA_SCALE10=$VALUE_ROUND
+    else
+        #shellcheck disable=SC2079
+        VALUE_INHG_HPA_SCALE10=$(( $1 * 338.639 ))
+    fi
+    [ "$DEBUG" -eq 1 ] && echo >&2 "Converted $1 inhg to $VALUE_INHG_HPA_SCALE10 hpa - scale 10"
 }
 
 convert_hpaScale10_To_inhgScale10()
@@ -5128,13 +5134,11 @@ convert_hpaScale10_To_inhgScale10()
         round $(( $1 * 100000 / 338639  ))
         VALUE_INHG_SCALE10=$VALUE_ROUND
     else
-                set -x
             #shellcheck disable=SC2079
        VALUE_INHG_SCALE10=$(( $1 * 1/ 33.8639 ))
-       set +x
     fi
 
-    [ "$DEBUG" -eq 1 ] && echo >&2 "Converted (Scale * 10)  $1 hpa to $VALUE_INHG_SCALE10"
+    [ "$DEBUG" -eq 1 ] && echo >&2 "Converted $1 hpa to $VALUE_INHG_SCALE10 - scale 10"
 }
 
 round()
@@ -5169,13 +5173,21 @@ convert_mph_To_mps()
 #using International mile: using scaling 63360/141732 
 {
    #VALUE_MPS_SCALE10=$(printf %.0f "$(echo "4.4704 * $1" | bc)")
-   getFloatAsIntDecmial "$1"
+
+   if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 0 ]; then
+        getFloatAsIntDecmial "$1"
     
-    #factorize : 63360 = 18*3520, 141732 = 18* 7874 -> $(( 63360 * FLOAT_AS_INT/ 141732)) -> $(( 3520 * FLOAT_AS_INT / 7874 ))
-    #https://www.calculatorsoup.com/calculators/math/factors.php?input=141732&action=solve
-  
-    round "$(( 3520 * FLOAT_AS_INT / 7874 ))"
-    VALUE_MPS_SCALE10=$VALUE_ROUND
+        #factorize : 63360 = 18*3520, 141732 = 18* 7874 -> $(( 63360 * FLOAT_AS_INT/ 141732)) -> $(( 3520 * FLOAT_AS_INT / 7874 ))
+        #https://www.calculatorsoup.com/calculators/math/factors.php?input=141732&action=solve
+    
+        round "$(( 3520 * FLOAT_AS_INT / 7874 ))"
+        VALUE_MPS_SCALE10=$VALUE_ROUND
+    else
+        #shellcheck disable=SC2079
+        VALUE_MPS_SCALE10=$(( $1 * 4.4704 ))
+    fi
+    [ $DEBUG -eq 1 ] && echo >&2 "Convert mph $1 to mps $VALUE_MPS_SCALE10 scale 10"
+
 }
 
 convert_mpsScale10_To_kmhScale10()
@@ -5187,7 +5199,7 @@ convert_mpsScale10_To_kmhScale10()
         #shellcheck disable=SC2079
          VALUE_KMH_SCALE10=$(( $1 * 3.6 ))
     fi
-        [ $DEBUG -eq 1 ] && echo >&2 "Convert mps $1 to mph $VALUE_KMH_SCALE10 scale 10"
+    [ $DEBUG -eq 1 ] && echo >&2 "Convert mps $1 to mph $VALUE_KMH_SCALE10 scale 10"
 
 }
 
@@ -5208,18 +5220,16 @@ convcert_mpsScale10_to_mphScale10()
 convert_mph_to_kmhScale10()
 #http request: wind is in mph, -u w=kmh to convert
 {
-    #if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 0 ]; then
+    if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 0 ]; then
         getFloatAsIntDecmial "$1"     #format: speedmph=5.82 -> 582
         #1mph=1.609344 km/h -> 1609344/1000000 -> largerst factor = 64 -> 64*25146/64*15625 -> 25146/15625
         round "$(( FLOAT_AS_INT * 251467/156250 ))"
-     set -x
         VALUE_KMH_SCALE10=$VALUE_ROUND
-    #else
+    else
+        #shellcheck disable=SC2079
         VALUE_KMH_SCALE10=$(( $1 * 16.09344 ))
-    #fi
-    set +x
-    #[ $DEBUG -eq 1 ] && 
-    echo >&2 "Convert mph $1 to kmh $VALUE_KMH_SCALE10 scale 10"
+    fi
+    [ $DEBUG -eq 1 ] && echo >&2 "Convert mph $1 to kmh $VALUE_KMH_SCALE10 scale 10"
 
 }
 
@@ -5228,11 +5238,18 @@ convert_in_to_mm()
 #https://en.wikipedia.org/wiki/Inch
 # web format: rainratein=0.000&eventrainin=0.669&hourlyrainin=0.000&dailyrainin=0.028&weeklyrainin=0.831&monthlyrainin=0.972&yearlyrainin=17.130&totalrainin=17.130
 {
-   getFloatAsIntDecmial "$1"
+    if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 0 ]; then
+        getFloatAsIntDecmial "$1"
 
-   #factorize 254=2*127, 100=2*50 -> $(( 254 * FLOAT_AS_INT / 100)) -> $(( 127 * FLOAT_AS_INT / 50 ))
-   round "$(( 127 * FLOAT_AS_INT / 50))"
-   VALUE_IN_MM_SCALE10=$VALUE_ROUND
+        #factorize 254=2*127, 100=2*50 -> $(( 254 * FLOAT_AS_INT / 100)) -> $(( 127 * FLOAT_AS_INT / 50 ))
+        round "$(( 127 * FLOAT_AS_INT / 50))"
+        VALUE_IN_MM_SCALE10=$VALUE_ROUND
+    else
+        VALUE_IN_MM_SCALE10=$(( $1 * 254 ))
+    
+    fi
+    [ $DEBUG -eq 1 ] && echo >&2 "Convert in $1 to mm $VALUE_IN_MM_SCALE10 scale 10"
+
 }
 
 setRainHttpLivedata()
