@@ -213,11 +213,10 @@ if   [ "$1" -lt $BEUFORT_0 ]; then
      STYLE_BEUFORT=$STYLE_BEUFORT_10
    elif [ "$1" -lt $BEUFORT_11 ]; then
      STYLE_BEUFORT=$STYLE_BEUFORT_11
-   elif [ "$1" -lt $BEUFORT_12 ]; then
+   elif [ "$1" -ge $BEUFORT_11 ]; then
      STYLE_BEUFORT=$STYLE_BEUFORT_12
    fi
 }
-
 
 #ERROR_CONNECTION=1
 #ERROR_NO_NMCLI=2
@@ -5125,8 +5124,11 @@ initTerm()
       TERM_LINES=${size% *}
       TERM_COLUMNS=${size#* }
     elif type tput >/dev/null; then
+       #shellcheck disable=SC2034
+       {
        TERM_LINES=$(tput lines)
        TERM_COLUMNS=$(tput cols)
+       }
     fi
 
     if [ -n "$KSH_VERSION" ]; then
@@ -5148,6 +5150,7 @@ test_printf_sformat()
         SHELL_SUPPORT_PRINTF_UNICODE_SFORMAT=1
         [ "$DEBUG" -eq 1 ] && echo >&2 "Shell support printf unicode right/left adjustment"
     else
+        #shellcheck disable=SC2034
         SHELL_SUPPORT_PRINTF_UNICODE_SFORMAT=0
          [ "$DEBUG" -eq 1 ] && echo >&2 "Shell NO SUPPORT for printf unicode right/left adjustment"
     fi
@@ -5667,6 +5670,7 @@ $1
 EOF
 
      if [ -n "$HTTP_LINE1" ]; then
+           #shellcheck disable=SC2034
            IFS=' ' read -r HTTP_METHOD HTTP_URL HTTP_VERSION <<EOL
 $HTTP_LINE1
 EOL
@@ -5944,9 +5948,11 @@ parseWundergroundHttpRequest()
    parseHttpLines "$1"
 
    LIVEDATA_SYSTEM_PROTOCOL=$LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP
+   #shellcheck disable=SC2034
+   {
    LIVEDATA_SYSTEM_PROTOCOL_LONG=$LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP_LONG
    LIVEDATA_SYSTEM_PROTOCOL_VERSION=$HTTP_VERSION
-
+   }
       #https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request
 
     #http_request=$(echo "$1" | head -n 1)
@@ -6411,7 +6417,8 @@ while [ $# -gt 0 ]; do
                       ;;
 
                     pm25aqi)
-                      LIVEVIEW_HIDE_PM25AQI=1 #hides PM 2.5 AQI  styling/description
+                        #shellcheck disable=SC2034
+                        LIVEVIEW_HIDE_PM25AQI=1 #hides PM 2.5 AQI  styling/description
                       ;;
 
                     b|beufort)
@@ -6450,7 +6457,7 @@ while [ $# -gt 0 ]; do
                         LIVEVIEW_HIDE_LIGHT=1
                         ;;
                         
-                    t | temperature)
+                    t | temperature | temp)
                         LIVEVIEW_HIDE_TEMP=1
                         ;;
 
@@ -6458,11 +6465,11 @@ while [ $# -gt 0 ]; do
                         LIVEVIEW_HIDE_WIND=1
                         ;;
 
-                    sm | soilmoisture)
+                    sm | soilmoisture | soilm)
                         LIVEVIEW_HIDE_SOILMOISTURE=1
                         ;;
 
-                    st | soiltemperature)
+                    st | soiltemperature | soilt)
                         LIVEVIEW_HIDE_SOILTEMPERATURE=1
                         ;;
 
