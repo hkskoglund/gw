@@ -1,4 +1,4 @@
-gw is a shell tool for viewing realtime weather data and sensor configuration of the gw-1000 or compatible devices. It designed to be as portable as possible and have been tested on bash,zsh,ksh93,mksh and dash. Is uses terminal ansi escape codes to style solar,pm25 and wind data according to uvi index, aqi index and beufort scales.
+gw is a shell tool for viewing realtime weather data and sensor configuration of the gw-1000 or compatible devices. It designed to be as portable and tested on bash,zsh,ksh93,mksh and dash. Is uses terminal ansi escape codes to style solar,pm25 and wind data according to uvi index, aqi index and beufort scales. I initially started to program the tool in javascript which would have been easier, but decided to test if its possible to do in the shell and terminal by using the standard unix nc/ncat and od utilities.
 
 ## Examples
 
@@ -21,7 +21,7 @@ gw is a shell tool for viewing realtime weather data and sensor configuration of
 
 ＷＩＮＤ
 
- Wind                               0.7 m/s     ╭─N─╮
+ Wind                               0.7 m/s     ╭─<span style="color:red">N</span>─╮
  Wind gust - 1 LIGHT AIR            1.0 m/s     W ↖ E
  Wind direction - ESE               114 °       ╰─S─╯
  Wind max. - 4 MODERATE BREEZE      5.6 m/s
@@ -52,9 +52,9 @@ System sensors disconnected       0
 System sensors searching         29
 System sensors disabled          11
 </pre>
-### Hide headers, rain and temperature sensors
 
-<code>./gw -g 192.168.3.16 -H headers,rain,temp -c livedata</code>
+### Continous monitoring each 1 minute -H option to hide
+<code> while true; do clear;./gw -g 192.168.3.16 -H rain,system,t,leak  -c l; sleep 60; done</code>
 
 ### Listen for incoming http Ecowitt/Wunderground request on port 8080
 
@@ -174,12 +174,12 @@ path ecowitt       /weatherstation/updateweatherstation.php?
 path wunderground  /data/report/
 </pre>
 
-### Configuring new wifi ssid/pw -method 1 - server
+### Configuring new wifi ssid/pw - method 1 - server
 <p>Connect to GW1000-WIFI???? network in your preferred operating system. Verify ip address of gw. Verify firewall settings for tcp port 49123</p> 
 <code>./gw -g 192.168.4.1 -c wifi-server ssid pw</code>
 <br>
 
-### Configuring new wifi ssid/pw -method 2 - client
+### Configuring new wifi ssid/pw - method 2 - client
 <code>./gw -g 192.168.4.1 -c wifi-client ssid pw</code>
 
 ### Reset device
