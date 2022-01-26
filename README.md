@@ -181,3 +181,8 @@ path wunderground  /data/report/
 
 ### Configuring new wifi ssid/pw -method 2 - client
 <code>./gw -g 192.168.4.1 -c wifi-client ssid pw</code>
+
+### Reset device
+<code>./gw -g 192.168.3.15 -c reset</code>
+Press capital Y to reset, settings are destroyed, be careful.
+<pre>Reset 48:3f:da:54:14:ec GW1000A-WIFI14EC (Y/N)?</pre>
