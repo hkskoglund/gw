@@ -1,16 +1,12 @@
-gw is a shell tool for viewing realtime data and sensor configuration of the gw-1000 or compatible devices. It designed to be as portable as possible and have been tested on bash,zsh,ksh93,mksh and dash. It also supports subnet scanning for devices ip/mac/ssid.
+gw is a shell tool for viewing realtime weather data and sensor configuration of the gw-1000 or compatible devices. It designed to be as portable as possible and have been tested on bash,zsh,ksh93,mksh and dash. Is uses terminal ansi escape codes to style solar,pm25 and wind data according to uvi index, aqi index and beufort scales.
 
-It operates in two modes: 
+## Examples
 
-    1. client -nc/od utilities generate a string buffer which is parsed
-    2. server
+### Viewing livedata
 
-Examples:
+<code>./gw -g 192.168.3.16 -c livedata</code>
 
-Viewing livedata:
-
-./gw -g 192.168.3.16 -c livedata
-
+<pre>
 ＴＥＭＰＥＲＡＴＵＲＥ
 
  Indoor temperature                21.6 ℃
@@ -55,19 +51,19 @@ System sensors connected          7
 System sensors disconnected       0
 System sensors searching         29
 System sensors disabled          11
+</pre>
+### Hide headers, rain and temperature sensors
 
-Hide headers, rain and temperature sensors
+<code>./gw -g 192.168.3.16 -H headers,rain,temp -c livedata</code>
 
-./gw -g 192.168.3.16 -H headers,rain,temp -c livedata
+### Listen for incoming http Ecowitt/Wunderground request on port 8080
 
-Listen for incoming http Ecowitt/Wunderground request on port 8080
+<code>./gw -l 8080</code>
 
-./gw -l 8080
+### Viewing sensor configuration
 
-Viewing sensor configuration
-
-./gw -g 192.168.3.16 -c sensor
-
+<code>./gw -g 192.168.3.16 -c sensor</code>
+<pre>
 Sensor        ID   B S Type Name              State             Battery Signal
 ───────────────────────────────────────────────────────────────────────────────
      0        f1   0 4 WH65 Weather Station   connected         🔋      📶 100%
@@ -117,15 +113,15 @@ Sensor        ID   B S Type Name              State             Battery Signal
     45  ffffffff 255 0 WH35 Leafwetness6      searching
     46  ffffffff 255 0 WH35 Leafwetness7      searching
     47  ffffffff 255 0 WH35 Leafwetness8      searching
+</pre>
 
-    # Setting all leafwetness sensors to disabled and disable temperature sensor 6, next reset temp sensor 6 to id 'ba'.
-    The signal will increase to 100% if 4 packets are received during 4 periods.
+### Setting all leafwetness sensors to disabled and disable temperature sensor 6, next reset temp sensor 6 to id 'ba'.
 
-    ```
-    ./gw -g 192.168.3.16 -c s 40-47=d,40-47,6=d,6=ba,6
-    ```
+The signal will increase to 100% if 4 packets are received during 4 periods.
 
-    
+<code>./gw -g 192.168.3.16 -c s 40-47=d,40-47,6=d,6=ba,6</code>
+
+<pre>    
 Sensor        ID   B S Type Name              State             Battery Signal
 ───────────────────────────────────────────────────────────────────────────────
     40  fffffffe 255 0 WH35 Leafwetness1      disabled
@@ -137,3 +133,51 @@ Sensor        ID   B S Type Name              State             Battery Signal
     46  fffffffe 255 0 WH35 Leafwetness7      disabled
     47  fffffffe 255 0 WH35 Leafwetness8      disabled
      6        ba   0 0 WH31 Temperature1      disconnected      🔋      🛑
+</pre>
+
+### Subnet scanning for devices on LAN
+
+<code>./gw -s 192.168.3</code>
+<pre>
+192.168.3.14 8c:aa:b5:c7:24:b1 192.168.3.14 45000 EasyWeather-WIFI24B1 V1.6.1
+192.168.3.16 48:3f:da:54:14:ec 192.168.3.16 45000 GW1000A-WIFI14EC V1.6.8
+192.168.3.26 48:3f:da:55:4d:a9 192.168.3.26 45000 GW1000A-WIFI4DA9 V1.6.8
+192.168.3.32 ^C
+</pre>
+
+### Viewing customized server settings
+
+<code>./gw -g 192.168.3.16 -c customized</code>
+<pre>
+id
+password
+server             192.168.3.3
+port               8080
+interval           16
+protocol           0 ecowitt
+enabled            1 on
+path ecowitt       /weatherstation/updateweatherstation.php?
+path wunderground  /data/report/
+</pre>
+
+### Changing server,port,protocol,enabled
+<code>./gw -g 192.168.3.16 -c customized server=192.168.3.4,port=8082,protocol=wunderground,enabled=on -c customized</code>
+<pre>
+id
+password
+server             192.168.3.4
+port               8082
+interval           16
+protocol           1 wunderground
+enabled            1 on
+path ecowitt       /weatherstation/updateweatherstation.php?
+path wunderground  /data/report/
+</pre>
+
+### Configuring new wifi ssid/pw -method 1 - server
+<p>Connect to GW1000-WIFI???? network in your preferred operating system. Verify ip address of gw.</p> 
+<code>./gw -g 192.168.4.1 -c wifi-server ssid pw</code>
+<br>
+
+### Configuring new wifi ssid/pw -method 2 - client
+<code>./gw -g 192.168.4.1 -c wifi-client ssid pw</code>
