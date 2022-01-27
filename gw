@@ -1,8 +1,7 @@
 #!/usr/bin/dash
 #!/bin/bash
 #! use dash as first line for portability testing
-
-# Utility for configuration of GW-1000
+# Shell/terminal utility for viewing weather data and sensor configuration of the GW-1000 or compatible devices
 # Only for firmware v1.6.5 or later - for intepretation of battery levels/sensor id new command
 # example ./gw -s
 # scan for devices
