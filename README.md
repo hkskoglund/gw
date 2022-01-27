@@ -204,19 +204,19 @@ I initially started to program the tool in javascript/nodejs which would have be
 Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styling can be customized in [ansiesc.sh](./style/ansiesc.sh), [style-beufort.sh](./style/style-beufort.sh)
 
 ### Wind: Beufort
-0. <div                             style="color:white;white-space:pre;width:150px">CALM           </div>
-1. <div                   style="background-color:Blue;white-space:pre;width:150px">LIGHT AIR</div>
-2. <div              style="background-color:RoyalBlue;white-space:pre;width:150px">LIGHT BREEZE   </div>
-3. <div         style="background-color:CornflowerBlue;white-space:pre;width:150px">GENTLE BREEZE  </div>
-4. <div style="background-color:DodgerBlue;color:Black;white-space:pre;width:150px">MODERATE BREEZE</div>
-5. <div               style="background-color:SeaGreen;white-space:pre;width:150px">FRESH BREEZE   </div>
-6. <div  style="background-color:PaleGreen;color:Black;white-space:pre;width:150px">STRONG BREEZE  </div>
-7. <div       style="background-color:Gold;color:Black;white-space:pre;width:150px">NEAR GALE      </div>
-8. <div     style="background-color:Yellow;color:Black;white-space:pre;width:150px">GALE           </div>
-9. <div                    style="background-color:Red;white-space:pre;width:150px">STRONG GALE    </div>
-10. <div             style="background-color:DarkSalmon;white-space:pre;width:150px">STORM          </div>
-11. <div               style="background-color:DeepPink;white-space:pre;width:150px">VIOLENT STORM  </div>
-12. <div    style="background-color:HotPink;Color:Black;white-space:pre;width:150px">HURRICANE      </div>
+0. <span                             style="color:white;white-space:pre;width:150px">CALM&nbsp;           </span>
+1. <span                   style="background-color:Blue;white-space:pre;width:150px">LIGHT AIR&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+2. <span              style="background-color:RoyalBlue;white-space:pre;width:150px">LIGHT BREEZE   </span>
+3. <span         style="background-color:CornflowerBlue;white-space:pre;width:150px">GENTLE BREEZE  </span>
+4. <span style="background-color:DodgerBlue;color:Black;white-space:pre;width:150px">MODERATE BREEZE</span>
+5. <span               style="background-color:SeaGreen;white-space:pre;width:150px">FRESH BREEZE   </span>
+6. <span  style="background-color:PaleGreen;color:Black;white-space:pre;width:150px">STRONG BREEZE  </span>
+7. <span       style="background-color:Gold;color:Black;white-space:pre;width:150px">NEAR GALE      </span>
+8. <span     style="background-color:Yellow;color:Black;white-space:pre;width:150px">GALE           </span>
+9. <span                    style="background-color:Red;white-space:pre;width:150px">STRONG GALE    </span>
+10. <span             style="background-color:DarkSalmon;white-space:pre;width:150px">STORM          </span>
+11. <span               style="background-color:DeepPink;white-space:pre;width:150px">VIOLENT STORM  </span>
+12. <span    style="background-color:HotPink;Color:Black;white-space:pre;width:150px">HURRICANE      </span>
 
 ### Air quality: pm 2.5
 
