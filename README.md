@@ -1,14 +1,12 @@
-# gw - shell tool for viewing live weather data and configuration of gw-1000 or compatible devices
+# gw - shell tool for viewing weather data and sensor configuration of gw-1000 or compatible devices
 
-It designed to be very **portable** and tested on bash,zsh,ksh93,mksh and dash. The primary testing has been done in the **dash** shell. Is uses terminal ansi escape codes to style solar,pm25 and wind data according to uvi index, aqi index and beufort scales.</p>
-<p>I initially started to program the tool in javascript/nodejs which would have been easier due to standard libraries for arrays,readUint and http parsing, but decided to test if its possible to do it without arrays in the shell/terminal using the standard unix nc/ncat and od utilities.</p>
-
+This tool will gather data from gw-1000 and present it in tabular form. The tabular layout with headers is the default. All sensors transmitting data are displayed unless hidden. It is possible to extend the script by creating a new view for your particular purpose. It also features a sensor configuration view which list all status of the sensors like ***searching***, ***disabled*** or which sensortype (***hex***) is connected to the gw. Detailed battery stauts is also included in the sensorview. It designed to be very **portable** and tested on bash, zsh, ksh93, mksh and **dash**. The script will try to detect which version of nc (nc bsd/nmap, toybox, busybox) is available and tailor command options accoringly. The basic overall operation of the script for sending command to gw is; parse packet "$(printf %b "$octalcmd" | nc $gwip $gwport | od -A n -t u1)". The implementation is based on the [Ecowitt binary protocol specification](https://osswww.ecowitt.net/uploads/20210716/WN1900%20GW1000,1100%20WH2680,2650%20telenet%20v1.6.0%20.pdf).
 
 ## Examples
 
 ### Viewing livedata
 
-<code>./gw -g 192.168.3.16 -c livedata</code>
+```./gw -g 192.168.3.16 -c livedata```
 
 <pre>
 ＴＥＭＰＥＲＡＴＵＲＥ
@@ -196,15 +194,43 @@ path wunderground  /data/report/
 Press capital Y to reset, settings are destroyed, be careful.
 <pre>Reset 48:3f:da:54:14:ec GW1000A-WIFI14EC (Y/N)?</pre>
 
+### Unit conversion
+
+## Background
+I initially started to program the tool in javascript/nodejs which would have been easier due to standard libraries for arrays,readUInt and http parsing, but decided to test if its possible to do it in the shell/terminal using the standard unix nc/ncat and od utilities. For arrays I am creating them dynamically by using eval. readUint-functions are included in the script, as well as http parsing for Ecowitt and Wunderground protocol requests.
+
+## Styling
+
+Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styling can be customized in [ansiesc.sh](./style/ansiesc.sh), [style-beufort.sh](./style/style-beufort.sh)
+
+### Wind: Beufort
+0. <div                             style="color:white;white-space:pre;width:150px">CALM           </div>
+1. <div                   style="background-color:Blue;white-space:pre;width:150px">LIGHT AIR</div>
+2. <div              style="background-color:RoyalBlue;white-space:pre;width:150px">LIGHT BREEZE   </div>
+3. <div         style="background-color:CornflowerBlue;white-space:pre;width:150px">GENTLE BREEZE  </div>
+4. <div style="background-color:DodgerBlue;color:Black;white-space:pre;width:150px">MODERATE BREEZE</div>
+5. <div               style="background-color:SeaGreen;white-space:pre;width:150px">FRESH BREEZE   </div>
+6. <div  style="background-color:PaleGreen;color:Black;white-space:pre;width:150px">STRONG BREEZE  </div>
+7. <div       style="background-color:Gold;color:Black;white-space:pre;width:150px">NEAR GALE      </div>
+8. <div     style="background-color:Yellow;color:Black;white-space:pre;width:150px">GALE           </div>
+9. <div                    style="background-color:Red;white-space:pre;width:150px">STRONG GALE    </div>
+10. <div             style="background-color:DarkSalmon;white-space:pre;width:150px">STORM          </div>
+11. <div               style="background-color:DeepPink;white-space:pre;width:150px">VIOLENT STORM  </div>
+12. <div    style="background-color:HotPink;Color:Black;white-space:pre;width:150px">HURRICANE      </div>
+
+### Air quality: pm 2.5
+
 ## Screenshots
 ### Default liveview
 ![Screenshot Liveview with headings - Windows Terminal v1.11.3471.0](./img/Skjermbilde%202022-01-26%20144206.png)
 ### Liveview without headings (-H headers option)
 ![Screenshot Liveview with headings - Windows Terminal v1.11.3471.0](./img/Skjermbilde%202022-01-26%20162949.jpg)
 
+
 <!---
 https://www.markdownguide.org/basic-syntax/
 https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes
+https://htmlcolorcodes.com/color-names/
 -->
 
 
