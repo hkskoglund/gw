@@ -3914,8 +3914,8 @@ newCustomizedPacket() {
 
 newPathPacket() {
     newPacketBody $CMD_WRITE_PATH
-    writeString "$C_WS_CUSTOMIZED_PATH_WU"
     writeString "$C_WS_CUSTOMIZED_PATH_ECOWITT"
+    writeString "$C_WS_CUSTOMIZED_PATH_WU"
 }
 
 parseSystemOption()

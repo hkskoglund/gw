@@ -2,49 +2,11 @@
 
 This tool will gather data from gw-1000 and present it in table layout with headers. All sensors transmitting data are displayed unless hidden. It is possible to extend the script by creating a new script view for your particular purpose using exported LIVEDATA environment variables. It also features a sensor configuration view which list all status of the sensors like ***searching***, ***disabled*** or which sensortype (***hex***) is connected to the gw. Detailed battery stauts is also included in the sensorview. It designed to be very **portable** and tested on bash, zsh, ksh93, mksh and **dash**. The script is dependent on the external nc and od utilities. 
 
-## Options
-&nbsp;&nbsp;&nbsp;&nbsp;-g, --gw <span style="text-decoration:underline">IP</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ip adress to device<br>
-
-&nbsp;&nbsp;&nbsp;&nbsp;-c, --command <span style="text-decoration:underline">COMMAND</span>&nbsp;<span style="text-decoration:underline">OPTIONS</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;send command to device<br>
-
-
-&nbsp;&nbsp;&nbsp;&nbsp;-l, --listen <span style="text-decoration:underline">PORT</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;port to listen for incoming ecowitt/wunderground http requests<br>
-
-&nbsp;&nbsp;&nbsp;&nbsp;-s, --scan <span style="text-decoration:underline">SUBNET</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;scan for devices on xxx.xxx.xxx subnet<br>
-
-&nbsp;&nbsp;&nbsp;&nbsp;-H, --hide-headers <span style="text-decoration:underline">HEADERS</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;hide headers from output in default view
-
-### Commands
-&nbsp;&nbsp;&nbsp;&nbsp;**livedata**<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get livedata from gw<br>
-
-&nbsp;&nbsp;&nbsp;&nbsp;**sensor** <span style="text-decoration:underline">[SENSOROPTIONS]</span>&nbsp;<span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get sensor data (searching/disabled/hexid)
-
-#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SENSOROPTIONS - low-high=command | searching | connected | disconnected | sensortype=hexid
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sensor options is specified in a , separated list of sensortype ranges and commands after =.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For example to disable sensors 40-47 (leafwetnetness), the command is -c sensor 40-47=disable.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The command following = is optional, in this case only sensors matching the range will be printed.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;To list only connected sensors, use -c sensor connected or shortform -c s c.
-
-&nbsp;&nbsp;&nbsp;&nbsp;**customized** <span style="text-decoration:underline">[CUSTOMIZEDOPTIONS]</span>&nbsp;<span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get customized server configuration<br>
-#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;CUSTOMIZEDOPTIONS
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Customized options is specified in a , separated list of key=value.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Allowed keys are id, password | pw, server | s, port , interval | i, protocol | p, enabled | e,<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;path_wunderground | p_w or path_ecowitt | p_e<br>
-
-
 ## Examples
 
 ### Viewing livedata
 
-```./gw -g 192.168.3.16 -c livedata```
+<code>./gw -g 192.168.3.16 -c livedata</code>
 
 <pre>
 ＴＥＭＰＥＲＡＴＵＲＥ
@@ -281,6 +243,42 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 ### Liveview without headings (-H headers option)
 ![Screenshot Liveview with headings - Windows Terminal v1.11.3471.0](./img/Skjermbilde%202022-01-26%20162949.jpg)
 
+## Options
+&nbsp;&nbsp;&nbsp;&nbsp;-g, --gw <span style="text-decoration:underline">IP</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ip adress to device<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;-c, --command <span style="text-decoration:underline">COMMAND</span>&nbsp;<span style="text-decoration:underline">OPTIONS</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;send command to device<br>
+
+
+&nbsp;&nbsp;&nbsp;&nbsp;-l, --listen <span style="text-decoration:underline">PORT</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;port to listen for incoming ecowitt/wunderground http requests<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;-s, --scan <span style="text-decoration:underline">SUBNET</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;scan for devices on xxx.xxx.xxx subnet<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;-H, --hide-headers <span style="text-decoration:underline">HEADERS</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;hide headers from output in default view
+
+### Commands
+&nbsp;&nbsp;&nbsp;&nbsp;**livedata**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get livedata from gw<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;**sensor** <span style="text-decoration:underline">[SENSOROPTIONS]</span>&nbsp;<span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get sensor data (searching/disabled/hexid)
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SENSOROPTIONS - low-high=command | searching | connected | disconnected | sensortype=hexid
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sensor options is specified in a , separated list of sensortype ranges and commands after =.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For example to disable sensors 40-47 (leafwetnetness), the command is -c sensor 40-47=disable.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The command following = is optional, in this case only sensors matching the range will be printed.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;To list only connected sensors, use -c sensor connected or shortform -c s c.
+
+&nbsp;&nbsp;&nbsp;&nbsp;**customized** <span style="text-decoration:underline">[CUSTOMIZEDOPTIONS]</span>&nbsp;<span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get customized server configuration<br>
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;CUSTOMIZEDOPTIONS
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Customized options is specified in a , separated list of key=value.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Allowed keys are id, password | pw, server | s, port , interval | i, protocol | p, enabled | e,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;path_wunderground | p_w or path_ecowitt | p_e<br>
 
 <!---
 https://www.markdownguide.org/basic-syntax/
