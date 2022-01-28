@@ -3,10 +3,6 @@
 #! use dash as first line for portability testing
 # Shell/terminal utility for viewing weather data and sensor configuration of the GW-1000 or compatible devices
 # Only for firmware v1.6.5 or later - for intepretation of battery levels/sensor id new command
-# example ./gw -s
-# scan for devices
-# example ./gw -h 10.42.0.180 -c mac
-# read mac
 
 #Documentation:
 
@@ -35,10 +31,10 @@
 #clear; while true; do  ../gw -A ../lang/gw-nbno.sh  -g 192.168.3.16 -Hb -c livedata; sleep 60; printf "\e[H"; done
 
 export DEBUG=0 # 1 will enable additional debug information, -d option to enable
-OPTION_SHOW_APPEND_FORMAT=0
-OPTION_SHOW_COMMAND=0
-OPTION_SHOW_HTTP_REQUEST=0
-OPTION_SHOW_TESTSENSOR=0
+DEBUG_OPTION_APPEND=0
+DEBUG_OPTION_COMMAND=0
+DEBUG_OPTION_HTTP=0
+DEBUG_OPTION_TESTSENSOR=0
 
 MAX_16BIT_UINT=$(((2 << 16) - 1))
 TIMEOUT_WIFICONFIG_SERVER=${TIMEOUT_WIFICONFIG_SERVER:=10} # timeout in seconds for wifi-server configuration of GW1000
@@ -138,6 +134,7 @@ ERROR_INVALID_SUBNET=18
 ERROR_SSID_EMPTY=19
 ERROR_PARSEPACKET_UNSUPPORTED_COMMAND=20
 ERROR_WIFICONFIG_SERVER_FAILED=21 # fail response code 1 from GW
+ERROR_CUSTOMIZED=22 #if customized settings is wrong
 
 #HTTP_RESPONSE_200_OK="HTTP/1.1 200 OK"
 #CRLF='\r\n'
@@ -1845,7 +1842,7 @@ printAppendBuffer()
 {
     #special characters like 'æøå' gives wrong adjustment in %s 
 
-    if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
+    if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_APPEND" -eq 1 ]; then 
         printf >&2 "%s\n" "APPEND_FORMAT/APPEND_ARGS printf '$APPEND_FORMAT' $APPEND_ARGS"
     fi
 
@@ -2094,7 +2091,7 @@ printLivedataLineFinal()
 
         [ -n "$LIVEVIEW_HIDE_STATUSLINE" ] && unset status_line
   
-        if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
+        if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_APPEND" -eq 1 ]; then 
             appendFormat " $header_fmt %s %s %s %s\n"
         fi
         
@@ -2107,7 +2104,7 @@ printLivedataLineFinal()
 
         unset STYLE_LIVE_VALUE
 
-        if [ "$DEBUG" -eq 1 ] || [ "$OPTION_SHOW_APPEND_FORMAT" -eq 1 ]; then 
+        if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_APPEND" -eq 1 ]; then 
             appendArgs "'$header_fmt' '$3' '$unit_fmt' '$status_fmt' '$signal_fmt'"
         fi
     
@@ -2979,7 +2976,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         echo >&2 checksum "$(printf "%02x" $checksum)"
     fi
 
-    [ "$OPTION_SHOW_TESTSENSOR" -eq 1 ] && injectTestSensorLivedata
+    [ "$DEBUG_OPTION_TESTSENSOR" -eq 1 ] && injectTestSensorLivedata
 
     #[ "$DEBUG" -eq 1 ] &&
     # export -p
@@ -3100,13 +3097,9 @@ path wunderground $C_WS_CUSTOMIZED_PATH_WU"
 
 parsePath() {
     readString
-    set -x
     C_WS_CUSTOMIZED_PATH_ECOWITT=$VALUE_STRING
-    set +x
     readString
-    set -x
     C_WS_CUSTOMIZED_PATH_WU=$VALUE_STRING
-    set +x
 
     printPath
 }
@@ -3117,7 +3110,7 @@ password           $C_WS_CUSTOMIZED_PASSWORD
 server             $C_WS_CUSTOMIZED_SERVER
 port               $C_WS_CUSTOMIZED_PORT
 interval           $C_WS_CUSTOMIZED_INTERVAL
-protocol           $C_WS_CUSTOMIZED_TYPE $C_WS_CUSTOMIZED_TYPE_STATE 
+protocol           $C_WS_CUSTOMIZED_HTTP $C_WS_CUSTOMIZED_HTTP_STATE 
 enabled            $C_WS_CUSTOMIZED_ENABLED $C_WS_CUSTOMIZED_ENABLED_STATE
 path ecowitt       $C_WS_CUSTOMIZED_PATH_ECOWITT
 path wunderground  $C_WS_CUSTOMIZED_PATH_WU"
@@ -3140,12 +3133,12 @@ parseCustomized() {
     C_WS_CUSTOMIZED_INTERVAL=$VALUE_UINT16BE
 
     readUInt8
-    C_WS_CUSTOMIZED_TYPE=$VALUE_UINT8
+    C_WS_CUSTOMIZED_HTTP=$VALUE_UINT8
 
-    if [ "$C_WS_CUSTOMIZED_TYPE" -eq 1 ]; then
-        C_WS_CUSTOMIZED_TYPE_STATE="wunderground"
-    elif [ "$C_WS_CUSTOMIZED_TYPE" -eq 0 ]; then
-        C_WS_CUSTOMIZED_TYPE_STATE="ecowitt"
+    if [ "$C_WS_CUSTOMIZED_HTTP" -eq 1 ]; then
+        C_WS_CUSTOMIZED_HTTP_STATE="wunderground"
+    elif [ "$C_WS_CUSTOMIZED_HTTP" -eq 0 ]; then
+        C_WS_CUSTOMIZED_HTTP_STATE="ecowitt"
     fi
 
     readUInt8
@@ -3423,7 +3416,7 @@ parsePacket() {
 
     PRX_CMD_UINT8=$((B3))
     getCommandName "$PRX_CMD_UINT8"
-    { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_SHOW_OD_BUFFER" ] ; } && {
+    { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" ] ; } && {
        printf >&2 "< %-20s" "$COMMAND_NAME"
        printBuffer >&2 "$1" 
     }
@@ -3670,7 +3663,7 @@ sendPacketnc() { #$1 - command
 
     createPacketTX
 
-    { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_SHOW_OD_BUFFER" ] ; } &&
+    { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" ] ; } &&
     {
         printf >&2 "> %-20s" "$COMMAND_NAME"
         printBuffer >&2 "$PACKET_TX"
@@ -3733,13 +3726,13 @@ sendPacketnc() { #$1 - command
             echo >&2 Busybox nc does not support UDP
         fi
     else
-        echo >&2 "Error nc version $NC_VERSION not supported sendPacketnc $ERROR_DEPENDENCY_NC"
+        echo >&2 "Error: nc version $NC_VERSION not supported sendPacketnc $ERROR_DEPENDENCY_NC"
         return "$ERROR_DEPENDENCY_NC"
     fi
 
     if [ -n "$cmdstr" ]; then
-       if [ -n "$OPTION_SHOW_COMMAND" ] && [ "$OPTION_SHOW_COMMAND" -eq 1 ]; then
-         printf "%s\n" "$cmdstr"
+       if [ -n "$DEBUG_OPTION_COMMAND" ] && [ "$DEBUG_OPTION_COMMAND" -eq 1 ]; then
+            printf >&2 "%s: %s\n" "$COMMAND_NAME" "$cmdstr"
        fi
        od_buffer=$(eval "$cmdstr" )
        #maybe use: https://stackoverflow.com/questions/1550933/catching-error-codes-in-a-shell-pipe
@@ -3829,7 +3822,7 @@ discovery_nc() { #$1 - subnet for udp scan
 
     case "$KSH_VERSION" in
         *Android*)
-            echo >&2 "Error UDP scanning for devices not supported ( -u -l options ), nc version $NC_VERSION_STR"
+            echo >&2 "Error: UDP scanning for devices not supported ( -u -l options ), nc version $NC_VERSION_STR"
             # udp -u -l option gives 1 error code and 'nc: listen' output
             return "$ERROR_NC_UDP_SCAN_UNAVAILABLE"
             ;;
@@ -3908,7 +3901,7 @@ newCustomizedPacket() {
     writeString "$C_WS_CUSTOMIZED_SERVER"
     writeUInt16BE "$C_WS_CUSTOMIZED_PORT"
     writeUInt16BE "$C_WS_CUSTOMIZED_INTERVAL"
-    writeUInt8 "$C_WS_CUSTOMIZED_TYPE"
+    writeUInt8 "$C_WS_CUSTOMIZED_HTTP"
     writeUInt8 "$C_WS_CUSTOMIZED_ENABLED"
 }
 
@@ -4132,6 +4125,8 @@ sendCustomized() {
 
 updateCustomized() {
 
+    EXITCODE_CUSTOMIZED=0
+
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
             typeset value key option
@@ -4181,10 +4176,11 @@ updateCustomized() {
 
                 ;;
 
-            port)
+            port | p)
 
                 if ! isNumber "$value"; then
                     echo >&2 Error NaN cannot set customized port to $((value)) from "$value"
+                    EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 else
                     C_WS_CUSTOMIZED_PORT=$((value))
                     [ $DEBUG -eq 1 ] && echo >&2 Update customized_port from "$C_WS_CUSTOMIZED_PORT to $value"
@@ -4192,7 +4188,7 @@ updateCustomized() {
 
                 ;;
 
-            protocol | p)
+            http | h)
 
                 case $value in
 
@@ -4204,15 +4200,12 @@ updateCustomized() {
                         value=0
                         ;;
 
-                    
+                    *)  echo >&2 "Error: Unknown value $value for http protocol, use wunderground|w|1 or ecowitt|e|0"
+                        EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 esac
 
-                if ! isNumber "$value"; then
-                    echo >&2 "Error: Unknown value $value for protocol, use wunderground|w|1 or ecowitt|e|0"
-                else
-                   [ $DEBUG -eq 1 ] && echo >&2 Update customized_TYPE from "$C_WS_CUSTOMIZED_TYPE to $value"
-                   C_WS_CUSTOMIZED_TYPE=$value
-                fi
+                [ $DEBUG -eq 1 ] && echo >&2 Update customized_TYPE from "$C_WS_CUSTOMIZED_HTTP to $value"
+                C_WS_CUSTOMIZED_HTTP=$value
                 ;;
 
             enabled | e)
@@ -4226,15 +4219,13 @@ updateCustomized() {
                     off | 0 | no | n)
                         value=0
                         ;;
-                
+
+                    *)  echo >&2 "Error: Unknown value $value for enabled, use on|1|yes|y, off|0|no|n"
+                        EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 esac
 
-                if ! isNumber "$value"; then
-                   echo >&2 "Error: Unknown value $value for enabled, use on|1|yes|y, off|0|no|n"
-                else
-                    [ $DEBUG -eq 1 ] && echo >&2 Update customized_enabled from "$C_WS_CUSTOMIZED_ENABLED to $value"
-                    C_WS_CUSTOMIZED_ENABLED=$value
-                fi
+                [ $DEBUG -eq 1 ] && echo >&2 Update customized_enabled from "$C_WS_CUSTOMIZED_ENABLED to $value"
+                C_WS_CUSTOMIZED_ENABLED=$value
 
                 ;;
 
@@ -4242,6 +4233,7 @@ updateCustomized() {
 
                 if ! isNumber "$value"; then
                     echo >&2 Error NaN cannot set customized interval to "$value"
+                    EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 else
                     [ $DEBUG -eq 1 ] && echo >&2 "Update customized_interval from $C_WS_CUSTOMIZED_INTERVAL to $value"
                     C_WS_CUSTOMIZED_INTERVAL=$((value))
@@ -4264,13 +4256,9 @@ updateCustomized() {
 
                 ;;
 
-            help|?)
-                echo >&2 "Use id, password|pw, server|s, port, protocol|p, enabled|e, interval|i, path_wunderground|p_w, path_ecowitt|p_e"
-                ;;
-
-            *)
-                echo >&2 Skipped updateCustomized: unknown key "$key" value: "$value"
-                echo >&2 "Use id, password|pw, server|s, port, protocol|p, enabled|e, interval|i, path_wunderground|p_w, path_ecowitt|p_e"
+            help|?|*)
+                echo >&2 "Use id, password|pw, server|s, port|p, http|h, enabled|e, interval|i, path_wunderground|p_w, path_ecowitt|p_e"
+                EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 ;;
         esac
 
@@ -4278,13 +4266,18 @@ updateCustomized() {
 
     #https://stackoverflow.com/questions/18668556/how-can-i-compare-numbers-in-bash
 
-    [ $DEBUG -eq 1 ] && printCustomized >&2
+    if [ $EXITCODE_CUSTOMIZED -eq 0 ]; then
 
-    sendCustomized
+        [ $DEBUG -eq 1 ] && printCustomized >&2
+
+        sendCustomized
+    fi
 
     if [ -n "$KSH_VERSION" ]; then
       unset key value option
     fi
+
+    return $EXITCODE_CUSTOMIZED
 }
 
 convertScale10ToFloat() {
@@ -4391,7 +4384,7 @@ initnc()
                     ;;
 
                 *)
-                    echo >&2 "Error Unknown nc version header $nc_ver"
+                    echo >&2 "Error: Unknown nc version header $nc_ver"
                     NC_VERSION=$NC_OPENBSD
                     NC_VERSION_STR="nc unknown"
                     ;;
@@ -4576,23 +4569,23 @@ processSensorOptions()
        #validation
 
        if [ -z "$sensorType_low" ]; then
-          echo >&2 "Error Empty sensor id low $sensorType_low"
+          echo >&2 "Error: Empty sensor id low $sensorType_low"
           return "$ERROR_INVALID_SENSORID"
        fi
        
        if [ -n "$sensorType_low" ] && ! isNumber "$sensorType_low" || [ "$sensorType_low" -gt "$SENSORTYPE_MAX" ]; then
-          echo >&2 "Error Not a valid sensor type $sensorType_low, max sensortype $SENSORTYPE_MAX"
+          echo >&2 "Error: Not a valid sensor type $sensorType_low, max sensortype $SENSORTYPE_MAX"
           return "$ERROR_INVALID_SENSORID"
        fi
        
        if [ -n "$sensorType_high" ]; then
           if  ! isNumber "$sensorType_high" || [ "$sensorType_high" -gt "$SENSORTYPE_MAX" ]; then
-            echo >&2 "Error Not a valid sensor id $sensorType_high, max sensortype $SENSORTYPE_MAX"
+            echo >&2 "Error: Not a valid sensor id $sensorType_high, max sensortype $SENSORTYPE_MAX"
             return "$ERROR_INVALID_SENSORID"
           fi
 
           if [ "$sensorType_low" -gt "$sensorType_high" ]; then
-            echo >&2 "Error Sensor id low $sensorType_low is greather than sensorid high $sensorType_high"
+            echo >&2 "Error: Sensor id low $sensorType_low is greather than sensorid high $sensorType_high"
             return "$ERROR_INVALID_SENSORID"
           fi
 
@@ -4627,12 +4620,12 @@ processSensorOptions()
           search|s|enable|e|searching|enabled)  sensorid=$SENSORID_SEARCH
                                                  ;;
 
-          '')                                   echo >&2 "Error Empty command, use sensortype=disable|search|d|s"
+          '')                                   echo >&2 "Error: Empty command, use sensortype=disable|search|d|s"
                                                 return "$ERROR_INVALID_SENSORID_COMMAND"
                                                 ;;
           *) 
                                                 if ! isHex "$cmdexpr"; then
-                                                echo >&2 "Error Invalid hex number for sensor id $cmdexpr"
+                                                echo >&2 "Error: Invalid hex number for sensor id $cmdexpr"
                                                 return "$ERROR_INVALID_SENSORID_COMMAND"
                                                 else
                                                     sensorid_hex=1
@@ -4642,7 +4635,7 @@ processSensorOptions()
        esac
 
         if [ "$sensorid_hex" -eq 1 ] && [ "$sensorType_low" -lt "$sensorType_high" ]; then
-            echo >&2 "Error Cannot set sensortype range to same sensorid $cmdexpr"
+            echo >&2 "Error: Cannot set sensortype range to same sensorid $cmdexpr"
             return $ERROR_INVALID_SENSORID
         fi
 
@@ -4848,7 +4841,7 @@ processCommand() {
                 sendPacket $CMD_READ_WUNDERGROUND
             else
                 if [ $# -lt 2 ]; then
-                    echo >&2 "Error {id} {password} must be specified"
+                    echo >&2 "Error: {id} {password} must be specified"
                 else
                     sendWeatherservice "$CMD_WRITE_WUNDERGROUND" "$1" "$2"
                 fi
@@ -4862,7 +4855,7 @@ processCommand() {
                 sendPacket $CMD_READ_WOW
             else
                 if [ $# -lt 2 ]; then
-                    echo >&2 "Error {id} {password} must be specified"
+                    echo >&2 "Error: {id} {password} must be specified"
                 else
                     sendWeatherservice "$CMD_WRITE_WOW" "$1" "$2"
                 fi
@@ -4875,7 +4868,7 @@ processCommand() {
                 sendPacket $CMD_READ_WEATHERCLOUD
             else
                 if [ $# -lt 2 ]; then
-                    echo >&2 "Error {id} {key} must be specified"
+                    echo >&2 "Error: {id} {key} must be specified"
                 else
                     sendWeatherservice "$CMD_WRITE_WEATHERCLOUD" "$1" "$2"
                 fi
@@ -4891,12 +4884,14 @@ processCommand() {
             else
                 
                 if sendPacket $CMD_READ_CUSTOMIZED >/dev/null && sendPacket $CMD_READ_PATH >/dev/null; then
-                updateCustomized "$1"
+                    if ! updateCustomized "$1"; then
+                        EXITCODE_PROCESSCOMMAND=$EXITCODE_CUSTOMIZED
+                        #echo >&2 "Error: Failed to update customized settings"
+                    fi
                 else
-                  >&2 echo Cannot update customized, failed to read customized settings
+                  >&2 echo "Cannot update customized, failed to read customized settings from device"
                 fi
             fi
-            
 
             ;;
 
@@ -4952,24 +4947,24 @@ processCommand() {
 
                 case "$1" in 
                     connected|c)
-                        SPATTERNID=$SPATTERNID_CONNECTED #matches connected sensors
-                        sendPacket $CMD_READ_SENSOR_ID_NEW
-                        ;;
+                                    SPATTERNID=$SPATTERNID_CONNECTED #matches connected sensors
+                                    sendPacket $CMD_READ_SENSOR_ID_NEW
+                                    ;;
                     disconnected)
-                        SPATTERNID=$SPATTERNID_DISCONNECTED
-                        sendPacket $CMD_READ_SENSOR_ID_NEW
-                        ;;
+                                    SPATTERNID=$SPATTERNID_DISCONNECTED
+                                    sendPacket $CMD_READ_SENSOR_ID_NEW
+                                    ;;
                     searching|s)
-                        SPATTERNID=$SPATTERNID_SEARCHING
-                        sendPacket $CMD_READ_SENSOR_ID_NEW
-                    ;;
+                                    SPATTERNID=$SPATTERNID_SEARCHING
+                                    sendPacket $CMD_READ_SENSOR_ID_NEW
+                                    ;;
                     disabled|d)
-                        SPATTERNID=$SPATTERNID_DISABLED
-                        sendPacket $CMD_READ_SENSOR_ID_NEW
-                    ;;
+                                    SPATTERNID=$SPATTERNID_DISABLED
+                                    sendPacket $CMD_READ_SENSOR_ID_NEW
+                                    ;;
                     
                     *) 
-                        processSensorOptions "$1"
+                                    processSensorOptions "$1"
                     ;;
                 esac
 
@@ -4986,7 +4981,7 @@ processCommand() {
 
         *)
 
-            echo >&2 "Error Unknown command $COMMAND $*"
+            echo >&2 "Error: Unknown command $COMMAND $*"
             return "$ERROR_COMMAND_UNKNOWN"
             ;;
     esac
@@ -6064,8 +6059,8 @@ httpServer()
         return $ERROR_HTTP_MESSSAGE_EMPTY
     fi
 
-    if [ -n "$OPTION_SHOW_HTTP_REQUEST" ]; then
-        if  [ "$OPTION_SHOW_HTTP_REQUEST" -eq 1  ] ; then
+    if [ -n "$DEBUG_OPTION_HTTP" ]; then
+        if  [ "$DEBUG_OPTION_HTTP" -eq 1  ] ; then
             echo >&2 "$http_message"
         fi
     fi
@@ -6483,35 +6478,28 @@ while [ $# -gt 0 ]; do
 
         -d | --debug)
 
-            DEBUG=1
-            #DEBUG_OPTIONS_nc="-v"
-            shift
+               case "$2" in
+                    ""|--*|-*) DEBUG=1
+                                shift
+                                ;;
+                    a|append)   DEBUG_OPTION_APPEND=1 # print append format/args - default livedata view/table layout
+                                shift
+                                ;;
+                    b|buffer)   DEBUG_OPTION_OD_BUFFER=1 # show hex buffers of transmitted/received data
+                                shift
+                                ;;
+                    c|command) DEBUG_OPTION_COMMAND=1 #echo command printf/nc/od pipeline
+                                shift
+                                ;;
+                    h|http)    DEBUG_OPTION_HTTP=1 #show http request when listening 
+                                shift
+                                ;;
+                    t|test)    DEBUG_OPTION_TESTSENSOR=1 # inject test sensor data
+                                shift
+                                ;;
+               esac
+            
             ;;
-        
-        -dA | --show-append-format)
-            OPTION_SHOW_APPEND_FORMAT=1
-            shift
-            ;;
-
-        -dB | --show-buffer)
-            DEBUG_SHOW_OD_BUFFER=1 # show hex buffers of transmitted/received data
-            shift
-            ;;
-
-        -dC | --show-command) #echo command printf/nc/od pipeline
-             OPTION_SHOW_COMMAND=1
-             shift 
-             ;;
-
-        -dH | --show-http) #show http request when listening 
-              OPTION_SHOW_HTTP_REQUEST=1
-              shift
-              ;;
-
-        -dI | --show-testsensor) # inject test sensor data
-             OPTION_SHOW_TESTSENSOR=1
-             shift
-             ;;
 
         -f | --firmware)
             HTTP_UA="gw"
