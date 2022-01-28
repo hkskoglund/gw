@@ -39,11 +39,12 @@ DEBUG_OPTION_TESTSENSOR=0
 MAX_16BIT_UINT=$(((2 << 16) - 1))
 TIMEOUT_WIFICONFIG_SERVER=${TIMEOUT_WIFICONFIG_SERVER:=10} # timeout in seconds for wifi-server configuration of GW1000
 
-GW_VIEW_BIG_FILE=${GW_VIEW_BIG_FILE="./view/big.sh"}
-GW_VIEW_CSV_FILE=${GW_VIEW_CSV_FILE:="./view/csv.sh"}
+GWDIR=${GWDIR:="."}
+GW_VIEW_BIG_FILE=${GW_VIEW_BIG_FILE="$GWDIR/view/big.sh"}
+GW_VIEW_CSV_FILE=${GW_VIEW_CSV_FILE:="$GWDIR/view/csv.sh"}
 
-GW_STYLE_LIMITS_FILE=${GW_STYLE_LIMITS_FILE:="./style/limits.sh"}
-GW_STYLE_FILE=${GW_STYLE_FILE:="./style/ansiesc.sh"}
+GW_STYLE_LIMITS_FILE=${GW_STYLE_LIMITS_FILE:="$GWDIR/style/limits.sh"}
+GW_STYLE_FILE=${GW_STYLE_FILE:="$GWDIR/style/ansiesc.sh"}
 
 #shellcheck source=./style/limits.sh
 . "$GW_STYLE_LIMITS_FILE"
@@ -111,7 +112,7 @@ WIND_WNW=14
 WIND_NW=15
 WIND_NNW=16
 
-. ./gw-beufort.sh
+. $GWDIR/gw-beufort.sh
 
 #ERROR_CONNECTION=1
 #ERROR_NO_NMCLI=2
@@ -1068,31 +1069,34 @@ writeString()
     [ "$DEBUG" -eq 1 ] && >&2 echo  "writeString $1 len $len"
 
     PACKET_TX_BODY="$PACKET_TX_BODY $len"
-    unset APPEND_FORMAT APPEND_STRING
+    unset APPEND_FORMAT_WRITE_STRING APPEND_STRING
 
     n=1
     while [ -n "$str" ]; do
         suffix=${str#?}
         eval C$n='${str%%"$suffix"}'
-        APPEND_FORMAT=$APPEND_FORMAT'%d ' # wait with printf-processing until entire sting is built
+        APPEND_FORMAT_WRITE_STRING=$APPEND_FORMAT_WRITE_STRING'%d ' # wait with printf-processing until entire sting is built
         APPEND_STRING=$APPEND_STRING'\"$'"C$n " # \'$var or \"$var - char to ascii conversion in printf bulitin/command argument
         str=$suffix
         n=$(( n + 1 ))
     done
 
-    if [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" -eq  1 ] && [ -n "$APPEND_FORMAT" ]; then
-        eval printf -v decstr \""$APPEND_FORMAT"\" "$APPEND_STRING"
+    if [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" -eq  1 ] && [ -n "$APPEND_FORMAT_WRITE_STRING" ]; then
+        eval printf -v decstr \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING"
         PACKET_TX_BODY="$PACKET_TX_BODY $decstr"
-    elif [ -n "$APPEND_FORMAT" ]; then
-        PACKET_TX_BODY="$PACKET_TX_BODY $(eval printf \""$APPEND_FORMAT"\" "$APPEND_STRING")" #ok, run in subshell
+    elif [ -n "$APPEND_FORMAT_WRITE_STRING" ]; then
+        PACKET_TX_BODY="$PACKET_TX_BODY $(eval printf \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING")" #ok, run in subshell
     fi
 
     #cleanup variables
+    unset APPEND_FORMAT_WRITE_STRING APPEND_STRING
     n=1
     while [ "$n" -le "$len" ]; do
         unset C$n 
         n=$(( n + 1 ))
     done
+
+    resetAppendBuffer
 
     if [ -n "$KSH_VERSION" ]; then
         unset len str decstr n
@@ -2036,7 +2040,6 @@ printLivedataLine()
         printLivedataLineFinal "$@"
     fi
 
-
 }
 
 printLivedataLineFinal()
@@ -2132,13 +2135,14 @@ printLivedata()
     #resetAppendBuffer
     
    printLivedataHeader "" "$LIVEDATA_HEADER"
-
+ 
      if [ -n "$LIVEDATA_INTEMP" ]; then
          
          setLivedataValueStyleLtGt "$LIVEDATA_INTEMP_RAW" "$LIVEDATA_INTEMP_LIMIT_LOW" "$LIVEDATA_INTEMP_LIMIT_HIGH" "$STYLE_LIVEDATA_INTEMP_LIMIT_LOW" "$STYLE_LIVEDATA_INTEMP_LIMIT_HIGH"
          printLivedataLine "$LIVEDATA_INTEMP_HEADER"  "$LIVEDATA_INTEMP" "%6.1f" "$UNIT_TEMP" "%s" 'in' "%s" 
      fi
- 
+
+    
      if [ -n "$LIVEDATA_OUTTEMP" ]; then
          setLivedataValueStyleLtGt "$LIVEDATA_OUTTEMP_RAW" "$LIVEDATA_OUTTEMP_LIMIT_LOW" "$LIVEDATA_OUTTEMP_LIMIT_HIGH" "$STYLE_LIMIT_LIVEDATA_OUTTEMP" "$STYLE_LIVEDATA_OUTTEMP_LIMIT_HIGH"
          #WH32 battery and state may be set by injectWH32 testdata or if available
@@ -3110,7 +3114,7 @@ password           $C_WS_CUSTOMIZED_PASSWORD
 server             $C_WS_CUSTOMIZED_SERVER
 port               $C_WS_CUSTOMIZED_PORT
 interval           $C_WS_CUSTOMIZED_INTERVAL
-protocol           $C_WS_CUSTOMIZED_HTTP $C_WS_CUSTOMIZED_HTTP_STATE 
+http               $C_WS_CUSTOMIZED_HTTP $C_WS_CUSTOMIZED_HTTP_STATE 
 enabled            $C_WS_CUSTOMIZED_ENABLED $C_WS_CUSTOMIZED_ENABLED_STATE
 path ecowitt       $C_WS_CUSTOMIZED_PATH_ECOWITT
 path wunderground  $C_WS_CUSTOMIZED_PATH_WU"
@@ -4257,7 +4261,7 @@ updateCustomized() {
                 ;;
 
             help|?|*)
-                echo >&2 "Use id, password|pw, server|s, port|p, http|h, enabled|e, interval|i, path_wunderground|p_w, path_ecowitt|p_e"
+                echo >&2 "Error: Unknown key $key, use id, password|pw, server|s, port|p, http|h, enabled|e, interval|i, path_wunderground|p_w, path_ecowitt|p_e"
                 EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 ;;
         esac
@@ -5425,6 +5429,10 @@ setRainHttpLivedata()
 #$2 - value
 {
     convert_in_to_mm "$2"
+    if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 1 ]; then
+        roundFloat "$VALUE_IN_MM_SCALE10"
+        VALUE_IN_MM_SCALE10=$VALUE_INT
+    fi
     eval export "$1"_RAW=$VALUE_IN_MM_SCALE10
     if [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_MM ]; then
         convertScale10ToFloat "$VALUE_IN_MM_SCALE10"
@@ -5441,7 +5449,11 @@ setWindHttpLivedata()
     fi
 
     convert_mph_To_mps "$2"
-    eval export "$1"_RAW=$VALUE_MPS_SCALE10
+      if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 1 ]; then
+        roundFloat "$VALUE_MPS_SCALE10"
+        VALUE_MPS_SCALE10=$VALUE_INT
+    fi
+    eval export "$1_RAW=$VALUE_MPS_SCALE10"
     if [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPS ]; then
        convertScale10ToFloat "$VALUE_MPS_SCALE10"
        eval export "$1"="$VALUE_SCALE10_FLOAT"
@@ -5466,6 +5478,18 @@ setWindDirHttpLivedata()
 
 }
 
+roundFloat()
+#https://unix.stackexchange.com/questions/89712/how-to-convert-floating-point-number-to-integer
+{
+    if [ $SHELL_SUPPORT_BULTIN_PRINTF_VOPT -eq 1 ]; then
+    #shellcheck disable=SC3045
+       printf -v VALUE_INT "%.0f" "$1"
+    else
+        VALUE_INT=$(printf "%.0f" "$1")
+    fi
+
+}
+
 setTemperatureHttpLivedata()
 {
     #skip undefined value -9999
@@ -5474,7 +5498,11 @@ setTemperatureHttpLivedata()
     fi
 
     convert_farenheit_to_celciusScale10 "$2" 
-    eval export "$1"_RAW=$VALUE_CELCIUS_SCALE10
+    if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 1 ]; then
+       roundFloat $VALUE_CELCIUS_SCALE10
+       VALUE_CELCIUS_SCALE10=$VALUE_INT
+    fi
+    eval export "$1_RAW=$VALUE_CELCIUS_SCALE10"
     if [ "$UNIT_TEMPERATURE_MODE" -eq $UNIT_TEMPERATURE_CELCIUS ]; then
         convertScale10ToFloat "$VALUE_CELCIUS_SCALE10"
         eval export "$1"="$VALUE_SCALE10_FLOAT"
@@ -5486,6 +5514,10 @@ setTemperatureHttpLivedata()
 setPressureHttpLivedata()
 {
     convert_inhg_to_hpa "$2"
+     if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 1 ]; then
+       roundFloat "$VALUE_INHG_HPA_SCALE10"
+       VALUE_INHG_HPA_SCALE10=$VALUE_INT
+    fi
     eval export "$1"_RAW="$VALUE_INHG_HPA_SCALE10"
     if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
         convertScale10ToFloat "$VALUE_INHG_HPA_SCALE10"
@@ -5586,7 +5618,7 @@ EOL
     fi
 }
 
-parseEcowittHttpRequest()
+parseHttpRequestEcowitt()
 #$1 - http request message (entire)
 {
    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
@@ -5836,7 +5868,7 @@ parseEcowittHttpRequest()
     fi
 }
 
-parseWundergroundHttpRequest()
+parseHttpRequestWunderground()
 {
    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
@@ -6067,12 +6099,12 @@ httpServer()
     
     case "$http_message" in
         
-        POST*tempinf*)  parseEcowittHttpRequest "$http_message"
+        POST*tempinf*)  parseHttpRequestEcowitt "$http_message"
                 
                 #https://stackoverflow.com/a/69836872/2076536
                 ;;
         
-        GET*tempf*)   parseWundergroundHttpRequest "$http_message"
+        GET*tempf*)   parseHttpRequestWunderground "$http_message"
                 #cd /tmp/gw/wunderground; watch -n 16 'for f in *; do read v < "$f"; printf "%-30s %s\n" "$f" "$v"; done'
                 ;;
         *) echo >&2 Error: Unable to parse "$http_message" #maybe add csv/json response on request?
