@@ -3100,9 +3100,13 @@ path wunderground $C_WS_CUSTOMIZED_PATH_WU"
 
 parsePath() {
     readString
+    set -x
     C_WS_CUSTOMIZED_PATH_ECOWITT=$VALUE_STRING
+    set +x
     readString
+    set -x
     C_WS_CUSTOMIZED_PATH_WU=$VALUE_STRING
+    set +x
 
     printPath
 }
