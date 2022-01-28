@@ -211,7 +211,7 @@ Press capital Y to reset, settings are destroyed, be careful.
 <pre>Reset 48:3f:da:54:14:ec GW1000A-WIFI14EC (Y/N)?</pre>
 
 ## Background
-I initially started to program the tool in javascript/nodejs which would have been easier due to standard libraries for arrays,readUInt and http parsing, but decided to test if its possible to do it in the shell/terminal using the standard unix nc/ncat and od utilities. For arrays I am creating them dynamically by using eval. readUint-functions are included in the script, as well as http parsing for Ecowitt and Wunderground protocol requests.
+I started to program the tool in javascript/nodejs which would have been easier due to standard libraries for arrays,readUInt and http parsing, but decided to test if its possible to do it in the shell/terminal using the standard unix nc/ncat and od utilities. For arrays I am creating them dynamically by using eval. readUint-functions are included in the script, as well as http parsing for Ecowitt and Wunderground protocol requests.
 
 ## Implementation
 It will try to detect which version of nc (nc bsd/nmap, toybox, busybox) is available and tailor command options accoringly in [initnc](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L4334). The basic overall operation of the script for sending a command to gw is ["printf %b "$octalBuffer" | nc -4 $gwip $gwport | od"](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L3703-L3704) then parsing is done in [parsePacket](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L3399). Finaly livedata are printed in [printLivedata](https://github.com/hkskoglund/gw/blob/a0968f97c8cb69aa1f87b3155eaef63e927c398d/gw#L2123). The implementation is based on the [Ecowitt binary protocol specification](https://osswww.ecowitt.net/uploads/20210716/WN1900%20GW1000,1100%20WH2680,2650%20telenet%20v1.6.0%20.pdf). 
@@ -277,7 +277,7 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get customized server configuration<br>
 #### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;CUSTOMIZEDOPTIONS
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Customized options is specified in a , separated list of key=value.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Allowed keys are id, password | pw, server | s, port , interval | i, protocol | p, enabled | e,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Allowed keys are id, password | pw, server | s, port | p , interval | i, http | h, enabled | e,<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;path_wunderground | p_w or path_ecowitt | p_e<br>
 
 <!---
