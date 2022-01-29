@@ -1,0 +1,20 @@
+{
+  "name": "gw",
+  "version": "1.0.0",
+  "description": "shell/terminal tool for viewing live weather data and sensor configuration of gw-1000 or compatible devices",
+  "homepage": "https://github.com/hkskoglund/gw",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hkskoglund/gw"
+  },
+  "keywords" : [ "shell","terminal","bash","zsh","dash","mksh","ksh93","cli","weather","ansi-colors","weather-station","nc","ncat","od" ],
+  "bin": {
+    "gw": "./gw"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "author": "Henning Skoglund <hkskoglund@gmail.com>",
+  "scripts": {
+    "test": ""
+  }
+}
