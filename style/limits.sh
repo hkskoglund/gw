@@ -1,4 +1,4 @@
-#!/usr/bin/dash
+#!/bin/sh
 #Limits for triggering of ansi escape highlights
 
 #export LIVEDATA_RAINRATE_LIMIT=${LIVEDATA_RAINRATE_LIMIT:=5} # 0.5 mm/h - scale x10

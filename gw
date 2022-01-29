@@ -1,6 +1,4 @@
-#!/usr/bin/dash
-#!/bin/bash
-#! use dash as first line for portability testing
+#!/bin/sh
 # Shell/terminal utility for viewing weather data and sensor configuration of the GW-1000 or compatible devices
 # Only for firmware v1.6.5 or later - for intepretation of battery levels/sensor id new command
 
@@ -30,7 +28,8 @@
 #watch not compatible -> wrong formatting of \r\t\t\t sequences
 #clear; while true; do  ../gw -A ../lang/gw-nbno.sh  -g 192.168.3.16 -Hb -c livedata; sleep 60; printf "\e[H"; done
 
-export DEBUG=0 # 1 will enable additional debug information, -d option to enable
+export DEBUG="${DEBUG:=0}" # 1 will enable additional debug information, -d option to enable
+[ $DEBUG -eq 1 ] && ls -l /bin/sh
 DEBUG_OPTION_APPEND=0
 DEBUG_OPTION_COMMAND=0
 DEBUG_OPTION_HTTP=0

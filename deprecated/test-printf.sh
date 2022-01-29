@@ -1,4 +1,4 @@
-#!/usr/bin/dash
+#!/bin/sh
 
 n=0
 f="99.34"

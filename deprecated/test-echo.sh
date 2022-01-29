@@ -1,4 +1,4 @@
-#!/usr/bin/dash
+#!/bin/sh
 echo "line1
 line2"
 line="line1

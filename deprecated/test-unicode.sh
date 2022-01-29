@@ -1,4 +1,4 @@
-#!/usr/bin/dash
+#!/bin/sh
 export unicode="🔋"
 for sh in mksh ksh dash bash zsh; do 
    printf "%s\n%s\n" "-------------------" "$sh"

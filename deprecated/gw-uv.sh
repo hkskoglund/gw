@@ -1,4 +1,4 @@
-#!/usr/bin/dash
+#!/bin/sh
 export          UV_RISK_LOW="${UV_RISK_LOW:="LOW      "}"
 export UV_RISK_MODERATE="${UV_RISK_MODERATE:="MODERATE "}"
 export         UV_RISK_HIGH="${UV_RISK_HIGH:="HIGH     "}"

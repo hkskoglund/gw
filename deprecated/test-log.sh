@@ -1,4 +1,4 @@
-#!/usr/bin/dash
+#!/bin/sh
 cd /tmp/gw/livedata
 mkdir /tmp/gw/log
 dirModified=0

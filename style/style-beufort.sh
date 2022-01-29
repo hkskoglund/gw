@@ -1,4 +1,4 @@
-#!/usr/bin/dash
+#!/bin/sh
 
 #colors
 STYLE_BEUFORT_0="$CSI$SGI_BACKGC$SGI_COLOR_BLACK"m                                          #  0.5 m/s

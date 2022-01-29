@@ -1,4 +1,4 @@
-#!/usr/bin/dash
+#!/bin/sh
 #ANSI escape codes for styling
 #disable with NO_COLOR=y environment variable
 #https://en.wikipedia.org/wiki/ANSI_escape_code

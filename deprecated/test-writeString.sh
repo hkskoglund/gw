@@ -1,4 +1,4 @@
-#!/usr/bin/dash
+#!/bin/sh
 
 initShell() {
     #shellcheck disable=SC3010,SC2050

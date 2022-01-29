@@ -1,4 +1,4 @@
-#!/usr/bin/dash
+#!/bin/sh
 
 #https://fsymbols.com/generators/tarty/
 

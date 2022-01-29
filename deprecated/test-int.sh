@@ -1,4 +1,4 @@
-#!/usr/bin/dash
+#!/bin/sh
 
 i=10
 while true; do 

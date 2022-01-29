@@ -1,4 +1,4 @@
-#!/usr/bin/dash
+#!/bin/sh
 # https://www.airnow.gov/aqi/aqi-basics/
 #added space at end when doing when refreshing screen with printf \e[H, otherwise status is merged if changed
                               PM25_AQI_GOOD=${PM25_AQI_GOOD:="GOOD         "}

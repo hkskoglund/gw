@@ -1,4 +1,4 @@
-#!/usr/bin/dash
+#!/bin/sh
 #shellcheck disable=SC2034
 LIVEDATA_INTEMP_HEADER="Innendørs temperatur"
 LIVEDATA_ABSBARO_HEADER="Absolutt trykk"

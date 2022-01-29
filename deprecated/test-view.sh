@@ -1,4 +1,4 @@
-#!/usr/bin/dash
+#!/bin/sh
 echo "$TEST"
 export -p
 sleep 5

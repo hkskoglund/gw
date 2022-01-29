@@ -1,4 +1,4 @@
-#!/usr/bin/dash
+#!/bin/sh
 
 ERROR_EOF_OD_BUFFER=10
 

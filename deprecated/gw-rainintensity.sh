@@ -1,4 +1,4 @@
-#!/usr/bin/dash
+#!/bin/sh
 #https://en.wikipedia.org/wiki/Rain#Intensity
 #added space at end when doing when refreshing screen with printf \e[H, otherwise status is merged with previous value if changed
         RAININTENSITY_ZERO=${RAININTENSITY_ZERO:="        "} #clear

@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-#!/usr/bin/dash
+#!/bin/sh
 set -x
 
 DEBUG=0
