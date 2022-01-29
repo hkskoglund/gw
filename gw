@@ -36,6 +36,9 @@ DEBUG_OPTION_COMMAND=0
 DEBUG_OPTION_HTTP=0
 DEBUG_OPTION_TESTSENSOR=0
 
+HTTP_WUNDERGROUND=1
+HTTP_ECOWITT=0
+
 MAX_16BIT_UINT=$(((2 << 16) - 1))
 TIMEOUT_WIFICONFIG_SERVER=${TIMEOUT_WIFICONFIG_SERVER:=10} # timeout in seconds for wifi-server configuration of GW1000
 
@@ -3109,15 +3112,22 @@ parsePath() {
 }
 
 printCustomized() {
+    if [ "$C_WS_CUSTOMIZED_HTTP" -eq $HTTP_WUNDERGROUND ]; then #wunderground
     echo "id                 $C_WS_CUSTOMIZED_ID
-password           $C_WS_CUSTOMIZED_PASSWORD
-server             $C_WS_CUSTOMIZED_SERVER
+password           $C_WS_CUSTOMIZED_PASSWORD"
+fi
+
+    echo "server             $C_WS_CUSTOMIZED_SERVER
 port               $C_WS_CUSTOMIZED_PORT
 interval           $C_WS_CUSTOMIZED_INTERVAL
 http               $C_WS_CUSTOMIZED_HTTP $C_WS_CUSTOMIZED_HTTP_STATE 
-enabled            $C_WS_CUSTOMIZED_ENABLED $C_WS_CUSTOMIZED_ENABLED_STATE
-path ecowitt       $C_WS_CUSTOMIZED_PATH_ECOWITT
-path wunderground  $C_WS_CUSTOMIZED_PATH_WU"
+enabled            $C_WS_CUSTOMIZED_ENABLED $C_WS_CUSTOMIZED_ENABLED_STATE"
+
+if [ "$C_WS_CUSTOMIZED_HTTP" -eq $HTTP_ECOWITT ]; then
+    echo "path ecowitt       $C_WS_CUSTOMIZED_PATH_ECOWITT"
+else
+    echo "path wunderground  $C_WS_CUSTOMIZED_PATH_WU"
+fi
 }
 
 parseCustomized() {
@@ -4183,7 +4193,7 @@ updateCustomized() {
             port | p)
 
                 if ! isNumber "$value"; then
-                    echo >&2 Error NaN cannot set customized port to $((value)) from "$value"
+                    echo >&2 Error NaN cannot set customized port to "$value" from "$value"
                     EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 else
                     C_WS_CUSTOMIZED_PORT=$((value))
@@ -6205,7 +6215,7 @@ initWinddirectionCompass()
     WIND_DIRECTION_NNW="$WIND_DIRECTION_N$WIND_DIRECTION_N$WIND_DIRECTION_W"
 }
 
-parseUnitOptions()
+processUnitOptions()
 #format: temp=farenheit|celius,pressure=inhg|hpa
 {
     IFS=,
@@ -6275,6 +6285,136 @@ createWIFIpacket()
     writeString "$2" # password
 }
 
+processDebugOptions()
+#allows setting multiple options; for examplel -d buffer,command
+{
+    IFS=,
+    for opt in $1; do 
+    
+        case "$opt" in
+            ""|--*|-*)  DEBUG=1
+                        ;;
+            a|append)   DEBUG_OPTION_APPEND=1 # print append format/args - default livedata view/table layout
+                        ;;
+            b|buffer)   DEBUG_OPTION_OD_BUFFER=1 # show hex buffers of transmitted/received data
+                        ;;
+            c|command)  DEBUG_OPTION_COMMAND=1 #echo command printf/nc/od pipeline
+                        ;;
+            h|http)     DEBUG_OPTION_HTTP=1 #show http request when listening 
+                        ;;
+            s|sensor)   DEBUG_OPTION_TESTSENSOR=1 # inject test sensor data
+                        ;;
+                    *)  echo >&2 "Error: Unknown debug option $opt, use append | a, buffer | b, command | c, http | h, sensor | s"
+                        ;;
+        esac
+    done
+    unset opt
+}
+
+processOptionsLiveview()
+{
+     #default is show all information gathered, these options allows to filter output/turn off display of sensors
+
+    IFS=,
+
+    for hide_liveview in $1; do 
+
+    case "$hide_liveview" in
+
+        uvi)
+            LIVEVIEW_HIDE_UVI=1
+            ;;
+
+        pm25aqi)
+            #shellcheck disable=SC2034
+            LIVEVIEW_HIDE_PM25AQI=1 #hides PM 2.5 AQI  styling/description
+            ;;
+
+        b|beufort)
+            LIVEVIEW_HIDE_BEUFORT=1 # hides beufort styling and description
+            ;;
+
+        status) #battery/signal status unicode icons
+            LIVEVIEW_HIDE_STATUSLINE=1
+            ;;
+
+        c | compass)
+            LIVEVIEW_HIDE_COMPASS=1
+            ;;
+
+        sh | sensor-header)
+            SENSORVIEW_HIDE_HEADER=1
+            ;;
+
+        h | headers)
+            LIVEVIEW_HIDE_HEADERS=1
+            ;;
+
+        # b | battery)
+        #    HIDE_BATTERY_LIVEDATA=1
+            #  ;;
+            
+        s | system)
+            LIVEVIEW_HIDE_SYSTEM=1
+            ;;
+
+        r | rain)
+            LIVEVIEW_HIDE_RAIN=1
+            ;;
+
+        l | light)
+            LIVEVIEW_HIDE_LIGHT=1
+            ;;
+            
+        t | temperature | temp)
+            LIVEVIEW_HIDE_TEMP=1
+            ;;
+
+        w | wind)
+            LIVEVIEW_HIDE_WIND=1
+            ;;
+
+        sm | soilmoisture | soilm)
+            LIVEVIEW_HIDE_SOILMOISTURE=1
+            ;;
+
+        st | soiltemperature | soilt)
+            LIVEVIEW_HIDE_SOILTEMPERATURE=1
+            ;;
+
+        leak)
+            LIVEVIEW_HIDE_LEAK=1
+            ;;
+
+        tusr | tempusr)
+            LIVEVIEW_HIDE_TEMPUSR=1
+            ;;
+
+        pm25)
+            LIVEVIEW_HIDE_PM25=1
+            ;;
+
+        co2)
+            LIVEVIEW_HIDE_CO2=1
+            ;;
+
+        leafw | leafwetness)
+            LIVEVIEW_HIDE_LEAFWETNESS=1
+            ;;
+
+        lightning)
+            LIVEVIEW_HIDE_LIGHTNING=1
+            ;;
+
+        *) echo >&2 "Warning: Unknown hide_liveview option $hide_liveview; use sensor-header | sh, headers | h, rain | r, wind | w,temperature | t,light | l, system | s, soilmoisture | sm, soiltemperature | st, leak, co2, pm25, leafwetness | leafw, lightning, tempusr | tusr, compass | c, status, beufort | b, pm25aqi, uvi"
+            ;;
+        esac
+    done
+
+    unset hide_liveview
+
+}
+
 initShell
 initTerm
 initcoptCommands
@@ -6335,110 +6475,13 @@ while [ $# -gt 0 ]; do
            ;;
 
        -H | --hide-liveview)
-          
-          #default is show all information gathered, these options allows to filter output/turn off display of sensors
 
-          IFS=,
+            processOptionsLiveview "$2"
+            
+            [ -n "$2" ] && shift
+            shift
 
-          for hide_liveview in $2; do 
-
-            case "$hide_liveview" in
-
-                    uvi)
-                      LIVEVIEW_HIDE_UVI=1
-                      ;;
-
-                    pm25aqi)
-                        #shellcheck disable=SC2034
-                        LIVEVIEW_HIDE_PM25AQI=1 #hides PM 2.5 AQI  styling/description
-                      ;;
-
-                    b|beufort)
-                      LIVEVIEW_HIDE_BEUFORT=1 # hides beufort styling and description
-                      ;;
-
-                    status) #battery/signal status unicode icons
-                       LIVEVIEW_HIDE_STATUSLINE=1
-                       ;;
-
-                    c | compass)
-                        LIVEVIEW_HIDE_COMPASS=1
-                        ;;
-
-                    sh | sensor-header)
-                        SENSORVIEW_HIDE_HEADER=1
-                        ;;
-
-                    h | headers)
-                        LIVEVIEW_HIDE_HEADERS=1
-                        ;;
-
-                   # b | battery)
-                    #    HIDE_BATTERY_LIVEDATA=1
-                      #  ;;
-                        
-                    s | system)
-                        LIVEVIEW_HIDE_SYSTEM=1
-                        ;;
-
-                    r | rain)
-                        LIVEVIEW_HIDE_RAIN=1
-                        ;;
-
-                    l | light)
-                        LIVEVIEW_HIDE_LIGHT=1
-                        ;;
-                        
-                    t | temperature | temp)
-                        LIVEVIEW_HIDE_TEMP=1
-                        ;;
-
-                    w | wind)
-                        LIVEVIEW_HIDE_WIND=1
-                        ;;
-
-                    sm | soilmoisture | soilm)
-                        LIVEVIEW_HIDE_SOILMOISTURE=1
-                        ;;
-
-                    st | soiltemperature | soilt)
-                        LIVEVIEW_HIDE_SOILTEMPERATURE=1
-                        ;;
-
-                    leak)
-                        LIVEVIEW_HIDE_LEAK=1
-                        ;;
-
-                    tusr | tempusr)
-                        LIVEVIEW_HIDE_TEMPUSR=1
-                        ;;
-
-                    pm25)
-                        LIVEVIEW_HIDE_PM25=1
-                        ;;
-
-                    co2)
-                        LIVEVIEW_HIDE_CO2=1
-                        ;;
-
-                    leafw | leafwetness)
-                        LIVEVIEW_HIDE_LEAFWETNESS=1
-                        ;;
-
-                    lightning)
-                        LIVEVIEW_HIDE_LIGHTNING=1
-                        ;;
-
-                    *) echo >&2 "Warning: Unknown hide_liveview option $hide_liveview; use sensor-header|sh,headers|h,rain|r,wind|w,temperature|t,light|l,system|s,soilmoisture|sm,soiltemperature|st,leak,co2,pm25,leafwetness|leafw,lightning,tempusr|tusr,compass|c,status,beufort|b,pm25aqi,uvi"
-                       ;;
-                    esac
-                done
-
-                 [ -n "$2" ] && shift
-                 shift
-
-                 unset hide_liveview
-                ;;
+            ;;
 
       -n   | --log-interval)
 
@@ -6503,34 +6546,17 @@ while [ $# -gt 0 ]; do
                  echo >&2 "Warning: no arguments specified for unit, for example temp=farenheit|celcius"
                  shift # ignore
                else
-                 parseUnitOptions "$2"
+                 processUnitOptions "$2"
                  shift 2 
                fi
               ;;
 
         -d | --debug)
 
-               case "$2" in
-                    ""|--*|-*) DEBUG=1
-                                shift
-                                ;;
-                    a|append)   DEBUG_OPTION_APPEND=1 # print append format/args - default livedata view/table layout
-                                shift
-                                ;;
-                    b|buffer)   DEBUG_OPTION_OD_BUFFER=1 # show hex buffers of transmitted/received data
-                                shift
-                                ;;
-                    c|command) DEBUG_OPTION_COMMAND=1 #echo command printf/nc/od pipeline
-                                shift
-                                ;;
-                    h|http)    DEBUG_OPTION_HTTP=1 #show http request when listening 
-                                shift
-                                ;;
-                    t|test)    DEBUG_OPTION_TESTSENSOR=1 # inject test sensor data
-                                shift
-                                ;;
-               esac
-            
+              processDebugOptions "$2"
+              [ -n "$2" ] && shift # remove args to -d if set
+              shift # remove -d
+              
             ;;
 
         -f | --firmware)
@@ -6617,8 +6643,6 @@ while [ $# -gt 0 ]; do
         -t | --timezones)
             printTimezones
             ;;
-
-       
 
         *)        # unknown option
             shift # past argument
