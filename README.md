@@ -50,9 +50,9 @@ System utc                       2022-01-26 12:07:53
 System frequency                 868
 System type                      WH65   🔋📶
 System sensors connected          7
-System sensors disconnected       0
-System sensors searching         29
-System sensors disabled          11
+System sensors disconnected       <span style="color:magenta">0</span>
+System sensors searching         <span style="color:green">29</span>
+System sensors disabled          <span style="color: red">11</span>
 </pre>
 
 ### Status line indicators
@@ -74,52 +74,52 @@ System sensors disabled          11
 Sensor        ID   B S Type Name              State             Battery Signal
 ───────────────────────────────────────────────────────────────────────────────
      0        f1   0 4 WH65 Weather Station   connected         🔋      📶 100%
-     1  ffffffff 255 0 WH68 Weather Station   searching
-     2  ffffffff 255 0 WH80 Weather Station   searching
-     3  ffffffff  31 0 WH40 Rainfall          searching
-     5  ffffffff   0 0 WH32 Temperatue out    searching
+     1  ffffffff 255 0 WH68 Weather Station   <span style="color: green">searching</span>
+     2  ffffffff 255 0 WH80 Weather Station   <span style="color: green">searching</span>
+     3  ffffffff  31 0 WH40 Rainfall          <span style="color: green">searching</span>
+     5  ffffffff   0 0 WH32 Temperatue out    <span style="color: green">searching</span>
      6        ba   0 4 WH31 Temperature1      connected         🔋      📶 100%
      7        db   0 4 WH31 Temperature2      connected         🔋      📶 100%
      8        6e   0 4 WH31 Temperature3      connected         🔋      📶 100%
-     9  ffffffff   0 0 WH31 Temperature4      searching
-    10  ffffffff   0 0 WH31 Temperature5      searching
-    11  ffffffff   0 0 WH31 Temperature6      searching
-    12  ffffffff   0 0 WH31 Temperature7      searching
-    13  ffffffff   0 0 WH31 Temperature8      searching
+     9  ffffffff   0 0 WH31 Temperature4      <span style="color: green">searching</span>
+    10  ffffffff   0 0 WH31 Temperature5      <span style="color: green">searching</span>
+    11  ffffffff   0 0 WH31 Temperature6      <span style="color: green">searching</span>
+    12  ffffffff   0 0 WH31 Temperature7      <span style="color: green">searching</span>
+    13  ffffffff   0 0 WH31 Temperature8      <span style="color: green">searching</span>
     14    40c6e3  13 4 WH51 Soilmoisture1     connected         🔋 1.3V 📶 100%
-    15  ffffffff  31 0 WH51 Soilmoisture2     searching
-    16  ffffffff  31 0 WH51 Soilmoisture3     searching
-    17  ffffffff  31 0 WH51 Soilmoisture4     searching
-    18  ffffffff  31 0 WH51 Soilmoisture5     searching
-    19  ffffffff  31 0 WH51 Soilmoisture6     searching
-    20  ffffffff  31 0 WH51 Soilmoisture7     searching
-    21  ffffffff  31 0 WH51 Soilmoisture8     searching
+    15  ffffffff  31 0 WH51 Soilmoisture2     <span style="color: green">searching</span>
+    16  ffffffff  31 0 WH51 Soilmoisture3     <span style="color: green">searching</span>
+    17  ffffffff  31 0 WH51 Soilmoisture4     <span style="color: green">searching</span>
+    18  ffffffff  31 0 WH51 Soilmoisture5     <span style="color: green">searching</span>
+    19  ffffffff  31 0 WH51 Soilmoisture6     <span style="color: green">searching</span>
+    20  ffffffff  31 0 WH51 Soilmoisture7     <span style="color: green">searching</span>
+    21  ffffffff  31 0 WH51 Soilmoisture8     <span style="color: green">searching</span>
     22      c51f   6 4 WH43 PM2.5 AQ 1        connected         🔌      📶 100%
     23  fffffffe  15 0 WH43 PM2.5 AQ 2        disabled
     24  fffffffe  15 0 WH43 PM2.5 AQ 3        disabled
     25  fffffffe  15 0 WH43 PM2.5 AQ 4        disabled
-    26  ffffffff  15 0 WH57 Lightning         searching
+    26  ffffffff  15 0 WH57 Lightning         <span style="color: green">searching</span>
     27      e41a   4 4 WH55 Leak1             connected         🔋 4    📶 100%
-    28  ffffffff  15 0 WH55 Leak2             searching
-    29  ffffffff  15 0 WH55 Leak3             searching
-    30  ffffffff  15 0 WH55 Leak4             searching
-    31  ffffffff 255 0 WH34 Soiltemperature1  searching
-    32  ffffffff 255 0 WH34 Soiltemperature2  searching
-    33  ffffffff 255 0 WH34 Soiltemperature3  searching
-    34  ffffffff 255 0 WH34 Soiltemperature4  searching
-    35  ffffffff 255 0 WH34 Soiltemperature5  searching
-    36  ffffffff 255 0 WH34 Soiltemperature6  searching
-    37  ffffffff 255 0 WH34 Soiltemperature7  searching
-    38  ffffffff 255 0 WH34 Soiltemperature8  searching
-    39  ffffffff  15 0 WH45 CO2 PM2.5 PM10 AQ searching
-    40  ffffffff 255 0 WH35 Leafwetness1      searching
-    41  ffffffff 255 0 WH35 Leafwetness2      searching
-    42  ffffffff 255 0 WH35 Leafwetness3      searching
-    43  ffffffff 255 0 WH35 Leafwetness4      searching
-    44  ffffffff 255 0 WH35 Leafwetness5      searching
-    45  ffffffff 255 0 WH35 Leafwetness6      searching
-    46  ffffffff 255 0 WH35 Leafwetness7      searching
-    47  ffffffff 255 0 WH35 Leafwetness8      searching
+    28  ffffffff  15 0 WH55 Leak2             <span style="color: green">searching</span>
+    29  ffffffff  15 0 WH55 Leak3             <span style="color: green">searching</span>
+    30  ffffffff  15 0 WH55 Leak4             <span style="color: green">searching</span>
+    31  ffffffff 255 0 WH34 Soiltemperature1  <span style="color: green">searching</span>
+    32  ffffffff 255 0 WH34 Soiltemperature2  <span style="color: green">searching</span>
+    33  ffffffff 255 0 WH34 Soiltemperature3  <span style="color: green">searching</span>
+    34  ffffffff 255 0 WH34 Soiltemperature4  <span style="color: green">searching</span>
+    35  ffffffff 255 0 WH34 Soiltemperature5  <span style="color: green">searching</span>
+    36  ffffffff 255 0 WH34 Soiltemperature6  <span style="color: green">searching</span>
+    37  ffffffff 255 0 WH34 Soiltemperature7  <span style="color: green">searching</span>
+    38  ffffffff 255 0 WH34 Soiltemperature8  <span style="color: green">searching</span>
+    39  ffffffff  15 0 WH45 CO2 PM2.5 PM10 AQ <span style="color: green">searching</span>
+    40  ffffffff 255 0 WH35 Leafwetness1      <span style="color: green">searching</span>
+    41  ffffffff 255 0 WH35 Leafwetness2      <span style="color: green">searching</span>
+    42  ffffffff 255 0 WH35 Leafwetness3      <span style="color: green">searching</span>
+    43  ffffffff 255 0 WH35 Leafwetness4      <span style="color: green">searching</span>
+    44  ffffffff 255 0 WH35 Leafwetness5      <span style="color: green">searching</span>
+    45  ffffffff 255 0 WH35 Leafwetness6      <span style="color: green">searching</span>
+    46  ffffffff 255 0 WH35 Leafwetness7      <span style="color: green">searching</span>
+    47  ffffffff 255 0 WH35 Leafwetness8      <span style="color: green">searching</span>
 </pre>
 
 ## Setting all leafwetness sensors to disabled and disable temperature sensor 6, next reset temp sensor 6 to id 'ba'.
@@ -131,15 +131,15 @@ The signal will increase to 100% if 4 packets are received during 4 consequtive 
 <pre>    
 Sensor        ID   B S Type Name              State             Battery Signal
 ───────────────────────────────────────────────────────────────────────────────
-    40  fffffffe 255 0 WH35 Leafwetness1      disabled
-    41  fffffffe 255 0 WH35 Leafwetness2      disabled
-    42  fffffffe 255 0 WH35 Leafwetness3      disabled
-    43  fffffffe 255 0 WH35 Leafwetness4      disabled
-    44  fffffffe 255 0 WH35 Leafwetness5      disabled
-    45  fffffffe 255 0 WH35 Leafwetness6      disabled
-    46  fffffffe 255 0 WH35 Leafwetness7      disabled
-    47  fffffffe 255 0 WH35 Leafwetness8      disabled
-     6        ba   0 0 WH31 Temperature1      disconnected      🔋      🛑
+    40  fffffffe 255 0 WH35 Leafwetness1      <span style="color:red">disabled</span>
+    41  fffffffe 255 0 WH35 Leafwetness2      <span style="color:red">disabled</span>
+    42  fffffffe 255 0 WH35 Leafwetness3      <span style="color:red">disabled</span>
+    43  fffffffe 255 0 WH35 Leafwetness4      <span style="color:red">disabled</span>
+    44  fffffffe 255 0 WH35 Leafwetness5      <span style="color:red">disabled</span>
+    45  fffffffe 255 0 WH35 Leafwetness6      <span style="color:red">disabled</span>
+    46  fffffffe 255 0 WH35 Leafwetness7      <span style="color:red">disabled</span>
+    47  fffffffe 255 0 WH35 Leafwetness8      <span style="color:red">disabled</span>
+     6        ba   0 0 WH31 Temperature1      <span style="color:magenta">disconnected</span>      🔋      🛑
 </pre>
 
 ## Subnet scanning for devices on LAN
