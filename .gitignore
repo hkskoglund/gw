@@ -2,6 +2,7 @@ doc/
 man/
 test/
 /prod/gw
+/deprecated
 backup.txt
 itsraining.wav
 .vscode/settings.json
