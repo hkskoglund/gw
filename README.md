@@ -2,9 +2,9 @@
 
 This tool reads weather data from gw-1000 and shows it in a table. The sensor view lists current status to all sensors like ***searching***, ***disabled*** or which ***hexid***  is connected. Detailed battery stautus is also included in the sensorview. It designed with *portability* in mind and tested on bash, zsh, ksh93, mksh and **dash**. The script is dependent on the external **nc** and **od** utilities. 
 
-## Examples
+# Examples
 
-### Viewing livedata
+## Viewing livedata
 
 <code>./gw -g 192.168.3.16 -c livedata</code>
 
@@ -55,19 +55,19 @@ System sensors searching         29
 System sensors disabled          11
 </pre>
 
-#### Status line indicators
+### Status line indicators
 1. 🔋 - battery ok
 2. 📶 - signal ok
 3. 🔌 - plug/electric power
 
-### Continous monitoring each 1 minute -H option to hide
+## Continous monitoring each 1 minute -H option to hide
 <code> while true; do clear;./gw -g 192.168.3.16 -H rain,system,t,leak  -c l; sleep 60; done</code>
 
-### Listen for incoming http Ecowitt/Wunderground request on port 8080
+## Listen for incoming http Ecowitt/Wunderground request on port 8080
 
 <code>./gw -l 8080</code>
 
-### Viewing sensor configuration
+## Viewing sensor configuration
 
 <code>./gw -g 192.168.3.16 -c sensor</code>
 <pre>
@@ -122,7 +122,7 @@ Sensor        ID   B S Type Name              State             Battery Signal
     47  ffffffff 255 0 WH35 Leafwetness8      searching
 </pre>
 
-### Setting all leafwetness sensors to disabled and disable temperature sensor 6, next reset temp sensor 6 to id 'ba'.
+## Setting all leafwetness sensors to disabled and disable temperature sensor 6, next reset temp sensor 6 to id 'ba'.
 
 The signal will increase to 100% if 4 packets are received during 4 consequtive periods.
 
@@ -142,7 +142,7 @@ Sensor        ID   B S Type Name              State             Battery Signal
      6        ba   0 0 WH31 Temperature1      disconnected      🔋      🛑
 </pre>
 
-### Subnet scanning for devices on LAN
+## Subnet scanning for devices on LAN
 
 <code>./gw -s 192.168.3</code>
 <pre>
@@ -152,11 +152,11 @@ Sensor        ID   B S Type Name              State             Battery Signal
 192.168.3.32 ^C
 </pre>
 
-### Changing units for temperature,pressure,wind and rain
+## Changing units for temperature,pressure,wind and rain
 
 <code>./gw -u p=inhg,t=farenheit,r=in -g 192.168.3.16 -c l</code>
 
-### Viewing customized server settings
+## Viewing customized server settings
 
 <code>./gw -g 192.168.3.16 -c customized</code>
 <pre>
@@ -171,7 +171,7 @@ path ecowitt       /weatherstation/updateweatherstation.php?
 path wunderground  /data/report/
 </pre>
 
-### Changing server,port,protocol,enabled
+## Changing server,port,protocol,enabled
 <code>./gw -g 192.168.3.16 -c customized server=192.168.3.4,port=8082,protocol=wunderground,enabled=on -c customized</code>
 <pre>
 id
@@ -185,30 +185,30 @@ path ecowitt       /weatherstation/updateweatherstation.php?
 path wunderground  /data/report/
 </pre>
 
-### Configuring new wifi ssid/pw - method 1 - server
+## Configuring new wifi ssid/pw - method 1 - server
 <p>Connect to GW1000-WIFI???? network in your preferred os. Verify ip address of gw. Verify firewall settings for tcp port 49123</p> 
 <code>./gw -g 192.168.4.1 -c wifi-server ssid pw</code>
 <br>
 
-### Configuring new wifi ssid/pw - method 2 - client
+## Configuring new wifi ssid/pw - method 2 - client
 <code>./gw -g 192.168.4.1 -c wifi-client ssid pw</code>
 
-### Reset device
+## Reset device
 <code>./gw -g 192.168.3.15 -c reset</code>
 Press capital Y to reset, settings are destroyed, be careful.
 <pre>Reset 48:3f:da:54:14:ec GW1000A-WIFI14EC (Y/N)?</pre>
 
-## Background
-I started to program the tool in javascript/nodejs which would have been easier due to standard libraries for arrays,readUInt and http parsing, but decided to test if its possible to do it in the shell/terminal using the standard unix nc/ncat and od utilities. For arrays I am creating them dynamically by using eval. readUint-functions are included in the script, as well as http parsing for Ecowitt and Wunderground protocol requests.
+# Background
+I started to program the tool in javascript/nodejs which would have been easier due to standard libraries for arrays, readUInt and http parsing, but decided to test if its possible to do it in the shell/terminal using the standard unix nc/ncat and od utilities. For arrays I am creating them dynamically by using eval. readUint-functions are included in the script, as well as http parsing for Ecowitt and Wunderground protocol requests.
 
-## Implementation
+# Implementation
 It will try to detect which version of nc (nc bsd/nmap, toybox, busybox) is available and tailor command options accoringly in [initnc](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L4334). The basic overall operation of the script for sending a command to gw is ["printf %b "$octalBuffer" | nc -4 $gwip $gwport | od"](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L3703-L3704) then parsing is done in [parsePacket](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L3399). Finaly livedata are printed in [printLivedata](https://github.com/hkskoglund/gw/blob/a0968f97c8cb69aa1f87b3155eaef63e927c398d/gw#L2123). The implementation is based on the [Ecowitt binary protocol specification](https://osswww.ecowitt.net/uploads/20210716/WN1900%20GW1000,1100%20WH2680,2650%20telenet%20v1.6.0%20.pdf). Unit conversion is initialized in [initUnit()](https://github.com/hkskoglund/gw/blob/a0968f97c8cb69aa1f87b3155eaef63e927c398d/gw#L6112-L6113). It is possible to extend the script by creating a new script view for your particular purpose using exported LIVEDATA environment variables.
 
 ## Styling
 
 Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styling can be customized in [ansiesc.sh](./style/ansiesc.sh), [style-beufort.sh](./style/style-beufort.sh)
 
-### Wind: Beufort
+## Wind: Beufort
 0. <span                             style="color:white;white-space:pre;width:150px">CALM&nbsp;           </span>
 1. <span                   style="background-color:Blue;white-space:pre;width:150px">LIGHT AIR&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
 2. <span              style="background-color:RoyalBlue;white-space:pre;width:150px">LIGHT BREEZE   </span>
@@ -223,15 +223,15 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 11. <span               style="background-color:DeepPink;white-space:pre;width:150px">VIOLENT STORM  </span>
 12. <span    style="background-color:HotPink;Color:Black;white-space:pre;width:150px">HURRICANE      </span>
 
-### Air quality: pm 2.5
+## Air quality: pm 2.5
 
-## Screenshots
-### Default liveview
+# Screenshots
+## Default liveview
 ![Screenshot Liveview with headings - Windows Terminal v1.11.3471.0](./img/Skjermbilde%202022-01-26%20144206.png)
 ### Liveview without headings (-H headers option)
 ![Screenshot Liveview with headings - Windows Terminal v1.11.3471.0](./img/Skjermbilde%202022-01-26%20162949.jpg)
 
-## Usage
+# Usage
 ### Basic
 ./gw [ -g **ip** ] [ -c **command** ] [-l **port** ] 
 ### Filtering/unit conversion
@@ -239,7 +239,7 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 ### Scan subnet for gw
 ./gw [ -s **xxx.xxx.xxx** ] 
 
-## Options
+# Options
 
 ### -g, --gw IP - ip adress to device<br>
 ### -c, --command COMMAND OPTIONS - send command to device
@@ -248,7 +248,7 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 ### -H, --hide-headers HEADERS - hide headers from output in default view
 ### -u, --unit UNITS - set unit conversion for pressure,rain and wind
 
-## Commands
+# Commands
 
 * livedata - get livedata from gw
 * sensor SENSOROPTIONS - get sensor data (searching/disabled/hexid)
@@ -258,17 +258,17 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
     * CUSTOMIZEDOPTIONS
         * Customized options is specified in a , separated list of key=value. Allowed keys are id, password | pw, server | s, port | p , interval | i, http | h, enabled | e, path_wunderground | p_w or path_ecowitt | p_e
 
-### Headers - hide/filter output in default view
+## Headers - hide/filter output in default view
 
 * headers | h, rain | r, wind | w, beufort | b, temperature | t, light | l, uvi, system | s, soilmoisture | sm, soiltemperature | st, leak, co2, pm25, pm25aqi, leafwetness | leafw, lightning, tempusr | tusr, compass | c, status,  | sensor-header | sh
 
-### Units
+## Units
 *  pressure | p = inhg | hpa
 *  temperature | t = celcius | c | farenheit | f
 *  rain | r = mm | in
 *  wind | w = mph | kmh | mps
 
-## Running script in Windows Subsystem for Linux 2 - WSL2
+# Running script in Windows Subsystem for Linux 2 - WSL2
 portproxy must used, open up customized server port(8080), 49123 for wifi-server configuration<br>
 * <code> netsh interface portproxy reset</code>
 * <code>iex "netsh interface portproxy add v4tov4 listenaddress=(Get-NetIPAddress -InterfaceAlias Wi-Fi -AddressFamily IPv4).IPAddress connectaddress=$(wsl -e hostname -I) connectport=8080 listenport=8080"</code>
