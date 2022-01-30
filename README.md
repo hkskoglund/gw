@@ -1,6 +1,6 @@
 # gw - shell script for viewing weather data and sensors connected to gw-1000 or compatible devices
 
-This tool reads weather data from gw-1000 and shows it in a table. The sensor view lists current status to all sensors like ***searching***, ***disabled*** or which ***hexid***  is connected. Detailed battery stautus is also included in the sensorview. It designed with *portability* in mind and tested on bash, zsh, ksh93, mksh and **dash**. The script is dependent on the external **nc** and **od** utilities. 
+This tool reads weather data from gw-1000 and shows it in a table. It supports both the binary Ecowitt protocol and http requests from a customized server. Configuration of gw-1000 like setting the customized server is possible. The sensor view lists current status to all sensors like ***searching***, ***disabled*** or which ***hexid***  is connected. Detailed battery stautus is also included in the sensorview. It designed with *portability* in mind and tested on bash, zsh, ksh93, mksh and **dash**. The script is dependent on the external **nc** and **od** utilities. 
 
 # Examples
 
