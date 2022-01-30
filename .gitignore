@@ -1,8 +1,8 @@
 doc/
 man/
 test/
-/prod/gw
-/deprecated
+prod/
+deprecated/
 backup.txt
 itsraining.wav
 .vscode/settings.json
