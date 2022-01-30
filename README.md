@@ -1,6 +1,6 @@
-# gw - shell tool for viewing weather data and sensor configuration of gw-1000 or compatible devices
+# gw - shell tool for viewing weather data and sensors connected to gw-1000 or compatible devices
 
-This tool will gather data from gw-1000 and present it in table layout with headers. All sensors transmitting data are displayed unless hidden. It is possible to extend the script by creating a new script view for your particular purpose using exported LIVEDATA environment variables. It also features a sensor configuration view which list all status of the sensors like ***searching***, ***disabled*** or which sensortype (***hex***) is connected to the gw. Detailed battery stauts is also included in the sensorview. It designed to be very **portable** and tested on bash, zsh, ksh93, mksh and **dash**. The script is dependent on the external nc and od utilities. 
+This tool reads weather data from gw-1000 and shows it in a table with headers. The sensor view lists current status to all sensors like **searching**, **disabled** or which **hex** sensortype is connected. Detailed battery stauts included in the sensorview. It designed with *portability* in mind and tested on bash, zsh, ksh93, mksh and **dash**. The script is dependent on the external nc and od utilities. 
 
 ## Examples
 
@@ -154,18 +154,6 @@ Sensor        ID   B S Type Name              State             Battery Signal
 
 ### Changing units for temperature,pressure,wind and rain
 
-Unit conversion is initialized in [initUnit()](https://github.com/hkskoglund/gw/blob/a0968f97c8cb69aa1f87b3155eaef63e927c398d/gw#L6112-L6113). 
-
-#### Pressure - default hpa
-1. inhg | i
-2. hpa | h
-#### Temperature - default celcius
-1. celcius | c
-2. farenheit | f
-#### Rain - default mm
-1. mm
-2. in
-
 <code>./gw -u p=inhg,t=farenheit,r=in -g 192.168.3.16 -c l</code>
 
 ### Viewing customized server settings
@@ -214,7 +202,7 @@ Press capital Y to reset, settings are destroyed, be careful.
 I started to program the tool in javascript/nodejs which would have been easier due to standard libraries for arrays,readUInt and http parsing, but decided to test if its possible to do it in the shell/terminal using the standard unix nc/ncat and od utilities. For arrays I am creating them dynamically by using eval. readUint-functions are included in the script, as well as http parsing for Ecowitt and Wunderground protocol requests.
 
 ## Implementation
-It will try to detect which version of nc (nc bsd/nmap, toybox, busybox) is available and tailor command options accoringly in [initnc](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L4334). The basic overall operation of the script for sending a command to gw is ["printf %b "$octalBuffer" | nc -4 $gwip $gwport | od"](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L3703-L3704) then parsing is done in [parsePacket](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L3399). Finaly livedata are printed in [printLivedata](https://github.com/hkskoglund/gw/blob/a0968f97c8cb69aa1f87b3155eaef63e927c398d/gw#L2123). The implementation is based on the [Ecowitt binary protocol specification](https://osswww.ecowitt.net/uploads/20210716/WN1900%20GW1000,1100%20WH2680,2650%20telenet%20v1.6.0%20.pdf). 
+It will try to detect which version of nc (nc bsd/nmap, toybox, busybox) is available and tailor command options accoringly in [initnc](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L4334). The basic overall operation of the script for sending a command to gw is ["printf %b "$octalBuffer" | nc -4 $gwip $gwport | od"](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L3703-L3704) then parsing is done in [parsePacket](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L3399). Finaly livedata are printed in [printLivedata](https://github.com/hkskoglund/gw/blob/a0968f97c8cb69aa1f87b3155eaef63e927c398d/gw#L2123). The implementation is based on the [Ecowitt binary protocol specification](https://osswww.ecowitt.net/uploads/20210716/WN1900%20GW1000,1100%20WH2680,2650%20telenet%20v1.6.0%20.pdf). Unit conversion is initialized in [initUnit()](https://github.com/hkskoglund/gw/blob/a0968f97c8cb69aa1f87b3155eaef63e927c398d/gw#L6112-L6113). It is possible to extend the script by creating a new script view for your particular purpose using exported LIVEDATA environment variables.
 
 ## Styling
 
@@ -243,42 +231,42 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 ### Liveview without headings (-H headers option)
 ![Screenshot Liveview with headings - Windows Terminal v1.11.3471.0](./img/Skjermbilde%202022-01-26%20162949.jpg)
 
+## Usage
+### Basic
+./gw [ -g **ip** ] [ -c **command** ] [-l **port** ] 
+### Filtering/unit conversion
+./gw [ -H **HEADERS** ] [ u- **UNITS**] ...
+### Scan subnet for gw
+./gw [ -s **xxx.xxx.xxx** ] 
+
 ## Options
-&nbsp;&nbsp;&nbsp;&nbsp;-g, --gw <span style="text-decoration:underline">IP</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ip adress to device<br>
 
-&nbsp;&nbsp;&nbsp;&nbsp;-c, --command <span style="text-decoration:underline">COMMAND</span>&nbsp;<span style="text-decoration:underline">OPTIONS</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;send command to device<br>
+### -g, --gw IP - ip adress to device<br>
+### -c, --command COMMAND OPTIONS - send command to device
+### -l, --listen PORT - listen for incoming ecowitt/wunderground http requests
+### -s, --scan SUBNET - scan for devices on xxx.xxx.xxx 
+### -H, --hide-headers HEADERS - hide headers from output in default view
+### -u, --unit UNITS - set unit conversion for pressure,rain and wind
 
+## Commands
 
-&nbsp;&nbsp;&nbsp;&nbsp;-l, --listen <span style="text-decoration:underline">PORT</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;port to listen for incoming ecowitt/wunderground http requests<br>
+* livedata - get livedata from gw
+* sensor SENSOROPTIONS - get sensor data (searching/disabled/hexid)
+    * SENSOROPTIONS -  low-high=command | searching | connected | disconnected | sensortype=hexid
+        * Sensor options is specified in a , separated list of sensortype ranges and commands after =. For example to disable sensors 40-47 (leafwetnetness), the command is -c sensor 40-47=disable. The command following = is optional, in this case only sensors matching the range will be printed. To list only connected sensors, use -c sensor connected or shortform -c s c.
+* customized CUSTOMIZEDOPTIONS - get customized server configuration
+    * CUSTOMIZEDOPTIONS
+        * Customized options is specified in a , separated list of key=value. Allowed keys are id, password | pw, server | s, port | p , interval | i, http | h, enabled | e, path_wunderground | p_w or path_ecowitt | p_e
 
-&nbsp;&nbsp;&nbsp;&nbsp;-s, --scan <span style="text-decoration:underline">SUBNET</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;scan for devices on xxx.xxx.xxx subnet<br>
+### Headers - hide/filter output in default view
 
-&nbsp;&nbsp;&nbsp;&nbsp;-H, --hide-headers <span style="text-decoration:underline">HEADERS</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;hide headers from output in default view
+* headers | h, rain | r, wind | w, beufort | b, temperature | t, light | l, uvi, system | s, soilmoisture | sm, soiltemperature | st, leak, co2, pm25, pm25aqi, leafwetness | leafw, lightning, tempusr | tusr, compass | c, status,  | sensor-header | sh
 
-### Commands
-&nbsp;&nbsp;&nbsp;&nbsp;**livedata**<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get livedata from gw<br>
-
-&nbsp;&nbsp;&nbsp;&nbsp;**sensor** <span style="text-decoration:underline">[SENSOROPTIONS]</span>&nbsp;<span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get sensor data (searching/disabled/hexid)
-
-#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SENSOROPTIONS - low-high=command | searching | connected | disconnected | sensortype=hexid
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sensor options is specified in a , separated list of sensortype ranges and commands after =.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For example to disable sensors 40-47 (leafwetnetness), the command is -c sensor 40-47=disable.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The command following = is optional, in this case only sensors matching the range will be printed.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;To list only connected sensors, use -c sensor connected or shortform -c s c.
-
-&nbsp;&nbsp;&nbsp;&nbsp;**customized** <span style="text-decoration:underline">[CUSTOMIZEDOPTIONS]</span>&nbsp;<span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get customized server configuration<br>
-#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;CUSTOMIZEDOPTIONS
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Customized options is specified in a , separated list of key=value.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Allowed keys are id, password | pw, server | s, port | p , interval | i, http | h, enabled | e,<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;path_wunderground | p_w or path_ecowitt | p_e<br>
+### Units
+*  pressure | p = inhg | hpa
+*  temperature | t = celcius | c | farenheit | f
+*  rain | r = mm | in
+*  wind | w = mph | kmh | mps
 
 <!---
 https://www.markdownguide.org/basic-syntax/
