@@ -1,2 +1,0 @@
-#!/bin/sh
-watch -n 60 'IFS=, read it ih ab rb ot oh </tmp/gw/LIVEDATA_INBAROOUT; IFS=, read wd wdc ws wgs wdm </tmp/gw/LIVEDATA_WIND; IFS="," read rr re rd rw rm ry </tmp/gw/LIVEDATA_RAIN; IFS=, read sl suv suvi </tmp/gw/LIVEDATA_SOLAR; IFS=, read pm25_ch1 pm25_24havg_ch1 _discard </tmp/gw/LIVEDATA_PM25; { echo "temp: $it $ot"; echo "pressure:$rb"; echo "wind:$wd $wdc"; echo "wind: $ws $wgs $wdm"; echo "rain: $rr"; echo "sunlight:$sl"; echo "airq.:$pm25_ch1 $pm25_24havg_ch1";  } '
