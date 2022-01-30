@@ -1,6 +1,6 @@
-# gw - shell tool for viewing weather data and sensors connected to gw-1000 or compatible devices
+# gw - shell script for viewing weather data and sensors connected to gw-1000 or compatible devices
 
-This tool reads weather data from gw-1000 and shows it in a table with headers. The sensor view lists current status to all sensors like **searching**, **disabled** or which **hex** sensortype is connected. Detailed battery stauts included in the sensorview. It designed with *portability* in mind and tested on bash, zsh, ksh93, mksh and **dash**. The script is dependent on the external nc and od utilities. 
+This tool reads weather data from gw-1000 and shows it in a table. The sensor view lists current status to all sensors like ***searching***, ***disabled*** or which ***hexid***  is connected. Detailed battery stautus is also included in the sensorview. It designed with *portability* in mind and tested on bash, zsh, ksh93, mksh and **dash**. The script is dependent on the external **nc** and **od** utilities. 
 
 ## Examples
 
@@ -268,6 +268,10 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 *  rain | r = mm | in
 *  wind | w = mph | kmh | mps
 
+## Running script in Windows Subsystem for Linux 2 - WSL2
+portproxy must used, open up customized server port(8080), 49123 for wifi-server configuration<br>
+* <code> netsh interface portproxy reset</code>
+* <code>iex "netsh interface portproxy add v4tov4 listenaddress=(Get-NetIPAddress -InterfaceAlias Wi-Fi -AddressFamily IPv4).IPAddress connectaddress=$(wsl -e hostname -I) connectport=8080 listenport=8080"</code>
 <!---
 https://www.markdownguide.org/basic-syntax/
 https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes
