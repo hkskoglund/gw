@@ -1,4 +1,10 @@
 #!/bin/sh
+GWDIR=${GWDIR:="."}
+#shellcheck disable=SC1091
+{
+. $GWDIR/style/ansiesc.sh
+. $GWDIR/gw-uvi.sh
+}
 
 #https://fsymbols.com/generators/tarty/
 
@@ -90,9 +96,6 @@ ASCII_WIND_SE_L1="◤    "
 ASCII_WIND_SE_L2="  ⟍  "
 ASCII_WIND_SE_L3="    ⟍"
 }
-
-eval "$GW_SETUVRISK_FUNC"
-eval "$GW_SETSTYLEUVI_FUNC"
 
 shortHeader()
 #$1 long header
@@ -230,6 +233,7 @@ printLivedataBIG()
 
     newBIGnumber "$LIVEDATA_UV" LDVBIG_UV
     newBIGnumber "$LIVEDATA_UVI" LDVBIG_UVI
+
     setStyleUVI "$LIVEDATA_UVI"
 
     shortHeader "$LIVEDATA_OUTHUMI_HEADER"
@@ -252,7 +256,7 @@ printLivedataBIG()
     rain_fmt="$STYLE_RAIN%s$STYLE_RESET"
     line_rain_fmt="$rain_fmt\r\t\t\t\t$rain_fmt"
     
-     line_wind_fmt="%s\r\t\t\t\t%s"
+    line_wind_fmt="%s\r\t\t\t\t%s"
     line_winddir_fmt="%s\r\t\t%s\r\t\t\t\t%s"
     line_uv_header_fmt="$STYLE_HEADER_DEFAULT%s$STYLE_RESET\r\t\t\t\t$STYLE_HEADER_DEFAULT%s$STYLE_RESET"
     line_uv_fmt="%s\r\t\t\t\t$STYLE_UVI%s$STYLE_RESET"
@@ -263,8 +267,6 @@ printLivedataBIG()
     fi
 
     setUVRisk "$LIVEDATA_UVI"
-    #set -x 
-    
     #shellcheck disable=SC2059
     printf "$ruler_fmt\
 $line_temp_header_fmt\n\n$line_temp_fmt\n$line_temp_fmt\n$line_temp_fmt\n\n\
@@ -290,8 +292,11 @@ $line_uv_header_fmt\n\n$line_uv_fmt\n$line_uv_fmt\n$line_uv_fmt\n\n"\
     "$LDVBIG_WINDDIRECTION_L1" "$LDVBIG_WINDDIRECTION_SYMBOL_L1" "$LDVBIG_WINDDAILYMAX_L1" "$LDVBIG_WINDDIRECTION_L2" "$LDVBIG_WINDDIRECTION_SYMBOL_L2" "$LDVBIG_WINDDAILYMAX_L2" "$LDVBIG_WINDDIRECTION_L3" "$LDVBIG_WINDDIRECTION_SYMBOL_L3" "$LDVBIG_WINDDAILYMAX_L3"\
      "☀️ $LIVEDATA_UV_HEADER $UNIT_UV" "$LIVEDATA_UVI_HEADER $VALUE_UV_RISK"\
     "$LDVBIG_UV_L1" "$LDVBIG_UVI_L1" "$LDVBIG_UV_L2" "$LDVBIG_UVI_L2" "$LDVBIG_UV_L3" "$LDVBIG_UVI_L3"
+}
 
-  # set +x
+printBIGNumber()
+{
+    eval printf "%s\\\n%s\\\n%s\\\n" \"\$"$1"_L1\" \"\$"$1"_L2\" \"\$"$1"_L3\"
 }
 
 printLivedataBIG
