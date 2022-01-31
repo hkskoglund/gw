@@ -209,24 +209,7 @@ It will try to detect which version of nc (nc bsd/nmap, toybox, busybox) is avai
 
 Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styling can be customized in [ansiesc.sh](./style/ansiesc.sh), [style-beufort.sh](./style/style-beufort.sh)
 
-## Wind: Beufort
-0. <span                             style="color:white;white-space:pre;width:150px">CALM&nbsp;           </span>
-1. <span                   style="background-color:Blue;white-space:pre;width:150px">LIGHT AIR&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-2. <span              style="background-color:RoyalBlue;white-space:pre;width:150px">LIGHT BREEZE   </span>
-3. <span         style="background-color:CornflowerBlue;white-space:pre;width:150px">GENTLE BREEZE  </span>
-4. <span style="background-color:DodgerBlue;color:Black;white-space:pre;width:150px">MODERATE BREEZE</span>
-5. <span               style="background-color:SeaGreen;white-space:pre;width:150px">FRESH BREEZE   </span>
-6. <span  style="background-color:PaleGreen;color:Black;white-space:pre;width:150px">STRONG BREEZE  </span>
-7. <span       style="background-color:Gold;color:Black;white-space:pre;width:150px">NEAR GALE      </span>
-8. <span     style="background-color:Yellow;color:Black;white-space:pre;width:150px">GALE           </span>
-9. <span                    style="background-color:Red;white-space:pre;width:150px">STRONG GALE    </span>
-10. <span             style="background-color:DarkSalmon;white-space:pre;width:150px">STORM          </span>
-11. <span               style="background-color:DeepPink;white-space:pre;width:150px">VIOLENT STORM  </span>
-12. <span    style="background-color:HotPink;Color:Black;white-space:pre;width:150px">HURRICANE      </span>
-
-## Air quality: pm 2.5
-
-# Screenshots
+# Screenshots - Windows Terminal
 ## Default liveview
 ![Screenshot Liveview with headings - Windows Terminal v1.11.3471.0](./img/Skjermbilde%202022-01-26%20144206.png)
 ### Liveview without headings (-H headers option)
@@ -282,5 +265,3 @@ https://www.markdownguide.org/basic-syntax/
 https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes
 https://htmlcolorcodes.com/color-names/
 -->
-
-
