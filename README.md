@@ -1,6 +1,14 @@
 # gw - shell script for viewing weather data and sensors connected to gw-1000 or compatible devices
 
-This tool reads weather data from gw-1000 and shows it in a table. It supports both the binary Ecowitt protocol and http requests. Configuration of the customized server on the gw-1000 is supported. The sensor view lists current status to all sensors like ***searching***, ***disabled*** or which ***hexid***  is connected. Detailed battery stautus is also included in the sensorview. It designed with *portability* in mind and tested on bash, zsh, ksh93, mksh and **dash**. The script is dependent on the external **nc** and **od** utilities. 
+This tool reads weather data from gw-1000 and shows it in a table. It supports both the binary Ecowitt protocol and http requests. Configuration of the customized server on the gw-1000 is supported. The sensor view lists current status to all sensors like ***searching***, ***disabled*** or which ***hexid***  is connected. Detailed battery stautus is also included in the sensorview. It designed with *portability* in mind and tested on bash, zsh, ksh93, mksh and **dash**. Ansi escape codes are used to style wind, uvi, and pm25 air quality index. The script is dependent on the external **nc** and **od** utilities.
+
+# Screenshot Windows Terminal/WSL 2
+![Screenshot Liveview with headings - Windows Terminal v1.11.3471.0 - WSL2](./img/Skjermbilde%202022-01-26%20144206.png)
+### Status line indicators
+1. 🔋 - battery ok
+2. 📶 - signal ok
+3. 🔌 - plug/electric power
+4. ↖ - wind direction
 
 # Examples
 
@@ -55,11 +63,7 @@ System sensors searching         <span style="color:green">29</span>
 System sensors disabled          <span style="color: red">11</span>
 </pre>
 
-### Status line indicators
-1. 🔋 - battery ok
-2. 📶 - signal ok
-3. 🔌 - plug/electric power
-4. ↖ - wind direction
+
 
 ## Continous monitoring each 1 minute -H option to hide
 <code> while true; do clear;./gw -g 192.168.3.16 -H rain,system,t,leak  -c l; sleep 60; done</code>
@@ -153,7 +157,7 @@ Sensor        ID   B S Type Name              State             Battery Signal
 192.168.3.32 ^C
 </pre>
 
-## Changing units for temperature,pressure,wind and rain
+## Changing units for temperature, pressure, wind and rain
 
 <code>./gw -u p=inhg,t=farenheit,r=in -g 192.168.3.16 -c l</code>
 
@@ -172,7 +176,7 @@ path ecowitt       /weatherstation/updateweatherstation.php?
 path wunderground  /data/report/
 </pre>
 
-## Changing server,port,protocol,enabled
+## Changing server, port, protocol, enabled
 <code>./gw -g 192.168.3.16 -c customized server=192.168.3.4,port=8082,protocol=wunderground,enabled=on -c customized</code>
 <pre>
 id
@@ -209,12 +213,6 @@ It will try to detect which version of nc (nc bsd/nmap, toybox, busybox) is avai
 
 Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styling can be customized in [ansiesc.sh](./style/ansiesc.sh), [style-beufort.sh](./style/style-beufort.sh)
 
-# Screenshots - Windows Terminal
-## Default liveview
-![Screenshot Liveview with headings - Windows Terminal v1.11.3471.0](./img/Skjermbilde%202022-01-26%20144206.png)
-### Liveview without headings (-H headers option)
-![Screenshot Liveview with headings - Windows Terminal v1.11.3471.0](./img/Skjermbilde%202022-01-26%20162949.jpg)
-
 # Usage
 ### Basic
 ./gw [ -g **ip** ] [ -c **command** ] [-l **port** ] 
@@ -236,15 +234,14 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 
 * livedata | l - get livedata from gw
 * sensor | s **SENSOROPTIONS** - get sensor data (searching/disabled/hexid)
-    * **SENSOROPTIONS** -  low-high=command | searching | connected | disconnected | sensortype=hexid
-        * Sensor options is specified in a , separated list of sensortype ranges and commands after =. For example to disable sensors 40-47 (leafwetnetness), the command is -c sensor 40-47=disable. The command following = is optional, in this case only sensors matching the range will be printed. To list only connected sensors, use -c sensor connected or shortform -c s c.
+    * **SENSOROPTIONS** -  range *lowtype*-*hightype*=searching | s | connected | c | disconnected or single sensor *type*=*hexid* <br>For example to disable sensors 40-47 (leafwetnetness), the command is -c sensor 40-47=disable. The command following = is optional, in this case only sensors matching the range will be printed. To list only connected sensors, use -c sensor connected or shortform -c s c.
 * customized | c **CUSTOMIZEDOPTIONS** - get customized server configuration
-    * **CUSTOMIZEDOPTIONS**
-        * Customized options is specified in a , separated list of key=value. Allowed keys are id, password | pw, server | s, port | p , interval | i, http | h, enabled | e, path_wunderground | p_w or path_ecowitt | p_e
+    * **CUSTOMIZEDOPTIONS** is specified in a , separated list of key=value. Allowed keys are id, password | pw, server | s, port | p , interval | i, http | h, enabled | e, path_wunderground | p_w or path_ecowitt | p_e
 * wifi-server | w-s **SSID** **PASSWORD** - server configuration of ssid and password 
     * Listen for incoming tcp connection on port 49123 from device and send new ssid/password when connected. It may be neccessary to use a manual ip/netmask on server, for example 192.168.4.2/255.255.255.0.
 * wifi-client | w-c **SSID** **PASSWORD** -client configuration of ssid and password
     * Send a wifi configuration packet with ssid and password to the gw. This command must be used with the -g **host** option.
+* reset - reset device to default settings
 
 ## Headers - hide/filter output in default view
 
@@ -255,6 +252,8 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 *  temperature | t = celcius | c | farenheit | f
 *  rain | r = mm | in
 *  wind | w = mph | kmh | mps
+
+
 
 # Running script in Windows Subsystem for Linux 2 - WSL2
 portproxy must used, open up customized server port(8080), 49123 for wifi-server configuration<br>
