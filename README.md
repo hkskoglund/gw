@@ -250,13 +250,17 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 
 # Commands
 
-* livedata - get livedata from gw
-* sensor SENSOROPTIONS - get sensor data (searching/disabled/hexid)
-    * SENSOROPTIONS -  low-high=command | searching | connected | disconnected | sensortype=hexid
+* livedata | l - get livedata from gw
+* sensor | s **SENSOROPTIONS** - get sensor data (searching/disabled/hexid)
+    * **SENSOROPTIONS** -  low-high=command | searching | connected | disconnected | sensortype=hexid
         * Sensor options is specified in a , separated list of sensortype ranges and commands after =. For example to disable sensors 40-47 (leafwetnetness), the command is -c sensor 40-47=disable. The command following = is optional, in this case only sensors matching the range will be printed. To list only connected sensors, use -c sensor connected or shortform -c s c.
-* customized CUSTOMIZEDOPTIONS - get customized server configuration
-    * CUSTOMIZEDOPTIONS
+* customized | c **CUSTOMIZEDOPTIONS** - get customized server configuration
+    * **CUSTOMIZEDOPTIONS**
         * Customized options is specified in a , separated list of key=value. Allowed keys are id, password | pw, server | s, port | p , interval | i, http | h, enabled | e, path_wunderground | p_w or path_ecowitt | p_e
+* wifi-server | w-s **SSID** **PASSWORD** - server configuration of ssid and password 
+    * Listen for incoming tcp connection on port 49123 from device and send new ssid/password when connected. It may be neccessary to use a manual ip/netmask on server, for example 192.168.4.2/255.255.255.0.
+* wifi-client | w-c **SSID** **PASSWORD** -client configuration of ssid and password
+    * Send a wifi configuration packet with ssid and password to the gw. This command must be used with the -g **host** option.
 
 ## Headers - hide/filter output in default view
 

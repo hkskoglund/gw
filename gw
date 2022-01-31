@@ -3744,9 +3744,15 @@ sendPacketnc() { #$1 - command
     fi
 
     if [ -n "$cmdstr" ]; then
+
        if [ -n "$DEBUG_OPTION_COMMAND" ] && [ "$DEBUG_OPTION_COMMAND" -eq 1 ]; then
             printf >&2 "%s: %s\n" "$COMMAND_NAME" "$cmdstr"
        fi
+       
+       if [ $DEBUG -eq 1 ]; then
+            echo >&2 "Sending packet to ip $host port $port"
+       fi 
+
        od_buffer=$(eval "$cmdstr" )
        #maybe use: https://stackoverflow.com/questions/1550933/catching-error-codes-in-a-shell-pipe
        parsePacket "$od_buffer"
@@ -4782,9 +4788,10 @@ processCommand() {
                 EXITCODE_PROCESSCOMMAND=$ERROR_SSID_EMPTY
            else
                 createWIFIpacket "$1" "$2"
-                if ! sendPacket; then
-                  echo >&2 Error: Failed to send wifi configuration to "$C_HOST"
-                  EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
+                if ! sendPacket && [ "$EXITCODE_SENDPACKET" -ne $ERROR_OD_BUFFER_EMPTY ]; then
+                    #sometimes OK response from gw is not received -> empty buffer
+                    echo >&2 Error: Failed to send wifi configuration to "$C_HOST", error code "$EXITCODE_SENDPACKET"
+                    EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
                 fi
                 shift && [ -n "$2" ] && shift
             fi
@@ -6553,8 +6560,12 @@ while [ $# -gt 0 ]; do
         -d | --debug)
 
               processDebugOptions "$2"
-              [ -n "$2" ] && shift # remove args to -d if set
-              shift # remove -d
+              case "$2"  in
+                    ""|--*|-*)  shift       # -d only
+                                ;;
+                            *)  shift 2     # -d options
+                                ;;
+              esac
               
             ;;
 
@@ -6574,7 +6585,9 @@ while [ $# -gt 0 ]; do
 
         -g | --gw)
 
+            set -x
             C_HOST="$2"
+            set +x
             #sendPacket "$CMD_READ_MAC" >/dev/null
             sendPacket "$CMD_READ_VERSION" >/dev/null; 
             sendPacket "$CMD_READ_SYSTEM" >/dev/null;  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
