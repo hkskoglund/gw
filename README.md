@@ -59,7 +59,7 @@ System sensors disabled          <span style="color: red">11</span>
 1. 🔋 - battery ok
 2. 📶 - signal ok
 3. 🔌 - plug/electric power
-4. &nbsp;↖&nbsp;&nbsp;&nbsp;- wind direction
+4. ↖ - wind direction
 
 ## Continous monitoring each 1 minute -H option to hide
 <code> while true; do clear;./gw -g 192.168.3.16 -H rain,system,t,leak  -c l; sleep 60; done</code>
