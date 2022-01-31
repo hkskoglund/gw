@@ -42,7 +42,6 @@ MAX_16BIT_UINT=$(((2 << 16) - 1))
 TIMEOUT_WIFICONFIG_SERVER=${TIMEOUT_WIFICONFIG_SERVER:=10} # timeout in seconds for wifi-server configuration of GW1000
 
 GWDIR=${GWDIR:="."}
-GW_VIEW_BIG_FILE=${GW_VIEW_BIG_FILE="$GWDIR/view/big-demo.sh"}
 GW_VIEW_CSV_FILE=${GW_VIEW_CSV_FILE:="$GWDIR/view/csv.sh"}
 
 GW_STYLE_LIMITS_FILE=${GW_STYLE_LIMITS_FILE:="$GWDIR/style/limits.sh"}
@@ -5478,8 +5477,6 @@ printOrLogLivedata()
     if [ -z "$LOG_CMD" ]; then
        if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then
             printLivedata
-       elif [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_BIG ]; then
-           "$GW_VIEW_BIG_FILE" # must have execute permission chmod +x
        else
           echo >&2 Not implemented liveview $LIVEDATA_VIEW
        fi
@@ -6413,17 +6410,16 @@ while [ $# -gt 0 ]; do
        -v | --view) IFS=,
                     for liveview in $2; do
                        case "$liveview" in
-                           b | big) LIVEDATA_VIEW=$LIVEDATA_VIEW_BIG
-                                    ;;
+                         
                            t | terse) LIVEDATA_VIEW=$LIVEDATA_VIEW_TERSE
                                     ;;
-                            *) >&2 echo "Warning: Unknown livedata view $liveview, use terse|t,big|g"
+                            *) >&2 echo "Warning: Unknown livedata view $liveview, use terse|t"
                             ;;
                         esac
                     done
                     [ -n "$2" ] && shift
                     shift
-                    unset livewview
+                    unset liveview
                     ;;
 
        -A | --lang)
