@@ -6296,8 +6296,11 @@ processDebugOptions()
 {
     IFS=,
     for opt in $1; do 
+
+       [ "$DEBUG" -eq 1 ] && echo  >&2 "Processing debug option $opt"
     
         case "$opt" in
+        
             ""|--*|-*)  DEBUG=1
                         ;;
             a|append)   DEBUG_OPTION_APPEND=1 # print append format/args - default livedata view/table layout
@@ -6310,11 +6313,46 @@ processDebugOptions()
                         ;;
             s|sensor)   DEBUG_OPTION_TESTSENSOR=1 # inject test sensor data
                         ;;
-                    *)  echo >&2 "Error: Unknown debug option $opt, use append | a, buffer | b, command | c, http | h, sensor | s"
+            #STYLING
+            w|beufort|wind) IFS=" " 
+                        printf >&2 "\nBeufort scale styling\n\n"
+                        for f in $(seq -s ' ' 0 12); do 
+                                eval >&2 printf \""%2d \$STYLE_BEUFORT_$f%s\$STYLE_RESET %4d\\\n"\"  \""$f"\" \"\$BEUFORT_"${f}"_DESCRIPTION\" \"\$BEUFORT_"${f}"\"
+                        done
+                        unset f
+                        ;;
+                pm25) IFS=" "
+                        printf >&2 "\nPM25 Air Quality Index styling\n\n"
+                        for pm25 in $(( PM25_AQI_GOOD_LIMIT -1)) $((  PM25_AQI_MODERATE_LIMIT - 1)) $((  PM25_AQI_UNHEALTHY_SENSITIVE_LIMIT - 1)) $((  PM25_AQI_UNHEALTHY_LIMIT - 1)) $((  PM25_AQI_VERY_UNHEALTHY_LIMIT - 1)) $((  PM25_AQI_VERY_UNHEALTHY_LIMIT + 1)) ; do
+                            setAQI $pm25
+                            setStyleAQI $pm25
+                            printf >&2 "$STYLE_AQI%s$STYLE_RESET %s\n" "$VALUE_PM25_AQI" "$(( pm25 + 1))"
+                        done
+                        unset pm25
+                        ;;
+
+            ri|rainintensity) IFS=" "
+                        printf >&2 "\nRainintensity styling\n\n"
+                        for ri in $(( RAININTENSITY_LIGHT_LIMIT -1)) $(( RAININTENSITY_LIGHT_LIMIT + 1)) $((RAININTENSITY_MODERATE_LIMIT + 1)) $((RAININTENSITY_HEAVY_LIMIT + 1)); do
+                            setRainIntensity $ri
+                            setStyleRainIntensity $ri
+                            printf >&2 "$STYLE_RAININTENSITY%s$STYLE_RESET %d\n" "$VALUE_RAININTENSITY" "$(( ri + 1))"
+                        done
+                        unset ri
+                        ;;
+            uvi) IFS=" " 
+                      printf >&2 "\nUVI styling\n\n"
+                      for uvi in $(seq -s ' ' 0 11); do 
+                          setStyleUVI "$uvi"
+                          printf >&2 "$STYLE_UVI%2d$STYLE_RESET\n" "$uvi"
+                      done
+                      unset uvi
+                      ;;
+                    *)  echo >&2 "Error: Unknown debug option $opt, use append | a, buffer | b, command | c, http | h, sensor | s | beufort | b"
                         ;;
         esac
     done
-    unset opt
+    unset opt 
 }
 
 processOptionsLiveview()
@@ -6585,9 +6623,7 @@ while [ $# -gt 0 ]; do
 
         -g | --gw)
 
-            set -x
             C_HOST="$2"
-            set +x
             #sendPacket "$CMD_READ_MAC" >/dev/null
             sendPacket "$CMD_READ_VERSION" >/dev/null; 
             sendPacket "$CMD_READ_SYSTEM" >/dev/null;  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
@@ -6654,6 +6690,22 @@ while [ $# -gt 0 ]; do
 
         -t | --timezones)
             printTimezones
+            ;;
+
+        -p | --print-style)
+            
+            case "$2" in
+              "" | --* | -*) shift
+                            ;;
+              beufort | b) for f in $(seq -s ' ' 0 12); do 
+                                eval printf \""%4d %2d \$STYLE_BEUFORT_$f%s\$STYLE_RESET\\\n"\" \"\$BEUFORT_"${f}"\" \""$f"\" \"\$BEUFORT_"${f}"_DESCRIPTION\"
+                            done
+                            shift 2
+                            ;;
+                    *) shift 2
+                        ;;
+            esac
+
             ;;
 
         *)        # unknown option
