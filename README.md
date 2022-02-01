@@ -1,6 +1,6 @@
 # gw - shell script for viewing weather data and sensors connected to gw-1000 or compatible devices
 
-This tool reads weather data from gw-1000 and shows it in a table. It supports both the binary Ecowitt protocol and http requests. Configuration of the customized server on the gw-1000 is supported. The sensor view lists current status to all sensors like ***searching***, ***disabled*** or which ***hexid***  is connected. Detailed battery stautus is also included in the sensorview. It designed with *portability* in mind and tested on bash, zsh, ksh93, mksh and **dash**. Ansi escape codes are used to style wind, uvi, and pm25 air quality index. The script is dependent on the external **nc** and **od** utilities.
+This tool reads weather data from gw-1000 and shows it in a table. It supports both the binary Ecowitt protocol and http requests. It may be used to configure some of the settings on the device, for example of a customized server. The sensor view lists current battery, signal status and state (searching/disabled/hexid) to all sensors. Setting a new sensor state, for examble from searching to disabled is supported. It designed with *portability* in mind and tested on bash, zsh, ksh93, mksh and **dash**. Ansi escape codes are used to style wind, uv index, and pm25 air quality index. The script is dependent on the external **nc** and  **od** utilities.
 
 # Screenshot Windows Terminal/WSL 2
 ![Screenshot Liveview with headings - Windows Terminal v1.11.3471.0 - WSL2](./img/Skjermbilde%202022-01-26%20144206.png)
@@ -62,8 +62,6 @@ System sensors disconnected       <span style="color:magenta">0</span>
 System sensors searching         <span style="color:green">29</span>
 System sensors disabled          <span style="color: red">11</span>
 </pre>
-
-
 
 ## Continous monitoring each 1 minute -H option to hide
 <code> while true; do clear;./gw -g 192.168.3.16 -H rain,system,t,leak  -c l; sleep 60; done</code>
@@ -190,6 +188,17 @@ path ecowitt       /weatherstation/updateweatherstation.php?
 path wunderground  /data/report/
 </pre>
 
+## Setting manual timezone
+<code>./gw -g 192.168.3.16  -c system auto=off,tz=43,dst=1 -c system</code>
+<pre>
+System frequency                         1      868
+System type                              1      WH65
+System utc                      1643717874      2022-02-01 12:17:54
+System timezone (manual)                43      (UTC+01:00) Amsterdam, B
+System timezone AUTO                     0
+System timezone DST                      1
+</pre>
+
 ## Configuring new wifi ssid/pw - method 1 - server
 <p>Connect to GW1000-WIFI???? network in your preferred os. Verify ip address of gw. Verify firewall settings for tcp port 49123</p> 
 <code>./gw -g 192.168.4.1 -c wifi-server ssid pw</code>
@@ -216,10 +225,12 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 # Usage
 ### Basic
 ./gw [ -g **ip** ] [ -c **command** ] [-l **port** ] 
+<br>
 ### Filtering/unit conversion
 ./gw [ -H **HEADERS** ] [ u- **UNITS**] ...
+<br>
 ### Scan subnet for gw
-./gw [ -s **xxx.xxx.xxx** ] 
+./gw [ -s **xxx.xxx.xxx** ]<br>
 
 # Options
 
@@ -228,24 +239,26 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 ### -l, --listen PORT - listen for incoming ecowitt/wunderground http requests
 ### -s, --scan SUBNET - scan for devices on xxx.xxx.xxx 
 ### -H, --hide-headers HEADERS - hide headers from output in default view
-### -u, --unit UNITS - set unit conversion for pressure,rain and wind
+### -u, --unit UNITS - set unit conversion for pressure,rain and wind<br><br>
 
 # Commands
 
-* livedata | l - get livedata from gw
-* sensor | s **SENSOROPTIONS** - get sensor data (searching/disabled/hexid)
-    * **SENSOROPTIONS** -  range *lowtype*-*hightype*=searching | s | connected | c | disconnected or single sensor *type*=*hexid* <br>For example to disable sensors 40-47 (leafwetnetness), the command is -c sensor 40-47=disable. The command following = is optional, in this case only sensors matching the range will be printed. To list only connected sensors, use -c sensor connected or shortform -c s c.
-* customized | c **CUSTOMIZEDOPTIONS** - get customized server configuration
-    * **CUSTOMIZEDOPTIONS** is specified in a , separated list of key=value. Allowed keys are id, password | pw, server | s, port | p , interval | i, http | h, enabled | e, path_wunderground | p_w or path_ecowitt | p_e
+* livedata | l - get livedata from gw<br><br>
+* sensor | s **SENSOROPTIONS** - get/set sensor state (searching/disabled/hexid)
+    * **SENSOROPTIONS** -  range *lowtype*-*hightype*=searching | s | connected | c | disconnected or single sensor *type*=*hexid* <br>For example to disable sensors 40-47 (leafwetnetness), the command is -c sensor 40-47=disable. The command following = is optional, in this case only sensors matching the range will be printed. To list only connected sensors, use -c sensor connected or shortform -c s c.<br><br>
+* customized | c **CUSTOMIZEDOPTIONS** - get/set customized server configuration
+    * **CUSTOMIZEDOPTIONS** is specified in a , separated list of key=value. Allowed keys are id, password | pw, server | s, port | p , interval | i, http | h, enabled | e, path_wunderground | p_w or path_ecowitt | p_e<br><br>
+* system | sys **SYSTEMOPTIONS** - get/set system manual/auto timezone,daylight saving, system type (wh24/wh65)<br>
+    * **SYSTEMOPTIONS** auto=on | off |1 | 0, dst= on |off | 1 | 0, tz=*tzindex*|?, type=wh24 | wh65 | 0 |1. *tzindex* is a number between 0-107. Specifying *tzindex*=? will print available timezones.<br><br>
 * wifi-server | w-s **SSID** **PASSWORD** - server configuration of ssid and password 
-    * Listen for incoming tcp connection on port 49123 from device and send new ssid/password when connected. It may be neccessary to use a manual ip/netmask on server, for example 192.168.4.2/255.255.255.0.
+    * Listen for incoming tcp connection on port 49123 from device and send new ssid/password when connected. It may be neccessary to use a manual ip/netmask on server, for example 192.168.4.2/255.255.255.0.<br><br>
 * wifi-client | w-c **SSID** **PASSWORD** -client configuration of ssid and password
-    * Send a wifi configuration packet with ssid and password to the gw. This command must be used with the -g **host** option.
+    * Send a wifi configuration packet with ssid and password to the gw. This command must be used with the -g **host** option.<br><br>
 * reset - reset device to default settings
 
 ## Headers - hide/filter output in default view
 
-* headers | h, rain | r, wind | w, beufort | b, temperature | t, light | l, uvi, system | s, soilmoisture | sm, soiltemperature | st, leak, co2, pm25, pm25aqi, leafwetness | leafw, lightning, tempusr | tusr, compass | c, status,  | sensor-header | sh
+* headers | h, rain | r, wind | w, beufort | b, temperature | t, light | l, uvi, system | s, soilmoisture | sm, soiltemperature | st, leak, co2, pm25, pm25aqi, leafwetness | leafw, lightning, tempusr | tusr, compass | c, status, sensor-header | sh
 
 ## Units
 *  pressure | p = inhg | hpa
@@ -253,10 +266,8 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 *  rain | r = mm | in
 *  wind | w = mph | kmh | mps
 
-
-
 # Running script in Windows Subsystem for Linux 2 - WSL2
-portproxy must used, open up customized server port(8080), 49123 for wifi-server configuration<br>
+portproxy must be used, open up customized server port(8080), 49123 for wifi-server configuration<br>
 * <code> netsh interface portproxy reset</code>
 * <code>iex "netsh interface portproxy add v4tov4 listenaddress=(Get-NetIPAddress -InterfaceAlias Wi-Fi -AddressFamily IPv4).IPAddress connectaddress=$(wsl -e hostname -I) connectport=8080 listenport=8080"</code>
 <!---
