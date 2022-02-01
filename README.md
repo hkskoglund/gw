@@ -1,6 +1,6 @@
 # gw - shell script for viewing weather data and sensors connected to gw-1000 or compatible devices
 
-This tool reads weather data from gw-1000 and shows it in a table. It supports both the binary Ecowitt protocol and http requests. It may be used to configure some of the settings on the device, for example of a customized server. The sensor view lists current battery, signal status and state (searching/disabled/hexid) to all sensors. Setting a new sensor state, for examble from searching to disabled is supported. It designed with *portability* in mind and tested on bash, zsh, ksh93, mksh and **dash**. Ansi escape codes are used to style wind, uv index, and pm25 air quality index. The script is dependent on the external **nc** and  **od** utilities.
+This tool reads weather data from gw-1000 and shows it in a table. It supports both the binary Ecowitt protocol and http requests. It may be used to configure some of the settings on the device, for example of a customized server. The sensor view lists current battery, signal status and state (searching/disabled/hexid) to all sensors. Setting a new sensor state, for example from searching to disabled is supported. It designed with *portability* in mind and tested on bash, zsh, ksh93, mksh and **dash**. Ansi escape codes are used to style wind, uv index, and pm25 air quality index. The script is dependent on the external **nc** and  **od** utilities.
 
 # Screenshot Windows Terminal/WSL 2
 ![Screenshot Liveview with headings - Windows Terminal v1.11.3471.0 - WSL2](./img/Skjermbilde%202022-01-26%20144206.png)
