@@ -244,29 +244,36 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 
 # Commands
 
-* livedata | l - get livedata from gw<br><br>
-* sensor | s **SENSOROPTIONS** - get/set sensor state (searching/disabled/hexid)
-    * **SENSOROPTIONS** -  range *lowtype*-*hightype*=searching | s | connected | c | disconnected or single sensor *type*=*hexid* <br>For example to disable sensors 40-47 (leafwetnetness), the command is -c sensor 40-47=disable. The command following = is optional, in this case only sensors matching the range will be printed. To list only connected sensors, use -c sensor connected or shortform -c s c.<br><br>
-* customized | c **CUSTOMIZEDOPTIONS** - get/set customized server configuration
-    * **CUSTOMIZEDOPTIONS** is specified in a , separated list of key=value. Allowed keys are id, password | pw, server | s, port | p , interval | i, http | h, enabled | e, path_wunderground | p_w or path_ecowitt | p_e<br><br>
-* system | sys **SYSTEMOPTIONS** - get/set system manual/auto timezone,daylight saving, system type (wh24/wh65)<br>
-    * **SYSTEMOPTIONS** auto=on | off |1 | 0, dst= on |off | 1 | 0, tz=*tzindex*|?, type=wh24 | wh65 | 0 |1. *tzindex* is a number between 0-107. Specifying *tzindex*=? will print available timezones.<br><br>
-* wifi-server | w-s **SSID** **PASSWORD** - server configuration of ssid and password 
-    * Listen for incoming tcp connection on port 49123 from device and send new ssid/password when connected. It may be neccessary to use a manual ip/netmask on server, for example 192.168.4.2/255.255.255.0.<br><br>
-* wifi-client | w-c **SSID** **PASSWORD** -client configuration of ssid and password
-    * Send a wifi configuration packet with ssid and password to the gw. This command must be used with the -g **host** option.<br><br>
-* reboot - reboot device<br><br>
-* reset - reset device to default settings
+## livedata | l - get livedata from gw<br><br>
+
+## sensor | s **SENSOROPTIONS** - get/set sensor state (searching/disabled/hexid)
+
+### **SENSOROPTIONS** -  range *lowtype*-*hightype*=searching | s | connected | c | disconnected or single sensor *type*=*hexid*. For example to disable sensors 40-47 (leafwetnetness), the command is -c sensor 40-47=disable. The command following = is optional, in this case only sensors matching the range will be printed. To list only connected sensors, use -c sensor connected or shortform -c s c.<br><br>
+
+## customized | c **CUSTOMIZEDOPTIONS** - get/set customized server configuration 
+### **CUSTOMIZEDOPTIONS** is specified in a , separated list of key=value. Allowed keys are id, password | pw, server | s, port | p , interval | i, http | h, enabled | e, path_wunderground | p_w or path_ecowitt | p_e<br><br>
+
+## system | sys **SYSTEMOPTIONS** - get/set system manual/auto timezone,daylight saving, system type (wh24/wh65)<br>
+### **SYSTEMOPTIONS** auto=on | off |1 | 0, dst= on |off | 1 | 0, tz=*tzindex*|?, type=wh24 | wh65 | 0 |1. *tzindex* is a number between 0-107. Specifying *tzindex*=? will print available timezones.<br><br>
+
+## wifi-server | w-s **SSID** **PASSWORD** - server configuration of ssid and password 
+### Listen for incoming tcp connection on port 49123 from device and send new ssid/password when connected. It may be neccessary to use a manual ip/netmask on server, for example 192.168.4.2/255.255.255.0.<br><br>
+
+## wifi-client | w-c **SSID** **PASSWORD** -client configuration of ssid and password
+### Send a wifi configuration packet with ssid and password to the gw. This command must be used with the -g **host** option.
+
+## reboot - reboot device<br><br>
+
+## reset - reset device to default settings<br><br>
 
 ## Headers - hide/filter output in default view
-
-* headers | h, rain | r, wind | w, beufort | b, temperature | t, light | l, uvi, system | s, soilmoisture | sm, soiltemperature | st, leak, co2, pm25, pm25aqi, leafwetness | leafw, lightning, tempusr | tusr, compass | c, status, sensor-header | sh
+### headers | h, rain | r, wind | w, beufort | b, temperature | t, light | l, uvi, system | s, soilmoisture | sm, soiltemperature | st, leak, co2, pm25, pm25aqi, leafwetness | leafw, lightning, tempusr | tusr, compass | c, status, sensor-header | sh<br><br>
 
 ## Units
 *  pressure | p = inhg | hpa
 *  temperature | t = celcius | c | farenheit | f
 *  rain | r = mm | in
-*  wind | w = mph | kmh | mps
+*  wind | w = mph | kmh | mps<br><br>
 
 ## Environment variables
 * NO_COLOR - set to disable ansi escape terminal color styling
