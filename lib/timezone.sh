@@ -141,6 +141,7 @@ printTimezones()
     for tz in $(seq -s' ' 0 $SYSTEM_TIMEZONE_MAX_INDEX); do
        FMT=$FMT"%3d %s\n"
        eval tzarg="\$SYSTEM_TIMEZONE_$tz"
+       #shellcheck disable=SC2154
        ARGS=$ARGS"'$tz' '$tzarg' "
     done
     eval printf "'$FMT'" "$ARGS"

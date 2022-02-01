@@ -3294,7 +3294,7 @@ sendPacketnc() { #$1 - command
     port=$PORT_GW_TCP
 
     if [ $PACKET_TX_CMD -eq $CMD_BROADCAST ]; then
-        ncUDPOpt='-u'
+        ncUDPOpt='-u' # udp mode
         port=$PORT_GW_UDP
         timeout_nc=$timeout_udp_broadcast
         useTimeout=1
