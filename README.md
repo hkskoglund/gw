@@ -268,6 +268,9 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 *  rain | r = mm | in
 *  wind | w = mph | kmh | mps
 
+## Environment variables
+* NO_COLOR - set to disable ansi escape terminal color styling
+
 # Running script in Windows Subsystem for Linux 2 - WSL2
 portproxy must be used, open up customized server port(8080), 49123 for wifi-server configuration<br>
 <code>
