@@ -270,13 +270,13 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 ### headers | h, rain | r, wind | w, beufort | b, temperature | t, light | l, uvi, system | s, soilmoisture | sm, soiltemperature | st, leak, co2, pm25, pm25aqi, leafwetness | leafw, lightning, tempusr | tusr, compass | c, status, sensor-header | sh<br><br>
 
 ## Units
-*  pressure | p = inhg | hpa
-*  temperature | t = celcius | c | farenheit | f
-*  rain | r = mm | in
-*  wind | w = mph | kmh | mps<br><br>
+### pressure | p = inhg | hpa
+### temperature | t = celcius | c | farenheit | f
+### rain | r = mm | in
+### wind | w = mph | kmh | mps<br><br>
 
 ## Environment variables
-* NO_COLOR - set to disable ansi escape terminal color styling
+### NO_COLOR - set to disable ansi escape terminal color styling<br><br>
 
 # Running script in Windows Subsystem for Linux 2 - WSL2
 portproxy must be used, open up customized server port(8080), 49123 for wifi-server configuration<br>
