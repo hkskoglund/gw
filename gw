@@ -3637,7 +3637,7 @@ sendSystemPacket()
         return "$ERROR_SYSTEMPARAM_NOTSPECIFIED"
     fi
 
-    if ! isNumber "$2" || [ "$2" -ge "$SYSTEM_TIMEZONE_MAX_INDEX" ]; then
+    if ! isNumber "$2" || [ "$2" -gt "$SYSTEM_TIMEZONE_MAX_INDEX" ]; then
         echo >&2 Error: System timezone index must be between 0 - "$SYSTEM_TIMEZONE_MAX_INDEX", "$2" invalid
         return "$ERROR_SYSTEMPARAM_NOTSPECIFIED"
     fi
