@@ -255,6 +255,7 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
     * Listen for incoming tcp connection on port 49123 from device and send new ssid/password when connected. It may be neccessary to use a manual ip/netmask on server, for example 192.168.4.2/255.255.255.0.<br><br>
 * wifi-client | w-c **SSID** **PASSWORD** -client configuration of ssid and password
     * Send a wifi configuration packet with ssid and password to the gw. This command must be used with the -g **host** option.<br><br>
+* reboot - reboot device<br><br>
 * reset - reset device to default settings
 
 ## Headers - hide/filter output in default view
