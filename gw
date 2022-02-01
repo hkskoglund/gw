@@ -5705,16 +5705,16 @@ httpServer()
     [ "$DEBUG" -eq 1 ] && >&2 echo Listening on port "$1"
 
     if [ $NC_VERSION -eq $NC_NMAP ]; then 
-        http_message=$( nc -l -i 0.1 "$1" 2>/dev/null) # - idle timeout to exit early, not waiting for client to close/FIN
+        http_message=$("$NC_CMD" -l -i 0.1 "$1" 2>/dev/null) # - idle timeout to exit early, not waiting for client to close/FIN
         EXITCODE_HTTPSERVER=$? 
         if [ "$EXITCODE_HTTPSERVER" -eq 2 ]; then
           EXITCODE_HTTPSERVER=0 # 2 exit from nc when idle timeout expires (Ncat: Idle timeout expired (100 ms). QUITTING.)
         fi
     elif [ $NC_VERSION -eq $NC_OPENBSD ]; then
-        http_message=$( nc -l -w 1 "$1" 2>/dev/null) # - -w to exit on idle for 1s
+        http_message=$("$NC_CMD" -l -w 1 "$1" 2>/dev/null) # - -w to exit on idle for 1s
         EXITCODE_HTTPSERVER=$?
     elif [ $NC_VERSION -eq $NC_TOYBOX ]; then 
-        http_message=$( nc -p "$1" -W 1 -l  2>/dev/null) # - -W to exit on idle for 1s
+        http_message=$("$NC_CMD" -p "$1" -W 1 -l  2>/dev/null) # - -W to exit on idle for 1s
         EXITCODE_HTTPSERVER=$?
     else
         echo >&2 Error: Listen unsupported for nc version "$NC_VERSION"
