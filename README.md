@@ -9,6 +9,7 @@ This tool reads weather data from gw-1000 and shows it in a table. It supports b
 2. 📶 - signal ok
 3. 🔌 - plug/electric power
 4. ↖ - wind direction
+5. 💧 - rain indicator
 
 # Examples
 
