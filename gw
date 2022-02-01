@@ -3313,7 +3313,7 @@ sendPacketnc() { #$1 - command
     if [ "$NC_VERSION" -eq $NC_OPENBSD ]; then
 
         # -N shutdown(2) the network socket after EOF on the input / from man nc - otherwise nc hangs
-        nccmdstr="$NC_CMD -4 -N -w 1 $ncUDPOpt $host $port" 
+        nccmdstr="\"$NC_CMD\" -4 -N -w 1 $ncUDPOpt $host $port" 
        
        # if [ "$useTimeout" -eq 1 ]; then
        #    nccmdstr="timeout $timeout_nc $nccmdstr"
@@ -3325,12 +3325,12 @@ sendPacketnc() { #$1 - command
 
         #sleep to disable immediate EOF and shutdown of ncat -> which leads to data not received from udp socket
        
-        nccmdstr="$NC_CMD -4 -w 1 -i 1  $ncUDPOpt $host $port"
+        nccmdstr="\"$NC_CMD\" -4 -w 1  $ncUDPOpt $host $port"
         cmdstr="{ printf %b \"$PACKET_TX_ESCAPE\"; sleep $timeout_nc; } |  $nccmdstr | $odcmdstr"
 
     elif [ "$NC_VERSION" -eq $NC_TOYBOX ]; then
 
-        nccmdstr="$NC_CMD -4 $ncUDPOpt $host $port"
+        nccmdstr="\"$NC_CMD\" -4 $ncUDPOpt $host $port"
         
         if [ "$useTimeout" -eq 1 ]; then
            nccmdstr="timeout $timeout_nc $nccmdstr"
@@ -3340,7 +3340,7 @@ sendPacketnc() { #$1 - command
 
     elif [ "$NC_VERSION" -eq $NC_BUSYBOX ]; then
 
-        nccmdstr="$NC_CMD $host $port"
+        nccmdstr="\"$NC_CMD\" $host $port"
 
         if [ -z "$ncUDPOpt" ]; then
             cmdstr="printf %b \"$PACKET_TX_ESCAPE\" |  $nccmdstr | $odcmdstr"
@@ -3983,10 +3983,10 @@ initnc()
     if [ -z "$nc_exec" ]; then
         ncat_exec=$(which ncat 2>/dev/null) # try ncat, if nc not availale
         if [ -n "$ncat_exec" ]; then
-            NC_CMD=$ncat_exec
+            NC_CMD="$ncat_exec"
         fi
     else
-        NC_CMD=$nc_exec
+        NC_CMD="$nc_exec"
     fi
 
     if [ -n "$NC_CMD" ]; then #determine which version of nc
