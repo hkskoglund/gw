@@ -3542,11 +3542,12 @@ newPathPacket() {
 parseSystemOption()
 #format : t=wh65,tz=3,dst=1|on,auto=on|1'
 {
+    EXITCODE_PARSESYSTEMOPTIONS=0
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
-        typeset systemtype systemtzindex systemdst systemauto error
+        typeset systemtype systemtzindex systemdst systemauto
     else
-        local systemtype systemtzindex systemdst systemauto error
+        local systemtype systemtzindex systemdst systemauto
     fi
 
     #copy current configuration
@@ -3570,7 +3571,7 @@ parseSystemOption()
                 1|wh65)     systemtype=1
                         ;;
                 *)  echo >&2 "type=0 | wh24 or 1 | wh65"
-                            error=$ERROR_SYSTEMPARAM_NOTSPECIFIED
+                            EXITCODE_PARSESYSTEMOPTIONS=$ERROR_SYSTEMPARAM_NOTSPECIFIED
                             ;;
             esac
             ;;
@@ -3579,7 +3580,7 @@ parseSystemOption()
             else
                 echo >&2 "tz=0-$SYSTEM_TIMEZONE_MAX_INDEX"
                 printTimezones
-                error=$ERROR_SYSTEMPARAM_NOTSPECIFIED
+                EXITCODE_PARSESYSTEMOPTIONS=$ERROR_SYSTEMPARAM_NOTSPECIFIED
             fi
             ;;
         dst|d) case "$2" in
@@ -3588,7 +3589,7 @@ parseSystemOption()
                 1|on)   systemdst=1
                         ;;
                 *)      echo >&2 "dst=0 | off | 1 | on"
-                        error=$ERROR_SYSTEMPARAM_NOTSPECIFIED
+                        EXITCODE_PARSESYSTEMOPTIONS=$ERROR_SYSTEMPARAM_NOTSPECIFIED
                         ;;
                 esac
                 ;;
@@ -3598,26 +3599,25 @@ parseSystemOption()
                 1|on)   systemauto=1
                         ;;
                  *)     echo >&2 "auto=0 | off | 1 | on"
-                        error=$ERROR_SYSTEMPARAM_NOTSPECIFIED
+                        EXITCODE_PARSESYSTEMOPTIONS=$ERROR_SYSTEMPARAM_NOTSPECIFIED
                         ;;
                 esac
                 ;; 
             
         *) echo >&2 "Unknown key '$1', use type,tz,dst,auto"
+           EXITCODE_PARSESYSTEMOPTIONS=$ERROR_SYSTEMPARAM_NOTSPECIFIED
         ;;
       esac
     done
 
-    if [ -z $error ]; then
-        sendSystemPacket "$systemtype" "$systemtzindex" "$systemdst" "$systemauto"
-    fi
+    sendSystemPacket "$systemtype" "$systemtzindex" "$systemdst" "$systemauto"
 
      if [ -n "$KSH_VERSION" ]; then
       unset systemtype systemtzindex systemdst systemauto
     fi
 
-    [ -z $error ]
-    return 
+    return $EXITCODE_PARSESYSTEMOPTIONS
+
 }
 
 sendSystemPacket() 
@@ -4461,6 +4461,7 @@ processCommand() {
                 sendPacket $CMD_READ_SYSTEM 
                 unset C_NOPRINT
                 parseSystemOption "$1"
+                EXITCODE_PROCESSCOMMAND=$EXITCODE_PARSESYSTEMOPTIONS
             fi
             ;;
 
