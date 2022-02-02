@@ -595,13 +595,7 @@ setBatteryLevel()
 
 getSensorBatteryState()
 {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-      #shellcheck disable=SC3044
-        typeset channel
-    else
-        local channel
-    fi
-
+   
     #specification FOS_ENG-022-A, page 28
     unset SBATTERY_STATE
 
@@ -649,9 +643,7 @@ getSensorBatteryState()
            ;;
     esac
 
-    if [ -n "$KSH_VERSION" ]; then
-      unset channel
-    fi
+    unset channel
 }
 
 getSensorNameShort()
@@ -775,12 +767,6 @@ writeUInt8() {
 
 readSlice() { #$1 - number of bytes n to read
     #read bytes available in $B1,...,$Bn
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset n
-    else
-        local n
-    fi
 
     n=1
     while [ "$n" -le "$1" ]; do
@@ -793,9 +779,7 @@ readSlice() { #$1 - number of bytes n to read
         n=$((n + 1))
     done
 
-    if [ -n  "$KSH_VERSION" ]; then
-      unset n
-    fi
+    unset n
 }
 
 readUInt8() {
@@ -821,36 +805,26 @@ readInt8() {
 readUInt16BE() {
     unset VALUE_UINT16BE
 
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset msb
-    else
-        local msb
-    fi
-
     readUInt8
     msb=$VALUE_UINT8
     readUInt8
     VALUE_UINT16BE=$(((msb << 8) | VALUE_UINT8))
+    unset msb
 }
 
 readUInt32BE() {
     unset VALUE_UINT32BE
 
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset msb lsb msb2 lsb2
-    else
-        local   msb lsb msb2 lsb2
-    fi
-
     if [ ${#OD_BUFFER} -ge 19 ]; then
         readUInt8
         msb=$VALUE_UINT8
+
         readUInt8
         lsb=$VALUE_UINT8
+       
         readUInt8
         msb2=$VALUE_UINT8
+       
         readUInt8
         lsb2=$VALUE_UINT8
 
@@ -859,9 +833,7 @@ readUInt32BE() {
         return "$ERROR_OD_BUFFER_EMPTY"
     fi
 
-    if [ -n "$KSH_VERSION" ]; then
-      unset msb lsb msb2 lsb2
-    fi
+    unset msb lsb msb2 lsb2
 }
 
 readInt16BE() { #2's complement big endian
@@ -886,13 +858,6 @@ writeString()
 {
   # PACKET_TX_BODY="${#1} $(printf "%s" "$1" | od -A n -t u1)"
 
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset len str decstr n
-    else
-        local  len str decstr n
-    fi 
-
     str=$1
     len=${#str}
 
@@ -913,6 +878,7 @@ writeString()
 
     if [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" -eq  1 ] && [ -n "$APPEND_FORMAT_WRITE_STRING" ]; then
         eval printf -v decstr \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING"
+        #shellcheck disable=SC2154
         PACKET_TX_BODY="$PACKET_TX_BODY $decstr"
     elif [ -n "$APPEND_FORMAT_WRITE_STRING" ]; then
         PACKET_TX_BODY="$PACKET_TX_BODY $(eval printf \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING")" #ok, run in subshell
@@ -928,9 +894,7 @@ writeString()
 
     resetAppendBuffer
 
-    if [ -n "$KSH_VERSION" ]; then
-        unset len str decstr n
-    fi
+    unset len str decstr n
 
     [ "$DEBUG" -eq 1 ] && >&2 echo  "writeString $PACKET_TX_BODY"
 
@@ -938,13 +902,7 @@ writeString()
 
 readString() { #https://bugs.launchpad.net/ubuntu/+source/dash/+bug/1499473
     #\x formatted printf not supported in dash -> must use \nnn-octal
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset len_uint8 n
-    else
-        local   len_uint8 n
-    fi
-
+   
     readUInt8
     len_uint8=$VALUE_UINT8
     [ $DEBUG -eq 1 ] && echo >&2 "String length $len_uint8"
@@ -970,10 +928,8 @@ readString() { #https://bugs.launchpad.net/ubuntu/+source/dash/+bug/1499473
     else
        VALUE_STRING=$(printf "%b" "$VALUE_STRING_ESCAPE") # convert to string
     fi
-
-    if [ -n "$KSH_VERSION" ]; then
-        unset len_uint8 n
-    fi
+   
+    unset len_uint8 n
 }
 
 printBuffer() { # print hex. buffer
@@ -1112,13 +1068,6 @@ getBatteryVoltageLevelState()
 
 getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
     
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset -i  l
-    else
-        local       l
-    fi
-
     unset SBATTERY_STATE
    
     #set -- 0     #debug  set $1 to 0
@@ -1148,9 +1097,7 @@ getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
        SBATTERY_STATE=$SBATTERY_STATE" $1"
     fi
 
-    if [ -n "$KSH_VERSION" ]; then
-        unset  l
-    fi
+    unset  l
 }
 
 getBatteryLowOrNormal() {
@@ -1168,8 +1115,6 @@ toLowercase() {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
         typeset -l lowcasestr # -l option -> lowercase on assignment/or ignored
-    else
-        local lowcasestr
     fi
 
     if [ -n "$BASH_VERSION" ]; then
@@ -1317,13 +1262,7 @@ parseMAC() {
 }
 
 parseResult() {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset -i write_result
-    else
-        local write_result
-    fi
-
+    
     readUInt8
     write_result=$VALUE_UINT8
     VALUE_PACKET_WRITE_RESULT=$write_result
@@ -1335,9 +1274,7 @@ parseResult() {
         echo >&2 "$COMMAND_NAME FAIL"
     fi
 
-    if [ -n "$KSH_VERSION" ]; then
-      unset write_result
-    fi
+    unset write_result
 
 }
 
@@ -1588,13 +1525,6 @@ setSGIBatteryVoltage()
 newLivedataCompass()
 #$1 unicode direction, $2 - wind direction 
 {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset style_needle
-    else
-        local style_needle
-    fi
-
     #set -- "$1" "$WIND_ESE"
 
     style_needle=$STYLE_COMPASS_WIND$1$STYLE_RESET
@@ -1613,9 +1543,7 @@ newLivedataCompass()
         LIVEVIEW_COMPASS_S_FMT="╰─$WIND_DIRECTION_S\u2500╯"
     fi
 
-   if [ -n "$KSH_VERSION" ]; then
-     unset style_needle
-   fi
+    unset style_needle
 }
 
 setRainValueFormat()
@@ -1747,13 +1675,6 @@ printLivedataLineFinal()
         echo >&2 "printLivedataLine $* length $#"
     fi
 
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset header_fmt unit_fmt status_fmt status_line signal_fmt signal_line space
-    else
-        local  header_fmt unit_fmt status_fmt status_line signal_fmt signal_line space
-    fi
-
     # \r\t horizontal/absolute positioning is compatible with unicode in string
     if [ -n "$LIVEVIEW_HIDE_HEADERS" ] && [ "$LIVEVIEW_HIDE_HEADERS" -eq 1 ]; then 
         header_fmt="%s\r\t\t\t\t" 
@@ -1811,9 +1732,7 @@ printLivedataLineFinal()
        appendArgs "'$1' '$2' '$4' '$status_line' '$signal_line'"
     fi
    
-    if [ -n "$KSH_VERSION" ]; then
-        unset header_fmt ch status_fmt unit_fmt status_line signal_fmt signal_line
-    fi
+    unset header_fmt ch status_fmt unit_fmt status_line signal_fmt signal_line
 
 }
 
@@ -1821,13 +1740,6 @@ printLivedata()
 {
     #debugging: call printLivedataFinal directly for problematic line and set DEBUG_LIVEDATA_LINE=1
     #DEBUG_LIVEDATA_LINE=1
-
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset n  delimiter space
-    else
-        local n  delimiter space
-    fi
 
     #resetAppendBuffer
     
@@ -2210,21 +2122,13 @@ printLivedata()
     #unset local variables for ksh -> made global by using () function syntax without function keyword
     #https://www.unix.com/shell-programming-and-scripting/137435-ksh-different-syntax-function.html
     #man ksh93: ksh93 uses static scoping (one global scope, one local scope per function) and allows local variables only on Korn style functions
-    if [ -n "$KSH_VERSION" ]; then
-         unset n delimiter space
-    fi
+    
+    unset n delimiter space
 }
 
 newRuler()
 #creates a ruler for debugging positioning on screen
 {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset n
-    else
-        local n
-    fi
-    
     n=1
     unset VALUE_RULER
     while [ "$n" -le "$1" ]; do
@@ -2232,9 +2136,7 @@ newRuler()
         n=$(( n + 1 ))
     done
 
-    if [ -n "$KSH_VERSION" ]; then
-      unset n
-    fi
+    unset n
 }
 
 convertTemperatureLivedata()
@@ -2276,12 +2178,6 @@ getDateUTC()
 }
 
 parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 5d 0a 01 59 0b 00 00 0c 00 00 15 00 00 93 bc 16 00 20 17 00 2c 12 1a 00 87 22 32 1b 00 b0 23 27 1c 00 dd 24 31 58 00 19 00 47 0e 00 00 10 00 08 11 00 42 12 00 00 02 9a 13 00 00 0f 8b 0d 00 42 63
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-            typeset ldf channel checksum
-    else
-        local ldf channel checksum
-    fi
 
     LIVEDATA_SYSTEM_PROTOCOL=$LIVEDATA_PROTOCOL_ECOWITT_BINARY
     LIVEDATA_SYSTEM_PROTOCOL_LONG=$LIVEDATA_PROTOCOL_ECOWITT_BINARY_LONG
@@ -2598,27 +2494,24 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
     printOrLogLivedata
 
-    if [ -n "$KSH_VERSION" ]; then
-        unset ldf channel checksum
-    fi
+    unset ldf channel checksum
+    
 }
 
 printRaindata() {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-            typeset rr rd rw rm ry
-    else
-        local rr rd rw rm ry
-    fi
 
     convertScale10ToFloat "$C_RAINRATE"
     rr="$VALUE_SCALE10_FLOAT"
+
     convertScale10ToFloat "$C_RAINDAILY"
     rd="$VALUE_SCALE10_FLOAT"
+    
     convertScale10ToFloat "$C_RAINWEEK"
     rw="$VALUE_SCALE10_FLOAT"
+    
     convertScale10ToFloat "$C_RAINMONTH"
     rm="$VALUE_SCALE10_FLOAT"
+    
     convertScale10ToFloat "$C_RAINYEAR"
     ry="$VALUE_SCALE10_FLOAT"
     
@@ -2628,9 +2521,7 @@ rain week  $rw $UNIT_RAIN
 rain month $rm $UNIT_RAIN
 rain year  $ry $UNIT_RAIN"
    
-    if [ -n "$KSH_VERSION" ]; then
-            unset rr rd rw rm ry
-    fi
+    unset rr rd rw rm ry
 }
 
 parseRaindata() {
@@ -2823,12 +2714,6 @@ printSensorLine()
 #$1 - sensortype, $2 sensor id, $3 battery, $4 signal
 {
 #observation: leak sensor signal -> starts at level 1 after search state, then increases +1 each time a new rf message is received
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-    #shellcheck disable=SC3044
-      typeset sensorIdState sensorsignal_unicode style_sensor_off style_sensor
-    else
-      local sensorIdState sensorsignal_unicode style_sensor_off style_sensor
-    fi
 
     unset SBATTERY_STATE
 
@@ -2873,9 +2758,7 @@ printSensorLine()
     appendBuffer "%6u %9x %3u %1u %4s %-17s $style_sensor%-12s$style_sensor_off\t%s\t%s\n"\
  "'$1' '$2' '$3' '$4'  '$SENSORNAME_WH' '$SENSORNAME_SHORT' '$sensorIdState' '$SBATTERY_STATE' '$sensorsignal_unicode'"
     
-    if [ -n "$KSH_VERSION" ]; then
-      unset sensorIdState sensorsignal_unicode style_sensor_off style_sensor
-    fi
+    unset sensorIdState sensorsignal_unicode style_sensor_off style_sensor
 }
 
 resetAppendBuffer()
@@ -2931,13 +2814,6 @@ setLivedataSignal()
 
 parseSensorIdNew()
 {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-    #shellcheck disable=SC3044
-        typeset stype signal battery printSensorMatch printSensorHeader
-    else
-        local stype signal battery printSensorMatch printSensorHeader
-    fi
-
     resetAppendBuffer
 
     printSensorHeader=0
@@ -3010,9 +2886,7 @@ parseSensorIdNew()
 
     printAppendBuffer
 
-    if [ -n "$KSH_VERSION" ]; then
-        unset stype signal battery printSensorHeader printSensorMatch
-    fi
+    unset stype signal battery printSensorHeader printSensorMatch
 }
 
 parsePacket() {
@@ -3121,13 +2995,6 @@ convertUInt8ToHex() {
         return
     fi
 
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset lsb lsb_hexdigit msb
-    else
-        local lsb lsb_hexdigit msb
-    fi
-    
     lsb=$(($1 & 0xf))
     getHexDigit "$lsb"
     lsb_hexdigit=$VALUE_HEX_DIGIT
@@ -3140,9 +3007,7 @@ convertUInt8ToHex() {
         VALUE_HEX=0$VALUE_HEX_DIGIT
     fi
 
-    if [ -n "$KSH_VERSION" ]; then
-      unset lsb lsb_hexdigit msb
-    fi
+    unset lsb lsb_hexdigit msb
 }
 
 newPacketBody() {
@@ -3202,12 +3067,6 @@ convertHexToOctal() { #$1 - 0xff format
        return
     fi
 
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset dec lsb msb middle
-    else
-        local dec lsb msb middle
-    fi
     dec=$(($1))
 
     lsb=$((dec & 7)) #least significant 3-bit sequence
@@ -3217,9 +3076,7 @@ convertHexToOctal() { #$1 - 0xff format
 
     [ $DEBUG -eq 1 ] && echo >&2 Converting "$1" to octal "$VALUE_OCTAL"
 
-    if [ -n "$KSH_VERSION" ]; then
-        unset dec lsb msb middle
-    fi
+    unset dec lsb msb middle
 }
 
 convertBufferFromDecToOctalEscape() {
@@ -3231,6 +3088,8 @@ convertBufferFromDecToOctalEscape() {
     done
 
     [ $DEBUG -eq 1 ] && echo >&2 "Octal buffer $VALUE_OCTAL_BUFFER_ESCAPE"
+
+    unset BYTE
 }
 
 createPacketTX()
@@ -3255,12 +3114,6 @@ sendPacket() {
 sendPacketnc() { #$1 - command
     EXITCODE_SENDPACKETNC=0
     #$2 - host
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset ncUDPOpt port host timeout_udp_broadcast timeout_nc od_buffer cmdstr nccmdstr odcmdstr
-    else
-        local   ncUDPOpt port host timeout_udp_broadcast timeout_nc useTimeout od_buffer cmdstr nccmdstr odcmdstr
-    fi
 
     timeout_nc=0.05
     timeout_udp_broadcast=0.236 # timeout selected based on udp port scanning 254 hosts in 60s (60s/254=0.236s)
@@ -3368,9 +3221,7 @@ sendPacketnc() { #$1 - command
        EXITCODE_SENDPACKETNC=$?
     fi
 
-    if [ -n "$KSH_VERSION" ]; then
-       unset ncUDPOpt ncIdleOpt port host timeout_udp_broadcast useTimeout timeout_nc od_buffer cmdstr nccmdstr odcmdstr
-    fi
+    unset ncUDPOpt ncIdleOpt port host timeout_udp_broadcast useTimeout timeout_nc od_buffer cmdstr nccmdstr odcmdstr
 
     return $EXITCODE_SENDPACKETNC
 
@@ -3395,14 +3246,6 @@ discovery_udp_subnet() { #$1 - subnet, for example 192.168.3
     
     EXITCODE_DISCOVERY=0
 
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        #http://www.binaryphile.com/bash/2018/09/01/approach-bash-like-a-developer-part-20-scoping.html
-        typeset -i hostnumber subnet_valid #hostnumber is also availbale in called function sendPacket and futher down the call stack (dynamic scoping/execution scoping)
-    else
-        local hostnumber subnet_valid
-    fi
-
     case $1 in
         *.*.*) 
                 subnet_valid=1
@@ -3419,31 +3262,19 @@ discovery_udp_subnet() { #$1 - subnet, for example 192.168.3
    fi
     
     hostnumber=1
-    while [ $hostnumber -le 254 ]; do
+    while [ "$hostnumber" -le 254 ]; do
         #[ $DEBUG -eq 1 ] && 
         printf >&2 "\r%s " "$1.$hostnumber"
         sendPacket $CMD_BROADCAST "$1.$hostnumber" 
         hostnumber=$((hostnumber + 1))
     done
 
-    if [ -n "$KSH_VERSION" ]; then
-      unset hostnumber
-    fi
+    unset hostnumber
 
     return $EXITCODE_DISCOVERY
 }
 
 discovery_nc() { #$1 - subnet for udp scan
-
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        {
-            typeset -i scan_max_iterations n
-            typeset scan_nc_idle_timeout  broadcast
-        }
-    else
-        local scan_max_iterations scan_nc_idle_timeout n broadcast
-    fi
 
     scan_max_iterations=10
     scan_nc_idle_timeout=0.005 # 5ms
@@ -3488,21 +3319,12 @@ discovery_nc() { #$1 - subnet for udp scan
         discovery_udp_subnet "$1"
     fi
 
-    if [ -n "$KSH_VERSION" ]; then
-      unset scan_max_iterations scan_nc_idle_timeout n broadcast
-    fi
+    unset scan_max_iterations scan_nc_idle_timeout n broadcast
 
     return $EXITCODE_DISCOVERY
 }
 
 checksum() {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset sum
-    else
-        local sum
-    fi
-
     sum=0
 
     [ "$DEBUG" -eq 1 ] && >&2 echo  "checksum calculation on $1"
@@ -3517,9 +3339,7 @@ checksum() {
 
     VALUE_CHECKSUM=$sum
 
-    if [ -n "$KSH_VERSION" ]; then
-      unset sum
-    fi
+     unset sum
 }
 
 newCustomizedPacket() {
@@ -3543,12 +3363,6 @@ parseSystemOption()
 #format : t=wh65,tz=3,dst=1|on,auto=on|1'
 {
     EXITCODE_PARSESYSTEMOPTIONS=0
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset systemtype systemtzindex systemdst systemauto
-    else
-        local systemtype systemtzindex systemdst systemauto
-    fi
 
     #copy current configuration
     systemtype=$C_SYSTEM_SENSORTYPE
@@ -3612,9 +3426,7 @@ parseSystemOption()
 
     sendSystemPacket "$systemtype" "$systemtzindex" "$systemdst" "$systemauto"
 
-     if [ -n "$KSH_VERSION" ]; then
-      unset systemtype systemtzindex systemdst systemauto
-    fi
+    unset systemtype systemtzindex systemdst systemauto
 
     return $EXITCODE_PARSESYSTEMOPTIONS
 
@@ -3623,13 +3435,6 @@ parseSystemOption()
 sendSystemPacket() 
 #$1 sysmtemtype, $2 tz index, $3 dst bit, $4 autooff bit
 {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset dst
-    else
-        local dst
-    fi
-
     dst=0
 
     if ! isNumber "$1" || [ "$1" -gt 1 ]; then
@@ -3670,9 +3475,7 @@ sendSystemPacket()
     
     sendPacket
 
-    if [ -n "$KSH_VERSION" ]; then
-      unset dst
-    fi
+    unset dst
 }
 
 sendRaindata() {
@@ -3765,13 +3568,6 @@ sendCustomized() {
 updateCustomized() {
 
     EXITCODE_CUSTOMIZED=0
-
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-            typeset value key option
-    else
-        local value key option
-    fi
 
     #readarray -d ',' -t OPTION_CUSTOMIZED < <(echo -n "$1") # <<< HERE string appends 0x0a -> using process substitution
 
@@ -3912,9 +3708,7 @@ updateCustomized() {
         sendCustomized
     fi
 
-    if [ -n "$KSH_VERSION" ]; then
-      unset key value option
-    fi
+    unset key value option
 
     return $EXITCODE_CUSTOMIZED
 }
@@ -3931,15 +3725,6 @@ convertScale10ToFloat() {
 
 convertScale10ToFloatInt() {
     # $1 - number to convert
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        {
-            typeset -i int frac number
-            typeset sign
-        }
-    else
-        local int frac number sign
-    fi
 
     unset VALUE_SCALE10_FLOAT
 
@@ -3962,23 +3747,13 @@ convertScale10ToFloatInt() {
         VALUE_SCALE10_FLOAT=$sign$int$SHELL_DECIMAL_POINT$frac
     fi
 
-   if [ -n "$KSH_VERSION" ]; then
-        unset int frac number sign
-  fi
+    unset int frac number sign
+  
 }
 
 initnc() 
 #different versions of nc use slightly different options
 {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        {
-            typeset nc_ver nc_ver_header nc_status nc_exec ncat_exec busybox_exec
-        }
-    else
-        local nc_ver nc_ver_header nc_status nc_exec ncat_exec busybox_exec
-    fi
-
     nc_exec=$(which nc 2>/dev/null)
     if [ -z "$nc_exec" ]; then
         ncat_exec=$(which ncat 2>/dev/null) # try ncat, if nc not availale
@@ -4048,11 +3823,9 @@ initnc()
         fi
     fi
 
-     if [ -n "$KSH_VERSION" ]; then
-           unset nc_ver nc_ver_header nc_status nc_exec ncat_exec busybox_exec
-     fi
+    unset nc_ver nc_ver_header nc_status nc_exec ncat_exec busybox_exec
 
-     return $RETURNCODE_INITNC
+    return $RETURNCODE_INITNC
 
 }
 
@@ -4088,23 +3861,16 @@ argEmptyOrOption() {
 }
 
 printCommands() {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-    #shellcheck disable=SC3044
-      typeset cmd commands
-    else
-      local cmd commands
-    fi
 
     commands="$CMDOPT_RESET reboot mac $CMDOPT_VERSION"
 
     echo "Commands available -c:"
+    
     for cmd in $commands; do
       echo "   $cmd"
     done | sort | uniq 
 
-    if [ -n "$KSH_VERSION" ]; then
-      unset cmd commands
-    fi
+    unset cmd commands
 }
 
 initcoptCommands ()
@@ -4117,13 +3883,6 @@ initcoptCommands ()
 writeSensorId()
 #$1 - low sensortype, $2 - high sensortype, $3 - sensorid
 {
-
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1  ]; then
-    #shellcheck disable=SC3044
-       typeset n
-    else
-       local n
-    fi
 
     newPacketBody $CMD_WRITE_SENSOR_ID
 
@@ -4141,9 +3900,7 @@ writeSensorId()
       done
     fi
 
-    if [ -n "$KSH_VERSION" ]; then
-      unset n
-    fi
+    unset n
 
     sendPacket
 }
@@ -4173,8 +3930,6 @@ processSensorOptions()
                     ;;
         esac
        }  
-    else
-       local f sensorid sensortypeexpr cmdexpr sensorid_hex sentReadSensorIdCommand
     fi
 
     [ "$DEBUG" -eq 1 ] && echo >&2 processSensorOptions "$*"
@@ -4282,9 +4037,7 @@ processSensorOptions()
           
     done
 
-    if [ -n "$KSH_VERSION" ]; then
-       unset f sensorid sensortypeexpr cmdexpr sensorid_hex
-    fi
+    unset f sensorid sensortypeexpr cmdexpr sensorid_hex
 }
 
 convertRainOptmmToScale10()
@@ -4650,12 +4403,7 @@ isHex()
 
 initTerm()
 {
-     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-    #shellcheck disable=SC3044
-       typeset size
-    else
-       local size
-    fi
+    
     #https://stackoverflow.com/questions/1780483/lines-and-columns-environmental-variables-lost-in-a-script
     if [ -n "$COLUMNS" ] && [ -n "$LINES" ]; then
         TERM_COLUMNS=$COLUMNS
@@ -4672,21 +4420,14 @@ initTerm()
        }
     fi
 
-    if [ -n "$KSH_VERSION" ]; then
-      unset size
-    fi
+    unset size
 
 }
 
 test_printf_sformat()
 {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-    #shellcheck disable=SC3044
-       typeset od_unicode
-    else
-       local od_unicode
-    fi
-     od_unicode=$(printf "%2s" "🔋" | od -A n -t x1)
+    od_unicode=$(printf "%2s" "🔋" | od -A n -t x1)
+
     if [ "$od_unicode" = " 20 f0 9f 94 8b" ]; then #zsh printf correctly insert a space infront
         SHELL_SUPPORT_PRINTF_UNICODE_SFORMAT=1
         [ "$DEBUG" -eq 1 ] && echo >&2 "Shell support printf unicode right/left adjustment"
@@ -4696,9 +4437,7 @@ test_printf_sformat()
          [ "$DEBUG" -eq 1 ] && echo >&2 "Shell NO SUPPORT for printf unicode right/left adjustment"
     fi
 
-    if [ -n "$KSH_VERSION" ]; then
-      unset od_unicode
-    fi
+    unset od_unicode
 }
 
 initShell() {
@@ -4714,13 +4453,6 @@ initShell() {
         export SHELL_SUPPORT_TYPESET=1 # allows function in subprocess/ui-view to access it
     else
         export SHELL_SUPPORT_TYPESET=0
-    fi
-
-    if [ $SHELL_SUPPORT_TYPESET -eq 1 ]; then
-    #shellcheck disable=SC3044
-       typeset type_res
-    else
-       local type_res
     fi
 
     if [ -n "$ZSH_VERSION" ]; then
@@ -4795,9 +4527,7 @@ initShell() {
       SHELL_DECIMAL_POINT="."
    fi
     
-    if [ -n "$KSH_VERSION" ]; then
-        unset type_res
-    fi
+    unset type_res
    
 }
 
@@ -4814,13 +4544,6 @@ getFloatAsIntDecmial()
 #get int and decimal porition; int.decimals
 #assumes always . present in $1
 {
-   if [ "$SHELL_SUPPORT_TYPESET" -eq 1  ]; then
-    #shellcheck disable=SC3044
-       typeset n
-    else
-       local n
-    fi
-
     FLOAT_INT=${1%%.*}
     FLOAT_DECIMALS=${1#*.}
     FLOAT_SCALE10=${#FLOAT_DECIMALS}
@@ -4852,9 +4575,7 @@ getFloatAsIntDecmial()
         done
     fi
 
-    if [ -n "$KSH_VERSION" ]; then
-      unset n
-    fi
+    unset n
 }
 
 convert_farenheit_to_celciusScale10()
@@ -4952,12 +4673,6 @@ convert_hpaScale10_To_inhgScale10()
 
 round()
 {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset modulo
-    else
-        local modulo
-    fi
 
     [ "$DEBUG" -eq 1 ] && >&2 echo "round $1"
 
@@ -4970,9 +4685,7 @@ round()
 
    VALUE_ROUND=$(( VALUE_ROUND / 10 ))
 
-    if [ -n "$KSH_VERSION" ]; then
-        unset modulo
-    fi
+    unset modulo
 }
 
 convert_mph_To_mps()
@@ -5256,12 +4969,6 @@ EOL
 parseHttpRequestEcowitt()
 #$1 - http request message (entire)
 {
-   if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-       typeset f value key 
-   else
-       local f value key
-   fi
 
     parseHttpLines "$1"
 
@@ -5498,20 +5205,11 @@ parseHttpRequestEcowitt()
 
     printOrLogLivedata
 
-    if [ -n "$KSH_VERSION" ]; then
-       unset f key value
-    fi
+    unset f key value
 }
 
 parseHttpRequestWunderground()
 {
-   if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-       typeset f value key
-   else
-       local  f value key
-   fi
-
    parseHttpLines "$1"
 
    LIVEDATA_SYSTEM_PROTOCOL=$LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP
@@ -5685,22 +5383,13 @@ parseHttpRequestWunderground()
 
     printOrLogLivedata
 
-    if [ -n "$KSH_VERSION" ]; then
-       unset http_request f key value
-    fi
+    unset http_request f key value
 }
 
 httpServer()
 #$1 - port number 
 {
     EXITCODE_HTTPSERVER=0
-
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-      #shellcheck disable=SC3044
-      typeset http_message
-    else
-      local http_message
-    fi
 
     [ "$DEBUG" -eq 1 ] && >&2 echo Listening on port "$1"
 
@@ -5746,10 +5435,8 @@ httpServer()
            ;;
     esac
 
-    if [ -n "$KSH_VERSION" ]; then
-      unset http_message
-    fi
-
+    unset http_message
+    
     return $EXITCODE_HTTPSERVER
 }
 
