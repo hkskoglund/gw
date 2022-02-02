@@ -4043,24 +4043,38 @@ processSensorOptions()
     unset f sensorid sensortypeexpr cmdexpr sensorid_hex
 }
 
-convertRainOptmmToScale10()
+convertFloatToScale10()
 {
-    rain_int=${1%%.*}
-    rain_dec=${1##*.}
-    
-    if [ "$rain_int" = "$rain_dec" ]; then
-       unset rain_dec
-    else
-        rain_dec_suffix=${rain_dec#?} #deletes first digit
-        rain_dec=${rain_dec%%"$rain_dec_suffix"} # no rounding, just cut off
-    fi
+    DEBUG_CONVERT=${DEBUG_CONVERT:=$DEBUG}
+    EXITCODE_CONVERTFLOAT_SCALE10=0
 
-    if isNumber "$rain_int$rain_dec"; then
-        VALUE_RAINOPT_SCALE10=$rain_int$rain_dec
-    else
-      unset VALUE_RAINOPT_SCALE10
-      return 1
-    fi
+    case "$1" in
+        *.*)    int=${1%%.*} # . suffix remove -> integer part
+                dec=${1##*.} # prefix . remove -> decimal part
+                if isNumber "$int" && isNumber "$dec"; then
+                    dec_suffix=${dec#?} #deletes first digit
+                    dec=${dec%%"$dec_suffix"} # no rounding, just cut off
+                    VALUE_FLOAT_SCALE10=$int$dec
+                    [ $DEBUG_CONVERT -eq 1 ] && echo >&2 "Converting float $1 to $VALUE_FLOAT_SCALE10 (scale 10)" 
+                else
+                    EXITCODE_CONVERTFLOAT_SCALE10="$ERROR_CONVERT"
+                fi
+                ;;
+
+        *)   rain_int=$1
+            if isNumber "$rain_int"; then
+                [ $DEBUG_CONVERT -eq 1 ] && echo >&2 "Converting float $1 to $VALUE_FLOAT_SCALE10 (scale 10)" 
+                VALUE_FLOAT_SCALE10=${rain_int}0
+            else
+              EXITCODE_CONVERTFLOAT_SCALE10="$ERROR_CONVERT"
+            fi
+            ;;
+    esac
+
+    unset rain_int rain_dec rain_dec_suffix DEBUG_CONVERT
+
+    return $EXITCODE_CONVERTFLOAT_SCALE10
+
 }
 
 parseRaindataOptions()
@@ -4081,31 +4095,31 @@ parseRaindataOptions()
         #shellcheck disable=SC2086
         set -- $rainexpr
             case "$1" in
-                d|day)   if [ -n "$2" ] && convertRainOptmmToScale10 "$2"; then
-                             [ "$VALUE_RAINOPT_SCALE10" -ne "$rainday" ]  &&  { rainday="$VALUE_RAINOPT_SCALE10"; rain_needsupdate=1; }
+                d|day)   if [ -n "$2" ] && convertFloatToScale10 "$2"; then
+                             [ "$VALUE_FLOAT_SCALE10" -ne "$rainday" ]  &&  { rainday="$VALUE_FLOAT_SCALE10"; rain_needsupdate=1; }
                          else
                            >&2 echo Warning: Invalid value for "$1"
                          fi
                             ;;
-                w|week)  if [ -n "$2" ] && convertRainOptmmToScale10 "$2"; then
-                             [ "$VALUE_RAINOPT_SCALE10" -ne "$rainweek" ]  &&  { rainweek="$VALUE_RAINOPT_SCALE10"; rain_needsupdate=1; }
+                w|week)  if [ -n "$2" ] && convertFloatToScale10 "$2"; then
+                             [ "$VALUE_FLOAT_SCALE10" -ne "$rainweek" ]  &&  { rainweek="$VALUE_FLOAT_SCALE10"; rain_needsupdate=1; }
                          else
                            >&2 echo Warning: Invalid value for "$1"
                          fi
                             ;;
-                m|month) if [ -n "$2" ] && convertRainOptmmToScale10 "$2"; then
-                             [ "$VALUE_RAINOPT_SCALE10" -ne "$rainmonth" ] &&  { rainmonth="$VALUE_RAINOPT_SCALE10"; rain_needsupdate=1; }
+                m|month) if [ -n "$2" ] && convertFloatToScale10 "$2"; then
+                             [ "$VALUE_FLOAT_SCALE10" -ne "$rainmonth" ] &&  { rainmonth="$VALUE_FLOAT_SCALE10"; rain_needsupdate=1; }
                          else
                            >&2 echo Warning: Invalid value for "$1"
                          fi
                             ;;
-                y|year)  if [ -n "$2" ] && convertRainOptmmToScale10 "$2"; then
-                             [ "$VALUE_RAINOPT_SCALE10" -ne "$rainyear" ] &&  { rainyear="$VALUE_RAINOPT_SCALE10"; rain_needsupdate=1; }
+                y|year)  if [ -n "$2" ] && convertFloatToScale10 "$2"; then
+                             [ "$VALUE_FLOAT_SCALE10" -ne "$rainyear" ] &&  { rainyear="$VALUE_FLOAT_SCALE10"; rain_needsupdate=1; }
                         else
                            >&2 echo Warning: Invalid value for "$1"
                          fi
                             ;;
-                *) >&2 echo "Warning: use day|d,week|w,month|m,year|y, for example d=100 sets daily rain to 10.0 mm"
+                *) >&2 echo "Warning: use day|d,week|w,month|m,year|y, for example d=10.0 sets daily rain to 10.0 mm"
                     ;;
             esac
     done
