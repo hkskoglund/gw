@@ -4061,17 +4061,17 @@ convertFloatToScale10()
                 fi
                 ;;
 
-        *)   rain_int=$1
-            if isNumber "$rain_int"; then
+        *)  int=$1
+            if isNumber "$int"; then
                 [ $DEBUG_CONVERT -eq 1 ] && echo >&2 "Converting float $1 to $VALUE_FLOAT_SCALE10 (scale 10)" 
-                VALUE_FLOAT_SCALE10=${rain_int}0
+                VALUE_FLOAT_SCALE10=${int}0
             else
               EXITCODE_CONVERTFLOAT_SCALE10="$ERROR_CONVERT"
             fi
             ;;
     esac
 
-    unset rain_int rain_dec rain_dec_suffix DEBUG_CONVERT
+    unset int dec dec_suffix DEBUG_CONVERT
 
     return $EXITCODE_CONVERTFLOAT_SCALE10
 
