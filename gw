@@ -850,10 +850,37 @@ readInt16BE() { #2's complement big endian
 
 readInt32BE() { #2's complement big endian
     #msb is the sign bit
+    #DEBUG_READINT=1
+    DEBUG_READINT=${DEBUG_READINT:=$DEBUG}
 
     readUInt32BE
     VALUE_INT32BE=$((-1 * (VALUE_UINT32BE >> 31) * 0x80000000 + (VALUE_UINT32BE & 0x7fffffff)))
+    [ $DEBUG_READINT -eq 1 ] && echo >&2 "readInt32BE unsigned 32-bit $VALUE_UINT32BE to signed 32-bit $VALUE_INT32BE"
 
+}
+
+convertFloat32To2sComplement()
+#convert 32-bit signed float to 2's complement, big endian: most significant bits to the left
+{
+    DEBUG_CONVERT=1
+    DEBUG_CONVERT=${DEBUG_CONVERT:=$DEBUG}
+
+    case "$1" in
+        -*) number=${1#-} # remove sign from negative number
+            VALUE_FLOAT32_2SCOMPLEMENT=$(( (2 << 31) - number))  # 2 << 31 = 2**32
+            ;;
+        
+        *)  VALUE_FLOAT32_2SCOMPLEMENT=$1 
+            ;;
+    esac
+
+   [ $DEBUG_CONVERT -eq 1 ] &&  echo >&2 "convertFloat32To2sComplement convert $1 to unsigned 32-bit $VALUE_FLOAT32_2SCOMPLEMENT"
+
+}
+
+writeInt32BE()
+{
+    :
 }
 
 writeString()
@@ -4055,29 +4082,37 @@ convertFloatToScale10()
 {
     DEBUG_CONVERT=${DEBUG_CONVERT:=$DEBUG}
     EXITCODE_CONVERTFLOAT_SCALE10=0
+    
+    unset sign
 
     case "$1" in
         *.*)    int=${1%%.*} # . suffix remove -> integer part
+                case "$int" in
+                  -*) sign='-'; int=${int#-}; ;;
+                esac
                 dec=${1##*.} # prefix . remove -> decimal part
                 if isNumber "$int" && isNumber "$dec"; then
                     dec_suffix=${dec#?} #deletes first digit
                     dec=${dec%%"$dec_suffix"} # no rounding, just cut off
-                    VALUE_FLOAT_SCALE10=$int$dec
-                    [ $DEBUG_CONVERT -eq 1 ] && echo >&2 "Converting float $1 to $VALUE_FLOAT_SCALE10 (scale 10)" 
+                    VALUE_FLOAT_SCALE10=$sign$int$dec
                 else
                     EXITCODE_CONVERTFLOAT_SCALE10="$ERROR_CONVERT"
                 fi
                 ;;
 
         *)  int=$1
+             case "$int" in
+              -*) sign='-'; int=${int#-} ;;
+             esac
             if isNumber "$int"; then
-                [ $DEBUG_CONVERT -eq 1 ] && echo >&2 "Converting float $1 to $VALUE_FLOAT_SCALE10 (scale 10)" 
-                VALUE_FLOAT_SCALE10=${int}0
+                VALUE_FLOAT_SCALE10=$sign${int}0
             else
               EXITCODE_CONVERTFLOAT_SCALE10="$ERROR_CONVERT"
             fi
             ;;
     esac
+
+    [ $DEBUG_CONVERT -eq 1 ] && echo >&2 "Converting float $1 to $VALUE_FLOAT_SCALE10 (scale 10)" 
 
     unset int dec dec_suffix DEBUG_CONVERT
 
