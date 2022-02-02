@@ -795,9 +795,11 @@ readUInt8() {
     else
         return "$ERROR_OD_BUFFER_EMPTY"
     fi
+    unset BYTE
 }
 
 readInt8() {
+#8-bit=sign bit
     readUInt8
     VALUE_INT8=$((-1 * (VALUE_UINT8 >> 7) * 0x80 + (VALUE_UINT8 & 0x7f)))
 }
@@ -942,6 +944,8 @@ printBuffer() { # print hex. buffer
     done
     
     echo "$APPEND_STRING"
+
+    unset BYTE
 }
 
 convertWindDirectionToCompassDirection() { #$1 - direction in degrees
@@ -3035,6 +3039,7 @@ getLength()
     for BYTE in $1; do
       VALUE_LENGTH=$(( VALUE_LENGTH + 1 ))
     done
+    unset BYTE
 }
 
 checksumPacketTX() {
@@ -3342,7 +3347,7 @@ checksum() {
 
     VALUE_CHECKSUM=$sum
 
-     unset sum
+     unset sum BYTE
 }
 
 newCustomizedPacket() {
@@ -3429,7 +3434,7 @@ parseSystemOption()
 
     sendSystemPacket "$systemtype" "$systemtzindex" "$systemdst" "$systemauto"
 
-    unset systemtype systemtzindex systemdst systemauto
+    unset opt systemtype systemtzindex systemdst systemauto
 
     return $EXITCODE_PARSESYSTEMOPTIONS
 
@@ -3498,7 +3503,7 @@ sendRaindata() {
     [ $DEBUG -eq 1 ] && echo >&2 "Sending raindata rd $1 rw $2 rm $3 ry $4"
    
    if ! sendPacket; then
-        echo >&2 "Error: Failed to send rain data $?"
+        echo >&2 "Error: Failed to send rain data $EXITCODE_SENDPACKET" 
    fi
 }
 
@@ -3512,8 +3517,11 @@ sendCalibration() {
     writeUInt8 "$6"    #outhumidityoffset
     writeUInt16BE "$7" #winddiroffset
 
-    [ $DEBUG -eq 1 ] && echo >&2 "Sending calibration itempo $1 iho $2 abso $3 relo $4 otempo $5 oho $6 wdo $7"
-    sendPacket
+    [ $DEBUG -eq 1 ] && echo >&2 "Sending calibration intemp $1 inhumi $2 abspressure $3 relpressure $4 outtemp $5 outhumi $6 winddirection $7"
+    
+    if ! sendPacket; then
+        echo >&2 "Error: Failed to send calibration $EXITCODE_SENDPACKET"
+    fi
 }
 
 sendEcowittIntervalnew() {
@@ -4126,8 +4134,44 @@ parseRaindataOptions()
 
     [ $rain_needsupdate -eq 1 ] &&  sendRaindata "$rainday" "$rainweek" "$rainmonth" "$rainyear"
 
-    unset rain_needsupdate
+    unset rainexpr rainday rainweek rainmonth rainyear rain_needsupdate
     
+}
+
+processCalibrationOptions()
+{
+    calibration_intemp=$C_CALIBRATION_INTEMPOFFSET
+    calibration_inhumi=$C_CALIBRATION_INHUMIDITYOFFSET
+    calibration_outtemp=$C_CALIBRATION_OUTTEMPOFFSET
+    calibration_outhumi=$C_CALIBRATION_OUTHUMIDITYOFFSET
+    calibration_absp=$C_CALIBRATION_ABSOFFSET
+    calibration_relp=$C_CALIBRATION_RELOFFSET
+    calibration_winddir=$C_CALIBRATION_WINDDIROFFSET
+
+    IFS=,
+    for expr in $1; do
+        echo >&2 "Parsing expr: $expr"
+        IFS='='
+        #shellcheck disable=SC2086
+        set -- $expr
+        key=$1
+        value=$2
+        echo >&2 "k: $1, v: $2"
+        case "$key" in
+            it|intemp) ;;
+            ih|inhumi) ;;
+            ot|outtemp) ;;
+            oh|outhumi) ;;
+            a|abspressure) ;;
+            r|relpressure) ;;
+            w|winddirection) ;;
+            *) echo >&2 "Error: Unknown key $1, use it | intemp, ih | inhumi, ot | outtemp, oh | outhumi, a | abspressure, r | relpressure, w | winddirection"
+                ;;
+        esac
+
+    done
+
+    unset expr calibration_intemp calibration_inhumi calibration_outtemp calibration_outhumi calibration_absp calibration_relp calibration_winddir
 }
 
 processCommand() {
@@ -4385,10 +4429,19 @@ processCommand() {
 
             ;;
 
-   #     calibration | cal)
-   #
-   #         sendPacket $CMD_READ_CALIBRATION
-   #         ;;
+        calibration | cal)
+   
+            sendPacket $CMD_READ_CALIBRATION
+
+            case "$1" in
+                ""|--*|-*) :
+                ;;
+                
+                *) processCalibrationOptions "$1"
+                ;;
+            esac
+            
+            ;;
 
         *)
 
@@ -5600,6 +5653,8 @@ processUnitOptions()
                             ;;
         esac
     done
+
+    unset f
 }
 
 createWIFIpacket()
@@ -5688,96 +5743,96 @@ processOptionsLiveview()
 
     for hide_liveview in $1; do 
 
-    case "$hide_liveview" in
+        case "$hide_liveview" in
 
-        uvi)
-            LIVEVIEW_HIDE_UVI=1
-            ;;
+            uvi)
+                LIVEVIEW_HIDE_UVI=1
+                ;;
 
-        pm25aqi)
-            #shellcheck disable=SC2034
-            LIVEVIEW_HIDE_PM25AQI=1 #hides PM 2.5 AQI  styling/description
-            ;;
+            pm25aqi)
+                #shellcheck disable=SC2034
+                LIVEVIEW_HIDE_PM25AQI=1 #hides PM 2.5 AQI  styling/description
+                ;;
 
-        b|beufort)
-            LIVEVIEW_HIDE_BEUFORT=1 # hides beufort styling and description
-            ;;
+            b|beufort)
+                LIVEVIEW_HIDE_BEUFORT=1 # hides beufort styling and description
+                ;;
 
-        status) #battery/signal status unicode icons
-            LIVEVIEW_HIDE_STATUSLINE=1
-            ;;
+            status) #battery/signal status unicode icons
+                LIVEVIEW_HIDE_STATUSLINE=1
+                ;;
 
-        c | compass)
-            LIVEVIEW_HIDE_COMPASS=1
-            ;;
+            c | compass)
+                LIVEVIEW_HIDE_COMPASS=1
+                ;;
 
-        sh | sensor-header)
-            SENSORVIEW_HIDE_HEADER=1
-            ;;
+            sh | sensor-header)
+                SENSORVIEW_HIDE_HEADER=1
+                ;;
 
-        h | headers)
-            LIVEVIEW_HIDE_HEADERS=1
-            ;;
+            h | headers)
+                LIVEVIEW_HIDE_HEADERS=1
+                ;;
 
-        # b | battery)
-        #    HIDE_BATTERY_LIVEDATA=1
-            #  ;;
-            
-        s | system)
-            LIVEVIEW_HIDE_SYSTEM=1
-            ;;
+            # b | battery)
+            #    HIDE_BATTERY_LIVEDATA=1
+                #  ;;
+                
+            s | system)
+                LIVEVIEW_HIDE_SYSTEM=1
+                ;;
 
-        r | rain)
-            LIVEVIEW_HIDE_RAIN=1
-            ;;
+            r | rain)
+                LIVEVIEW_HIDE_RAIN=1
+                ;;
 
-        l | light)
-            LIVEVIEW_HIDE_LIGHT=1
-            ;;
-            
-        t | temperature | temp)
-            LIVEVIEW_HIDE_TEMP=1
-            ;;
+            l | light)
+                LIVEVIEW_HIDE_LIGHT=1
+                ;;
+                
+            t | temperature | temp)
+                LIVEVIEW_HIDE_TEMP=1
+                ;;
 
-        w | wind)
-            LIVEVIEW_HIDE_WIND=1
-            ;;
+            w | wind)
+                LIVEVIEW_HIDE_WIND=1
+                ;;
 
-        sm | soilmoisture | soilm)
-            LIVEVIEW_HIDE_SOILMOISTURE=1
-            ;;
+            sm | soilmoisture | soilm)
+                LIVEVIEW_HIDE_SOILMOISTURE=1
+                ;;
 
-        st | soiltemperature | soilt)
-            LIVEVIEW_HIDE_SOILTEMPERATURE=1
-            ;;
+            st | soiltemperature | soilt)
+                LIVEVIEW_HIDE_SOILTEMPERATURE=1
+                ;;
 
-        leak)
-            LIVEVIEW_HIDE_LEAK=1
-            ;;
+            leak)
+                LIVEVIEW_HIDE_LEAK=1
+                ;;
 
-        tusr | tempusr)
-            LIVEVIEW_HIDE_TEMPUSR=1
-            ;;
+            tusr | tempusr)
+                LIVEVIEW_HIDE_TEMPUSR=1
+                ;;
 
-        pm25)
-            LIVEVIEW_HIDE_PM25=1
-            ;;
+            pm25)
+                LIVEVIEW_HIDE_PM25=1
+                ;;
 
-        co2)
-            LIVEVIEW_HIDE_CO2=1
-            ;;
+            co2)
+                LIVEVIEW_HIDE_CO2=1
+                ;;
 
-        leafw | leafwetness)
-            LIVEVIEW_HIDE_LEAFWETNESS=1
-            ;;
+            leafw | leafwetness)
+                LIVEVIEW_HIDE_LEAFWETNESS=1
+                ;;
 
-        lightning)
-            LIVEVIEW_HIDE_LIGHTNING=1
-            ;;
+            lightning)
+                LIVEVIEW_HIDE_LIGHTNING=1
+                ;;
 
-        *) echo >&2 "Warning: Unknown hide_liveview option $hide_liveview; use sensor-header | sh, headers | h, rain | r, wind | w,temperature | t,light | l, system | s, soilmoisture | sm, soiltemperature | st, leak, co2, pm25, leafwetness | leafw, lightning, tempusr | tusr, compass | c, status, beufort | b, pm25aqi, uvi"
-            ;;
-        esac
+            *) echo >&2 "Warning: Unknown hide_liveview option $hide_liveview; use sensor-header | sh, headers | h, rain | r, wind | w,temperature | t,light | l, system | s, soilmoisture | sm, soiltemperature | st, leak, co2, pm25, leafwetness | leafw, lightning, tempusr | tusr, compass | c, status, beufort | b, pm25aqi, uvi"
+                ;;
+            esac
     done
 
     unset hide_liveview
