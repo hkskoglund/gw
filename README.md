@@ -213,6 +213,16 @@ System timezone DST                      1
 Press capital Y to reset, settings are destroyed, be careful.
 <pre>Reset 48:3f:da:54:14:ec GW1000A-WIFI14EC (Y/N)?</pre>
 
+## Calibration rain 
+<code>./gw -g 192.168.3.16 -c rain y=85.9</code>
+<pre>
+rain rate  0.0 mm/h
+rain day   0.0 mm
+rain week  0.0 mm
+rain month 0.0 mm
+rain year  85.9 mm
+</pre>
+
 # Background
 I started to program the tool in javascript/nodejs which would have been easier due to standard libraries for arrays, readUInt and http parsing, but decided to test if its possible to do it in the shell/terminal using the standard unix nc/ncat and od utilities. For arrays I am creating them dynamically by using eval. readUint-functions are included in the script, as well as http parsing for Ecowitt and Wunderground protocol requests.
 
@@ -260,7 +270,10 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 ### Listen for incoming tcp connection on port 49123 from device and send new ssid/password when connected. It may be neccessary to use a manual ip/netmask on server, for example 192.168.4.2/255.255.255.0.<br><br>
 
 ## wifi-client | w-c **SSID** **PASSWORD** -client configuration of ssid and password
-### Send a wifi configuration packet with ssid and password to the gw. This command must be used with the -g **host** option.
+### Send a wifi configuration packet with ssid and password to the gw. This command must be used with the -g **host** option.<br><br>
+
+## rain | r **RAINOPTIONS** - get/set rain day, week,month and year
+### RAINOPTIONS comma separated expression with day= | week= | month= | year=< value in mm ><br><br>
 
 ## reboot - reboot device<br><br>
 

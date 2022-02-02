@@ -4114,7 +4114,7 @@ convertFloatToScale10()
 
     [ $DEBUG_CONVERT -eq 1 ] && echo >&2 "Converting float $1 to $VALUE_FLOAT_SCALE10 (scale 10)" 
 
-    unset int dec dec_suffix DEBUG_CONVERT
+    unset int dec dec_suffix sign DEBUG_CONVERT
 
     return $EXITCODE_CONVERTFLOAT_SCALE10
 
