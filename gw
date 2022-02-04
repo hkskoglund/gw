@@ -4139,14 +4139,15 @@ convertFloatToScale10()
         case "$1" in
             *.*)    int=${1%%.*} # . suffix remove -> integer part
                     case "$int" in
-                    -*) sign='-'; int=${int#-}; ;;
+                        -*) sign=-1; int=${int#-}; ;;
+                        *) sign=1 ;;
                     esac
                     dec=${1##*.} # prefix . remove -> decimal part
                     if isNumber "$int" && isNumber "$dec"; then
                         dec_suffix=${dec#?} #deletes first digit
                         dec=${dec%%"$dec_suffix"} # no rounding, just cut off
-                        VALUE_FLOAT_SCALE10_ABS=$int$dec
-                        VALUE_FLOAT_SCALE10=$sign$int$dec
+                        VALUE_FLOAT_SCALE10_ABS=$(( $int$dec ))
+                        VALUE_FLOAT_SCALE10=$(( sign*$int$dec ))
                     else
                         EXITCODE_CONVERTFLOAT_SCALE10="$ERROR_CONVERT"
                     fi
@@ -4154,8 +4155,8 @@ convertFloatToScale10()
 
             *)  int=$1
                 case "$int" in
-                -*) sign=-1; int=${int#-} ;;
-                 *) sign=1 ;;
+                    -*) sign=-1; int=${int#-} ;;
+                    *) sign=1 ;;
                 esac
                 if isNumber "$int"; then
                         VALUE_FLOAT_SCALE10_ABS=$(( int * 10 )) 
@@ -4193,30 +4194,28 @@ parseRaindataOptions()
         #shellcheck disable=SC2086
         set -- $rainexpr
             case "$1" in
-                d|day)   set -x
-                         if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10" -le "$CALIBRATION_RAIN_MAX" ]; then
+                d|day)   if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10" -le "$CALIBRATION_RAIN_MAX" ] && [ "$VALUE_FLOAT_SCALE10" -ge 0 ]; then
                              [ "$VALUE_FLOAT_SCALE10" -ne "$rainday" ]  &&  { rainday="$VALUE_FLOAT_SCALE10"; rain_needsupdate=1; }
                          else
-                           >&2 echo "Warning: Invalid value for $rainexpr, max $CALIBRATION_RAIN_MAX"
+                           >&2 echo "Warning: Invalid value for $rainexpr, min/max 0/$CALIBRATION_RAIN_MAX"
                          fi
-                         set +x
                             ;;
-                w|week)  if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10" -le "$CALIBRATION_RAIN_MAX" ]; then
+                w|week)  if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10" -le "$CALIBRATION_RAIN_MAX" ] && [ "$VALUE_FLOAT_SCALE10" -ge 0 ]; then
                              [ "$VALUE_FLOAT_SCALE10" -ne "$rainweek" ]  &&  { rainweek="$VALUE_FLOAT_SCALE10"; rain_needsupdate=1; }
                          else
-                           >&2 echo "Warning: Invalid value for $rainexpr, max $CALIBRATION_RAIN_MAX"
+                           >&2 echo "Warning: Invalid value for $rainexpr, min/max 0/$CALIBRATION_RAIN_MAX"
                          fi
                             ;;
-                m|month) if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10" -le "$CALIBRATION_RAIN_MAX" ]; then
+                m|month) if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10" -le "$CALIBRATION_RAIN_MAX" ] && [ "$VALUE_FLOAT_SCALE10" -ge 0 ]; then
                              [ "$VALUE_FLOAT_SCALE10" -ne "$rainmonth" ] &&  { rainmonth="$VALUE_FLOAT_SCALE10"; rain_needsupdate=1; }
                          else
-                           >&2 echo "Warning: Invalid value for $rainexpr, max $CALIBRATION_RAIN_MAX"
+                           >&2 echo "Warning: Invalid value for $rainexpr, min/max 0/$CALIBRATION_RAIN_MAX"
                          fi
                             ;;
-                y|year)  if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10" -le "$CALIBRATION_RAIN_MAX" ]; then
+                y|year)  if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10" -le "$CALIBRATION_RAIN_MAX" ] && [ "$VALUE_FLOAT_SCALE10" -ge 0 ]; then
                              [ "$VALUE_FLOAT_SCALE10" -ne "$rainyear" ] &&  { rainyear="$VALUE_FLOAT_SCALE10"; rain_needsupdate=1; }
                         else
-                           >&2 echo "Warning: Invalid value for $rainexpr, max $CALIBRATION_RAIN_MAX"
+                           >&2 echo "Warning: Invalid value for $rainexpr, min/max 0/$CALIBRATION_RAIN_MAX"
                          fi
                             ;;
                 *) >&2 echo "Warning: use day|d,week|w,month|m,year|y, for example d=10.0 sets daily rain to 10.0 mm"
