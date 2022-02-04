@@ -272,7 +272,7 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 ## wifi-client | w-c **SSID** **PASSWORD** -client configuration of ssid and password
 ### Send a wifi configuration packet with ssid and password to the gw. This command must be used with the -g **host** option.<br><br>
 
-## rain | r **RAINOPTIONS** - get/set rain day, week,month and year
+## rain | r **RAINOPTIONS** - get/set rain day, week, month and year
 ### RAINOPTIONS comma separated expression with day= | week= | month= | year=< value in mm ><br><br>
 
 ## reboot - reboot device<br><br>

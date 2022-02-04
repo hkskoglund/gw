@@ -353,6 +353,16 @@ LDF_PM25_AQI=$((0x71))   #only for amb
     LDF_LEAF_WETNESS_CH8=$((0x79)) # 1
 }
 
+CALIBRATION_INTEMPOFFSET_MAX=100
+CALIBRATION_INHUMIOFFSET_MAX=10
+CALIBRATION_ABSOFFSET_MAX=800
+CALIBRATION_RELOFFSET_MAX=800
+CALIBRATION_OUTTEMPOFFSET_MAX=100
+CALIBRATION_OUTHUMIOFFSET_MAX=10
+CALIBRATION_WINDDIROFFSET_MAX=180
+
+CALIBRATION_RAIN_MAX=99999
+
 SYSTEM_FREQUENCY_RFM433M=0 # 433MHz
 SYSTEM_FREQUENCY_RFM868M=1 # 868Mhz
 SYSTEM_FREQUENCY_RFM915M=2 # 915MHz
@@ -366,7 +376,7 @@ case $KSH_VERSION in
 
     *MIRBSD?KSH*)
         #shellcheck disable=SC3044
-        typeset -iU SENSORID_SEARCH  SENSORID_DISABLE VALUE_UINT32BE  VALUE_UINT16BE VALUE_UINT8 SID
+        typeset -iU SENSORID_SEARCH  SENSORID_DISABLE VALUE_UINT32BE  VALUE_UINT16BE VALUE_UINT8 SID VALUE_UINT_2SCOMPLEMENT # unsigned 32-bit 
         SENSORID_SEARCH=$(( 0xffffffff ))
         SENSORID_DISABLE=$(( 0xfffffffe ))
         # mksh - sets 0xffffffff to -1!? if typeset -i SENSORID_SEARCH=0xffffffff - its using 32-bit signed integer by default unless typeset -iU is used
@@ -859,28 +869,57 @@ readInt32BE() { #2's complement big endian
 
 }
 
+convertFloat8To2sComplement()
+{
+    convertFloatTo2sComplement "$1" 8
+}
+
+convertFloat16To2sComplement()
+{
+    convertFloatTo2sComplement "$1" 16
+}
+
 convertFloat32To2sComplement()
-#convert 32-bit signed float to 2's complement, big endian: most significant bits to the left
+{
+    convertFloatTo2sComplement "$1" 32
+}
+
+convertFloatTo2sComplement()
+#convert N-bit signed float to 2's complement, big endian: most significant bits to the left
+#$1 - number, $2 - N bits
 {
     DEBUG_CONVERT=1
     DEBUG_CONVERT=${DEBUG_CONVERT:=$DEBUG}
 
     case "$1" in
         -*) number=${1#-} # remove sign from negative number
-            VALUE_FLOAT32_2SCOMPLEMENT=$(( (2 << 31) - number))  # 2 << 31 = 2**32
+            VALUE_UINT_2SCOMPLEMENT=$(( (2 << $2) - number))  # 2 << 31 = 2**32, 2scomplement + number = 2^N
             ;;
         
-        *)  VALUE_FLOAT32_2SCOMPLEMENT=$1 
+        *)  VALUE_UINT_2SCOMPLEMENT=$1 
             ;;
     esac
 
-   [ $DEBUG_CONVERT -eq 1 ] &&  echo >&2 "convertFloat32To2sComplement convert $1 to unsigned 32-bit $VALUE_FLOAT32_2SCOMPLEMENT"
+   [ $DEBUG_CONVERT -eq 1 ] &&  echo >&2 "convertFloatTo2sComplement convert $1 to unsigned $2-bit $VALUE_UINT_2SCOMPLEMENT"
 
 }
 
 writeInt32BE()
 {
-    :
+    convertFloat32To2sComplement "$1"
+    writeUInt32BE "$VALUE_UINT_2SCOMPLEMENT"
+}
+
+writeInt16BE()
+{
+    convertFloat16To2sComplement "$1"
+    writeUInt16BE "$VALUE_UINT_2SCOMPLEMENT"
+}
+
+writeInt8()
+{
+    convertFloat8To2sComplement "$1"
+    writeUInt8 "$VALUE_UINT_2SCOMPLEMENT"
 }
 
 writeString()
@@ -3532,23 +3571,29 @@ sendRaindata() {
    if ! sendPacket; then
         echo >&2 "Error: Failed to send rain data $EXITCODE_SENDPACKET" 
    fi
+
+   return $EXITCODE_SENDPACKET
 }
 
 sendCalibration() {
-    newPacketBody $CMD_WRITE_CALIBRATION
-    writeUInt16BE "$1" #intempoffset
-    writeUInt8 "$2"    #inhumidityoffset
-    writeUInt32BE "$3" #absoffset
-    writeUInt32BE "$4" #reloffset
-    writeUInt16BE "$5" #outtempoffset
-    writeUInt8 "$6"    #outhumidityoffset
-    writeUInt16BE "$7" #winddiroffset
-
-    [ $DEBUG -eq 1 ] && echo >&2 "Sending calibration intemp $1 inhumi $2 abspressure $3 relpressure $4 outtemp $5 outhumi $6 winddirection $7"
     
-    if ! sendPacket; then
-        echo >&2 "Error: Failed to send calibration $EXITCODE_SENDPACKET"
-    fi
+    newPacketBody $CMD_WRITE_CALIBRATION
+
+    writeInt16BE    "$1" #intempoffset
+    writeInt8       "$2" #inhumidityoffset
+    writeInt32BE    "$3" #absoffset
+    writeInt32BE    "$4" #reloffset
+    writeInt16BE    "$5" #outtempoffset
+    writeInt8       "$6" #outhumidityoffset
+    writeInt16BE    "$7" #winddiroffset
+
+    #[ $DEBUG -eq 1 ] &&
+     echo >&2 "Sending calibration intemp $1 inhumi $2 abspressure $3 relpressure $4 outtemp $5 outhumi $6 winddirection $7"
+    
+    sendPacket
+    
+
+    return "$EXITCODE_SENDPACKET"
 }
 
 sendEcowittIntervalnew() {
@@ -4082,35 +4127,45 @@ convertFloatToScale10()
 {
     DEBUG_CONVERT=${DEBUG_CONVERT:=$DEBUG}
     EXITCODE_CONVERTFLOAT_SCALE10=0
-    
-    unset sign
 
-    case "$1" in
-        *.*)    int=${1%%.*} # . suffix remove -> integer part
+    if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 1 ]; then
+         VALUE_FLOAT_SCALE10=$(( $1 * 10))
+         roundFloat "$VALUE_FLOAT_SCALE10"
+         VALUE_FLOAT_SCALE10=$VALUE_FLOAT_TO_INT
+    else
+    
+        unset sign
+
+        case "$1" in
+            *.*)    int=${1%%.*} # . suffix remove -> integer part
+                    case "$int" in
+                    -*) sign='-'; int=${int#-}; ;;
+                    esac
+                    dec=${1##*.} # prefix . remove -> decimal part
+                    if isNumber "$int" && isNumber "$dec"; then
+                        dec_suffix=${dec#?} #deletes first digit
+                        dec=${dec%%"$dec_suffix"} # no rounding, just cut off
+                        VALUE_FLOAT_SCALE10_ABS=$int$dec
+                        VALUE_FLOAT_SCALE10=$sign$int$dec
+                    else
+                        EXITCODE_CONVERTFLOAT_SCALE10="$ERROR_CONVERT"
+                    fi
+                    ;;
+
+            *)  int=$1
                 case "$int" in
-                  -*) sign='-'; int=${int#-}; ;;
+                -*) sign=-1; int=${int#-} ;;
+                 *) sign=1 ;;
                 esac
-                dec=${1##*.} # prefix . remove -> decimal part
-                if isNumber "$int" && isNumber "$dec"; then
-                    dec_suffix=${dec#?} #deletes first digit
-                    dec=${dec%%"$dec_suffix"} # no rounding, just cut off
-                    VALUE_FLOAT_SCALE10=$sign$int$dec
+                if isNumber "$int"; then
+                        VALUE_FLOAT_SCALE10_ABS=$(( int * 10 )) 
+                        VALUE_FLOAT_SCALE10=$(( sign * int * 10 ))
                 else
                     EXITCODE_CONVERTFLOAT_SCALE10="$ERROR_CONVERT"
                 fi
                 ;;
-
-        *)  int=$1
-             case "$int" in
-              -*) sign='-'; int=${int#-} ;;
-             esac
-            if isNumber "$int"; then
-                VALUE_FLOAT_SCALE10=$sign${int}0
-            else
-              EXITCODE_CONVERTFLOAT_SCALE10="$ERROR_CONVERT"
-            fi
-            ;;
-    esac
+        esac
+    fi
 
     [ $DEBUG_CONVERT -eq 1 ] && echo >&2 "Converting float $1 to $VALUE_FLOAT_SCALE10 (scale 10)" 
 
@@ -4138,28 +4193,30 @@ parseRaindataOptions()
         #shellcheck disable=SC2086
         set -- $rainexpr
             case "$1" in
-                d|day)   if [ -n "$2" ] && convertFloatToScale10 "$2"; then
+                d|day)   set -x
+                         if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10" -le "$CALIBRATION_RAIN_MAX" ]; then
                              [ "$VALUE_FLOAT_SCALE10" -ne "$rainday" ]  &&  { rainday="$VALUE_FLOAT_SCALE10"; rain_needsupdate=1; }
                          else
-                           >&2 echo Warning: Invalid value for "$1"
+                           >&2 echo "Warning: Invalid value for $rainexpr, max $CALIBRATION_RAIN_MAX"
                          fi
+                         set +x
                             ;;
-                w|week)  if [ -n "$2" ] && convertFloatToScale10 "$2"; then
+                w|week)  if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10" -le "$CALIBRATION_RAIN_MAX" ]; then
                              [ "$VALUE_FLOAT_SCALE10" -ne "$rainweek" ]  &&  { rainweek="$VALUE_FLOAT_SCALE10"; rain_needsupdate=1; }
                          else
-                           >&2 echo Warning: Invalid value for "$1"
+                           >&2 echo "Warning: Invalid value for $rainexpr, max $CALIBRATION_RAIN_MAX"
                          fi
                             ;;
-                m|month) if [ -n "$2" ] && convertFloatToScale10 "$2"; then
+                m|month) if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10" -le "$CALIBRATION_RAIN_MAX" ]; then
                              [ "$VALUE_FLOAT_SCALE10" -ne "$rainmonth" ] &&  { rainmonth="$VALUE_FLOAT_SCALE10"; rain_needsupdate=1; }
                          else
-                           >&2 echo Warning: Invalid value for "$1"
+                           >&2 echo "Warning: Invalid value for $rainexpr, max $CALIBRATION_RAIN_MAX"
                          fi
                             ;;
-                y|year)  if [ -n "$2" ] && convertFloatToScale10 "$2"; then
+                y|year)  if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10" -le "$CALIBRATION_RAIN_MAX" ]; then
                              [ "$VALUE_FLOAT_SCALE10" -ne "$rainyear" ] &&  { rainyear="$VALUE_FLOAT_SCALE10"; rain_needsupdate=1; }
                         else
-                           >&2 echo Warning: Invalid value for "$1"
+                           >&2 echo "Warning: Invalid value for $rainexpr, max $CALIBRATION_RAIN_MAX"
                          fi
                             ;;
                 *) >&2 echo "Warning: use day|d,week|w,month|m,year|y, for example d=10.0 sets daily rain to 10.0 mm"
@@ -4175,38 +4232,99 @@ parseRaindataOptions()
 
 processCalibrationOptions()
 {
+    DEBUG_CALIBRATION_OPTIONS=1
+    DEBUG_CALIBRATION_OPTIONS=${DEBUG_CALIBRATION_OPTIONS:=$DEBUG}
+
+set -x
     calibration_intemp=$C_CALIBRATION_INTEMPOFFSET
     calibration_inhumi=$C_CALIBRATION_INHUMIDITYOFFSET
     calibration_outtemp=$C_CALIBRATION_OUTTEMPOFFSET
     calibration_outhumi=$C_CALIBRATION_OUTHUMIDITYOFFSET
-    calibration_absp=$C_CALIBRATION_ABSOFFSET
-    calibration_relp=$C_CALIBRATION_RELOFFSET
+    calibration_absoffset=$C_CALIBRATION_ABSOFFSET
+    calibration_reloffset=$C_CALIBRATION_RELOFFSET
     calibration_winddir=$C_CALIBRATION_WINDDIROFFSET
+set +x
 
     IFS=,
+    calibration_need_update=0
     for expr in $1; do
-        echo >&2 "Parsing expr: $expr"
+        [ $DEBUG_CALIBRATION_OPTIONS -eq 1 ] && echo >&2 "processCalibrationOptions, parsing expr: $expr"
         IFS='='
         #shellcheck disable=SC2086
         set -- $expr
         key=$1
         value=$2
         echo >&2 "k: $1, v: $2"
+
         case "$key" in
-            it|intemp) ;;
-            ih|inhumi) ;;
-            ot|outtemp) ;;
-            oh|outhumi) ;;
-            a|abspressure) ;;
-            r|relpressure) ;;
-            w|winddirection) ;;
-            *) echo >&2 "Error: Unknown key $1, use it | intemp, ih | inhumi, ot | outtemp, oh | outhumi, a | abspressure, r | relpressure, w | winddirection"
+        
+            it|intemp)  if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10_ABS" -le $CALIBRATION_INTEMPOFFSET_MAX ]; then
+                            [ "$calibration_intemp" -ne "$VALUE_FLOAT_SCALE10" ] && { calibration_intemp=$VALUE_FLOAT_SCALE10; calibration_need_update=1; }
+                        else
+                           echo >&2 "Warning: Invalid value for $expr, min/max -$CALIBRATION_INTEMPOFFSET_MAX/$CALIBRATION_INTEMPOFFSET_MAX (scale 10)"
+                        fi
+                        ;;
+            
+            ih|inhumi) if isNumber "$2" &&  [ "$2" -ge -$CALIBRATION_INHUMIOFFSET_MAX ] && [ "$2" -le $CALIBRATION_INHUMIOFFSET_MAX ] ; then
+                            [ "$calibration_inhumi" -ne "$2" ] && { calibration_inhumi=$2; calibration_need_update=1; }
+                        else
+                           echo >&2 "Warning: Invalid value for $expr, min/max -$CALIBRATION_INHUMIOFFSET_MAX/$CALIBRATION_INHUMIOFFSET_MAX"
+                        fi
+                        ;;
+
+            ot|outtemp) if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10_ABS" -le $CALIBRATION_OUTTEMPOFFSET_MAX ]; then
+                            [ "$calibration_outtemp" -ne "$VALUE_FLOAT_SCALE10" ] && { calibration_outtemp=$VALUE_FLOAT_SCALE10; calibration_need_update=1; }
+                        else
+                           echo >&2 "Warning: Invalid value for $expr, min/max -$CALIBRATION_OUTTEMPOFFSET_MAX/$CALIBRATION_OUTTEMPOFFSET_MAX (scale 10)"
+                        fi
+                        ;;
+        
+            oh|outhumi)  if isNumber "$2" &&  [ "$2" -ge -$CALIBRATION_OUTHUMIOFFSET_MAX ] && [ "$2" -le $CALIBRATION_OUTHUMIOFFSET_MAX ] ; then
+                            [ "$calibration_outhumi" -ne "$2" ] && { calibration_outhumi=$2; calibration_need_update=1; }
+                        else
+                           echo >&2 "Warning: Invalid value for $expr, min/max " "-$CALIBRATION_OUTHUMIOFFSET_MAX/$CALIBRATION_OUTHUMIOFFSET_MAX"
+                        fi
+                        ;;
+
+            a|absoffset)  if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10_ABS" -le $CALIBRATION_ABSOFFSET_MAX ]; then
+                             [ "$calibration_absoffset" -ne "$VALUE_FLOAT_SCALE10" ] && { calibration_absoffset=$VALUE_FLOAT_SCALE10; calibration_need_update=1; }
+                        else
+                           echo >&2 "Warning: Invalid value for $expr, min/max -$CALIBRATION_ABSOFFSET_MAX/$CALIBRATION_ABSOFFSET_MAX (scale 10)"
+                        fi
+                        ;;
+            
+            r|reloffset) if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10_ABS" -le $CALIBRATION_RELOFFSET_MAX ]; then
+
+set -x
+                              [ "$calibration_reloffset" -ne "$VALUE_FLOAT_SCALE10" ] && { calibration_reloffset=$VALUE_FLOAT_SCALE10; calibration_need_update=1; }
+set +x
+                        else
+                           echo >&2 "Warning: Invalid value for $expr, min/max -$CALIBRATION_RELOFFSET_MAX/$CALIBRATION_RELOFFSET_MAX (scale 10)"
+                        fi
+                         ;;
+
+            w|winddiroffset) if isNumber "$2" &&  [ "$2" -ge -$CALIBRATION_WINDDIROFFSET_MAX ] && [ "$2" -le $CALIBRATION_WINDDIROFFSET_MAX ] ; then
+                               [ "$calibration_winddir" -ne "$2" ] && { calibration_winddir=$2; calibration_need_update=1; }
+
+                        else
+                           echo >&2 "Warning: Invalid value for $expr, min/max -$CALIBRATION_WINDDIROFFSET_MAX/$CALIBRATION_WINDDIROFFSET_MAX"
+                        fi
+                        ;;
+
+            *) echo >&2 "Error: Unknown key $1, use it | intemp, ih | inhumi, ot | outtemp, oh | outhumi, a | absoffset, r | reloffset, w | winddiroffset"
                 ;;
         esac
 
     done
 
-    unset expr calibration_intemp calibration_inhumi calibration_outtemp calibration_outhumi calibration_absp calibration_relp calibration_winddir
+    if [ $calibration_need_update -eq 1 ]; then
+       if ! sendCalibration "$calibration_intemp" "$calibration_inhumi" "$calibration_absoffset" "$calibration_reloffset" "$calibration_outtemp" "$calibration_outhumi" "$calibration_winddir"  ; then
+          echo >&2 "Error: Failed to send calibration to device $?"
+       fi
+    fi
+
+
+    unset expr calibration_intemp calibration_inhumi calibration_outtemp calibration_outhumi calibration_absoffset calibration_reloffset calibration_winddir DEBUG_CALIBRATION_OPTIONS IFS
 }
 
 processCommand() {
@@ -4492,10 +4610,22 @@ processCommand() {
 
 isNumber() {
     #https://stackoverflow.com/questions/806906/how-do-i-test-if-a-variable-is-a-number-in-bash?page=1&tab=votes#tab-top
-    case $1 in
-        '' | *[!0-9]*) return 1 ;;
+    isnumber_int=$1
+    case "$isnumber_int" in
+              -*) isnumber_int=${isnumber_int#-} ;; # remove sign
+    esac
+
+    case "$isnumber_int" in
+        '' | *[!0-9]* ) return 1 ;;
         *) return 0 ;;
     esac
+    unset isnumber_int
+   #echo "1: $1"
+   #if [ "$1" -ge 0 ] || [ "$1" -lt 0 ]; then #does not work in ksh93
+   #  return 0
+   #else
+   #  return 1
+   #fi
 }
 
 isHex()
@@ -4886,7 +5016,7 @@ setRainHttpLivedata()
     convert_in_to_mm "$2"
     if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 1 ]; then
         roundFloat "$VALUE_IN_MM_SCALE10"
-        VALUE_IN_MM_SCALE10=$VALUE_INT
+        VALUE_IN_MM_SCALE10=$VALUE_FLOAT_TO_INT
     fi
     eval export "$1"_RAW="$VALUE_IN_MM_SCALE10"
     if [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_MM ]; then
@@ -4906,7 +5036,7 @@ setWindHttpLivedata()
     convert_mph_To_mps "$2"
       if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 1 ]; then
         roundFloat "$VALUE_MPS_SCALE10"
-        VALUE_MPS_SCALE10=$VALUE_INT
+        VALUE_MPS_SCALE10=$VALUE_FLOAT_TO_INT
     fi
     eval export "$1_RAW=$VALUE_MPS_SCALE10"
     if [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPS ]; then
@@ -4938,9 +5068,9 @@ roundFloat()
 {
     if [ $SHELL_SUPPORT_BULTIN_PRINTF_VOPT -eq 1 ]; then
     #shellcheck disable=SC3045
-       printf -v VALUE_INT "%.0f" "$1"
+       printf -v VALUE_FLOAT_TO_INT "%.0f" "$1"
     else
-        VALUE_INT=$(printf "%.0f" "$1")
+        VALUE_FLOAT_TO_INT=$(printf "%.0f" "$1")
     fi
 
 }
@@ -4955,7 +5085,7 @@ setTemperatureHttpLivedata()
     convert_farenheit_to_celciusScale10 "$2" 
     if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 1 ]; then
        roundFloat $VALUE_CELCIUS_SCALE10
-       VALUE_CELCIUS_SCALE10=$VALUE_INT
+       VALUE_CELCIUS_SCALE10=$VALUE_FLOAT_TO_INT
     fi
     eval export "$1_RAW=$VALUE_CELCIUS_SCALE10"
     if [ "$UNIT_TEMPERATURE_MODE" -eq $UNIT_TEMPERATURE_CELCIUS ]; then
@@ -4971,7 +5101,7 @@ setPressureHttpLivedata()
     convert_inhg_to_hpa "$2"
      if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 1 ]; then
        roundFloat "$VALUE_INHG_HPA_SCALE10"
-       VALUE_INHG_HPA_SCALE10=$VALUE_INT
+       VALUE_INHG_HPA_SCALE10=$VALUE_FLOAT_TO_INT
     fi
     eval export "$1"_RAW="$VALUE_INHG_HPA_SCALE10"
     if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
