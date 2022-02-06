@@ -34,6 +34,7 @@ DEBUG_OPTION_APPEND=0
 DEBUG_OPTION_COMMAND=0
 DEBUG_OPTION_HTTP=0
 DEBUG_OPTION_TESTSENSOR=0
+DEBUG_OPTION_TRACEPACKET=0
 
 HTTP_WUNDERGROUND=1
 HTTP_ECOWITT=0
@@ -1007,8 +1008,9 @@ readString() { #https://bugs.launchpad.net/ubuntu/+source/dash/+bug/1499473
     unset len_uint8 n
 }
 
-printBuffer() { # print hex. buffer
-    #$1 decimal buffer
+printBuffer()
+#$1 decimal buffer - print as hex buffer
+ {
     unset APPEND_STRING
 
     for BYTE in $1; do
@@ -1018,7 +1020,8 @@ printBuffer() { # print hex. buffer
     
     echo "$APPEND_STRING"
 
-    unset BYTE
+    unset BYTE APPEND_STRING
+
 }
 
 convertWindDirectionToCompassDirection() { #$1 - direction in degrees
@@ -3267,6 +3270,15 @@ sendPacketnc() { #$1 - command
         printBuffer >&2 "$PACKET_TX"
     }
 
+    unset rxpipecmd txpipecmd
+
+    if [ "$DEBUG_OPTION_TRACEPACKET" -eq 1 ]; then
+       #visual studio code: problems with : display for date -> using space
+       tracedate=$(date +'%H %M %S %N') #https://superuser.com/questions/674464/print-current-time-with-milliseconds
+       rxpipecmd=" | tee \"rx-$COMMAND_NAME-$tracedate.hex\""
+       txpipecmd=" | tee \"tx-$COMMAND_NAME-$tracedate.hex\""
+    fi
+
     port=$PORT_GW_TCP
 
     if [ $PACKET_TX_CMD -eq $CMD_BROADCAST ]; then
@@ -3295,14 +3307,14 @@ sendPacketnc() { #$1 - command
        #    nccmdstr="timeout $timeout_nc $nccmdstr"
        # fi
         
-        cmdstr="printf %b \"$PACKET_TX_ESCAPE\" | $nccmdstr | tee rxpacket.hex | $odcmdstr"
+        cmdstr="printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd | $nccmdstr $rxpipecmd | $odcmdstr"
 
     elif [ "$NC_VERSION" -eq $NC_NMAP ]; then
 
         #sleep to disable immediate EOF and shutdown of ncat -> which leads to data not received from udp socket
        
         nccmdstr="\"$NC_CMD\" -4 -w 1  $ncUDPOpt $host $port"
-        cmdstr="{ printf %b \"$PACKET_TX_ESCAPE\"; sleep $timeout_nc; } |  $nccmdstr | $odcmdstr"
+        cmdstr="{ printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd ; sleep $timeout_nc; } |  $nccmdstr $rxpipecmd | $odcmdstr"
 
     elif [ "$NC_VERSION" -eq $NC_TOYBOX ]; then
 
@@ -3312,14 +3324,14 @@ sendPacketnc() { #$1 - command
            nccmdstr="timeout $timeout_nc $nccmdstr"
         fi
 
-        cmdstr="printf %b \"$PACKET_TX_ESCAPE\" | $nccmdstr | $odcmdstr"
+        cmdstr="printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd | $nccmdstr $rxpipecmd | $odcmdstr"
 
     elif [ "$NC_VERSION" -eq $NC_BUSYBOX ]; then
 
         nccmdstr="\"$NC_CMD\" $host $port"
 
         if [ -z "$ncUDPOpt" ]; then
-            cmdstr="printf %b \"$PACKET_TX_ESCAPE\" |  $nccmdstr | $odcmdstr"
+            cmdstr="printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd |  $nccmdstr $rxpipecmd | $odcmdstr"
         else
             echo >&2 Busybox nc does not support UDP
         fi
@@ -3344,7 +3356,8 @@ sendPacketnc() { #$1 - command
        EXITCODE_SENDPACKETNC=$?
     fi
 
-    unset ncUDPOpt ncIdleOpt port host timeout_udp_broadcast useTimeout timeout_nc od_buffer cmdstr nccmdstr odcmdstr
+    unset ncUDPOpt ncIdleOpt port host timeout_udp_broadcast useTimeout timeout_nc od_buffer cmdstr nccmdstr odcmdstr  rxpipecmd txpipecmd
+
 
     return $EXITCODE_SENDPACKETNC
 
@@ -4352,10 +4365,9 @@ processCalibrationOptions()
 
             w|winddiroffset) if isNumber "$2" &&  [ "$2" -ge -$CALIBRATION_WINDDIROFFSET_MAX ] && [ "$2" -le $CALIBRATION_WINDDIROFFSET_MAX ] ; then
                                [ "$calibration_winddir" -ne "$2" ] && { calibration_winddir=$2; calibration_need_update=1; }
-
-                        else
-                           echo >&2 "Warning: Invalid value for $expr, min/max -$CALIBRATION_WINDDIROFFSET_MAX/$CALIBRATION_WINDDIROFFSET_MAX"
-                        fi
+                            else
+                                echo >&2 "Warning: Invalid value for $expr, min/max -$CALIBRATION_WINDDIROFFSET_MAX/$CALIBRATION_WINDDIROFFSET_MAX"
+                            fi
                         ;;
 
             *) echo >&2 "Error: Unknown key $1, use it | intemp, ih | inhumi, ot | outtemp, oh | outhumi, a | absoffset, r | reloffset, w | winddiroffset"
@@ -5893,6 +5905,8 @@ processDebugOptions()
         
             ""|--*|-*)  DEBUG=1
                         ;;
+            t|trace)    DEBUG_OPTION_TRACEPACKET=1 # trace tx/rx packets in hex format during sendpacketnc
+                        ;;
             a|append)   DEBUG_OPTION_APPEND=1 # print append format/args - default livedata view/table layout
                         ;;
             b|buffer)   DEBUG_OPTION_OD_BUFFER=1 # show hex buffers of transmitted/received data
@@ -5939,7 +5953,7 @@ processDebugOptions()
                       done
                       unset uvi
                       ;;
-                    *)  echo >&2 "Error: Unknown debug option $opt, use append | a, buffer | b, command | c, http | h, sensor | s"
+                    *)  echo >&2 "Error: Unknown debug option $opt, use append | a, buffer | b, command | c, http | h, sensor | s, t | trace"
                         echo >&2  "Styling: beufort | wind, pm25, rainintensity | ri, uvi"
                         ;;
         esac

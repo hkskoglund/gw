@@ -9,4 +9,5 @@ itsraining.wav
 watch.log
 debug.log
 data.csv
-rxpacket.hex
+tx*.hex
+rx*.hex
