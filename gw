@@ -2615,7 +2615,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
     printOrLogLivedata
 
-    unset ldf channel checksum
+    unset ldf channel checksum DEBUG_FUNC
     
 }
 
@@ -3318,7 +3318,7 @@ sendPacketnc() { #$1 - command
 
     elif [ "$NC_VERSION" -eq $NC_TOYBOX ]; then
 
-        nccmdstr="\"$NC_CMD\" -4 $ncUDPOpt $host $port"
+        nccmdstr="$NC_CMD -4 $ncUDPOpt $host $port"
         
         if [ "$useTimeout" -eq 1 ]; then
            nccmdstr="timeout $timeout_nc $nccmdstr"
@@ -3328,7 +3328,7 @@ sendPacketnc() { #$1 - command
 
     elif [ "$NC_VERSION" -eq $NC_BUSYBOX ]; then
 
-        nccmdstr="\"$NC_CMD\" $host $port"
+        nccmdstr="$NC_CMD $host $port"
 
         if [ -z "$ncUDPOpt" ]; then
             cmdstr="printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd |  $nccmdstr $rxpipecmd | $odcmdstr"
@@ -3358,9 +3358,7 @@ sendPacketnc() { #$1 - command
 
     unset ncUDPOpt ncIdleOpt port host timeout_udp_broadcast useTimeout timeout_nc od_buffer cmdstr nccmdstr odcmdstr  rxpipecmd txpipecmd
 
-
     return $EXITCODE_SENDPACKETNC
-
 }
 
 discovery() {
@@ -3896,82 +3894,63 @@ convertScale10ToFloatInt() {
   
 }
 
+logErr()
+#$1 - 1=on,0=off
+{
+     [ "$1" -eq 1 ] && { shift; echo >&2 "$*" ; }
+}
+
 initnc() 
 #different versions of nc use slightly different options
 {
-    nc_exec=$(which nc 2>/dev/null)
-    if [ -z "$nc_exec" ]; then
-        ncat_exec=$(which ncat 2>/dev/null) # try ncat, if nc not availale
-        if [ -n "$ncat_exec" ]; then
-            NC_CMD="$ncat_exec"
-        fi
-    else
-        NC_CMD="$nc_exec"
-    fi
+    EXITCODE_INITNC=0
 
-    if [ -n "$NC_CMD" ]; then #determine which version of nc
-
-        nc_ver=$("$NC_CMD" --version 2>&1) # ""-preserve space
-        nc_status=$?
-
-        if [ "$nc_status" -eq 0 ]; then
-
-            case "$nc_ver" in
-                *nmap*)
-                    NC_VERSION=$NC_NMAP
-                    ;;
-                *toybox*)
-                    NC_VERSION=$NC_TOYBOX
-                    ;;
-            esac
-
-            NC_VERSION_STR=$nc_ver
+    DEBUG_FUNC="initnc"
+    DEBUG_NC=${DEBUG_NC:=$DEBUG}
+   
+   #if force nc version on command line NC_VERSION=? ./gw ...
+    if [ -n "$NC_VERSION" ]; then
+        
+        #specifying override path to nc executable is possible: NC_CMD='/path/nc' ./gw ...
+        if [ "$NC_VERSION" -eq $NC_NMAP ]; then
+            [ -z "$NC_CMD" ] && NC_CMD=$(which ncat)
+        elif [ "$NC_VERSION" -eq $NC_OPENBSD ]; then
+            [ -z "$NC_CMD" ] && NC_CMD=$(which nc)
+        elif [ "$NC_VERSION" -eq $NC_BUSYBOX ]; then
+            [ -z "$NC_CMD" ] && NC_CMD="$(which busybox) nc"
+        elif [ "$NC_VERSION" -eq $NC_TOYBOX ]; then
+            [ -z "$NC_CMD" ] && NC_CMD="$(which toybox) nc"
         else
-            #            IFS=' ' read -r nc_ver_header << EOL
-            #$nc_ver
-            #EOL
-            IFS=' '
-            set -- "$nc_ver"
-            nc_ver_header=$1
-
-            case "$nc_ver_header" in
-
-                $nc_exec:\ invalid\ option*)
-
-                    NC_VERSION=$NC_OPENBSD
-                    NC_VERSION_STR="nc openbsd (probably)"
-                    ;;
-
-                *)
-                    echo >&2 "Error: Unknown nc version header $nc_ver"
-                    NC_VERSION=$NC_OPENBSD
-                    NC_VERSION_STR="nc unknown"
-                    ;;
-            esac
-
+            EXITCODE_INITNC=$ERROR_DEPENDENCY_NC
+            return $EXITCODE_INITNC
         fi
+       
+    else
 
-        [ "$DEBUG" -eq 1 ] && echo >&2 "nc version detection $NC_VERSION_STR"
-
-        RETURNCODE_INITNC=0
+        NC_CMD="$(which nc 2>/dev/null)"
+        if [ -z "$NC_CMD" ]; then
+            logErr $DEBUG_NC "$DEBUG_FUNC nc not found. Ubuntu: sudo update-alternatives --config nc"
+            EXITCODE_INITNC=$ERROR_DEPENDENCY_NC
+        else
+            case "$("$NC_CMD" 2>&1)" in 
+                
+                usage:\ nc\ \[-46CDdFhklNnrStUuvZz\]*) NC_VERSION=$NC_OPENBSD 
+                                                       ;;
+                
+                Ncat:*) NC_VERSION=$NC_NMAP 
+                        ;;
+                    
+                    *)  logErr $DEBUG_NC "Warning: Failed to determine nc version, not nc openbsd/ncat, use NC_VERSION=, NM_CMD= to override, trying openbsd compability"
+                        NC_VERSION=$NC_OPENBSD
+                        ;;
+            esac
+        fi
+    fi
     
-    else
+    logErr $DEBUG_NC "$DEBUG_FUNC Using nc version $NC_VERSION exec $NC_CMD"
+    unset DEBUG_FUNC
 
-        busybox_exec=$(which busybox 2>/dev/null) # test busybox nc
-        if [ -n "$busybox_exec" ]; then
-            NC_CMD="busybox nc"
-            NC_VERSION=$NC_BUSYBOX
-            NC_VERSION_STR="nc $($busybox_exec 2>&1 | head -n 1)"
-            RETURNCODE_INITNC=0
-        else
-          RETURNCODE_INITNC="$ERROR_DEPENDENCY_NC"
-        fi
-    fi
-
-    unset nc_ver nc_ver_header nc_status nc_exec ncat_exec busybox_exec
-
-    return $RETURNCODE_INITNC
-
+    return $EXITCODE_INITNC
 }
 
 initConfigDir() {
@@ -6070,13 +6049,8 @@ initTerm
 initcoptCommands
 initConfigDir
 initTrap
-
-if [ -z "$NC_CMD" ] && [ -z "$NC_VERSION" ]; then
-    
-    if ! initnc; then
-        echo >&2 Error nc/ncat not found
-        exit "$ERROR_DEPENDENCY_NC"
-    fi
+if ! initnc; then
+    exit
 fi
 
 . $GWDIR/lib/timezone.sh
