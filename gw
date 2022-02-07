@@ -3932,18 +3932,22 @@ initnc()
             logErr $DEBUG_NC "$DEBUG_FUNC nc not found. Ubuntu: sudo update-alternatives --config nc"
             EXITCODE_INITNC=$ERROR_DEPENDENCY_NC
         else
-            case "$("$NC_CMD" 2>&1)" in 
+            # ls -l $(readlink -f /usr/bin/nc)
+            case "$(readlink -f "$NC_CMD" 2>&1)" in 
                 
-                usage:\ nc\ \[-46CDdFhklNnrStUuvZz\]*) NC_VERSION=$NC_OPENBSD 
-                                                       ;;
+                */nc.openbsd) NC_VERSION=$NC_OPENBSD 
+                        logErr $DEBUG_NC "$DEBUG_FUNC nc version openbsd"
+                        ;;
                 
-                Ncat:*) NC_VERSION=$NC_NMAP 
+                */ncat) NC_VERSION=$NC_NMAP 
+                        logErr $DEBUG_NC "$DEBUG_FUNC nc version nmap"
                         ;;
                     
-                    *)  logErr $DEBUG_NC "Warning: Failed to determine nc version, not nc openbsd/ncat, use NC_VERSION=, NM_CMD= to override, trying openbsd compability"
+                    *)  logErr $DEBUG_NC "$DEBUG_FUNC Warning: Failed to determine nc version, not nc openbsd/ncat, use NC_VERSION=, NM_CMD= to override, trying openbsd compability"
                         NC_VERSION=$NC_OPENBSD
                         ;;
             esac
+
         fi
     fi
     
