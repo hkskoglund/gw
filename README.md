@@ -289,7 +289,14 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 ### wind | w = mph | kmh | mps<br><br>
 
 ## Environment variables
-### NO_COLOR - set to disable ansi escape terminal color styling<br><br>
+### NO_COLOR - set to disable ansi escape terminal color styling<br>
+### NC_VERSION - set nc version manually if auto-detect (either openbsd or nmap) fails
+#### Valid values: openbsd, nmap, busybox, toybox; example NC_VERSION=busybox | toybox
+### NC_CMD - set path to nc binary; example NC_CMD=/usr/local/bin/toybox
+NC_VERSION and NC_CMD should be used together; NC_CMD=/usr/local/bin/toybox NC_VERSION=toybox ./gw <br>
+Only toybox and busybox nc needs to be specified manually.
+### DEBUG_NC - valid values 0 | 1 - shows debug info for initnc/auto-detect
+<br>
 
 # Running script in Windows Subsystem for Linux 2 - WSL2
 portproxy must be used, open up customized server port(8080), 49123 for wifi-server configuration<br>
