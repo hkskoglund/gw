@@ -2,6 +2,9 @@
 #https://git-scm.com/docs/gitattributes
 #*       text=auto
 gw text eol=lf
-*.sh text eol=lf
 *.md text eol=lf
-*.png binary
+style/*.sh text eol=lf
+lang/*.sh text eol=lf
+lib/*.sh text eol=lf
+view/*.sh text eol=lf
+img/*.png binary
