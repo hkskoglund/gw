@@ -3928,11 +3928,9 @@ initnc()
             case "$(readlink -f "$NC_CMD" 2>&1)" in 
                 
                 */nc.openbsd|*/netcat) NC_VERSION=$NC_OPENBSD #nc.openbsd Ubuntu/netcat Fedora
-                        logErr $DEBUG_NC "$DEBUG_FUNC nc version openbsd"
-                        ;;
+                                        ;;
                 
                 */ncat) NC_VERSION=$NC_NMAP 
-                        logErr $DEBUG_NC "$DEBUG_FUNC nc version nmap"
                         ;;
                     
                     *)  logErr $DEBUG_NC "$DEBUG_FUNC Warning: Failed to determine nc version, not nc openbsd/ncat, use NC_VERSION=, NM_CMD= to override, trying openbsd compability"
@@ -3942,8 +3940,8 @@ initnc()
 
         fi
     fi
-    
-    logErr $DEBUG_NC "$DEBUG_FUNC Using nc version $NC_VERSION exec $NC_CMD"
+        
+    logErr $DEBUG_NC "$DEBUG_FUNC $NC_VERSION $NC_CMD"
     unset DEBUG_FUNC
 
     return $EXITCODE_INITNC
