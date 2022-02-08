@@ -3613,25 +3613,17 @@ sendSystemPacket()
 }
 
 sendRaindata() {
-    # if ! [[ "$1" =~ ^[0-9]+$ ]] || ! [[ "$2" =~ ^[0-9]+$ ]] || ! [[ "$3" =~ ^[0-9]+$ ]] || ! [[ "$4" =~ ^[0-9]+$ ]]; then
-    if ! isNumber "$1" || ! isNumber "$2" || ! isNumber "$3" || ! isNumber "$4"; then
-        echo Error: Raindata has "element(s)" which is not a number
-        return "$ERROR_RAINDATA_NOTSPECIFIED"
-    fi
-
-    [ $DEBUG -eq 1 ] && echo >&2 rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
+   
 
     newPacketBody $CMD_WRITE_RAINDATA
+
     writeUInt32BE "$1" #rainday
     writeUInt32BE "$2" #rainweek
     writeUInt32BE "$3" #rainmonth
     writeUInt32BE "$4" #rainyear
-    [ $DEBUG -eq 1 ] && echo >&2 "Sending raindata rd $1 rw $2 rm $3 ry $4"
-   
-   if ! sendPacket; then
-        echo >&2 "Error: Failed to send rain data $EXITCODE_SENDPACKET" 
-   fi
 
+    [ $DEBUG -eq 1 ] && echo >&2 rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
+   
    return $EXITCODE_SENDPACKET
 }
 
@@ -4268,7 +4260,11 @@ parseRaindataOptions()
             esac
     done
 
-    [ $rain_needsupdate -eq 1 ] &&  sendRaindata "$rainday" "$rainweek" "$rainmonth" "$rainyear"
+    if [ $rain_needsupdate -eq 1 ]; then
+        if ! sendRaindata "$rainday" "$rainweek" "$rainmonth" "$rainyear"; then
+           echo >&2 Failed to send raindata 
+        fi
+    fi
 
     unset rainexpr rainday rainweek rainmonth rainyear rain_needsupdate
     
