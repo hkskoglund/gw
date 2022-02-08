@@ -1,6 +1,7 @@
 #!/bin/sh
 #test
 #test
+#test
 # Shell/terminal utility for viewing weather data and sensor configuration of the GW-1000 or compatible devices
 # Only for firmware v1.6.5 or later - for intepretation of battery levels/sensor id new command
 
@@ -497,7 +498,7 @@ export LIVEDATA_WH80_BATTERY_HEADER="${LIVEDATA_WH80_BATTERY_HEADER:="WH80 Weath
 
 export LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER="${LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER:="Temperature out battery"}"
 export LIVEDATA_WH40_RAINFALL_BATTERY_HEADER="${LIVEDATA_WH40_RAINFALL_BATTERY_HEADER:="Rainfall battery"}"
-export LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="${LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="Lightning battery"}" 
+export LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="${LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="Lightning battery"}"
 
 export    LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER="${LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER:="System sensors connected"}"
 export    LIVEDATA_SYSTEM_SENSOR_DISCONNECTED_HEADER="${LIVEDATA_SYSTEM_SENSOR_DISCONNECTED_HEADER:="System sensors disconnected"}"
