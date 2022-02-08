@@ -1,6 +1,6 @@
 #https://adaptivepatchwork.com/2012/03/01/mind-the-end-of-your-line/
 #*       text=auto
-gw text
-*.sh text
-*.md text
+gw text eol=lf
+*.sh text eol=lf
+*.md text eol=lf
 *.png binary
