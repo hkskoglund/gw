@@ -3522,7 +3522,7 @@ parseSystemOption()
                             ;;
             esac
             ;;
-        tz) if isNumber "$2"; then
+        tz) if isNumber "$2" && [ "$2" -le "$SYSTEM_TIMEZONE_MAX_INDEX" ]; then
                 systemtzindex=$2
             else
                 echo >&2 "tz=0-$SYSTEM_TIMEZONE_MAX_INDEX"
@@ -3557,38 +3557,21 @@ parseSystemOption()
       esac
     done
 
-    sendSystemPacket "$systemtype" "$systemtzindex" "$systemdst" "$systemauto"
+    if ! sendSystemPacket "$systemtype" "$systemtzindex" "$systemdst" "$systemauto"; then
+       EXITCODE_PARSESYSTEMOPTIONS=$?
+       echo >&2 Error: Failed to send system packet
+    fi
 
-    unset opt systemtype systemtzindex systemdst systemauto
+    unset IFS opt systemtype systemtzindex systemdst systemauto
 
     return $EXITCODE_PARSESYSTEMOPTIONS
 
 }
 
 sendSystemPacket() 
-#$1 sysmtemtype, $2 tz index, $3 dst bit, $4 autooff bit
+#$1 systemtype, $2 tz index, $3 dst bit, $4 autooff bit
 {
     dst=0
-
-    if ! isNumber "$1" || [ "$1" -gt 1 ]; then
-        echo >&2 Error: System type must be 0 for WH24, or 1 for WH65 - "$1" invalid
-        return "$ERROR_SYSTEMPARAM_NOTSPECIFIED"
-    fi
-
-    if ! isNumber "$2" || [ "$2" -gt "$SYSTEM_TIMEZONE_MAX_INDEX" ]; then
-        echo >&2 Error: System timezone index must be between 0 - "$SYSTEM_TIMEZONE_MAX_INDEX", "$2" invalid
-        return "$ERROR_SYSTEMPARAM_NOTSPECIFIED"
-    fi
-
-    if ! isNumber "$3" || [ "$3" -gt 1 ]; then
-        echo >&2 Error: Daylight saving must be 0 for disabled, or 1 for enabled - "$3" invalid
-        return "$ERROR_SYSTEMPARAM_NOTSPECIFIED"
-    fi
-
-    if ! isNumber "$4" || [ "$4" -gt 1 ]; then
-        echo >&2 Error: Auto timezone must be 0 for enabled, or 1 for disabled - "$4" invalid
-        return "$ERROR_SYSTEMPARAM_NOTSPECIFIED"
-    fi
 
     #autooff 0->auto 1
     #autooff 1->auto 0
@@ -3600,25 +3583,30 @@ sendSystemPacket()
     fi
 
     newPacketBody $CMD_WRITE_SYSTEM
-    writeUInt8 0      #frequency - only read
-    writeUInt8 "$1"   #sensortype 0=WH24, 1=WH65
-    writeUInt32BE 0   #UTC time - only read
-    writeUInt8 "$2"   #timezone index/manual -> not updated by setting auto timezone
-    writeUInt8 "$dst" #daylight saving - dst
+
+    writeUInt8      0       # frequency - only read
+    writeUInt8      "$1"    # sensortype 0=WH24, 1=WH65
+    writeUInt32BE   0       # UTC time - only read
+    writeUInt8      "$2"    # timezone index/manual -> not updated by setting auto timezone
+    writeUInt8      "$dst"  # daylight saving - dst
     
+    unset dst
+
+    [ $DEBUG -eq 1 ] && echo >&2 Send system sensortye "$1" tz "$2" dst "$3"
+
     sendPacket
 
-    unset dst
+    return "$EXITCODE_SENDPACKET"
 }
 
 sendRaindata() {
    
     newPacketBody $CMD_WRITE_RAINDATA
 
-    writeUInt32BE "$1" #rainday
-    writeUInt32BE "$2" #rainweek
-    writeUInt32BE "$3" #rainmonth
-    writeUInt32BE "$4" #rainyear
+    writeUInt32BE "$1" # rainday
+    writeUInt32BE "$2" # rainweek
+    writeUInt32BE "$3" # rainmonth
+    writeUInt32BE "$4" # rainyear
 
     [ $DEBUG -eq 1 ] && echo >&2 rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
 
@@ -4555,7 +4543,10 @@ processCommand() {
             else
                 if sendPacket $CMD_READ_RAINDATA >/dev/null ; then #refresh
                     parseRaindataOptions "$1"
+                    EXITCODE_PROCESSCOMMAND=$?
+
                 else
+                  EXITCODE_PROCESSCOMMAND=$?
                   echo >&2 Error: Failed to get raindata from "$C_HOST"
                 fi
             fi
