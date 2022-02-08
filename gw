@@ -119,7 +119,6 @@ WIND_NNW=16
 #ERROR_CONNECTION=1
 #ERROR_NO_NMCLI=2
 ERROR_NC_UDP_SCAN_UNAVAILABLE=3
-ERROR_RAINDATA_NOTSPECIFIED=4
 ERROR_SYSTEMPARAM_NOTSPECIFIED=5
 ERROR_DEPENDENCY_NC=6
 ERROR_PRX_PREAMBLE=7
@@ -3614,7 +3613,6 @@ sendSystemPacket()
 
 sendRaindata() {
    
-
     newPacketBody $CMD_WRITE_RAINDATA
 
     writeUInt32BE "$1" #rainday
@@ -3623,8 +3621,10 @@ sendRaindata() {
     writeUInt32BE "$4" #rainyear
 
     [ $DEBUG -eq 1 ] && echo >&2 rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
+
+    sendPacket
    
-   return $EXITCODE_SENDPACKET
+   return "$EXITCODE_SENDPACKET"
 }
 
 sendCalibration() {
