@@ -1,4 +1,5 @@
 #https://adaptivepatchwork.com/2012/03/01/mind-the-end-of-your-line/
+#https://git-scm.com/docs/gitattributes
 #*       text=auto
 gw text eol=lf
 *.sh text eol=lf
