@@ -43,7 +43,7 @@ MAX_16BIT_UINT=$(((2 << 16) - 1))
 TIMEOUT_WIFICONFIG_SERVER=${TIMEOUT_WIFICONFIG_SERVER:=10} # timeout in seconds for wifi-server configuration of GW1000
 
 GWDIR=${GWDIR:="."}
-GW_VIEW_CSV_FILE=${GW_VIEW_CSV_FILE:="$GWDIR/view/csv.sh"}
+
 
 #shellcheck source=./style/limits.sh
 
@@ -580,17 +580,16 @@ WUNDERGROUND_UNDEFINED_VALUE="-9999"
 # watch -c command only supports 3-bit colors in wsl2/ubuntu, other ansi escapes codes are filtered
 
 . $GWDIR/lib/buffer.sh
-
+. $GWDIR/lib/converters.sh
+. $GWDIR/lib/timezone.sh
+. $GWDIR/lib/fullwidth-number.sh
 . $GWDIR/lib/pm25.sh
 . $GWDIR/lib/rainintensity.sh
 . $GWDIR/lib/uvi.sh
 
-. $GWDIR/lib/converters.sh
-. $GWDIR/lib/timezone.sh
-
 . $GWDIR/style/limits.sh
-. $GWDIR/lib/fullwidth-number.sh
 
+. $GWDIR/view/csv.sh
 
 setBatteryLowNormal()
 {
