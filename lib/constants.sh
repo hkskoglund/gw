@@ -1,0 +1,545 @@
+#!/usr/bin/sh
+export DEBUG="${DEBUG:=0}" # 1 will enable additional debug information, -d option to enable
+[ $DEBUG -eq 1 ] && ls -l /bin/sh
+DEBUG_OPTION_APPEND=0
+DEBUG_OPTION_COMMAND=0
+DEBUG_OPTION_HTTP=0
+DEBUG_OPTION_TESTSENSOR=0
+DEBUG_OPTION_TRACEPACKET=0
+
+HTTP_WUNDERGROUND=1
+HTTP_ECOWITT=0
+
+MAX_16BIT_UINT=$(((2 << 16) - 1))
+TIMEOUT_WIFICONFIG_SERVER=${TIMEOUT_WIFICONFIG_SERVER:=10} # timeout in seconds for wifi-server configuration of GW1000
+
+#https://unicode-table.com/en/emoji/travel-and-places/sky-and-weather/
+UNICODE_RAINRATE=${UNICODE_RAINRATE:=💧}
+UNICODE_RAINEVENT=${UNICODE_RAINEVENT:=⛆}
+UNICODE_RAINDAY=${UNICODE_RAINDAY:=⛆}
+UNICODE_RAINHOUR=${UNICODE_RAINHOUR:=☔}
+
+UNICODE_BATTERY=${UNICODE_BATTERY:=🔋}
+UNICODE_BATTERY_LOW=${UNICODE_BATTERY_LOW:=🪫}
+UNICODE_PLUG=${UNICODE_PLUG:=🔌}
+
+UNICODE_SIGNAL=${UNICODE_SIGNAL:=📶}
+UNICODE_SIGNAL_LOW=${UNICODE_SIGNAL_LOW:=🛑}
+
+UNICODE_WIND=${UNICODE_WIND:=💨} #https://emojipedia.org/dashing-away/
+
+#https://www.compart.com/en/unicode/block/U+2580
+UNICODE_SIGNAL_LEVEL0=${UNICODE_SIGNAL_LEVEL0:="$UNICODE_SIGNAL_LOW"}
+UNICODE_SIGNAL_LEVEL1=${UNICODE_SIGNAL_LEVEL1:="${UNICODE_SIGNAL}  25%"} # 1/4 packets received, seems to be a counter thats incremented/decremented after a each sensor periode
+UNICODE_SIGNAL_LEVEL2=${UNICODE_SIGNAL_LEVEL2:="${UNICODE_SIGNAL}  50%"}
+UNICODE_SIGNAL_LEVEL3=${UNICODE_SIGNAL_LEVEL3:="${UNICODE_SIGNAL}  75%"}
+#UNICODE_SIGNAL_LEVEL4=${UNICODE_SIGNAL_LEVEL4:=▁▂▃▄}
+UNICODE_SIGNAL_LEVEL4=${UNICODE_SIGNAL_LEVEL4:="${UNICODE_SIGNAL} 100%"} # 4/4 packets
+
+#https://www.compart.com/en/unicode/block/U+2190
+UNICODE_WIND_DIRECTION_S=${UNICODE_WIND_DIRECTION_S:=↑}
+#UNICODE_WIND_DIRECTION_S=${UNICODE_WIND_DIRECTION_S:=▲}
+UNICODE_WIND_DIRECTION_N=${UNICODE_WIND_DIRECTION_N:=↓}
+#UNICODE_WIND_DIRECTION_N=${UNICODE_WIND_DIRECTION_N:=▼}
+UNICODE_WIND_DIRECTION_E=${UNICODE_WIND_DIRECTION_E:=←}
+#UNICODE_WIND_DIRECTION_E=${UNICODE_WIND_DIRECTION_E:=◀}
+UNICODE_WIND_DIRECTION_W=${UNICODE_WIND_DIRECTION_W:=→}
+#UNICODE_WIND_DIRECTION_W=${UNICODE_WIND_DIRECTION_W:=▶}
+UNICODE_WIND_DIRECTION_NW=${UNICODE_WIND_DIRECTION_NW:=↘}
+#UNICODE_WIND_DIRECTION_NW=${UNICODE_WIND_DIRECTION_NW:=◢}
+UNICODE_WIND_DIRECTION_NE=${UNICODE_WIND_DIRECTION_NE:=↙}
+#UNICODE_WIND_DIRECTION_NE=${UNICODE_WIND_DIRECTION_NE:=◣}
+UNICODE_WIND_DIRECTION_SW=${UNICODE_WIND_DIRECTION_SW:=↗}
+#UNICODE_WIND_DIRECTION_SW=${UNICODE_WIND_DIRECTION_SW:=◥}
+UNICODE_WIND_DIRECTION_SE=${UNICODE_WIND_DIRECTION_SE:=↖}
+#UNICODE_WIND_DIRECTION_SE=${UNICODE_WIND_DIRECTION_SE:=◤}
+
+WIND_DIRECTION_N=${WIND_DIRECTION_N:="N"}
+WIND_DIRECTION_E=${WIND_DIRECTION_E:="E"}
+WIND_DIRECTION_S=${WIND_DIRECTION_S:="S"}
+WIND_DIRECTION_W=${WIND_DIRECTION_W:="W"}
+
+WIND_N=1
+WIND_NNE=2
+WIND_NE=3
+WIND_ENE=4
+WIND_E=5
+WIND_ESE=6
+WIND_SE=7
+WIND_SSE=8
+WIND_S=9
+WIND_SSW=10
+WIND_SW=11
+WIND_WSW=12
+WIND_W=13
+WIND_WNW=14
+WIND_NW=15
+WIND_NNW=16
+
+
+#ERROR_CONNECTION=1
+#ERROR_NO_NMCLI=2
+ERROR_NC_UDP_SCAN_UNAVAILABLE=3
+ERROR_SYSTEMPARAM_NOTSPECIFIED=5
+ERROR_DEPENDENCY_NC=6
+ERROR_PRX_PREAMBLE=7
+ERROR_OD_BUFFER_EMPTY=8
+ERROR_CONVERT=9
+ERROR_HTTP_MESSSAGE_EMPTY=10
+ERROR_NO_HOST_SPECIFIED=11
+ERROR_INVALID_SENSORID=12
+ERROR_INVALID_SENSORID_COMMAND=13
+ERROR_LISTEN_INVALID_PORTNUMBER=14
+ERROR_LISTEN_NOPORT=15
+ERROR_LISTEN_UNSUPPORTED_NC=16
+ERROR_COMMAND_UNKNOWN=17
+ERROR_INVALID_SUBNET=18
+ERROR_SSID_EMPTY=19
+ERROR_PARSEPACKET_UNSUPPORTED_COMMAND=20
+ERROR_WIFICONFIG_SERVER_FAILED=21 # fail response code 1 from GW
+ERROR_CUSTOMIZED=22 #if customized settings is wrong
+
+#HTTP_RESPONSE_200_OK="HTTP/1.1 200 OK"
+#CRLF='\r\n'
+
+LIVEDATA_VIEW_NORMAL=0
+LIVEDATA_VIEW_TERSE=3
+LIVEDATA_VIEW=${LIVIEDATA_VIEW:=$LIVEDATA_VIEW_NORMAL} #current live view
+
+HIDE_RAIN_LIVEDATA_AUTO=${HIDE_RAIN_LIVEDATA_AUTO:=0} # auto hide_liveview when 0 today (0=off)
+HIDE_LIGHT_LIVEDATA_AUTO=${HIDE_LIGHT_LIVEDATA_AUTO:=0} # auto hide_liveview when 0/dark
+
+UNIT_TEMPERATURE_CELCIUS=0
+UNIT_TEMPERATURE_FARENHEIT=1
+
+UNIT_PRESSURE_HPA=0
+UNIT_PRESSURE_INHG=1
+
+UNIT_RAIN_MM=0
+UNIT_RAIN_IN=1
+
+UNIT_WIND_MPS=0
+UNIT_WIND_MPH=1
+UNIT_WIND_KMH=2
+
+UNIT_UV_MICROWM2=0 # used by Ecowitt protocol
+UNIT_UV_WATTM2=1
+
+BATTERY_NORMAL=0
+BATTERY_LOW=1
+BATTERY_VOLTAGE_LOW=12 # scale x 10 <= 1.2V is low
+
+NC_NMAP="nmap"
+NC_OPENBSD="openbsd"
+NC_TOYBOX="toybox"
+NC_BUSYBOX="busybox"
+
+PORT_GW_TCP=45000
+PORT_WIFICONFIG_SERVER_TCP=49123 # method 1: in wifi configuration part 3 in spec.
+PORT_GW_UDP=46000
+PORT_CLIENT_UDP=59387
+
+LOG_INTERVAL=${LOG_INTERVAL:=60} # default 60 seconds
+
+SPATTERNID_CONNECTED=connected
+SPATTERNID_DISCONNECTED=disconnected
+SPATTERNID_SEARCHING=searching
+SPATTERNID_DISABLED=disabled
+SPATTERNID_RANGE=range
+
+LIVEDATA_PROTOCOL_ECOWITT_BINARY="eb"
+LIVEDATA_PROTOCOL_ECOWITT_BINARY_LONG="Ecowitt binary"
+LIVEDATA_PROTOCOL_ECOWITT_HTTP="e"
+LIVEDATA_PROTOCOL_ECOWITT_HTTP_LONG="Ecowitt"
+LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP="wu"
+LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP_LONG="Wunderground"
+
+CMD_READ_VERSION=$((0x50)) #zsh - wont compare int with hex 16#50 in [ ] expression unless converted to decimal, works in [[ ]] expression
+CMD_REBOOT=$((0x40))
+CMD_READ_MAC=$((0x26))
+CMD_WRITE_SSID=$((0x11))
+CMD_BROADCAST=$((0x12))
+CMD_WRITE_RESET=$((0x41))
+
+#weather services
+CMD_READ_ECOWITT_INTERVAL=$((0x1e))
+CMD_WRITE_ECOWITT_INTERVAL=$((0x1f))
+CMD_READ_WUNDERGROUND=$((0x20))
+CMD_WRITE_WUNDERGROUND=$((0x21))
+CMD_READ_WOW=$((0x22))
+CMD_WRITE_WOW=$((0x23))
+CMD_READ_WEATHERCLOUD=$((0x24))
+CMD_WRITE_WEATHERCLOUD=$((0x25))
+
+#customized server for ecowitt/wunderground http requests
+CMD_READ_CUSTOMIZED=$((0x2a))
+CMD_WRITE_CUSTOMIZED=$((0x2b))
+CMD_READ_PATH=$((0x51))
+CMD_WRITE_PATH=$((0x52))
+CMD_READ_RAINDATA=$((0x34))
+CMD_WRITE_RAINDATA=$((0x35))
+CMD_LIVEDATA=$((0x27))
+
+#sensors
+CMD_READ_SENSOR_ID=$((0x3a))
+CMD_WRITE_SENSOR_ID=$((0x3b))
+CMD_READ_SENSOR_ID_NEW=$((0x3c)) # for new sensors
+CMD_READ_SYSTEM=$((0x30))
+CMD_WRITE_SYSTEM=$((0x31))
+CMD_READ_CALIBRATION=$((0x38))
+CMD_WRITE_CALIBRATION=$((0x39))
+
+#livedata field number from specification
+
+LDF_INTEMP=$((0x01))        #Indoor Temperature (℃) 2
+LDF_OUTTEMP=$((0x02))       #Outdoor Temperature (℃) 2
+#shellcheck disable=SC2034
+{
+LDF_DEWPOINT=$((0x03))      #Dew point (℃) 2
+LDF_WINDCHILL=$((0x04))     #Wind chill (℃) 2
+LDF_HEATINDEX=$((0x05))     #Heat index (℃) 2
+}
+LDF_INHUMI=$((0x06))        #Indoor Humidity (%) 1
+LDF_OUTHUMI=$((0x07))       #Outdoor Humidity (%) 1
+LDF_ABSBARO=$((0x08))       #Absolutely Barometric (hpa) 2
+LDF_RELBARO=$((0x09))       #Relative Barometric (hpa) 2
+LDF_WINDDIRECTION=$((0x0A)) #Wind Direction (360°) 2
+LDF_WINDSPEED=$((0x0B))     #Wind Speed (m/s) 2
+LDF_WINDGUSTSPPED=$((0x0C)) #Gust Speed (m/s) 2
+LDF_RAINEVENT=$((0x0D))     #Rain Event (mm) 2
+LDF_RAINRATE=$((0x0E))      #Rain Rate (mm/h) 2
+#shellcheck disable=SC2034
+LDF_RAINHOUR=$((0x0F))      #Rain hour (mm) 2
+LDF_RAINDAY=$((0x10))       #Rain Day (mm) 2
+LDF_RAINWEEK=$((0x11))      #Rain Week (mm) 2
+LDF_RAINMONTH=$((0x12))     #Rain Month (mm) 4
+LDF_RAINYEAR=$((0x13))      #Rain Year (mm) 4
+#shellcheck disable=SC2034
+LDF_RAINTOTALS=$((0x14))    #Rain Totals (mm) 4
+LDF_LIGHT=$((0x15))         #Light (lux) 4
+LDF_UV=$((0x16))            #UV (uW/m2) 2
+LDF_UVI=$((0x17))           #UVI (0-15 index) 1
+#shellcheck disable=SC2034
+LDF_TIME=$((0x18))          #Date and time 6
+LDF_DAYLWINDMAX=$((0X19))   #Day max wind(m/s) 2
+
+#shellcheck disable=SC2034
+{
+    LDF_TEMP1=$((0x1A)) #Temperature 1(℃) 2
+    LDF_TEMP2=$((0x1B)) #Temperature 2(℃) 2
+    LDF_TEMP3=$((0x1C)) #Temperature 3(℃) 2
+    LDF_TEMP4=$((0x1D)) #Temperature 4(℃) 2
+    LDF_TEMP5=$((0x1E)) #Temperature 5(℃) 2
+    LDF_TEMP6=$((0x1F)) #Temperature 6(℃) 2
+    LDF_TEMP7=$((0x20)) #Temperature 7(℃) 2
+    LDF_TEMP8=$((0x21)) #Temperature 8(℃) 2
+    LDF_HUMI1=$((0x22)) #Humidity 1, 0-100% 1
+    LDF_HUMI2=$((0x23)) #Humidity 2, 0-100% 1
+    LDF_HUMI3=$((0x24)) #Humidity 3, 0-100% 1
+    LDF_HUMI4=$((0x25)) #Humidity 4, 0-100% 1
+    LDF_HUMI5=$((0x26)) #Humidity 5, 0-100% 1
+    LDF_HUMI6=$((0x27)) #Humidity 6, 0-100% 1
+    LDF_HUMI7=$((0x28)) #Humidity 7, 0-100% 1
+    LDF_HUMI8=$((0x29)) #Humidity 8, 0-100% 1
+}
+LDF_PM25_CH1=$((0x2A))      #PM2.5 Air Quality Sensor(μg/m3) 2
+LDF_SOILTEMP1=$((0x2B))     #Soil Temperature(℃) 2
+LDF_SOILMOISTURE1=$((0x2C)) #Soil Moisture(%) 1
+LDF_SOILTEMP2=$((0x2D))     #Soil Temperature(℃) 2
+LDF_SOILMOISTURE2=$((0x2E)) #Soil Moisture(%) 1
+LDF_SOILTEMP3=$((0x2F))     #Soil Temperature(℃) 2
+LDF_SOILMOISTURE3=$((0x30)) #Soil Moisture(%) 1
+LDF_SOILTEMP4=$((0x31))     #Soil Temperature(℃) 2
+LDF_SOILMOISTURE4=$((0x32)) #Soil Moisture(%) 1
+LDF_SOILTEMP5=$((0x33))     #Soil Temperature(℃) 2
+LDF_SOILMOISTURE5=$((0x34)) #Soil Moisture(%) 1
+LDF_SOILTEMP6=$((0x35))     #Soil Temperature(℃) 2
+LDF_SOILMOISTURE6=$((0x36)) #Soil Moisture(%) 1
+LDF_SOILTEMP7=$((0x37))     #Soil Temperature(℃) 2
+LDF_SOILMOISTURE7=$((0x38)) #Soil Moisture(%) 1
+LDF_SOILTEMP8=$((0x39))     #Soil Temperature(℃) 2
+LDF_SOILMOISTURE8=$((0x3A)) #Soil Moisture(%) 1
+#shellcheck disable=SC2034
+LDF_LOWBATT=$((0x4C))       #All sensor lowbatt 16 char 16
+LDF_PM25_24HAVG1=$((0x4D))  # pm25_ch1 2
+#shellcheck disable=SC2034
+LDF_PM25_24HAVG2=$((0x4E)) # pm25_ch2 2
+#shellcheck disable=SC2034
+LDF_PM25_24HAVG3=$((0x4F)) # pm25_ch3 2
+LDF_PM25_24HAVG4=$((0x50)) # pm25_ch4 2
+LDF_PM25_CH2=$((0x51))     #PM2.5 Air Quality Sensor(μg/m3) 2
+#shellcheck disable=SC2034
+LDF_PM25_CH3=$((0x52)) #PM2.5 Air Quality Sensor(μg/m3) 2
+LDF_PM25_CH4=$((0x53)) #PM2.5 Air Quality Sensor(μg/m3) 2
+LDF_LEAK_CH1=$((0x58)) # Leak_ch1 1
+#shellcheck disable=SC2034
+LDF_LEAK_CH2=$((0x59)) # Leak_ch2 1
+#shellcheck disable=SC2034
+LDF_LEAK_CH3=$((0x5A))        # Leak_ch3 1
+LDF_LEAK_CH4=$((0x5B))        # Leak_ch4 1
+LDF_LIGHTNING=$((0x60))       # lightning distance （1~40KM） 1
+LDF_LIGHTNING_TIME=$((0x61))  # lightning happened time(UTC) 4
+LDF_LIGHTNING_POWER=$((0x62)) # lightning counter for the ay 4
+#shellcheck disable=SC2034
+{
+    LDF_TF_USR1=$((0x63)) #Temperature(℃) 4
+    LDF_TF_USR2=$((0x64)) #Temperature(℃) 4
+    LDF_TF_USR3=$((0x65)) #Temperature(℃) 4
+    LDF_TF_USR4=$((0x66)) #Temperature(℃) 4
+    LDF_TF_USR5=$((0x67)) #Temperature(℃) 4
+    LDF_TF_USR6=$((0x68)) #Temperature(℃) 4
+    LDF_TF_USR7=$((0x69)) #Temperature(℃) 4
+    LDF_TF_USR8=$((0x6A)) #Temperature(℃) 4
+}
+LDF_SENSOR_CO2=$((0x70)) #16
+#shellcheck disable=SC2034
+LDF_PM25_AQI=$((0x71))   #only for amb
+# LDF_PM25_AQI length(n*2)(1byte) 1-aqi_pm25 2-aqi_pm25_24h ... ... n-aqi
+#aqi_pm25 AQI derived from PM25 int
+#aqi_pm25_24h AQI derived from PM25, 24 hour running average int
+#aqi_pm25_in AQI derived from PM25 IN int
+#aqi_pm25_in_24h AQI derived from PM25 IN, 24 hour running average int
+#aqi_pm25_aqin AQI derived from PM25, AQIN sensor int
+#aqi_pm25_24h_aqin AQI derived from PM25, 24 hour running average, AQIN sensor int
+#.... n
+#shellcheck disable=SC2034
+{
+    LDF_LEAF_WETNESS_CH1=$((0x72)) # 1
+    LDF_LEAF_WETNESS_CH2=$((0x73)) # 1
+    LDF_LEAF_WETNESS_CH3=$((0x74)) # 1
+    LDF_LEAF_WETNESS_CH4=$((0x75)) # 1
+    LDF_LEAF_WETNESS_CH5=$((0x76)) # 1
+    LDF_LEAF_WETNESS_CH6=$((0x77)) # 1
+    LDF_LEAF_WETNESS_CH7=$((0x78)) # 1
+    LDF_LEAF_WETNESS_CH8=$((0x79)) # 1
+}
+
+CALIBRATION_INTEMPOFFSET_MAX=100
+CALIBRATION_INHUMIOFFSET_MAX=10
+CALIBRATION_ABSOFFSET_MAX=800
+CALIBRATION_RELOFFSET_MAX=800
+CALIBRATION_OUTTEMPOFFSET_MAX=100
+CALIBRATION_OUTHUMIOFFSET_MAX=10
+CALIBRATION_WINDDIROFFSET_MAX=180
+
+CALIBRATION_RAIN_MAX=99999
+
+UNIT_UNICODE_CELCIUS="℃"
+UNIT_UNICODE_FARENHEIT="℉"
+UNIT_UNICODE_WIND_MPS="m/s"
+UNIT_UNICODE_PRESSURE_HPA="hPa"
+UNIT_UNICODE_RAIN_MM="mm"
+
+SYSTEM_FREQUENCY_RFM433M=0 # 433MHz
+SYSTEM_FREQUENCY_RFM868M=1 # 868Mhz
+SYSTEM_FREQUENCY_RFM915M=2 # 915MHz
+SYSTEM_FREQUENCY_RFM920M=4 # 920Mhz
+
+SYSTEM_SENSOR_TYPE_WH24=0
+SYSTEM_SENSOR_TYPE_WH65=1
+
+#https://www.wxforum.net/index.php?topic=40730.0
+case $KSH_VERSION in
+
+    *MIRBSD?KSH*)
+        #shellcheck disable=SC3044
+        typeset -iU SENSORID_SEARCH  SENSORID_DISABLE VALUE_UINT32BE  VALUE_UINT16BE VALUE_UINT8 SID VALUE_UINT_2SCOMPLEMENT # unsigned 32-bit 
+        SENSORID_SEARCH=$(( 0xffffffff ))
+        SENSORID_DISABLE=$(( 0xfffffffe ))
+        # mksh - sets 0xffffffff to -1!? if typeset -i SENSORID_SEARCH=0xffffffff - its using 32-bit signed integer by default unless typeset -iU is used
+        ;;
+
+    *)
+        SENSORID_SEARCH=$((0xffffffff))
+        SENSORID_DISABLE=$((0xfffffffe))
+        #ksh typeset option -iu for usigned int https://docstore.mik.ua/orelly/unix3/korn/appb_07.htm
+        ;;
+esac
+
+SENSORTYPE_WH31TEMP_MAXCH=8
+SENSORTYPE_WH51SOILMOISTURE_MAXCH=8
+SENSORTYPE_WH43PM25_MAXCH=4
+SENSORTYPE_WH55LEAK_MAXCH=4
+SENSORTYPE_WH34SOILTEMP_MAXCH=8
+SENSORTYPE_WH35LEAFWETNESS_MAXCH=8
+SENSORTYPE_TF_USR_MAXCH=8
+
+#index into "sensor id new" data
+SENSORTYPE_WH68=1
+SENSORTYPE_WH80=2
+SENSORTYPE_WH40=3
+SENSORTYPE_WH32=5
+SENSORTYPE_WH31TEMP=6 # temp. sensors start at 6
+SENSORTYPE_WH51SOILMOISTURE=14
+SENSORTYPE_WH43PM25=22
+SENSORTYPE_WH57LIGHTNING=26
+SENSORTYPE_WH55LEAK=27
+SENSORTYPE_WH34SOILTEMP=31
+SENSORTYPE_WH35LEAFWETNESS=40
+SENSORTYPE_MAX=47 
+
+SENSORIDSTATE_CONNECTED=${SENSORIDSTATE_CONNECTED:="connected"}
+SENSORIDSTATE_DISCONNECTED=${SENSORIDSTATE_DISCONNECTED:="disconnected"} #sensortype specified, but signal still 0
+SENSORIDSTATE_SEARCHING=${SENSORIDSTATE_SEARCHING:="searching"}
+SENSORIDSTATE_DISABLED=${SENSORIDSTATE_DISABLED:="disabled"}
+SENSORID_HEADER=${SENSORID_HEADER:="Sensor ID B S Type Name State Battery Signal"}
+
+
+#default livedata headers, may be overridden by -A language file or environment variables on cmd line
+export LIVEDATA_INTEMP_HEADER="${LIVEDATA_INTEMP_HEADER:="Indoor temperature"}"
+export LIVEDATA_OUTTEMP_HEADER="${LIVEDATA_OUTTEMP_HEADER:="Outdoor temperature"}"
+export LIVEDATA_INHUMI_HEADER="${LIVEDATA_INHUMI_HEADER:="Indoor humidity"}"
+export LIVEDATA_OUTHUMI_HEADER="${LIVEDATA_OUTHUMI_HEADER:="Outdoor humidity"}"
+
+export LIVEDATA_ABSBARO_HEADER="${LIVEDATA_ABSBARO_HEADER:="Absolute pressure"}"
+export LIVEDATA_RELBARO_HEADER="${LIVEDATA_RELBARO_HEADER:="Relative pressure"}"
+
+export LIVEDATA_WINDCHILL_HEADER="${LIVEDATA_WINDCHILL_HEADER:="Windchill"}"
+export LIVEDATA_DEWPOINT_HEADER="${LIVEDATA_DEWPOINT_HEADER:="Dewpoint"}"
+
+export LIVEDATA_WINDDAILYMAX_HEADER="${LIVEDATA_WINDDAILYMAX_HEADER:="Wind max."}"
+export LIVEDATA_WINDDIRECTION_HEADER="${LIVEDATA_WINDDIRECTION_HEADER:="Wind direction"}"
+export LIVEDATA_WINDDIRECTION_COMPASS_HEADER="${LIVEDATA_WINDDIRECTION_COMPASS_HEADER:="Wind compass direction"}"
+export LIVEDATA_WINDGUSTSPEED_HEADER="${LIVEDATA_WINDGUSTSPEED_HEADER:="Wind gust"}"
+export LIVEDATA_WINDSPEED_HEADER="${LIVEDATA_WINDSPEED_HEADER:="Wind"}"
+
+export LIVEDATA_LIGHT_HEADER="${LIVEDATA_LIGHT_HEADER:="Light"}"
+export LIVEDATA_UV_HEADER="${LIVEDATA_UV_HEADER:="Solar UV radiation"}"
+export LIVEDATA_UVI_HEADER="${LIVEDATA_UVI_HEADER:="Solar UV index"}"
+
+export LIVEDATA_RAINRATE_HEADER="${LIVEDATA_RAINRATE_HEADER:="Rain rate"}"
+export LIVEDATA_RAINEVENT_HEADER="${LIVEDATA_RAINEVENT_HEADER:="Rain event"}"
+export LIVEDATA_RAINHOUR_HEADER="${LIVEDATA_RAINHOUR_HEADER:="Rain hour"}"
+export LIVEDATA_RAINDAY_HEADER="${LIVEDATA_RAINDAY_HEADER:="Rain day"}"
+export LIVEDATA_RAINWEEK_HEADER="${LIVEDATA_RAINWEEK_HEADER:="Rain week"}"
+export LIVEDATA_RAINMONTH_HEADER="${LIVEDATA_RAINMONTH_HEADER:="Rain month"}"
+export LIVEDATA_RAINYEAR_HEADER="${LIVEDATA_RAINYEAR_HEADER:="Rain year"}"
+export LIVEDATA_RAINTOTAL_HEADER="${LIVEDATA_RAINTOTAL_HEADER:="Rain total"}"
+
+export LIVEDATA_LEAK_YES="${LIVEDATA_LEAK_YES:="YES"}"
+export  LIVEDATA_LEAK_NO="${LIVEDATA_LEAK_NO:="NO "}"
+
+export LIVEDATA_SOILMOISTURE_HEADER="${LIVEDATA_SOILMOISTURE_HEADER:="ＳＯＩＬＭＯＩＳＴＵＲＥ"}"
+        export LIVEDATA_SOILTEMP_HEADER="${LIVEDATA_SOILTEMP_HEADER:="ＳＯＩＬＴＥＭＰＥＲＡＴＵＲＥ"}"
+                export LIVEDATA_PM25_HEADER="${LIVEDATA_PM25_HEADER:="ＰＭ２.５ ＡＩＲ ＱＵＡＬＩＴＹ"}"
+  export LIVEDATA_LEAFWETNESS_HEADER="${LIVEDATA_LEAFWETNESS_HEADER:="ＬＥＡＦＷＥＴＮＥＳＳ"}"
+          export LIVEDATA_TEMPUSR_HEADER="${LIVEDATA_TEMPUSR_HEADER:="ＴＥＭＰＵＳＲ"}"
+          export LIVEDATA_WH45CO2_HEADER="${LIVEDATA_WH45CO2_HEADER:="ＣＯ２"}"
+      export LIVEDATA_LIGHTNING_HEADER="${LIVEDATA_LIGHTNING_HEADER:="ＬＩＧＨＴＮＩＮＧ"}"
+                export LIVEDATA_LEAK_HEADER="${LIVEDATA_LEAK_HEADER:="ＬＥＡＫ"}"
+                export LIVEDATA_RAIN_HEADER="${LIVEDATA_RAIN_HEADER:="ＲＡＩＮ"}"
+              export LIVEDATA_SOLAR_HEADER="${LIVEDATA_SOLAR_HEADER:="ＳＯＬＡＲ"}"
+                export LIVEDATA_WIND_HEADER="${LIVEDATA_WIND_HEADER:="ＷＩＮＤ"}"
+        export LIVEDATA_PRESSURE_HEADER="${LIVEDATA_PRESSURE_HEADER:="ＰＲＥＳＳＵＲＥ"}"
+                export LIVEDATA_TEMP_HEADER="${LIVEDATA_TEMP_HEADER:="ＴＥＭＰＥＲＡＴＵＲＥ"}"
+                    export LIVEDATA_HEADER="${LIVEDATA_HEADER:="ＴＥＭＰＥＲＡＴＵＲＥ"}"
+                    export LIVEDATA_SYSTEM_HEADER="${LIVEDATA_SYSTEM_HEADER:="ＳＹＳＴＥＭ"}"
+                    export LIVEDATA_SENSOR_HEADER="${LIVEDATA_SENSOR_HEADER:="ＳＥＮＳＯＲ"}"
+
+export LIVEDATA_LIGHTNING_DISTANCE_HEADER="${LIVEDATA_LIGHTNING_DISTANCE_HEADER:="Lightning distance (last)"}"
+export LIVEDATA_LIGHTNING_TIME_UTC_HEADER="${LIVEDATA_LIGHTNING_TIME_UTC_HEADER:="Lightning time utc (last)"}"
+export LIVEDATA_LIGHTNING_POWER_HEADER="${LIVEDATA_LIGHTNING_POWER_HEADER:="Lightning count today"}"
+
+export LIVEDATA_WH45CO2_TEMPF_HEADER="${LIVEDATA_WH45CO2_TEMPF_HEADER:="Temperature"}"
+export LIVEDATA_WH45CO2_HUMI_HEADER="${LIVEDATA_WH45CO2_HUMI_HEADER:="Humidity"}"
+export LIVEDATA_WH45CO2_PM10_HEADER="${LIVEDATA_WH45CO2_PM10_HEADER:="PM10"}"
+export LIVEDATA_WH45CO2_PM10_24HAVG_HEADER="${LIVEDATA_WH45CO2_PM10_24HAVG_HEADER:="PM10 24h avg."}"
+export LIVEDATA_WH45CO2_PM25_HEADER="${LIVEDATA_WH45CO2_PM25_HEADER:="PM25"}"
+export LIVEDATA_WH45CO2_PM25_24HAVG_HEADER="${LIVEDATA_WH45CO2_PM25_24HAVG_HEADER:="PM25 24h avg."}"
+export LIVEDATA_WH45CO2_CO2_HEADER="${LIVEDATA_WH45CO2_CO2_HEADER:="CO2"}"
+export LIVEDATA_WH45CO2_CO2_24HAVG_HEADER="${LIVEDATA_WH45CO2_CO2_24HAVG_HEADER:="CO2 24h avg."}"
+export LIVEDATA_WH45CO2_BATTERY_HEADER="${LIVEDATA_WH45CO2_BATTERY_HEADER:="CO2 battery"}"
+
+export LIVEDATA_WH65_BATTERY_HEADER="${LIVEDATA_WH65_BATTERY_HEADER:="WH65 Weather station"}"
+export LIVEDATA_WH68_BATTERY_HEADER="${LIVEDATA_WH68_BATTERY_HEADER:="WH68 Weather station"}"
+export LIVEDATA_WH80_BATTERY_HEADER="${LIVEDATA_WH80_BATTERY_HEADER:="WH80 Weather station"}"
+
+export LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER="${LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER:="Temperature out battery"}"
+export LIVEDATA_WH40_RAINFALL_BATTERY_HEADER="${LIVEDATA_WH40_RAINFALL_BATTERY_HEADER:="Rainfall battery"}"
+export LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="${LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER="Lightning battery"}"
+
+export    LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER="${LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER:="System sensors connected"}"
+export    LIVEDATA_SYSTEM_SENSOR_DISCONNECTED_HEADER="${LIVEDATA_SYSTEM_SENSOR_DISCONNECTED_HEADER:="System sensors disconnected"}"
+export    LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER="${LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER:="System sensors searching"}"
+export    LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER="${LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER:="System sensors disabled"}"
+
+export LIVEDATA_SYSTEM_PROTOCOL_HEADER="${LIVEDATA_SYSTEM_PROTOCOL_HEADER:="System protocol"}"
+export LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER:="System timezone AUTO"}"
+export LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER:="System timezone DST"}"
+export LIVEDATA_SYSTEM_TIMEZONE_HEADER="${LIVEDATA_SYSTEM_TIMEZONE_HEADER:="System timezone (manual)"}"
+
+export LIVEDATA_STATE_ON="${LIVEDATA_STATE_ON:="on"}"
+export LIVEDATA_STATE_OFF="${LIVEDATA_STATE_OFF:="off"}"
+
+N=1
+while [ "$N" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do 
+    eval export LIVEDATA_TEMP_HEADER$N=\"\$\{LIVEDATA_TEMP_HEADER$N:=\"Temperature $N\"\}\"
+    eval export LIVEDATA_TEMP_BATTERY_HEADER$N=\"\$\{LIVEDATA_TEMP_BATTERY_HEADER$N:=\"Temperature $N battery\"\}\"
+    eval export LIVEDATA_HUMIDITY_HEADER$N=\"\$\{LIVEDATA_HUMIDITY_HEADER$N:=\"Humidity $N\"\}\"
+    N=$(( N + 1 ))
+done
+
+N=1
+while [ "$N" -le "$SENSORTYPE_WH55LEAK_MAXCH" ]; do 
+    eval export LIVEDATA_LEAK_HEADER$N=\"\$\{LIVEDATA_LEAK_HEADER$N:="Leak $N"\}\"
+    eval export LIVEDATA_LEAK_BATTERY_HEADER$N=\"\$\{LIVEDATA_LEAK_BATTERY_HEADER$N:="Leak $N battery"\}\"
+    N=$(( N + 1 ))
+done
+
+
+N=1
+while [ "$N" -le "$SENSORTYPE_WH43PM25_MAXCH" ]; do 
+    eval export LIVEDATA_PM25_HEADER$N=\"\$\{LIVEDATA_PM25_HEADER$N:="PM 2.5 $N"\}\"
+    eval export LIVEDATA_PM25_24HAVG_HEADER$N=\"\$\{LIVEDATA_PM25_24HAVG_HEADER$N:="PM 2.5 24h avg. $N"\}\"
+    eval export LIVEDATA_PM25_BATTERY_HEADER$N=\"\$\{LIVEDATA_PM25_BATTERY_HEADER$N:="PM 2.5 $N battery"\}\"
+    N=$(( N + 1 ))
+done
+
+N=1
+while [ "$N" -le "$SENSORTYPE_WH51SOILMOISTURE_MAXCH" ]; do 
+    eval export LIVEDATA_SOILMOISTURE_HEADER$N=\"\$\{LIVEDATA_SOILMOISTURE_HEADER$N:="Soilmoisture $N"\}\"
+    eval export LIVEDATA_SOILMOISTURE_BATTERY_HEADER$N=\"\$\{LIVEDATA_SOILMOISTURE_BATTERY_HEADER$N:="Soilmoisture $N battery"\}\"
+    N=$(( N + 1 ))
+done
+
+N=1
+while [ "$N" -le "$SENSORTYPE_WH34SOILTEMP_MAXCH" ]; do 
+    eval export LIVEDATA_SOILTEMP_HEADER$N=\"\$\{LIVEDATA_SOILTEMP_HEADER$N:="Soiltemperature $N"\}\"
+    eval export LIVEDATA_SOILTEMP_BATTERY_HEADER$N=\"\$\{LIVEDATA_SOILTEMP_BATTERY_HEADER$N:="Soiltemperatur $N battery"\}\"
+    N=$(( N + 1 ))
+done
+
+N=1
+while [ "$N" -le "$SENSORTYPE_WH35LEAFWETNESS_MAXCH" ]; do 
+    eval export LIVEDATA_LEAFWETNESS_HEADER$N=\"\$\{LIVEDATA_LEAFWETNESS_HEADER$N:="Leafwetness $N"\}\"
+    eval export LIVEDATA_LEAFWETNESS_BATTERY_HEADER$N=\"\$\{LIVEDATA_LEAFWETNESS_BATTERY_HEADER$N:="Leafwetness $N battery"\}\"
+    N=$(( N + 1 ))
+done
+
+N=1
+while [ "$N" -le "$SENSORTYPE_TF_USR_MAXCH" ]; do 
+    eval export LIVEDATA_TF_USR_HEADER$N=\"\$\{LIVEDATA_TF_USR_HEADER$N:="Temperature USR $N"\}\"
+    eval export LIVEDATA_TF_USR_BATTERY_HEADER$N=\"\$\{LIVEDATA_TF_USR_BATTERY_HEADER$N:="Temperature USR $N battery"\}\"
+    N=$(( N + 1 ))
+done
+
+export LIVEDATA_SYSTEM_VERSION_HEADER="${LIVEDATA_SYSTEM_VERSION_HEADER:="System version"}"
+export LIVEDATA_SYSTEM_UTC_HEADER="${LIVEDATA_SYSTEM_UTC_HEADER:="System utc"}"
+export LIVEDATA_SYSTEM_FREQUENCY_HEADER="${LIVEDATA_SYSTEM_FREQUENCY_HEADER:="System frequency"}"
+export LIVEDATA_SYSTEM_MODEL_HEADER="${LIVEDATA_SYSTEM_MODEL_HEADER:="System model"}"
+export LIVEDATA_SYSTEM_SENSORTYPE_HEADER="${LIVEDATA_SYSTEM_SENSORTYPE_HEADER:="System type"}"
+
+VALUE_PM25_AQI_DELIMITER='-'
+#shellcheck disable=SC2034
+VALUE_LEAK_DELIMITER='-'
+VALUE_UVI_DELIMITER='-'
+VALUE_COMPASS_DELIMITER='-'
+VALUE_BEUFORT_DELIMITER='-'
+VALUE_RAININTENSITY_DELIMITER='-'
+
+#is sent in http get request when data from sensors are not available, for example after reboot
+WUNDERGROUND_UNDEFINED_VALUE="-9999"
+
+#list all capabilities to terminal: infocmp/infocmp -L https://en.wikipedia.org/wiki/Terminal_capabilities
+# it capability = tab size = 8 for xterm-256
+# watch -c command only supports 3-bit colors in wsl2/ubuntu, other ansi escapes codes are filtered
