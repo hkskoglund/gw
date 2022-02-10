@@ -81,6 +81,15 @@ printLivedataLineFinal()
 
 }
 
+printLivedataHeader()
+{
+    [ -n "$LIVEVIEW_HIDE_HEADERS" ] && return
+
+    #unset STYLE_LIVEVIEW_NORMAL_HEADER
+    [ -z "$1" ] && set -- "\n$STYLE_LIVEVIEW_NORMAL_HEADER%s$STYLE_RESET\n\n" "$2"  #use default when "" used as $1
+
+     appendBuffer "$STYLE_LIVEVIEW_NORMAL_HEADER%64s$STYLE_RESET\r$1" "' ' '$2'"
+}
 
 printLivedata() 
 {
@@ -543,5 +552,128 @@ setLivedataValueStyleLt()
         else
             STYLE_LIVE_VALUE=$3
         fi
+    fi
+}
+
+printLivedataSystem()
+{
+    setLivedataProtocolStyle "$LIVEDATA_SYSTEM_PROTOCOL"
+
+    appendBuffer "%s %s $VALUE_STYLE_PROTOCOL%s$STYLE_RESET" "'$LIVEDATA_SYSTEM_VERSION' '$LIVEDATA_SYSTEM_FREQUENCY' '$LIVEDATA_SYSTEM_PROTOCOL'"
+    
+    if [ -n "$LIVEDATA_SENSOR_COUNT_CONNECTED" ]; then
+       appendBuffer " %s/$STYLE_SENSOR_SEARCH%s$STYLE_RESET/$STYLE_SENSOR_DISABLE%s$STYLE_RESET" "'$LIVEDATA_SENSOR_COUNT_CONNECTED' '$LIVEDATA_SENSOR_COUNT_SEARCHING' '$LIVEDATA_SENSOR_COUNT_DISABLED' "
+    fi
+   
+    printWHBatterySignal "WH65" "$LIVEDATA_WH65_BATTERY_STATE" "$LIVEDATA_WH65_SIGNAL_STATE"
+    #set in getSensorBatteryState
+    #shellcheck disable=SC2153
+    printWHBatterySignal "WH68" "$LIVEDATA_WH68_BATTERY_STATE" "$LIVEDATA_WH68_SIGNAL_STATE" #maybe multiple weather stations allowed?
+    #shellcheck disable=SC2153
+    printWHBatterySignal "WH80" "$LIVEDATA_WH80_BATTERY_STATE" "$LIVEDATA_WH80_SIGNAL_STATE"
+
+    appendBuffer " %s" "'$LIVEDATA_SYSTEM_UTC'"
+
+    $LIVEDATA_SYSTEM_TIMEZONE
+
+
+    if [ "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" = "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_OFF" ]; then
+      appendBuffer " %s" "'$LIVEDATA_SYSTEM_TIMEZONE_OFFSET_HOURS'"
+      
+      if [ "$LIVEDATA_SYSTEM_TIMEZONE_DST_BIT" -eq 1 ]; then
+        appendFormat " DST"
+      fi
+    fi
+
+    #appendFormat "\n\n"
+}
+
+
+printLivedataBatteryLowNormal()
+#$1 - battery 0/1, $2 - battery state, $3 header, $4 terse header
+{
+    if [ -n "$1" ]; then
+
+     setSGIBatteryLowNormal "$1"
+     printLivedataLine "$3" "$2" "%-7s" "" "%5s" "$4"
+    fi
+}
+
+printLivedataBatteryVoltage()
+#$1 - batteryvoltage raw scaled 10, $2 - battery state, $3 header, $4 terse header
+{
+    if [ -n "$1" ]; then
+        setSGIBatteryVoltage "$1"
+        printLivedataLine "$3" "$2" "%-7s" "" "%5s" "$4" 
+    fi
+}
+
+setSGIBatteryLowNormal()
+{
+    if [ "$1" -eq "$BATTERY_LOW" ]; then
+        STYLE_LIVE_VALUE=$STYLE_BATTERY_LOW
+    fi
+}
+
+setSGIBatteryVoltage()
+{
+    if [ "$1" -le "$BATTERY_VOLTAGE_LOW" ]; then
+        STYLE_LIVE_VALUE=$STYLE_BATTERY_LOW
+    fi
+}
+
+setRainValueFormat()
+{
+     if [ "$UNIT_RAIN_MODE" -eq "$UNIT_RAIN_MM" ]; then
+      VALUE_RAIN_FMT="%6.1f"
+    elif [ "$UNIT_RAIN_MODE" -eq "$UNIT_RAIN_IN" ]; then
+      VALUE_RAIN_FMT="%6.2f"
+    fi
+}
+
+printWHBatterySignal()
+#$1 - WH?? $2 battery $3 signal
+{
+    if [ -n "$2" ]; then
+        if [ "$1" = "WH65" ] && [ "$C_SYSTEM_SENSORTYPE_STATE" = "WH24" ]; then
+            appendFormat " WH24 %s"
+        else
+            appendFormat " $1 %s"
+        fi
+
+        appendArgs "'$2' "
+    fi
+        
+    if [ -n "$3" ]; then
+        appendBuffer "%s" "'$3'"
+    fi
+}
+
+
+setLivedataProtocolStyle()
+{
+    case "$1" in
+
+      "$LIVEDATA_PROTOCOL_ECOWITT_HTTP"|"$LIVEDATA_PROTOCOL_ECOWITT_BINARY")
+            VALUE_STYLE_PROTOCOL=$STYLE_PROTOCOL_ECOWITT_HTTP
+            ;;
+      "$LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP")
+            VALUE_STYLE_PROTOCOL=$STYLE_PROTOCOL_WUNDERGROUND_HTTP
+            ;;
+    esac
+}
+
+setRainIntensityStatus()
+{
+    if [ "$1" -eq 0 ]; then
+      unset VALUE_RAININTENSITY_STATUS
+    elif [ "$1" -gt 0 ] &&  [ "$1" -lt "$RAININTENSITY_LIGHT_LIMIT" ]; then
+      VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE
+    elif [ "$1" -ge "$RAININTENSITY_LIGHT_LIMIT" ] && [ "$1" -lt "$RAININTENSITY_MODERATE_LIMIT" ]; then
+      VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE$UNICODE_RAINRATE
+    elif [ "$1" -ge  "$RAININTENSITY_MODERATE_LIMIT" ] && [ "$1" -lt "$RAININTENSITY_HEAVY_LIMIT" ]; then
+      VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE$UNICODE_RAINRATE$UNICODE_RAINRATE
+    elif [ "$1" -gt "$RAININTENSITY_HEAVY_LIMIT" ]; then
+      VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE$UNICODE_RAINRATE$UNICODE_RAINRATE$UNICODE_RAINRATE
     fi
 }

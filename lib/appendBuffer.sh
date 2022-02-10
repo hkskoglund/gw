@@ -39,3 +39,8 @@ printAppendBuffer()
 
     resetAppendBuffer
 }
+
+resetAppendBuffer()
+{
+   unset APPEND_FORMAT APPEND_ARGS
+}

@@ -3,32 +3,6 @@
 # Supports binary and http Ecowitt/Wunderground protocol
 # Only for firmware v1.6.5 or later - for intepretation of battery levels/sensor id new command
 
-#Documentation:
-
-#Protocol
-# https://osswww.ecowitt.net/uploads/20210716/WN1900%20GW1000,1100%20WH2680,2650%20telenet%20v1.6.0%20.pdf (https://www.ecowitt.com/shop/forum/forumDetails/255)
-#Shell
-# mirbsd ksh http://www.mirbsd.org/htman/i386/man1/mksh.htm
-#Netcat
-#https://en.wikipedia.org/wiki/Netcat
-#choosing which nc on fedora (openbsd/nmap)
-#sudo alternatives --config nc
-#ubuntu
-# sudo update-alternatives --config nc
-# sudo update-alternatives --query nc
-#more sensor info for Fine Offset clones:
-#https://www.wxforum.net/index.php?topic=40730.0
-
-#testing in android shell
-#adb push gw /sdcard && adb shell "sh  /sdcard/gw -h 192.168.3.80 -c livedata"
-
-#set -x # enable for tracing in strace -f -c dash .c './gw -h 192.168.3.80 -c livedata'
-#for s in bash dash ksh zsh; do strace -f -c $s -c './gw -h 192.168.3.80 -c livedata' 2>strace-log-$s; done
-#not much to gain in time by avoiding subshell, but number of system calls is less. Try not to overoptimize.
-
-#watch not compatible -> wrong formatting of \r\t\t\t sequences
-#clear; while true; do  ../gw -A ../lang/gw-nbno.sh  -g 192.168.3.16 -Hb -c livedata; sleep 60; printf "\e[H"; done
-
 GWDIR=${GWDIR:="."}
 
 . $GWDIR/lib/constants.sh
@@ -42,14 +16,13 @@ GWDIR=${GWDIR:="."}
 . $GWDIR/lib/packet.sh
 . $GWDIR/lib/converters.sh
 . $GWDIR/lib/timezone.sh
+. $GWDIR/lib/mode.sh
 . $GWDIR/lib/fullwidth-number.sh
 . $GWDIR/lib/pm25.sh
 . $GWDIR/lib/rainintensity.sh
 . $GWDIR/lib/uvi.sh
 . $GWDIR/lib/beufort.sh
-
 . $GWDIR/style/limits.sh
-
 . $GWDIR/view/default.sh
 
 initShell() {
@@ -221,6 +194,19 @@ initnc()
     return $EXITCODE_INITNC
 }
 
+initTrap()
+{
+    :
+   #some info here: https://unix.stackexchange.com/questions/57940/trap-int-term-exit-really-necessary
+   # trap cleanup INT TERM #ctrl-c pressed by user, or TERM sent default by kill when script in background doing livedata logging 
+}
+
+cleanup()
+{
+    :
+#   exit
+}
+
 initConfigDir() {
 
   #  DIR_CONFIG=$HOME"/.config/gw"                              # .config subdirectory used for configuration on gnome/linux
@@ -232,243 +218,6 @@ initConfigDir() {
 
     #SHELLPID=$$
   :
-}
-
-
-setBatteryLowNormal()
-{
-     getBatteryLowOrNormal "$2" 
-    eval "LIVEDATA_${1}_BATTERY=$2"
-    eval "LIVEDATA_${1}_BATTERY_STATE='$SBATTERY_STATE'"
-}
-
-setBatteryVoltageLevel()
-{
-    getBatteryVoltageLevelState "$2"
-    eval "LIVEDATA_${1}_BATTERY_RAW=$2"
-    eval "LIVEDATA_${1}_BATTERY=$VALUE_BATTERY_VOLTAGE"
-    eval "LIVEDATA_${1}_BATTERY_STATE='$SBATTERY_STATE'"
-}
-
-setBatteryLevel()
-{
-    getBatteryLevelState "$2"
-    eval "LIVEDATA_${1}_BATTERY=$2"
-    eval "LIVEDATA_${1}_BATTERY_STATE='$SBATTERY_STATE'"
-}
-
-getSensorBatteryState()
-{
-   
-    #specification FOS_ENG-022-A, page 28
-    unset SBATTERY_STATE
-
-     case "$1" in
-        0) setBatteryLowNormal "WH65" "$2" # WH65
-            ;;
-        1) setBatteryVoltageLevel "WH68" "$2"
-            ;;
-        2) setBatteryVoltageLevel "WH80" "$2"
-            ;;
-        3) setBatteryLowNormal "WH40_RAINFALL" "$2"
-            ;;
-        5) setBatteryLowNormal "WH32_TEMPERATURE" "$2"
-            ;;
-        6|7|8|9|10|11|12|13)
-           channel=$(($1 - 5))
-           setBatteryLowNormal "TEMP$channel" "$2"
-           ;;
-        14|15|16|17|18|19|20|21)
-           channel=$(( $1 - 13))
-           setBatteryVoltageLevel "SOILMOISTURE$channel" "$2"
-          ;;
-        22|23|24|25)
-          channel=$(( $1 - 21 ))
-          setBatteryLevel "PM25$channel" "$2"
-          ;;
-        26)
-          setBatteryLevel "WH57_LIGHTNING" "$2"
-          ;;
-        27|28|29|30)
-          channel=$(( $1 - 26 ))
-          setBatteryLevel "LEAK$channel" "$2"
-          ;;
-        31|32|33|34|35|36|37|38)
-           channel=$(( $1 - 30))
-           setBatteryVoltageLevel "SOILTEMP$channel" "$2"
-           ;;
-        39)
-           setBatteryLevel "WH45CO2" "$2"
-           #battery info also available from sensor read livedata
-          ;;
-        40|41|42|43|44|45|46|47)
-           channel=$(( $1 - 39))
-           setBatteryVoltageLevel "LEAFWETNESS$channel" "$2"
-           ;;
-    esac
-
-    unset channel
-}
-
-getSensorNameShort()
-{
-    case "$1" in
-        0) if [ "$C_SYSTEM_SENSORTYPE" -eq $SYSTEM_SENSOR_TYPE_WH24 ]; then
-             SENSORNAME_WH='WH24'
-             SENSORNAME_SHORT='Weather Station'
-            else
-              SENSORNAME_WH='WH65'
-              SENSORNAME_SHORT="Weather Station"
-            fi
-            ;;
-        1) SENSORNAME_WH='WH68'
-           SENSORNAME_SHORT="Weather Station"
-            ;;
-        2) SENSORNAME_WH="WH80"
-           SENSORNAME_SHORT='Weather Station'
-            ;;
-        3) SENSORNAME_WH="WH40"
-           SENSORNAME_SHORT="Rainfall"
-            ;;
-        5) SENSORNAME_WH='WH32'
-           SENSORNAME_SHORT='Temperatue out'
-            ;;
-        6|7|8|9|10|11|12|13)
-           SENSORNAME_WH='WH31'
-           SENSORNAME_SHORT="Temperature$(($1 - 5))"
-           ;;
-        14|15|16|17|18|19|20|21)
-          SENSORNAME_WH='WH51'
-          SENSORNAME_SHORT="Soilmoisture$(($1 - 13))"
-          ;;
-        22|23|24|25)
-          SENSORNAME_WH='WH43'
-          SENSORNAME_SHORT="PM2.5 AQ $(($1 - 21))"
-          ;;
-        26)
-          SENSORNAME_SHORT="Lightning"
-          SENSORNAME_WH='WH57'
-          ;;
-        27|28|29|30)
-          SENSORNAME_WH='WH55'
-          SENSORNAME_SHORT="Leak$(($1 - 26))"
-          ;;
-        31|32|33|34|35|36|37|38)
-
-          SENSORNAME_WH='WH34'
-          SENSORNAME_SHORT="Soiltemperature$(($1 - 30))"
-          ;;
-        39)
-          SENSORNAME_WH='WH45'
-          SENSORNAME_SHORT="CO2 PM2.5 PM10 AQ"
-          ;;
-        40|41|42|43|44|45|46|47)
-            SENSORNAME_WH='WH35'
-            SENSORNAME_SHORT="Leafwetness$(($1 - 39))"
-           ;;
-         *)
-         echo >&2 "Warning: Unknown sensortype $1"
-          SENSORNAME_WH='WH??' 
-          SENSORNAME_SHORT='?'
-    esac
-}
-
-
-
-appendBatteryState()
-{
-   if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-        SBATTERY_STATE=$SBATTERY_STATE$UNICODE_BATTERY
-   else
-        SBATTERY_STATE=$SBATTERY_STATE"+"
-   fi 
-}
-
-appendLowBatteryState()
-{
-    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-    #https://emojipedia.org/low-battery/ "Coming to major platforms in late 2021 and throughout 2022".
-         SBATTERY_STATE=$SBATTERY_STATE$UNICODE_BATTERY_LOW 
-    else
-        SBATTERY_STATE=$SBATTERY_STATE"LOW"
-    fi
-}
-
-getBatteryVoltageLevelState()
-#$1 - volatage scaled *10
-{
-     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-  #      typeset -i  i
-    :
-    else
-   #     local       i
-    :
-    fi
-
-   unset SBATTERY_STATE
-
-   if [ "$1" -le 12 ]; then
-      appendLowBatteryState
-   else
-    # i=13
-    # while [ "$i" -le "$1" ]; do
-       appendBatteryState # not really linear, but approximate 
-    #   i=$(( i + 1 ))
-    # done
-   fi
-   convertScale10ToFloat "$1"
-   VALUE_BATTERY_VOLTAGE="$VALUE_SCALE10_FLOAT"
-   SBATTERY_STATE=$SBATTERY_STATE" ${VALUE_BATTERY_VOLTAGE}V"
-
-   if [ -n "$KSH_VERSION" ]; then
-        unset  i
-    fi
-}
-
-getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
-    
-    unset SBATTERY_STATE
-   
-    #set -- 0     #debug  set $1 to 0
-    if [ "$1" -eq 6 ]; then
-      if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-       #https://emojipedia.org/electric-plug/
-        SBATTERY_STATE=$UNICODE_PLUG
-      else
-        SBATTERY_STATE="dc" # for example PM 2.5 indoor
-      fi
-    else
-       # l=1
-       # while [ "$l" -le 5 ] ; do
-       #     if [ "$l" -le "$1" ]; then
-       #         appendBatteryState
-       #     else
-       #         appendLowBatteryState
-       #     fi
-       #     l=$((l + 1))
-       # done
-       if [ "$1" -le 1 ]; then
-          appendLowBatteryState
-       else
-          appendBatteryState
-       fi
-
-       SBATTERY_STATE=$SBATTERY_STATE" $1"
-    fi
-
-    unset  l
-}
-
-getBatteryLowOrNormal() {
-    
-    unset SBATTERY_STATE
-
-    if [ "$1" -eq $BATTERY_NORMAL ]; then
-       appendBatteryState
-    elif [ "$1" -eq $BATTERY_LOW ]; then
-        appendLowBatteryState
-    fi
 }
 
 copySystemToLivedata()
@@ -487,298 +236,6 @@ copySystemToLivedata()
 copyVersionToLivedata()
 {
     LIVEDATA_SYSTEM_VERSION="$C_VERSION"
-}
-
-setWindMode()
-{
-    UNIT_WIND_MODE=$1
-
-    if [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPH ]; then 
-          UNIT_WIND="mph"
-       
-    elif [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPS ]; then
-         UNIT_WIND=$UNIT_UNICODE_WIND_MPS
-    elif [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_KMH ]; then
-         UNIT_WIND="km/$UNIT_HOUR"
-    fi
-    
-    [ "$DEBUG" -eq 1 ] && >&2 echo Unit wind : "$UNIT_WIND"
-
-}
-
-setUVMode()
-{
-    UNIT_UV_MODE=$1
-
-    if [ "$UNIT_UV_MODE" -eq $UNIT_UV_MICROWM2 ]; then
-        UNIT_UV="W/m2?" # documentation for livedata protocol: ITEM_UV uW/m2?
-    elif [ "$UNIT_UV_MODE" -eq $UNIT_UV_WATTM2 ]; then
-        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-            UNIT_UV="W/㎡"   
-        else
-            UNIT_UV="W/m2"
-        fi
-    fi
-
-    [ "$DEBUG" -eq 1 ] && >&2 echo Unit UV : $UNIT_UV
-
-}
-
-setTemperatureMode()
-#$1 - mode
-{
-    UNIT_TEMPERATURE_MODE=$1
-
-    if [ "$UNIT_TEMPERATURE_MODE" -eq $UNIT_TEMPERATURE_CELCIUS ]; then 
-        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-            UNIT_TEMP=$UNIT_UNICODE_CELCIUS
-        else
-            UNIT_TEMP="C"
-        fi
-       
-    elif [ "$UNIT_TEMPERATURE_MODE" -eq $UNIT_TEMPERATURE_FARENHEIT ]; then
-        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-            UNIT_TEMP=$UNIT_UNICODE_FARENHEIT
-        else
-            UNIT_TEMP="F"
-        fi
-    fi
-    
-    [ "$DEBUG" -eq 1 ] && >&2 echo Unit temperature : $UNIT_TEMP
-
-}
-
-setPressureMode()
-{
-    UNIT_PRESSURE_MODE=$1
-
-    if  [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
-        UNIT_PRESSURE=$UNIT_UNICODE_PRESSURE_HPA
-    elif [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_INHG ]; then
-        UNIT_PRESSURE="inHg"
-    fi
-
-    [ "$DEBUG" -eq 1 ] && >&2 echo Unit pressure : $UNIT_PRESSURE
-
-}
-
-setRainMode()
-{
-    UNIT_RAIN_MODE=$1
-
-    if  [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_MM ]; then
-        UNIT_RAIN=$UNIT_UNICODE_RAIN_MM
-    elif [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_IN ]; then
-        UNIT_RAIN="in"
-    fi
-
-    UNIT_HOUR=${UNIT_HOUR:="h"}
-    UNIT_RAINRATE=$UNIT_RAIN"/$UNIT_HOUR"
-
-    [ "$DEBUG" -eq 1 ] && >&2 echo Unit rain rainrate : $UNIT_RAIN "$UNIT_RAINRATE"
-    
-}
-
-
-
-printLivedataBatteryLowNormal()
-#$1 - battery 0/1, $2 - battery state, $3 header, $4 terse header
-{
-    if [ -n "$1" ]; then
-
-     setSGIBatteryLowNormal "$1"
-     printLivedataLine "$3" "$2" "%-7s" "" "%5s" "$4"
-    fi
-}
-
-printLivedataBatteryVoltage()
-#$1 - batteryvoltage raw scaled 10, $2 - battery state, $3 header, $4 terse header
-{
-    if [ -n "$1" ]; then
-        setSGIBatteryVoltage "$1"
-        printLivedataLine "$3" "$2" "%-7s" "" "%5s" "$4" 
-    fi
-}
-
-setSGIBatteryLowNormal()
-{
-    if [ "$1" -eq "$BATTERY_LOW" ]; then
-        STYLE_LIVE_VALUE=$STYLE_BATTERY_LOW
-    fi
-}
-
-setSGIBatteryVoltage()
-{
-    if [ "$1" -le "$BATTERY_VOLTAGE_LOW" ]; then
-        STYLE_LIVE_VALUE=$STYLE_BATTERY_LOW
-    fi
-}
-
-setRainValueFormat()
-{
-     if [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_MM ]; then
-      VALUE_RAIN_FMT="%6.1f"
-    elif [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_IN ]; then
-      VALUE_RAIN_FMT="%6.2f"
-    fi
-}
-
-printWHBatterySignal()
-#$1 - WH?? $2 battery $3 signal
-{
-    if [ -n "$2" ]; then
-        if [ "$1" = "WH65" ] && [ "$C_SYSTEM_SENSORTYPE_STATE" = "WH24" ]; then
-            appendFormat " WH24 %s"
-        else
-            appendFormat " $1 %s"
-        fi
-
-        appendArgs "'$2' "
-    fi
-        
-    if [ -n "$3" ]; then
-        appendBuffer "%s" "'$3'"
-    fi
-}
-
-setLivedataProtocolStyle()
-{
-    case "$1" in
-
-      "$LIVEDATA_PROTOCOL_ECOWITT_HTTP"|"$LIVEDATA_PROTOCOL_ECOWITT_BINARY")
-            VALUE_STYLE_PROTOCOL=$STYLE_PROTOCOL_ECOWITT_HTTP
-            ;;
-      "$LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP")
-            VALUE_STYLE_PROTOCOL=$STYLE_PROTOCOL_WUNDERGROUND_HTTP
-            ;;
-    esac
-}
-
-printLivedataSystem()
-{
-    setLivedataProtocolStyle "$LIVEDATA_SYSTEM_PROTOCOL"
-
-    appendBuffer "%s %s $VALUE_STYLE_PROTOCOL%s$STYLE_RESET" "'$LIVEDATA_SYSTEM_VERSION' '$LIVEDATA_SYSTEM_FREQUENCY' '$LIVEDATA_SYSTEM_PROTOCOL'"
-    
-    if [ -n "$LIVEDATA_SENSOR_COUNT_CONNECTED" ]; then
-       appendBuffer " %s/$STYLE_SENSOR_SEARCH%s$STYLE_RESET/$STYLE_SENSOR_DISABLE%s$STYLE_RESET" "'$LIVEDATA_SENSOR_COUNT_CONNECTED' '$LIVEDATA_SENSOR_COUNT_SEARCHING' '$LIVEDATA_SENSOR_COUNT_DISABLED' "
-    fi
-   
-    printWHBatterySignal "WH65" "$LIVEDATA_WH65_BATTERY_STATE" "$LIVEDATA_WH65_SIGNAL_STATE"
-    #set in getSensorBatteryState
-    #shellcheck disable=SC2153
-    printWHBatterySignal "WH68" "$LIVEDATA_WH68_BATTERY_STATE" "$LIVEDATA_WH68_SIGNAL_STATE" #maybe multiple weather stations allowed?
-    #shellcheck disable=SC2153
-    printWHBatterySignal "WH80" "$LIVEDATA_WH80_BATTERY_STATE" "$LIVEDATA_WH80_SIGNAL_STATE"
-
-    appendBuffer " %s" "'$LIVEDATA_SYSTEM_UTC'"
-
-    $LIVEDATA_SYSTEM_TIMEZONE
-
-
-    if [ "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" = "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_OFF" ]; then
-      appendBuffer " %s" "'$LIVEDATA_SYSTEM_TIMEZONE_OFFSET_HOURS'"
-      
-      if [ "$LIVEDATA_SYSTEM_TIMEZONE_DST_BIT" -eq 1 ]; then
-        appendFormat " DST"
-      fi
-    fi
-
-    #appendFormat "\n\n"
-}
-
-setRainIntensityStatus()
-{
-    if [ "$1" -eq 0 ]; then
-      unset VALUE_RAININTENSITY_STATUS
-    elif [ "$1" -gt 0 ] &&  [ "$1" -lt $RAININTENSITY_LIGHT_LIMIT ]; then
-      VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE
-    elif [ "$1" -ge $RAININTENSITY_LIGHT_LIMIT ] && [ "$1" -lt $RAININTENSITY_MODERATE_LIMIT ]; then
-      VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE$UNICODE_RAINRATE
-    elif [ "$1" -ge  $RAININTENSITY_MODERATE_LIMIT ] && [ "$1" -lt $RAININTENSITY_HEAVY_LIMIT ]; then
-      VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE$UNICODE_RAINRATE$UNICODE_RAINRATE
-    elif [ "$1" -gt $RAININTENSITY_HEAVY_LIMIT ]; then
-      VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE$UNICODE_RAINRATE$UNICODE_RAINRATE$UNICODE_RAINRATE
-    fi
-}
-
-printLivedataHeader()
-{
-    [ -n "$LIVEVIEW_HIDE_HEADERS" ] && return
-
-    #unset STYLE_LIVEVIEW_NORMAL_HEADER
-    [ -z "$1" ] && set -- "\n$STYLE_LIVEVIEW_NORMAL_HEADER%s$STYLE_RESET\n\n" "$2"  #use default when "" used as $1
-
-     appendBuffer "$STYLE_LIVEVIEW_NORMAL_HEADER%64s$STYLE_RESET\r$1" "' ' '$2'"
-}
-
-newRuler()
-#creates a ruler for debugging positioning on screen
-{
-    n=1
-    unset VALUE_RULER
-    while [ "$n" -le "$1" ]; do
-        VALUE_RULER=$VALUE_RULER"123456789${ANSIESC_SGI_BOLD_INVERT}0${ANSIESC_SGI_NORMAL}"
-        n=$(( n + 1 ))
-    done
-
-    unset n
-}
-
-getDateUTC()
-{
-    VALUE_DATE_UTC=$(date -u -d @"$1" +'%F %T') #add field
-}
-
-resetAppendBuffer()
-{
-   unset APPEND_FORMAT APPEND_ARGS
-}
-
-getSignalUnicode()
-{
-    eval VALUE_SIGNAL_UNICODE="\$UNICODE_SIGNAL_LEVEL$1"
-}
-
-setSignal()
-#$1 sensorname WH?? $2 value
-{
-    export LIVEDATA_"$1"_SIGNAL="$2"
-    getSignalUnicode "$2"
-    export LIVEDATA_"$1"_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE" 
-}
-
-setLivedataSignal()
-# $1 sensortype $2 signal
-#maps sensor type to livedata
-{
-    
-    if [ "$1" -ge $SENSORTYPE_WH31TEMP ] && [ "$1" -lt $(( SENSORTYPE_WH31TEMP + SENSORTYPE_WH31TEMP_MAXCH )) ]; then
-        setSignal "TEMP$(( $1 - SENSORTYPE_WH31TEMP + 1))" "$2"
-    elif [ "$1" -eq $SYSTEM_SENSOR_TYPE_WH24 ]; then
-        setSignal "WH65" "$2"
-    elif [ "$1" -eq $SENSORTYPE_WH68 ]; then
-        setSignal "WH68" "$2"
-    elif [ "$1" -eq $SENSORTYPE_WH80 ]; then
-        setSignal "WH80" "$2"
-    elif [ "$1" -eq $SENSORTYPE_WH32 ]; then
-        setSignal "WH32" "$2"
-    elif [ "$1" -eq $SENSORTYPE_WH40 ]; then
-       setSignal "WH40_RAINFALL" "$2"
-    elif [ "$1" -eq $SENSORTYPE_WH57LIGHTNING ]; then
-       setSignal "LIGHTNING" "$2"
-    elif [ "$1" -ge $SENSORTYPE_WH51SOILMOISTURE ] && [ "$1" -lt $(( SENSORTYPE_WH51SOILMOISTURE + SENSORTYPE_WH51SOILMOISTURE_MAXCH )) ]; then
-       setSignal "SOILMOISTURE$(( $1 - SENSORTYPE_WH51SOILMOISTURE + 1))" "$2"
-    elif [ "$1" -ge $SENSORTYPE_WH55LEAK ] && [ "$1" -lt $(( SENSORTYPE_WH55LEAK + SENSORTYPE_WH55LEAK_MAXCH )) ]; then
-       setSignal "LEAK$(( $1 - SENSORTYPE_WH55LEAK + 1))" "$2"
-    elif [ "$1" -ge $SENSORTYPE_WH34SOILTEMP ] && [ "$1" -lt $(( SENSORTYPE_WH34SOILTEMP + SENSORTYPE_WH34SOILTEMP_MAXCH )) ]; then
-       setSignal "SOILTEMP$(( $1 - SENSORTYPE_WH34SOILTEMP + 1))" "$2"
-    elif [ "$1" -ge $SENSORTYPE_WH43PM25 ] && [ "$1" -lt $(( SENSORTYPE_WH43PM25 + SENSORTYPE_WH43PM25_MAXCH )) ]; then
-       setSignal "PM25$(( $1 - SENSORTYPE_WH43PM25 + 1))" "$2"
-    elif [ "$1" -ge $SENSORTYPE_WH35LEAFWETNESS ] && [ "$1" -lt $(( SENSORTYPE_WH35LEAFWETNESS + SENSORTYPE_WH35LEAFWETNESS_MAXCH )) ]; then
-       setSignal "LEAFWETNESS$(( $1 - SENSORTYPE_WH35LEAFWETNESS + 1))" "$2"
-    fi
-      
 }
 
 parseSystemOption()
@@ -857,20 +314,21 @@ parseSystemOption()
 
 }
 
-updateCustomized() {
+processCustomizedOptions() {
+    DEBUG_FUNC="processCustomizedOptions"
 
     EXITCODE_CUSTOMIZED=0
 
     #readarray -d ',' -t OPTION_CUSTOMIZED < <(echo -n "$1") # <<< HERE string appends 0x0a -> using process substitution
 
-    [ $DEBUG -eq 1 ] && echo >&2 "updateCustomized $1"
+    [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC $1"
 
     # 1. parse , expressions server=localhost,port=8080,protocol=ecowitt,enabled=yes
 
      IFS=','
      for option in $1; do
         
-        [ $DEBUG -eq 1 ] && echo >&2 "updateCustomized: option $option"
+        [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC: option $option"
 
         # 2. parse = expressions
 
@@ -880,25 +338,25 @@ updateCustomized() {
         key=$1
         value=$2
 
-        [ $DEBUG -eq 1 ] && echo >&2 "updateCustomized KEY $key len ${#key} VALUE $value len ${#value}"
+        [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC KEY $key len ${#key} VALUE $value len ${#value}"
 
         case "$key" in
 
             id)
-                [ $DEBUG -eq 1 ] && echo >&2 Update customized_id from "$C_WS_CUSTOMIZED_ID to $value"
+                [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_id from $C_WS_CUSTOMIZED_ID to $value"
                 C_WS_CUSTOMIZED_ID=$value
                 ;;
 
             password | pw)
 
-                [ $DEBUG -eq 1 ] && echo >&2 Update customized_password from "${C_WS_CUSTOMIZED_PASSWORD} to $value"
+                [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_password from ${C_WS_CUSTOMIZED_PASSWORD} to $value"
                 C_WS_CUSTOMIZED_PASSWORD=$value
                 #observation: gw1000 client will not send wunderground http request unless password and id is specified
                 ;;
 
             server | s)
 
-                [ $DEBUG -eq 1 ] && echo >&2 Update customized_server from "$C_WS_CUSTOMIZED_SERVER to $value"
+                [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_server from $C_WS_CUSTOMIZED_SERVER to $value"
                 C_WS_CUSTOMIZED_SERVER=$value
 
                 ;;
@@ -906,11 +364,11 @@ updateCustomized() {
             port | p)
 
                 if ! isNumber "$value"; then
-                    echo >&2 Error NaN cannot set customized port to "$value" from "$value"
+                    echo >&2 "$DEBUG_FUNC Error: Not a number -  cannot set customized port to $value from $value"
                     EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 else
                     C_WS_CUSTOMIZED_PORT=$((value))
-                    [ $DEBUG -eq 1 ] && echo >&2 Update customized_port from "$C_WS_CUSTOMIZED_PORT to $value"
+                    [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_port from $C_WS_CUSTOMIZED_PORT to $value"
                 fi
 
                 ;;
@@ -927,11 +385,11 @@ updateCustomized() {
                         value=0
                         ;;
 
-                    *)  echo >&2 "Error: Unknown value $value for http protocol, use wunderground|w|1 or ecowitt|e|0"
+                    *)  echo >&2 "$DEBUG_FUNC Error: Unknown value $value for http protocol, use wunderground|w|1 or ecowitt|e|0"
                         EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 esac
 
-                [ $DEBUG -eq 1 ] && echo >&2 Update customized_TYPE from "$C_WS_CUSTOMIZED_HTTP to $value"
+                [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_TYPE from $C_WS_CUSTOMIZED_HTTP to $value"
                 C_WS_CUSTOMIZED_HTTP=$value
                 ;;
 
@@ -947,11 +405,11 @@ updateCustomized() {
                         value=0
                         ;;
 
-                    *)  echo >&2 "Error: Unknown value $value for enabled, use on|1|yes|y, off|0|no|n"
+                    *)  echo >&2 "$DEBUG_FUNC Error: Unknown value $value for enabled, use on|1|yes|y, off|0|no|n"
                         EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 esac
 
-                [ $DEBUG -eq 1 ] && echo >&2 Update customized_enabled from "$C_WS_CUSTOMIZED_ENABLED to $value"
+                [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_enabled from $C_WS_CUSTOMIZED_ENABLED to $value"
                 C_WS_CUSTOMIZED_ENABLED=$value
 
                 ;;
@@ -959,10 +417,10 @@ updateCustomized() {
             interval | i)
 
                 if ! isNumber "$value"; then
-                    echo >&2 Error NaN cannot set customized interval to "$value"
+                    echo >&2 "$DEBUG_FUNC Error: Not a number cannot set customized interval to $value"
                     EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 else
-                    [ $DEBUG -eq 1 ] && echo >&2 "Update customized_interval from $C_WS_CUSTOMIZED_INTERVAL to $value"
+                    [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_interval from $C_WS_CUSTOMIZED_INTERVAL to $value"
                     C_WS_CUSTOMIZED_INTERVAL=$((value))
 
                 fi
@@ -971,20 +429,20 @@ updateCustomized() {
 
             path_wunderground | p_w)
 
-                [ $DEBUG -eq 1 ] && echo >&2 Update customized_path_wu from "$C_WS_CUSTOMIZED_PATH_WU to $value"
+                [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_path_wu from $C_WS_CUSTOMIZED_PATH_WU to $value"
                 C_WS_CUSTOMIZED_PATH_WU=$value
 
                 ;;
 
             path_ecowitt | p_e )
 
-                [ $DEBUG -eq 1 ] && echo >&2 Update customized_ecowitt_path from "$C_WS_CUSTOMIZED_PATH_ECOWITT to $value"
+                [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_ecowitt_path from $C_WS_CUSTOMIZED_PATH_ECOWITT to $value"
                 C_WS_CUSTOMIZED_PATH_ECOWITT=$value
 
                 ;;
 
             help|?|*)
-                echo >&2 "Error: Unknown key $key, use id, password|pw, server|s, port|p, http|h, enabled|e, interval|i, path_wunderground|p_w, path_ecowitt|p_e"
+                echo >&2 "$DEBUG_FUNC Error: Unknown key $key, use id, password|pw, server|s, port|p, http|h, enabled|e, interval|i, path_wunderground|p_w, path_ecowitt|p_e"
                 EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 ;;
         esac
@@ -1005,35 +463,9 @@ updateCustomized() {
     return $EXITCODE_CUSTOMIZED
 }
 
-logErr()
-#$1 - 1=on,0=off
-{
-     [ "$1" -eq 1 ] && { shift; echo >&2 "$*" ; }
-}
-
-
-
-argEmptyOrOption() {
-    [ "$DEBUG" -eq 1 ] && echo >&2 argEmptyOrOption "$@"
-    if [ -z "$1" ]; then
-        return 0
-    else
-        case "$1" in
-
-        -*)
-            return 0
-            ;;
-
-        *)
-            return 1
-            ;;
-        esac
-    fi
-}
-
 printCommands() {
 
-    commands="$CMDOPT_RESET reboot mac $CMDOPT_VERSION"
+    commands="reset reboot mac version"
 
     echo "Commands available -c:"
     
@@ -1044,14 +476,6 @@ printCommands() {
     unset cmd commands
 }
 
-initcoptCommands ()
-#-c option commands
-{
-    CMDOPT_RESET='reset'
-    CMDOPT_VERSION='version|ver'
-}
-
-
 parseRangeExpression()
 {
     IFS=- # range with hyphen, for example 31-33
@@ -1060,7 +484,6 @@ parseRangeExpression()
     VALUE_RANGE_LOW=$1 #global for use if 
     VALUE_RANGE_HIGH=$2
 }
-
 
 processSensorOptions()
 # process -c sensor command option; format: 31-38=disable,40-47=disable
@@ -1186,7 +609,6 @@ processSensorOptions()
 
     unset f sensorid sensortypeexpr cmdexpr sensorid_hex
 }
-
 
 parseRaindataOptions()
 #parse options to -c rain command
@@ -1338,327 +760,6 @@ processCalibrationOptions()
     unset expr calibration_intemp calibration_inhumi calibration_outtemp calibration_outhumi calibration_absoffset calibration_reloffset calibration_winddir DEBUG_CALIBRATION_OPTIONS IFS
 }
 
-processCommand() {
-   EXITCODE_PROCESSCOMMAND=0
-
-   [ "$DEBUG" -eq 1 ] && >&2 echo ARGS to processCommand "$@" length "$#" COMMAND "$COMMAND"
-
-   if [ "$#" -ge 1 ]; then
-      shift # remove {command} (to -c option) -> all args to {command} starts at $1
-   fi
-
-    case $COMMAND in
-
-        "")
-            printCommands
-            ;;
-
-         w-s | wifi-server) # method 1 in spec. part 3
-            #open tcp 49123 in windows firewall for private network, set GW1000-WIFI???? network as private-network 
-            #inside wsl2: setup tcp portproxy (allow external tcp 49123 -> wsl tcp 49123)
-            #    iex "netsh interface portproxy add v4tov4 listenaddress=(Get-NetIPAddress -InterfaceAlias Wi-Fi -AddressFamily IPv4).IPAddress connectaddress=$(wsl -e hostname -I) connectport=49123 listenport=49123"
-            #windows: netsh wlan connect GW1000-WIFI????
-
-            if [ -z "$1" ]; then
-                echo >&2 Error: Empty SSID not allowed
-                shift
-                EXITCODE_PROCESSCOMMAND=$ERROR_SSID_EMPTY
-           else
-                createWIFIpacket "$1" "$2"
-                createPacketTX
-                od_buffer=$(printf %b "$PACKET_TX_ESCAPE" | timeout "$TIMEOUT_WIFICONFIG_SERVER" nc -l "$PORT_WIFICONFIG_SERVER_TCP" | od -A n -t u1 -w$MAX_16BIT_UINT) 
-                if parsePacket "$od_buffer"; then
-                    [ $VALUE_PACKET_WRITE_RESULT -eq 1 ] && EXITCODE_PROCESSCOMMAND=$ERROR_WIFICONFIG_SERVER_FAILED
-                else
-                   echo >&2 "Error: No connection received for ${TIMEOUT_WIFICONFIG_SERVER}s on $PORT_WIFICONFIG_SERVER_TCP"
-                   EXITCODE_PROCESSCOMMAND=$EXITCODE_PARSEPACKET
-                fi
-                shift && [ -n "$2" ] && shift
-            fi
-            ;;
-
-
-        w-c | wifi-client)
-
-           if [ -z "$2" ]; then
-                echo >&2 Error: Empty SSID not allowed
-                shift
-                EXITCODE_PROCESSCOMMAND=$ERROR_SSID_EMPTY
-           else
-                createWIFIpacket "$1" "$2"
-                if ! sendPacket && [ "$EXITCODE_SENDPACKET" -ne $ERROR_OD_BUFFER_EMPTY ]; then
-                    #sometimes OK response from gw is not received -> empty buffer
-                    echo >&2 Error: Failed to send wifi configuration to "$C_HOST", error code "$EXITCODE_SENDPACKET"
-                    EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
-                fi
-                shift && [ -n "$2" ] && shift
-            fi
-            ;;
-
-        "$CMDOPT_RESET")
-
-            if sendPacket $CMD_BROADCAST >/dev/null; then
-
-                printf "%s" "Reset $C_BROADCAST_MAC $C_BROADCAST_SSID (Y/N)? "
-                read -r REPLY
-
-                case $REPLY in
-                    Y)
-                        sendPacket $CMD_WRITE_RESET # 3 blink in red LED
-                        ;;
-                esac
-
-            else
-               echo >&2 Error: Failed to receive broadcast with MAC and SSID
-               EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
-            fi
-
-            ;;
-
-        reboot)
-
-            sendPacket $CMD_REBOOT
-            ;;
-
-        mac)
-
-            sendPacket $CMD_READ_MAC
-            ;;
-
-        version|ver)
-
-            sendPacket $CMD_READ_VERSION
-            ;;
-
-        system | sys)
-
-            if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_SYSTEM
-            else
-                C_NOPRINT=1
-                sendPacket $CMD_READ_SYSTEM 
-                unset C_NOPRINT
-                parseSystemOption "$1"
-                EXITCODE_PROCESSCOMMAND=$EXITCODE_PARSESYSTEMOPTIONS
-            fi
-            ;;
-
-        ecowitt | ec | e)
-
-            if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_ECOWITT_INTERVAL
-            else
-                #sendEcowittInterval "$1"
-                sendEcowittIntervalnew "$1"
-            fi
-            
-            ;;
-
-        wunderground | wu)
-
-            if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_WUNDERGROUND
-            else
-                if [ $# -lt 2 ]; then
-                    echo >&2 "Error: {id} {password} must be specified"
-                else
-                    sendWeatherservice "$CMD_WRITE_WUNDERGROUND" "$1" "$2"
-                fi
-            fi
-
-            ;;
-
-        wow)
-
-            if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_WOW
-            else
-                if [ $# -lt 2 ]; then
-                    echo >&2 "Error: {id} {password} must be specified"
-                else
-                    sendWeatherservice "$CMD_WRITE_WOW" "$1" "$2"
-                fi
-            fi
-            ;;
-
-        weathercloud | wc)
-
-            if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_WEATHERCLOUD
-            else
-                if [ $# -lt 2 ]; then
-                    echo >&2 "Error: {id} {key} must be specified"
-                else
-                    sendWeatherservice "$CMD_WRITE_WEATHERCLOUD" "$1" "$2"
-                fi
-            fi
-            ;;
-
-        customized | c | cust)
-
-            if argEmptyOrOption "$1"; then
-                if ! sendPacket $CMD_READ_PATH >/dev/null || ! sendPacket $CMD_READ_CUSTOMIZED; then
-                  >&2 echo Failed to get customized settings
-                fi
-            else
-                
-                if sendPacket $CMD_READ_CUSTOMIZED >/dev/null && sendPacket $CMD_READ_PATH >/dev/null; then
-                    if ! updateCustomized "$1"; then
-                        EXITCODE_PROCESSCOMMAND=$EXITCODE_CUSTOMIZED
-                        #echo >&2 "Error: Failed to update customized settings"
-                    fi
-                else
-                  >&2 echo "Cannot update customized, failed to read customized settings from device"
-                fi
-            fi
-
-            ;;
-
-       # path | p) # deprecate?
-
-       #    sendPacket $CMD_READ_PATH
-       #    ;;
-
-        broadcast | b)
-            sendPacket $CMD_BROADCAST
-            ;;
-
-        rain | r)
-
-            if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_RAINDATA
-            else
-                if sendPacket $CMD_READ_RAINDATA >/dev/null ; then #refresh
-                    parseRaindataOptions "$1"
-                    EXITCODE_PROCESSCOMMAND=$?
-
-                else
-                  EXITCODE_PROCESSCOMMAND=$?
-                  echo >&2 Error: Failed to get raindata from "$C_HOST"
-                fi
-            fi
-
-            ;;
-
-        livedata | l)
-
-            sendPacket "$CMD_READ_SENSOR_ID_NEW" >/dev/null   #get battery and signal info as well
-
-            if [ -z "$LOG_CMD" ]; then
-                sendPacket $CMD_LIVEDATA
-                EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
-            else
-              
-                while true; do
-                  sendPacket $CMD_LIVEDATA
-                  sleep "$LOG_INTERVAL"
-                done
-            fi
-
-            ;;
-
-        sensor_id)
-
-            sendPacket $CMD_READ_SENSOR_ID
-            ;;
-
-        sensor_id_new | sensor | s) # for new SENSOR_TYPE types
-
-            if ! argEmptyOrOption "$1"; then
-             #filter for senorid; -c sensor connected|-c s co
-
-                case "$1" in 
-                    connected|c)
-                                    SPATTERNID=$SPATTERNID_CONNECTED #matches connected sensors
-                                    sendPacket $CMD_READ_SENSOR_ID_NEW
-                                    ;;
-                    disconnected)
-                                    SPATTERNID=$SPATTERNID_DISCONNECTED
-                                    sendPacket $CMD_READ_SENSOR_ID_NEW
-                                    ;;
-                    searching|s)
-                                    SPATTERNID=$SPATTERNID_SEARCHING
-                                    sendPacket $CMD_READ_SENSOR_ID_NEW
-                                    ;;
-                    disabled|d)
-                                    SPATTERNID=$SPATTERNID_DISABLED
-                                    sendPacket $CMD_READ_SENSOR_ID_NEW
-                                    ;;
-                    
-                    *) 
-                                    processSensorOptions "$1"
-                    ;;
-                esac
-
-            else
-                sendPacket $CMD_READ_SENSOR_ID_NEW
-            fi
-
-            ;;
-
-        calibration | cal)
-   
-            sendPacket $CMD_READ_CALIBRATION
-
-            case "$1" in
-                ""|--*|-*) :
-                ;;
-                
-                *) processCalibrationOptions "$1"
-                ;;
-            esac
-            
-            ;;
-
-        *)
-
-            echo >&2 "Error: Unknown command $COMMAND $*"
-            return "$ERROR_COMMAND_UNKNOWN"
-            ;;
-    esac
-
-    [ -z "$EXITCODE_PROCESSCOMMAND" ] && EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
-
-    return "$EXITCODE_PROCESSCOMMAND"
-}
-
-
-test_printf_sformat()
-{
-    od_unicode=$(printf "%2s" "🔋" | od -A n -t x1)
-
-    if [ "$od_unicode" = " 20 f0 9f 94 8b" ]; then #zsh printf correctly insert a space infront
-        SHELL_SUPPORT_PRINTF_UNICODE_SFORMAT=1
-        [ "$DEBUG" -eq 1 ] && echo >&2 "Shell support printf unicode right/left adjustment"
-    else
-        #shellcheck disable=SC2034
-        SHELL_SUPPORT_PRINTF_UNICODE_SFORMAT=0
-         [ "$DEBUG" -eq 1 ] && echo >&2 "Shell NO SUPPORT for printf unicode right/left adjustment"
-    fi
-
-    unset od_unicode
-}
-
-
-printWeatherServices () {
-    sendPacket $CMD_READ_ECOWITT_INTERVAL
-    sendPacket $CMD_READ_WUNDERGROUND
-    sendPacket $CMD_READ_WOW
-    sendPacket $CMD_READ_WEATHERCLOUD
-    sendPacket $CMD_READ_CUSTOMIZED
-}
-
-roundFloat()
-#https://unix.stackexchange.com/questions/89712/how-to-convert-floating-point-number-to-integer
-{
-    if [ $SHELL_SUPPORT_BULTIN_PRINTF_VOPT -eq 1 ]; then
-    #shellcheck disable=SC3045
-       printf -v VALUE_FLOAT_TO_INT "%.0f" "$1"
-    else
-        VALUE_FLOAT_TO_INT=$(printf "%.0f" "$1")
-    fi
-}
-
 copyConfigurationToLivedata()
 #copies low-level configuration variables to UI-level variables
 {
@@ -1686,19 +787,6 @@ printOrLogLivedata()
     #    *) echo >&2 Error Valid log formats are: csv
      #esac
     fi
-}
-
-cleanup()
-{
-    :
-#   exit
-}
-
-initTrap()
-{
-    :
-   #some info here: https://unix.stackexchange.com/questions/57940/trap-int-term-exit-really-necessary
-   # trap cleanup INT TERM #ctrl-c pressed by user, or TERM sent default by kill when script in background doing livedata logging 
 }
 
 #read -r -u 0 -t 0 STDIN
@@ -2007,13 +1095,296 @@ processOptionsLiveview()
 
 }
 
+processCommand() {
+   EXITCODE_PROCESSCOMMAND=0
+
+   [ "$DEBUG" -eq 1 ] && >&2 echo ARGS to processCommand "$@" length "$#" COMMAND "$COMMAND"
+
+   if [ "$#" -ge 1 ]; then
+      shift # remove {command} (to -c option) -> all args to {command} starts at $1
+   fi
+
+    case $COMMAND in
+
+        "")
+            printCommands
+            ;;
+
+         w-s | wifi-server) # method 1 in spec. part 3
+            #open tcp 49123 in windows firewall for private network, set GW1000-WIFI???? network as private-network 
+            #inside wsl2: setup tcp portproxy (allow external tcp 49123 -> wsl tcp 49123)
+            #    iex "netsh interface portproxy add v4tov4 listenaddress=(Get-NetIPAddress -InterfaceAlias Wi-Fi -AddressFamily IPv4).IPAddress connectaddress=$(wsl -e hostname -I) connectport=49123 listenport=49123"
+            #windows: netsh wlan connect GW1000-WIFI????
+
+            if [ -z "$1" ]; then
+                echo >&2 Error: Empty SSID not allowed
+                shift
+                EXITCODE_PROCESSCOMMAND=$ERROR_SSID_EMPTY
+           else
+                createWIFIpacket "$1" "$2"
+                createPacketTX
+                od_buffer=$(printf %b "$PACKET_TX_ESCAPE" | timeout "$TIMEOUT_WIFICONFIG_SERVER" nc -l "$PORT_WIFICONFIG_SERVER_TCP" | od -A n -t u1 -w$MAX_16BIT_UINT) 
+                if parsePacket "$od_buffer"; then
+                    [ $VALUE_PACKET_WRITE_RESULT -eq 1 ] && EXITCODE_PROCESSCOMMAND=$ERROR_WIFICONFIG_SERVER_FAILED
+                else
+                   echo >&2 "Error: No connection received for ${TIMEOUT_WIFICONFIG_SERVER}s on $PORT_WIFICONFIG_SERVER_TCP"
+                   EXITCODE_PROCESSCOMMAND=$EXITCODE_PARSEPACKET
+                fi
+                shift && [ -n "$2" ] && shift
+            fi
+            ;;
+
+
+        w-c | wifi-client)
+
+           if [ -z "$2" ]; then
+                echo >&2 Error: Empty SSID not allowed
+                shift
+                EXITCODE_PROCESSCOMMAND=$ERROR_SSID_EMPTY
+           else
+                createWIFIpacket "$1" "$2"
+                if ! sendPacket && [ "$EXITCODE_SENDPACKET" -ne $ERROR_OD_BUFFER_EMPTY ]; then
+                    #sometimes OK response from gw is not received -> empty buffer
+                    echo >&2 Error: Failed to send wifi configuration to "$C_HOST", error code "$EXITCODE_SENDPACKET"
+                    EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
+                fi
+                shift && [ -n "$2" ] && shift
+            fi
+            ;;
+
+        "$CMDOPT_RESET")
+
+            if sendPacket $CMD_BROADCAST >/dev/null; then
+
+                printf "%s" "Reset $C_BROADCAST_MAC $C_BROADCAST_SSID (Y/N)? "
+                read -r REPLY
+
+                case $REPLY in
+                    Y)
+                        sendPacket $CMD_WRITE_RESET # 3 blink in red LED
+                        ;;
+                esac
+
+            else
+               echo >&2 Error: Failed to receive broadcast with MAC and SSID
+               EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
+            fi
+
+            ;;
+
+        reboot)
+
+            sendPacket $CMD_REBOOT
+            ;;
+
+        mac)
+
+            sendPacket $CMD_READ_MAC
+            ;;
+
+        version|ver)
+
+            sendPacket $CMD_READ_VERSION
+            ;;
+
+        system | sys)
+
+            if argEmptyOrOption "$1"; then
+                sendPacket $CMD_READ_SYSTEM
+            else
+                C_NOPRINT=1
+                sendPacket $CMD_READ_SYSTEM 
+                unset C_NOPRINT
+                parseSystemOption "$1"
+                EXITCODE_PROCESSCOMMAND=$EXITCODE_PARSESYSTEMOPTIONS
+            fi
+            ;;
+
+        ecowitt | ec | e)
+
+            if argEmptyOrOption "$1"; then
+                sendPacket $CMD_READ_ECOWITT_INTERVAL
+            else
+                #sendEcowittInterval "$1"
+                sendEcowittIntervalnew "$1"
+            fi
+            
+            ;;
+
+        wunderground | wu)
+
+            if argEmptyOrOption "$1"; then
+                sendPacket $CMD_READ_WUNDERGROUND
+            else
+                if [ $# -lt 2 ]; then
+                    echo >&2 "Error: {id} {password} must be specified"
+                else
+                    sendWeatherservice "$CMD_WRITE_WUNDERGROUND" "$1" "$2"
+                fi
+            fi
+
+            ;;
+
+        wow)
+
+            if argEmptyOrOption "$1"; then
+                sendPacket $CMD_READ_WOW
+            else
+                if [ $# -lt 2 ]; then
+                    echo >&2 "Error: {id} {password} must be specified"
+                else
+                    sendWeatherservice "$CMD_WRITE_WOW" "$1" "$2"
+                fi
+            fi
+            ;;
+
+        weathercloud | wc)
+
+            if argEmptyOrOption "$1"; then
+                sendPacket $CMD_READ_WEATHERCLOUD
+            else
+                if [ $# -lt 2 ]; then
+                    echo >&2 "Error: {id} {key} must be specified"
+                else
+                    sendWeatherservice "$CMD_WRITE_WEATHERCLOUD" "$1" "$2"
+                fi
+            fi
+            ;;
+
+        customized | c | cust)
+
+            if argEmptyOrOption "$1"; then
+                if ! sendPacket $CMD_READ_PATH >/dev/null || ! sendPacket $CMD_READ_CUSTOMIZED; then
+                  >&2 echo Failed to get customized settings
+                fi
+            else
+                
+                if sendPacket $CMD_READ_CUSTOMIZED >/dev/null && sendPacket $CMD_READ_PATH >/dev/null; then
+                    if ! processCustomizedOptions "$1"; then
+                        EXITCODE_PROCESSCOMMAND=$EXITCODE_CUSTOMIZED
+                        #echo >&2 "Error: Failed to update customized settings"
+                    fi
+                else
+                  >&2 echo "Cannot update customized, failed to read customized settings from device"
+                fi
+            fi
+
+            ;;
+
+       # path | p) # deprecate?
+
+       #    sendPacket $CMD_READ_PATH
+       #    ;;
+
+        broadcast | b)
+            sendPacket $CMD_BROADCAST
+            ;;
+
+        rain | r)
+
+            if argEmptyOrOption "$1"; then
+                sendPacket $CMD_READ_RAINDATA
+            else
+                if sendPacket $CMD_READ_RAINDATA >/dev/null ; then #refresh
+                    parseRaindataOptions "$1"
+                    EXITCODE_PROCESSCOMMAND=$?
+
+                else
+                  EXITCODE_PROCESSCOMMAND=$?
+                  echo >&2 Error: Failed to get raindata from "$C_HOST"
+                fi
+            fi
+
+            ;;
+
+        livedata | l)
+
+            sendPacket "$CMD_READ_SENSOR_ID_NEW" >/dev/null   #get battery and signal info as well
+
+            if [ -z "$LOG_CMD" ]; then
+                sendPacket $CMD_LIVEDATA
+                EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
+            else
+              
+                while true; do
+                  sendPacket $CMD_LIVEDATA
+                  sleep "$LOG_INTERVAL"
+                done
+            fi
+
+            ;;
+
+        sensor_id)
+
+            sendPacket $CMD_READ_SENSOR_ID
+            ;;
+
+        sensor_id_new | sensor | s) # for new SENSOR_TYPE types
+
+            if ! argEmptyOrOption "$1"; then
+             #filter for senorid; -c sensor connected|-c s co
+
+                case "$1" in 
+                    connected|c)
+                                    SPATTERNID=$SPATTERNID_CONNECTED #matches connected sensors
+                                    sendPacket $CMD_READ_SENSOR_ID_NEW
+                                    ;;
+                    disconnected)
+                                    SPATTERNID=$SPATTERNID_DISCONNECTED
+                                    sendPacket $CMD_READ_SENSOR_ID_NEW
+                                    ;;
+                    searching|s)
+                                    SPATTERNID=$SPATTERNID_SEARCHING
+                                    sendPacket $CMD_READ_SENSOR_ID_NEW
+                                    ;;
+                    disabled|d)
+                                    SPATTERNID=$SPATTERNID_DISABLED
+                                    sendPacket $CMD_READ_SENSOR_ID_NEW
+                                    ;;
+                    
+                    *) 
+                                    processSensorOptions "$1"
+                    ;;
+                esac
+
+            else
+                sendPacket $CMD_READ_SENSOR_ID_NEW
+            fi
+
+            ;;
+
+        calibration | cal)
+   
+            sendPacket $CMD_READ_CALIBRATION
+
+            case "$1" in
+                ""|--*|-*) :
+                ;;
+                
+                *) processCalibrationOptions "$1"
+                ;;
+            esac
+            
+            ;;
+
+        *)
+
+            echo >&2 "Error: Unknown command $COMMAND $*"
+            return "$ERROR_COMMAND_UNKNOWN"
+            ;;
+    esac
+
+    [ -z "$EXITCODE_PROCESSCOMMAND" ] && EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
+
+    return "$EXITCODE_PROCESSCOMMAND"
+}
+
 initShell
 initTerm
-initcoptCommands
 initConfigDir
 initTrap
 if ! initnc; then
-    exit
+    exit $?
 fi
 
 initTimezones
@@ -2241,5 +1612,7 @@ done
 #set # list all variables
 
 [ "$DEBUG" -eq 1 ] && echo >&2 Exit code $EXITCODE_MAIN
+
+cleanup
 
 exit $EXITCODE_MAIN

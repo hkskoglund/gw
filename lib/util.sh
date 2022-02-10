@@ -65,3 +65,69 @@ dumpstack()
         done
    fi
 }
+
+roundFloat()
+#https://unix.stackexchange.com/questions/89712/how-to-convert-floating-point-number-to-integer
+{
+    if [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" -eq 1 ]; then
+    #shellcheck disable=SC3045
+       printf -v VALUE_FLOAT_TO_INT "%.0f" "$1"
+    else
+        VALUE_FLOAT_TO_INT=$(printf "%.0f" "$1")
+    fi
+}
+
+
+test_printf_sformat()
+{
+    od_unicode=$(printf "%2s" "🔋" | od -A n -t x1)
+
+    if [ "$od_unicode" = " 20 f0 9f 94 8b" ]; then #zsh printf correctly insert a space infront
+        SHELL_SUPPORT_PRINTF_UNICODE_SFORMAT=1
+        [ "$DEBUG" -eq 1 ] && echo >&2 "Shell support printf unicode right/left adjustment"
+    else
+        #shellcheck disable=SC2034
+        SHELL_SUPPORT_PRINTF_UNICODE_SFORMAT=0
+         [ "$DEBUG" -eq 1 ] && echo >&2 "Shell NO SUPPORT for printf unicode right/left adjustment"
+    fi
+
+    unset od_unicode
+}
+
+argEmptyOrOption() {
+    [ "$DEBUG" -eq 1 ] && echo >&2 argEmptyOrOption "$@"
+    if [ -z "$1" ]; then
+        return 0
+    else
+        case "$1" in
+
+        -*)
+            return 0
+            ;;
+
+        *)
+            return 1
+            ;;
+        esac
+    fi
+}
+
+getDateUTC()
+{
+    VALUE_DATE_UTC=$(date -u -d @"$1" +'%F %T') #add field
+}
+
+newRuler()
+#creates a ruler for debugging positioning on screen
+{
+    n=1
+    unset VALUE_RULER
+    while [ "$n" -le "$1" ]; do
+        VALUE_RULER=$VALUE_RULER"123456789${ANSIESC_SGI_BOLD_INVERT}0${ANSIESC_SGI_NORMAL}"
+        n=$(( n + 1 ))
+    done
+
+    unset n
+}
+
+

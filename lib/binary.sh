@@ -295,6 +295,69 @@ parseRaindata() {
     printRaindata
 }
 
+getSensorNameShort()
+{
+    case "$1" in
+        0) if [ "$C_SYSTEM_SENSORTYPE" -eq "$SYSTEM_SENSOR_TYPE_WH24" ]; then
+             SENSORNAME_WH='WH24'
+             SENSORNAME_SHORT='Weather Station'
+            else
+              SENSORNAME_WH='WH65'
+              SENSORNAME_SHORT="Weather Station"
+            fi
+            ;;
+        1) SENSORNAME_WH='WH68'
+           SENSORNAME_SHORT="Weather Station"
+            ;;
+        2) SENSORNAME_WH="WH80"
+           SENSORNAME_SHORT='Weather Station'
+            ;;
+        3) SENSORNAME_WH="WH40"
+           SENSORNAME_SHORT="Rainfall"
+            ;;
+        5) SENSORNAME_WH='WH32'
+           SENSORNAME_SHORT='Temperatue out'
+            ;;
+        6|7|8|9|10|11|12|13)
+           SENSORNAME_WH='WH31'
+           SENSORNAME_SHORT="Temperature$(($1 - 5))"
+           ;;
+        14|15|16|17|18|19|20|21)
+          SENSORNAME_WH='WH51'
+          SENSORNAME_SHORT="Soilmoisture$(($1 - 13))"
+          ;;
+        22|23|24|25)
+          SENSORNAME_WH='WH43'
+          SENSORNAME_SHORT="PM2.5 AQ $(($1 - 21))"
+          ;;
+        26)
+          SENSORNAME_SHORT="Lightning"
+          SENSORNAME_WH='WH57'
+          ;;
+        27|28|29|30)
+          SENSORNAME_WH='WH55'
+          SENSORNAME_SHORT="Leak$(($1 - 26))"
+          ;;
+        31|32|33|34|35|36|37|38)
+
+          SENSORNAME_WH='WH34'
+          SENSORNAME_SHORT="Soiltemperature$(($1 - 30))"
+          ;;
+        39)
+          SENSORNAME_WH='WH45'
+          SENSORNAME_SHORT="CO2 PM2.5 PM10 AQ"
+          ;;
+        40|41|42|43|44|45|46|47)
+            SENSORNAME_WH='WH35'
+            SENSORNAME_SHORT="Leafwetness$(($1 - 39))"
+           ;;
+         *)
+         echo >&2 "Warning: Unknown sensortype $1"
+          SENSORNAME_WH='WH??' 
+          SENSORNAME_SHORT='?'
+    esac
+}
+
 printSensorLine()
 #$1 - sensortype, $2 sensor id, $3 battery, $4 signal
 {
@@ -945,4 +1008,230 @@ isWriteCommand() {
         [ "$1" -eq "$CMD_WRITE_SENSOR_ID" ] ||
         [ "$1" -eq "$CMD_WRITE_CALIBRATION" ] ||
         [ "$1" -eq "$CMD_WRITE_SYSTEM" ]
+}
+
+
+printWeatherServices () {
+    sendPacket "$CMD_READ_ECOWITT_INTERVAL"
+    sendPacket "$CMD_READ_WUNDERGROUND"
+    sendPacket "$CMD_READ_WOW"
+    sendPacket "$CMD_READ_WEATHERCLOUD"
+    sendPacket "$CMD_READ_CUSTOMIZED"
+}
+
+getSignalUnicode()
+{
+    eval VALUE_SIGNAL_UNICODE="\$UNICODE_SIGNAL_LEVEL$1"
+}
+
+setSignal()
+#$1 sensorname WH?? $2 value
+{
+    export LIVEDATA_"$1"_SIGNAL="$2"
+    getSignalUnicode "$2"
+    export LIVEDATA_"$1"_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE" 
+}
+
+setLivedataSignal()
+# $1 sensortype $2 signal
+#maps sensor type to livedata
+{
+    
+    if [ "$1" -ge "$SENSORTYPE_WH31TEMP" ] && [ "$1" -lt $(( SENSORTYPE_WH31TEMP + SENSORTYPE_WH31TEMP_MAXCH )) ]; then
+        setSignal "TEMP$(( $1 - SENSORTYPE_WH31TEMP + 1))" "$2"
+    elif [ "$1" -eq "$SYSTEM_SENSOR_TYPE_WH24" ]; then
+        setSignal "WH65" "$2"
+    elif [ "$1" -eq "$SENSORTYPE_WH68" ]; then
+        setSignal "WH68" "$2"
+    elif [ "$1" -eq "$SENSORTYPE_WH80" ]; then
+        setSignal "WH80" "$2"
+    elif [ "$1" -eq "$SENSORTYPE_WH32" ]; then
+        setSignal "WH32" "$2"
+    elif [ "$1" -eq "$SENSORTYPE_WH40" ]; then
+       setSignal "WH40_RAINFALL" "$2"
+    elif [ "$1" -eq "$SENSORTYPE_WH57LIGHTNING" ]; then
+       setSignal "LIGHTNING" "$2"
+    elif [ "$1" -ge "$SENSORTYPE_WH51SOILMOISTURE" ] && [ "$1" -lt $(( SENSORTYPE_WH51SOILMOISTURE + SENSORTYPE_WH51SOILMOISTURE_MAXCH )) ]; then
+       setSignal "SOILMOISTURE$(( $1 - SENSORTYPE_WH51SOILMOISTURE + 1))" "$2"
+    elif [ "$1" -ge "$SENSORTYPE_WH55LEAK" ] && [ "$1" -lt $(( SENSORTYPE_WH55LEAK + SENSORTYPE_WH55LEAK_MAXCH )) ]; then
+       setSignal "LEAK$(( $1 - SENSORTYPE_WH55LEAK + 1))" "$2"
+    elif [ "$1" -ge "$SENSORTYPE_WH34SOILTEMP" ] && [ "$1" -lt $(( SENSORTYPE_WH34SOILTEMP + SENSORTYPE_WH34SOILTEMP_MAXCH )) ]; then
+       setSignal "SOILTEMP$(( $1 - SENSORTYPE_WH34SOILTEMP + 1))" "$2"
+    elif [ "$1" -ge "$SENSORTYPE_WH43PM25" ] && [ "$1" -lt $(( SENSORTYPE_WH43PM25 + SENSORTYPE_WH43PM25_MAXCH )) ]; then
+       setSignal "PM25$(( $1 - SENSORTYPE_WH43PM25 + 1))" "$2"
+    elif [ "$1" -ge "$SENSORTYPE_WH35LEAFWETNESS" ] && [ "$1" -lt $(( SENSORTYPE_WH35LEAFWETNESS + SENSORTYPE_WH35LEAFWETNESS_MAXCH )) ]; then
+       setSignal "LEAFWETNESS$(( $1 - SENSORTYPE_WH35LEAFWETNESS + 1))" "$2"
+    fi
+      
+}
+
+getSensorBatteryState()
+{
+   
+    #specification FOS_ENG-022-A, page 28
+    unset SBATTERY_STATE
+
+     case "$1" in
+        0) setBatteryLowNormal "WH65" "$2" # WH65
+            ;;
+        1) setBatteryVoltageLevel "WH68" "$2"
+            ;;
+        2) setBatteryVoltageLevel "WH80" "$2"
+            ;;
+        3) setBatteryLowNormal "WH40_RAINFALL" "$2"
+            ;;
+        5) setBatteryLowNormal "WH32_TEMPERATURE" "$2"
+            ;;
+        6|7|8|9|10|11|12|13)
+           channel=$(($1 - 5))
+           setBatteryLowNormal "TEMP$channel" "$2"
+           ;;
+        14|15|16|17|18|19|20|21)
+           channel=$(( $1 - 13))
+           setBatteryVoltageLevel "SOILMOISTURE$channel" "$2"
+          ;;
+        22|23|24|25)
+          channel=$(( $1 - 21 ))
+          setBatteryLevel "PM25$channel" "$2"
+          ;;
+        26)
+          setBatteryLevel "WH57_LIGHTNING" "$2"
+          ;;
+        27|28|29|30)
+          channel=$(( $1 - 26 ))
+          setBatteryLevel "LEAK$channel" "$2"
+          ;;
+        31|32|33|34|35|36|37|38)
+           channel=$(( $1 - 30))
+           setBatteryVoltageLevel "SOILTEMP$channel" "$2"
+           ;;
+        39)
+           setBatteryLevel "WH45CO2" "$2"
+           #battery info also available from sensor read livedata
+          ;;
+        40|41|42|43|44|45|46|47)
+           channel=$(( $1 - 39))
+           setBatteryVoltageLevel "LEAFWETNESS$channel" "$2"
+           ;;
+    esac
+
+    unset channel
+}
+
+setBatteryLowNormal()
+{
+     getBatteryLowOrNormal "$2" 
+    eval "LIVEDATA_${1}_BATTERY=$2"
+    eval "LIVEDATA_${1}_BATTERY_STATE='$SBATTERY_STATE'"
+}
+
+setBatteryVoltageLevel()
+{
+    getBatteryVoltageLevelState "$2"
+    eval "LIVEDATA_${1}_BATTERY_RAW=$2"
+    eval "LIVEDATA_${1}_BATTERY=$VALUE_BATTERY_VOLTAGE"
+    eval "LIVEDATA_${1}_BATTERY_STATE='$SBATTERY_STATE'"
+}
+
+setBatteryLevel()
+{
+    getBatteryLevelState "$2"
+    eval "LIVEDATA_${1}_BATTERY=$2"
+    eval "LIVEDATA_${1}_BATTERY_STATE='$SBATTERY_STATE'"
+}
+
+appendBatteryState()
+{
+   if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+        SBATTERY_STATE=$SBATTERY_STATE$UNICODE_BATTERY
+   else
+        SBATTERY_STATE=$SBATTERY_STATE"+"
+   fi 
+}
+
+appendLowBatteryState()
+{
+    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+    #https://emojipedia.org/low-battery/ "Coming to major platforms in late 2021 and throughout 2022".
+         SBATTERY_STATE=$SBATTERY_STATE$UNICODE_BATTERY_LOW 
+    else
+        SBATTERY_STATE=$SBATTERY_STATE"LOW"
+    fi
+}
+
+getBatteryVoltageLevelState()
+#$1 - volatage scaled *10
+{
+     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
+        #shellcheck disable=SC3044
+  #      typeset -i  i
+    :
+    else
+   #     local       i
+    :
+    fi
+
+   unset SBATTERY_STATE
+
+   if [ "$1" -le 12 ]; then
+      appendLowBatteryState
+   else
+    # i=13
+    # while [ "$i" -le "$1" ]; do
+       appendBatteryState # not really linear, but approximate 
+    #   i=$(( i + 1 ))
+    # done
+   fi
+   convertScale10ToFloat "$1"
+   VALUE_BATTERY_VOLTAGE="$VALUE_SCALE10_FLOAT"
+   SBATTERY_STATE=$SBATTERY_STATE" ${VALUE_BATTERY_VOLTAGE}V"
+
+   if [ -n "$KSH_VERSION" ]; then
+        unset  i
+    fi
+}
+
+getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
+    
+    unset SBATTERY_STATE
+   
+    #set -- 0     #debug  set $1 to 0
+    if [ "$1" -eq 6 ]; then
+      if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+       #https://emojipedia.org/electric-plug/
+        SBATTERY_STATE=$UNICODE_PLUG
+      else
+        SBATTERY_STATE="dc" # for example PM 2.5 indoor
+      fi
+    else
+       # l=1
+       # while [ "$l" -le 5 ] ; do
+       #     if [ "$l" -le "$1" ]; then
+       #         appendBatteryState
+       #     else
+       #         appendLowBatteryState
+       #     fi
+       #     l=$((l + 1))
+       # done
+       if [ "$1" -le 1 ]; then
+          appendLowBatteryState
+       else
+          appendBatteryState
+       fi
+
+       SBATTERY_STATE=$SBATTERY_STATE" $1"
+    fi
+
+    unset  l
+}
+
+getBatteryLowOrNormal() {
+    
+    unset SBATTERY_STATE
+
+    if [ "$1" -eq "$BATTERY_NORMAL" ]; then
+       appendBatteryState
+    elif [ "$1" -eq "$BATTERY_LOW" ]; then
+        appendLowBatteryState
+    fi
 }
