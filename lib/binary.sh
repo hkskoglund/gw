@@ -1,4 +1,7 @@
-#!/usr/bin/sh
+#!/bin/sh
+
+GWDIR=${GWDIR:=.}
+. $GWDIR/lib/binary-fields.sh
 
 parseVersion() {
     readString
@@ -928,3 +931,18 @@ parsePacket() {
     return "$EXITCODE_PARSEPACKET"
 }
 
+isWriteCommand() {
+    [ "$1" -eq $CMD_WRITE_ECOWITT_INTERVAL ] ||
+        [ "$1" -eq $CMD_WRITE_RESET ] ||
+        [ "$1" -eq $CMD_WRITE_CUSTOMIZED ] ||
+        [ "$1" -eq $CMD_WRITE_PATH ] ||
+        [ "$1" -eq $CMD_REBOOT ] ||
+        [ "$1" -eq $CMD_WRITE_SSID ] ||
+        [ "$1" -eq $CMD_WRITE_RAINDATA ] ||
+        [ "$1" -eq $CMD_WRITE_WUNDERGROUND ] ||
+        [ "$1" -eq $CMD_WRITE_WOW ] ||
+        [ "$1" -eq $CMD_WRITE_WEATHERCLOUD ] ||
+        [ "$1" -eq $CMD_WRITE_SENSOR_ID ] ||
+        [ "$1" -eq $CMD_WRITE_CALIBRATION ] ||
+        [ "$1" -eq $CMD_WRITE_SYSTEM ]
+}

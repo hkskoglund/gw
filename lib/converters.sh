@@ -1,4 +1,24 @@
-#!/usr/bin/sh
+#!/bin/sh
+
+getHexDigit() {
+    unset VALUE_HEX_DIGIT
+
+    if [ "$1" -ge 0 ] && [ "$1" -le 9 ]; then
+        VALUE_HEX_DIGIT=$1
+    elif [ "$1" -eq 10 ]; then
+        VALUE_HEX_DIGIT='a'
+    elif [ "$1" -eq 11 ]; then
+        VALUE_HEX_DIGIT='b'
+    elif [ "$1" -eq 12 ]; then
+        VALUE_HEX_DIGIT='c'
+    elif [ "$1" -eq 13 ]; then
+        VALUE_HEX_DIGIT='d'
+    elif [ "$1" -eq 14 ]; then
+        VALUE_HEX_DIGIT='e'
+    elif [ "$1" -eq 15 ]; then
+        VALUE_HEX_DIGIT='f'
+    fi
+}
 
 getFloatAsIntDecmial()
 #$1 - floating point number

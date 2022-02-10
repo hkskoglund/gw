@@ -1,5 +1,6 @@
 #!/bin/sh
 # Shell/terminal utility for viewing weather data and sensor configuration of the GW-1000 or compatible devices
+# Supports binary and http Ecowitt/Wunderground protocol
 # Only for firmware v1.6.5 or later - for intepretation of battery levels/sensor id new command
 
 #Documentation:
@@ -31,9 +32,14 @@
 GWDIR=${GWDIR:="."}
 
 . $GWDIR/lib/constants.sh
+. $GWDIR/lib/error.sh
+. $GWDIR/lib/util.sh
+. $GWDIR/lib/command.sh
+. $GWDIR/lib/appendBuffer.sh
 . $GWDIR/lib/buffer.sh
 . $GWDIR/lib/binary.sh
 . $GWDIR/lib/http.sh
+. $GWDIR/lib/packet.sh
 . $GWDIR/lib/converters.sh
 . $GWDIR/lib/timezone.sh
 . $GWDIR/lib/fullwidth-number.sh
@@ -43,6 +49,191 @@ GWDIR=${GWDIR:="."}
 . $GWDIR/lib/beufort.sh
 
 . $GWDIR/style/limits.sh
+
+. $GWDIR/view/default.sh
+
+initShell() {
+    #shellcheck disable=SC3010,SC2050
+    eval "if 2>/dev/null 1>/dev/null type '[['  && 2>/dev/null [[ a =~ a ]] ; then
+        SHELL_SUPPORT_TILDE_REGEX=1
+    else
+        SHELL_SUPPORT_TILDE_REGEX=0
+    fi"
+
+    #shellcheck disable=SC3044
+    if type typeset >/dev/null; then
+        export SHELL_SUPPORT_TYPESET=1 # allows function in subprocess/ui-view to access it
+    else
+        export SHELL_SUPPORT_TYPESET=0
+    fi
+
+    if [ -n "$ZSH_VERSION" ]; then
+    #https://zsh.sourceforge.io/FAQ/zshfaq03.html
+       setopt shwordsplit  #zsh compability for "1 2 3" -> split in 1 2 3
+    fi
+
+    if [ -n "$BASH_VERSION" ]; then
+        #shellcheck disable=SC3045
+        type_res=$(type -t printf) # otherwise language translation
+    else
+        type_res=$(type printf)
+    fi
+
+    case "$type_res" in 
+        
+        *builtin) #mksh does not have printf bulitin -> printf calls clone a new process -> reduced performance -> prefer echo over printf unless formatting is absolutely required
+            
+            SHELL_SUPPORT_BULTIN_PRINTF=1 
+              #storing value in variable from printf
+            #shellcheck disable=SC3045
+            if printf -v SHELL_SUPPORT_BULTIN_PRINTF_VOPT "%s" "-v" 1>/dev/null 2>/dev/null && [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" = '-v' ]; then
+                SHELL_SUPPORT_BULTIN_PRINTF_VOPT=1
+            else
+                SHELL_SUPPORT_BULTIN_PRINTF_VOPT=0
+            fi
+        ;;
+        
+        *is*)
+            #shellcheck disable=SC2034
+            SHELL_SUPPORT_BULTIN_PRINTF=0
+            ;;
+    esac
+
+     test_printf_sformat #only zsh bultin printf works with unicode when using %-30s format -> workaround \r\t\t\t\t positioning instead which works with every shell printf
+     
+   #shellcheck disable=SC2034,SC3019
+  # I=$(( 10 ** 1 )) 2>/dev/null;
+  #dash shell exit with: arithmetic expression: expecting primary: " 10 ** 1 "
+    
+    if [ -n "$BASH_VERSION" ] || [ -n "$ZSH_VERSION" ] || [ "$KSH_VERSION" = "Version AJM 93u+ 2012-08-01" ]; then
+      SHELL_SUPPORT_MATH_POWER=1
+      [ -z "$BASH_VERSION" ] && SHELL_SUPPORT_FLOATINGPOINT=1 || SHELL_SUPPORT_FLOATINGPOINT=0 #set 0 for bash
+    else
+      SHELL_SUPPORT_MATH_POWER=0 #probably
+      SHELL_SUPPORT_FLOATINGPOINT=0 #probably
+    fi
+    
+    #https://stackoverflow.com/questions/602912/how-do-you-echo-a-4-digit-unicode-character-in-bash/602924#602924
+
+    SHELL_SUPPORT_UNICODE=1 # assume shell supports unicode
+   
+     [ "$DEBUG" -eq 1 ] && >&2 echo Shell support unicode "$SHELL_SUPPORT_UNICODE"
+
+    #TEST unciode: i=$(( 0x2500 )); while [ "$i" -le $(( 0x2600 )) ]; do printf -v hex "%x" "$i"; eval 'printf "%s \u$hex\n" "$hex"'; i=$(( i + 1 )); done
+    
+#https://www.gnu.org/software/gettext/manual/html_node/The-TERM-variable.html
+#https://www.gnu.org/software/gettext/libtextstyle/manual/html_node/The-NO_005fCOLOR-variable.html
+# TEST : msgcat --color=test
+    [ "$DEBUG" -eq 1 ] && >&2 echo TERM "$TERM" NO_COLOR "$NO_COLOR"
+
+    if [ -z "$NO_COLOR" ]; then
+        case "$TERM" in
+            *color)
+                    # shellcheck source=./style/ansiesc.sh
+                    . "$GWDIR/style/ansiesc.sh"
+                    ;;
+        esac
+    fi
+    
+   if ! SHELL_DECIMAL_POINT=$(locale decimal_point) 2>/dev/null; then
+      SHELL_DECIMAL_POINT="."
+   fi
+    
+    unset type_res
+   
+}
+
+initTerm()
+{
+    
+    #https://stackoverflow.com/questions/1780483/lines-and-columns-environmental-variables-lost-in-a-script
+    if [ -n "$COLUMNS" ] && [ -n "$LINES" ]; then
+        TERM_COLUMNS=$COLUMNS
+        TERM_LINES=$LINES
+    elif type stty >/dev/null; then
+      size=$(stty size)
+      TERM_LINES=${size% *}
+      TERM_COLUMNS=${size#* }
+    elif type tput >/dev/null; then
+       #shellcheck disable=SC2034
+       {
+       TERM_LINES=$(tput lines)
+       TERM_COLUMNS=$(tput cols)
+       }
+    fi
+
+    unset size
+
+}
+
+initnc() 
+#different versions of nc use slightly different options
+{
+    EXITCODE_INITNC=0
+
+    DEBUG_FUNC="initnc"
+    DEBUG_INITNC=${DEBUG_INITNC:=$DEBUG}
+   
+   #if force nc version on command line NC_VERSION=? ./gw ...
+    if [ -n "$NC_VERSION" ]; then
+        
+        #specifying override path to nc executable is possible: NC_CMD='/path/nc' ./gw ...
+        if [ "$NC_VERSION" = $NC_NMAP ]; then
+            [ -z "$NC_CMD" ] && NC_CMD=$(which ncat)
+        elif [ "$NC_VERSION" = $NC_OPENBSD ]; then
+            [ -z "$NC_CMD" ] && NC_CMD=$(which nc)
+        elif [ "$NC_VERSION" = $NC_BUSYBOX ]; then
+            [ -z "$NC_CMD" ] && NC_CMD="$(which busybox) nc"
+        elif [ "$NC_VERSION" = $NC_TOYBOX ]; then
+            [ -z "$NC_CMD" ] && NC_CMD="$(which toybox) nc"
+        else
+            EXITCODE_INITNC=$ERROR_DEPENDENCY_NC
+            return $EXITCODE_INITNC
+        fi
+       
+    else
+
+        NC_CMD="$(which nc 2>/dev/null)"
+        if [ -z "$NC_CMD" ]; then
+            logErr $DEBUG_INITNC "$DEBUG_FUNC nc not found. Ubuntu: sudo update-alternatives --config nc"
+            EXITCODE_INITNC=$ERROR_DEPENDENCY_NC
+        else
+            # ls -l $(readlink -f /usr/bin/nc)
+            case "$(readlink -f "$NC_CMD" 2>&1)" in 
+                
+                */nc.openbsd|*/netcat) NC_VERSION=$NC_OPENBSD #nc.openbsd Ubuntu/netcat Fedora
+                                        ;;
+                
+                */ncat) NC_VERSION=$NC_NMAP 
+                        ;;
+                    
+                    *)  logErr $DEBUG_INITNC "$DEBUG_FUNC Warning: Failed to determine nc version, not nc openbsd/ncat, use NC_VERSION=, NM_CMD= to override, trying openbsd compability"
+                        NC_VERSION=$NC_OPENBSD
+                        ;;
+            esac
+
+        fi
+    fi
+        
+    logErr $DEBUG_INITNC "$DEBUG_FUNC $NC_VERSION $NC_CMD"
+    unset DEBUG_FUNC
+
+    return $EXITCODE_INITNC
+}
+
+initConfigDir() {
+
+  #  DIR_CONFIG=$HOME"/.config/gw"                              # .config subdirectory used for configuration on gnome/linux
+    
+  #  [ -n "$EXTERNAL_STORAGE" ] && DIR_CONFIG=$EXTERNAL_STORAGE # testing in Android 11 adb shell
+  #  DIR_LIVEDATA="$EXTERNAL_STORAGE/tmp/gw/livedata"
+  #  [ ! -d "$DIR_CONFIG" ] || [ ! -d "$DIR_LIVEDATA" ]  && mkdir -p -v "$DIR_CONFIG" "$DIR_LIVEDATA"   1>&2
+  #  [ "$DEBUG" -eq 1 ] &&  echo >&2 Directory config "$DIR_CONFIG" livedata "$DIR_LIVEDATA"
+
+    #SHELLPID=$$
+  :
+}
+
 
 setBatteryLowNormal()
 {
@@ -182,44 +373,7 @@ getSensorNameShort()
     esac
 }
 
-getCommandName() { #$1 -decimal command
-    case "$1" in
-        "$CMD_READ_VERSION")            COMMAND_NAME='read version' ;;
-        "$CMD_READ_VERSION")            COMMAND_NAME='read version' ;;
-        "$CMD_REBOOT")                  COMMAND_NAME='reboot' ;;
-        "$CMD_READ_MAC")                COMMAND_NAME='read mac' ;;
-        "$CMD_WRITE_SSID")              COMMAND_NAME='write ssid' ;;
-        "$CMD_BROADCAST")               COMMAND_NAME='broadcast' ;;
-        "$CMD_WRITE_RESET")             COMMAND_NAME='write reset' ;;
-        "$CMD_READ_ECOWITT_INTERVAL")   COMMAND_NAME='read ecowitt interval' ;;
-        "$CMD_WRITE_ECOWITT_INTERVAL")  COMMAND_NAME='write ecowitt interval' ;;
-        "$CMD_READ_WUNDERGROUND")       COMMAND_NAME='read wunderground' ;;
-        "$CMD_WRITE_WUNDERGROUND")      COMMAND_NAME='write wunderground' ;;
-        "$CMD_READ_WOW")                COMMAND_NAME='read wow' ;;
-        "$CMD_WRITE_WOW")               COMMAND_NAME='write wow' ;;
-        "$CMD_READ_WEATHERCLOUD")       COMMAND_NAME='read weathercloud' ;;
-        "$CMD_WRITE_WEATHERCLOUD")      COMMAND_NAME='write weathercloud' ;;
-        "$CMD_READ_CUSTOMIZED")         COMMAND_NAME='read customized' ;;
-        "$CMD_WRITE_CUSTOMIZED")        COMMAND_NAME='write customized' ;;
-        "$CMD_READ_PATH")               COMMAND_NAME='read path' ;;
-        "$CMD_WRITE_PATH")              COMMAND_NAME='write path' ;;
-        "$CMD_READ_RAINDATA")           COMMAND_NAME='read raindata' ;;
-        "$CMD_WRITE_RAINDATA")          COMMAND_NAME='write raindata' ;;
-        "$CMD_LIVEDATA")                COMMAND_NAME='livedata' ;;
-        "$CMD_READ_SENSOR_ID")          COMMAND_NAME='read sensor id' ;;
-        "$CMD_WRITE_SENSOR_ID")         COMMAND_NAME='write sensor id' ;;
-        "$CMD_READ_SENSOR_ID_NEW")      COMMAND_NAME='read sensor id new' ;;
-        "$CMD_READ_SYSTEM")             COMMAND_NAME='read system' ;;
-        "$CMD_WRITE_SYSTEM")            COMMAND_NAME='write system' ;;
-        "$CMD_READ_CALIBRATION")        COMMAND_NAME='read calibration' ;;
-        "$CMD_WRITE_CALIBRATION")       COMMAND_NAME='write calibration' ;;
-    esac
-    
-    if [ -z "$COMMAND_NAME" ]; then
-        COMMAND_NAME="{cmdname missing} $1"
-        return 1
-    fi
-}
+
 
 appendBatteryState()
 {
@@ -317,31 +471,6 @@ getBatteryLowOrNormal() {
     fi
 }
 
-toLowercase() {
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-        typeset -l lowcasestr # -l option -> lowercase on assignment/or ignored
-    fi
-
-    if [ -n "$BASH_VERSION" ]; then
-        eval 'LOWERCASE=${1,,}' #eval prevents ksh from stopping parsing on syntax error
-    elif [ -n "$ZSH_VERSION" ]; then
-        #shellcheck disable=SC3057
-        LOWERCASE=${1:l}
-    elif [ -n "$KSH_VERSION" ]; then
-        # Android 11 runds mir bsd korn shell http://www.mirbsd.org/mksh.htm
-        lowcasestr=$1
-        LOWERCASE=$lowcasestr
-    else
-        LOWERCASE=$(echo "$1" | tr '[:upper:]' '[:lower:]')
-    fi
-
-    if [ -n "$KSH_VERSION" ]; then
-       unset lowcasestr
-    fi
-
-}
-
 copySystemToLivedata()
 #copies system info to UI variables
 {
@@ -355,30 +484,9 @@ copySystemToLivedata()
 
 }
 
-
-printKeyValue() {
-    printf "%-25s %s\n" "$1" "$2"
-}
-
 copyVersionToLivedata()
 {
     LIVEDATA_SYSTEM_VERSION="$C_VERSION"
-}
-
-isWriteCommand() {
-    [ "$1" -eq $CMD_WRITE_ECOWITT_INTERVAL ] ||
-        [ "$1" -eq $CMD_WRITE_RESET ] ||
-        [ "$1" -eq $CMD_WRITE_CUSTOMIZED ] ||
-        [ "$1" -eq $CMD_WRITE_PATH ] ||
-        [ "$1" -eq $CMD_REBOOT ] ||
-        [ "$1" -eq $CMD_WRITE_SSID ] ||
-        [ "$1" -eq $CMD_WRITE_RAINDATA ] ||
-        [ "$1" -eq $CMD_WRITE_WUNDERGROUND ] ||
-        [ "$1" -eq $CMD_WRITE_WOW ] ||
-        [ "$1" -eq $CMD_WRITE_WEATHERCLOUD ] ||
-        [ "$1" -eq $CMD_WRITE_SENSOR_ID ] ||
-        [ "$1" -eq $CMD_WRITE_CALIBRATION ] ||
-        [ "$1" -eq $CMD_WRITE_SYSTEM ]
 }
 
 setWindMode()
@@ -473,80 +581,6 @@ setRainMode()
 
 
 
-setLivedataValueStyleLtGt()
-#$1 - raw value, $2 low limit, 3$ high limit, $4 sgi low, $5 sgi high
-{
-    if [ -n "$2" ] && [ "$1" -lt "$2" ]; then
-        STYLE_LIVE_VALUE=$4
-    elif [ -n "$3" ] && [ "$1" -gt "$3" ]; then
-        STYLE_LIVE_VALUE=$5
-    fi
-}
-
-setLivedataValueStyleGt()
-#$1 - raw v. $2 limit $3 style
-{
-    if [ "$1" -gt "$2" ]; then
-        if [ -z "$3" ]; then
-            STYLE_LIVE_VALUE=$STYLE_LIMIT_LIVEDATA
-        else
-            STYLE_LIVE_VALUE=$3
-        fi
-    fi
-}
-
-setLivedataValueStyleLt()
-#$1 - raw v. $2 limit $3 style
-{
-    if [ "$1" -lt "$2" ]; then
-        if [ -z "$3" ]; then
-            STYLE_LIVE_VALUE=$STYLE_LIMIT_LIVEDATA
-        else
-            STYLE_LIVE_VALUE=$3
-        fi
-    fi
-}
-
-appendFormat()
-{
-    #APPEND_FORMAT="$APPEND_FORMAT$1"
-    appendVar APPEND_FORMAT "$1"
-}
-
-appendArgs()
-{
-   # APPEND_ARGS="$APPEND_ARGS $1" #keep space between arguments
-   appendVar APPEND_ARGS " $1"
-}
-
-appendVar()
-#generic append to any variable
-{
-    #echo  "$1=\"\$$1$2\"" 
-    eval "$1=\"\$$1$2\""
-}
-
-appendBuffer()
-{
-    #appendFormat "$1"
-    appendVar APPEND_FORMAT "$1"
-    #appendArgs "$2"
-    appendVar APPEND_ARGS " $2"
-}
-
-printAppendBuffer()
-{
-    #special characters like 'æøå' gives wrong adjustment in %s 
-
-    if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_APPEND" -eq 1 ]; then 
-        printf >&2 "%s\n" "APPEND_FORMAT/APPEND_ARGS printf '$APPEND_FORMAT' $APPEND_ARGS"
-    fi
-
-    eval printf \""$APPEND_FORMAT"\" "$APPEND_ARGS"
-
-    resetAppendBuffer
-}
-
 printLivedataBatteryLowNormal()
 #$1 - battery 0/1, $2 - battery state, $3 header, $4 terse header
 {
@@ -580,50 +614,12 @@ setSGIBatteryVoltage()
     fi
 }
 
-newLivedataCompass()
-#$1 unicode direction, $2 - wind direction 
-{
-    #set -- "$1" "$WIND_ESE"
-
-    style_needle=$STYLE_COMPASS_WIND$1$STYLE_RESET
-    
-    if [ -z "$KSH_VERSION" ]; then
-       LIVEVIEW_COMPASS_N_FMT="╭─$STYLE_COMPASS_NORTH$WIND_DIRECTION_N$STYLE_RESET─╮" #styling must be in the format of printf
-    else
-        LIVEVIEW_COMPASS_N_FMT="╭─$STYLE_COMPASS_NORTH$WIND_DIRECTION_N$STYLE_RESET\u2500╮" #ksh Version AJM 93u+ 2012-08-01 insert \x80 instead of unicode 2500 ?! bug?
-    fi
-       
-    LIVEVIEW_COMPASS_WE_FMT="$WIND_DIRECTION_W $style_needle $WIND_DIRECTION_E"
-
-    if [ -z "$KSH_VERSION" ]; then
-        LIVEVIEW_COMPASS_S_FMT="╰─$WIND_DIRECTION_S─╯"
-    else
-        LIVEVIEW_COMPASS_S_FMT="╰─$WIND_DIRECTION_S\u2500╯"
-    fi
-
-    unset style_needle
-}
-
 setRainValueFormat()
 {
      if [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_MM ]; then
       VALUE_RAIN_FMT="%6.1f"
     elif [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_IN ]; then
       VALUE_RAIN_FMT="%6.2f"
-    fi
-}
-
-printLivedataRainLine()
-{
-    #echo "printLivedataRainLine $*"
-
-    [ "$DEBUG" -eq 1 ] && echo >&2 printLivedataRainLine raw value : "$1" limit: "$2"
-
-    if [ "$1" -gt "$2" ] && [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-        setLivedataValueStyleGt "$1" "$2" "$8"
-        printLivedataLine "$3" "$4" "$VALUE_RAIN_FMT" "$5" "%5s" "$6" "%6.1f" "$1" "$7"
-    else
-        printLivedataLine "$3" "$4" "$VALUE_RAIN_FMT"  "$5" "%5s" "$6" "%6.1f"
     fi
 }
 
@@ -716,477 +712,6 @@ printLivedataHeader()
      appendBuffer "$STYLE_LIVEVIEW_NORMAL_HEADER%64s$STYLE_RESET\r$1" "' ' '$2'"
 }
 
-printLivedataLine()
-#allows to intercept/disable printing during debugging
-{
-    #echo "$*"
-    if [ -n "$DEBUG_LIVEDATA_LINE" ]; then
-        :
-    else
-        printLivedataLineFinal "$@"
-    fi
-
-}
-
-printLivedataLineFinal()
-#$1 -header variable name, $2 value, $3 - value format, $4 unit, $5 unit format,$6 terse header, $7 terse format, $8 status value $9 status  $10 status fmt $11 signal value $12 signal state
-# optimized to just use one printf call builtin/external -> builds up entire format and argument strings for entire livedata view
-{
-    if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_LIVEDATA_LINE" ]; then
-        echo >&2 "printLivedataLine $* length $#"
-    fi
-
-    # \r\t horizontal/absolute positioning is compatible with unicode in string
-    if [ -n "$LIVEVIEW_HIDE_HEADERS" ] && [ "$LIVEVIEW_HIDE_HEADERS" -eq 1 ]; then 
-        header_fmt="%s\r\t\t\t\t" 
-    else
-       header_fmt=" %s\r\t\t\t\t"
-    fi
-    # unit_fmt="\r\t\t\t\t\t%s" 
-    unit_fmt="%s"
-    #status_fmt="\r\t\t\t\t\t\t%s"
-    status_fmt=${10}
-    status_fmt=${status_fmt:="\t%s"}
-    signal_fmt="\t%s"
-    space=' ' #do not use space for unitless values
-
-    #TEST UTF-8: for f in $(seq -s' ' 255); do eval printf "\\\x$(printf "%x" "$f")"; done
-
-    if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then 
-       
-        status_line="$9"
-        case $status_line in # only use UNICODE battery icon/skip detailed battery levels
-             $UNICODE_BATTERY*) status_line=$UNICODE_BATTERY
-                                ;;
-             $UNICODE_BATTERY_LOW*) status_line=$UNICODE_BATTERY_LOW 
-                                ;;
-        esac
-
-        signal_line="${12}"
-        case $signal_line in 
-             $UNICODE_SIGNAL*) signal_line=$UNICODE_SIGNAL
-                             ;;
-        esac
-
-        status_line="$status_line$signal_line" #merge for compact format
-        unset signal_line
-
-        [ -n "$LIVEVIEW_HIDE_STATUSLINE" ] && unset status_line
-  
-        if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_APPEND" -eq 1 ]; then 
-            appendFormat " $header_fmt %s %s %s %s\n"
-        fi
-        
-        if [ -n "$STYLE_LIVE_VALUE" ]; then
-            [ -z "$4" ] && unset space # skip space if unit empty
-            appendFormat "$header_fmt $STYLE_LIVE_VALUE$3$space$unit_fmt$STYLE_RESET $status_fmt $signal_fmt\n"
-        else
-            appendFormat "$header_fmt $3 $unit_fmt $status_fmt $signal_fmt\n"
-        fi
-
-        unset STYLE_LIVE_VALUE
-
-        if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_APPEND" -eq 1 ]; then 
-            appendArgs "'$header_fmt' '$3' '$unit_fmt' '$status_fmt' '$signal_fmt'"
-        fi
-
-       appendArgs "'$1' '$2' '$4' '$status_line' '$signal_line'"
-    fi
-   
-    unset header_fmt ch status_fmt unit_fmt status_line signal_fmt signal_line
-
-}
-
-printLivedata() 
-{
-    #debugging: call printLivedataFinal directly for problematic line and set DEBUG_LIVEDATA_LINE=1
-    #DEBUG_LIVEDATA_LINE=1
-
-    #resetAppendBuffer
-    
-   printLivedataHeader "" "$LIVEDATA_HEADER"
- 
-     if [ -n "$LIVEDATA_INTEMP" ]; then
-         
-         setLivedataValueStyleLtGt "$LIVEDATA_INTEMP_RAW" "$LIVEDATA_INTEMP_LIMIT_LOW" "$LIVEDATA_INTEMP_LIMIT_HIGH" "$STYLE_LIVEDATA_INTEMP_LIMIT_LOW" "$STYLE_LIVEDATA_INTEMP_LIMIT_HIGH"
-         printLivedataLine "$LIVEDATA_INTEMP_HEADER"  "$LIVEDATA_INTEMP" "%6.1f" "$UNIT_TEMP" "%s" 'in' "%s" 
-     fi
-
-    
-     if [ -n "$LIVEDATA_OUTTEMP" ]; then
-         setLivedataValueStyleLtGt "$LIVEDATA_OUTTEMP_RAW" "$LIVEDATA_OUTTEMP_LIMIT_LOW" "$LIVEDATA_OUTTEMP_LIMIT_HIGH" "$STYLE_LIMIT_LIVEDATA_OUTTEMP" "$STYLE_LIVEDATA_OUTTEMP_LIMIT_HIGH"
-         #WH32 battery and state may be set by injectWH32 testdata or if available
-         #shellcheck disable=SC2153
-         printLivedataLine "$LIVEDATA_OUTTEMP_HEADER" "$LIVEDATA_OUTTEMP" "%6.1f" "$UNIT_TEMP" "%s" 'out' '' "$LIVEDATA_WH32_BATTERY"  "$LIVEDATA_WH32_BATTERY_STATE" "" "$LIVEDATA_WH32_SIGNAL" "$LIVEDATA_WH32_SIGNAL_STATE"
-     fi
- 
-     if [ -n "$LIVEDATA_WINDCHILL" ]; then
-         setLivedataValueStyleLtGt "$LIVEDATA_WINDCHILL_RAW" "$LIVEDATA_OUTTEMP_LIMIT_LOW" "$LIVEDATA_OUTTEMP_LIMIT_HIGH" "$STYLE_LIMIT_LIVEDATA_OUTTEMP" "$STYLE_LIVEDATA_OUTTEMP_LIMIT_HIGH"
-         printLivedataLine "$LIVEDATA_WINDCHILL_HEADER" "$LIVEDATA_WINDCHILL" "%6.1f" "$UNIT_TEMP" "%2s" 'wchill' 
-     fi
-         if [ -n "$LIVEDATA_DEWPOINT" ]; then
-         printLivedataLine "$LIVEDATA_DEWPOINT_HEADER" "$LIVEDATA_DEWPOINT" "%6.1f" "$UNIT_TEMP" "%2s"  'dewp'
-     fi
-     
-     [ -n "$LIVEDATA_INHUMI" ]   && printLivedataLine "$LIVEDATA_INHUMI_HEADER" "$LIVEDATA_INHUMI"  "%6u" "$UNIT_HUMIDITY" "%s" 'ihum'   "%4u"
-     [ -n "$LIVEDATA_OUTHUMI" ]  && printLivedataLine "$LIVEDATA_OUTHUMI_HEADER" "$LIVEDATA_OUTHUMI" "%6u" "$UNIT_HUMIDITY" "%s" 'ohum'  "%4u"
-     if [ -n "$LIVEDATA_RELBARO" ]; then
-            
-            printLivedataHeader "" "$LIVEDATA_PRESSURE_HEADER"
-             setLivedataValueStyleLt "$LIVEDATA_RELBARO_RAW" "$LIVEDATA_RELBARO_LIMIT_LOW"
-         
-         if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
-             printLivedataLine "$LIVEDATA_RELBARO_HEADER" "$LIVEDATA_RELBARO" "%6.1f" "$UNIT_PRESSURE" "%4s" 'rbaro'
-             [ -n "$LIVEDATA_ABSBARO" ] && {
-                 setLivedataValueStyleLt "$LIVEDATA_ABSBARO_RAW" "$LIVEDATA_ABSBARO_LIMIT_LOW"
-                 printLivedataLine "$LIVEDATA_ABSBARO_HEADER" "$LIVEDATA_ABSBARO" "%6.1f" "$UNIT_PRESSURE" "%4s" 'abaro'; }
-         elif [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_INHG ]; then
-             printLivedataLine "$LIVEDATA_RELBARO_HEADER" "$LIVEDATA_RELBARO" "%6.2f" "$UNIT_PRESSURE" "%4s" 'rbaro'
-             [ -n "$LIVEDATA_ABSBARO" ] && printLivedataLine "$LIVEDATA_ABSBARO_HEADER" "$LIVEDATA_ABSBARO" "%6.2f" "$UNIT_PRESSURE" "%4s" 'abaro'
-         fi
-     fi
- 
-    if [ -z "$LIVEVIEW_HIDE_WIND" ]; then
-      
-       [ -n "$LIVEDATA_WINDSPEED" ] && printLivedataHeader "" "$LIVEDATA_WIND_HEADER"
-
-       [ -z "$LIVEVIEW_HIDE_COMPASS" ] && [ -n "$LIVEDATA_WINDSPEED" ] && [ -n "$LIVEDATA_WINDGUSTSPEED" ] && [ -n "$LIVEDATA_WINDDIRECTION" ] && newLivedataCompass "$UNICODE_WIND" "$VALUE_COMPASS"
-         
-        if [ -n "$LIVEDATA_WINDSPEED" ]; then
-            if [ -z "$LIVEVIEW_HIDE_BEUFORT" ]; then
-                setStyleBeufort "$LIVEDATA_WINDSPEED_RAW"
-                STYLE_LIVE_VALUE=$STYLE_BEUFORT
-            fi
-            printLivedataLine "$LIVEDATA_WINDSPEED_HEADER" "$LIVEDATA_WINDSPEED" "%6.1f" "$UNIT_WIND"  "%4s" 'wspd' "%6.1f" '' '' "\t%s$LIVEVIEW_COMPASS_N_FMT" 
-           
-        fi
-
-        if [ -n "$LIVEDATA_WINDGUSTSPEED" ]; then
-           if [ -z "$LIVEVIEW_HIDE_BEUFORT" ]; then
-                setBeufort "$LIVEDATA_WINDGUSTSPEED_RAW"
-                setStyleBeufort "$LIVEDATA_WINDGUSTSPEED_RAW"
-                STYLE_LIVE_VALUE=$STYLE_BEUFORT
-           else
-             unset VALUE_BEUFORT_DELIMITER
-            fi
-            printLivedataLine  "$LIVEDATA_WINDGUSTSPEED_HEADER $VALUE_BEUFORT_DELIMITER $VALUE_BEUFORT $VALUE_BEUFORT_DESCRIPTION " "$LIVEDATA_WINDGUSTSPEED" "%6.1f" "$UNIT_WIND" "%4s" 'wgspd' "%6.1f" "" "" "\t%s$LIVEVIEW_COMPASS_WE_FMT"
-        fi
-
-        LIVEDATA_WINDDIRECTION_HEADER="$LIVEDATA_WINDDIRECTION_HEADER $VALUE_COMPASS_DELIMITER $LIVEDATA_WINDDIRECTION_COMPASS" #integrate direction in header
-        
-        [ -n "$LIVEDATA_WINDDIRECTION" ] && printLivedataLine "$LIVEDATA_WINDDIRECTION_HEADER" "$LIVEDATA_WINDDIRECTION"   "%6u" "$UNIT_DEGREE"\
-         "%5s" 'wdeg' "%4u" "$LIVEDATA_WINDDIRECTION" "" "\t%s$LIVEVIEW_COMPASS_S_FMT"
-        
-        if [ -n "$LIVEDATA_WINDDAILYMAX" ]; then
-            if [ -z "$LIVEVIEW_HIDE_BEUFORT" ]; then
-                setBeufort "$LIVEDATA_WINDDAILYMAX_RAW"
-                setStyleBeufort "$LIVEDATA_WINDDAILYMAX_RAW"
-                STYLE_LIVE_VALUE=$STYLE_BEUFORT
-            else
-                unset VALUE_BEUFORT_DELIMITER
-            fi
-            printLivedataLine  "$LIVEDATA_WINDDAILYMAX_HEADER $VALUE_BEUFORT_DELIMITER $VALUE_BEUFORT $VALUE_BEUFORT_DESCRIPTION"   "$LIVEDATA_WINDDAILYMAX"  "%6.1f" "$UNIT_WIND" "%4s" 'wdmax' "%6.1f" 
-         fi 
-      
-        #[ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]    && printLivedataLine "LIVEDATA_WINDDIRECTION_COMPASS_HEADER"   "$LIVEDATA_WINDDIRECTION_COMPASS"  "%6s" "" "%5s" 'wdir' "%4s"
-    fi
-
-    if [ -n "$LIVEDATA_LIGHT" ] && [ "$LIVEDATA_LIGHT_RAW" -eq 0 ] && [ "$HIDE_LIGHT_LIVEDATA_AUTO" -eq 1 ]; then
-      LIVEVIEW_HIDE_LIGHT=1 # auto hide_liveview, when dark
-    fi
-
-    if [ -z "$LIVEVIEW_HIDE_LIGHT" ]; then
-        [ -n "$LIVEDATA_LIGHT" ] && printLivedataHeader "" "$LIVEDATA_SOLAR_HEADER"
-        [ -n "$LIVEDATA_LIGHT" ]    && printLivedataLine "$LIVEDATA_LIGHT_HEADER" "$LIVEDATA_LIGHT"  "%6.1f" "$UNIT_LIGHT" "%4s" 'light'
-        [ -n "$LIVEDATA_UV" ]       && printLivedataLine "$LIVEDATA_UV_HEADER" "$LIVEDATA_UV"        "%6.1f" "$UNIT_UV" "%5s" 'uv'
-        if [ -n "$LIVEDATA_UVI" ]; then
-           if [ -z "$LIVEVIEW_HIDE_UVI" ]; then
-                setUVRisk "$LIVEDATA_UVI"
-                setStyleUVI "$LIVEDATA_UVI"
-                #shellcheck disable=SC2153
-                STYLE_LIVE_VALUE=$STYLE_UVI
-            else
-              unset VALUE_UVI_DELIMITER
-            fi
-            printLivedataLine "$LIVEDATA_UVI_HEADER $VALUE_UVI_DELIMITER $VALUE_UV_RISK" "$LIVEDATA_UVI"      "%6u" "    " "%4s" 'uvi' "%3u"
-        fi
-    fi
-
-    if [ -n "$LIVEDATA_RAINDAY_RAW" ] && [ "$LIVEDATA_RAINDAY_RAW" -eq 0 ] && [ "$HIDE_RAIN_LIVEDATA_AUTO" -eq 1 ]; then
-       LIVEVIEW_HIDE_RAIN=1 #auto hide_liveview, if no rain today
-    fi
-
-    if [ -z "$LIVEVIEW_HIDE_RAIN" ]; then
-      
-        setRainValueFormat # 2 decimals for inch or 1 decimals for mm
-       
-        if [ -n "$LIVEDATA_RAINRATE" ]; then
-              printLivedataHeader "" "$LIVEDATA_RAIN_HEADER"
-
-               setRainIntensity "$LIVEDATA_RAINRATE_RAW"
-               setStyleRainIntensity "$LIVEDATA_RAINRATE_RAW"
-               setRainIntensityStatus "$LIVEDATA_RAINRATE_RAW"
-               STYLE_LIVE_VALUE=$STYLE_RAININTENSITY
-              
-               if [ "$LIVEDATA_RAINRATE_RAW" -gt 0 ]; then
-                    delimiter=$VALUE_RAININTENSITY_DELIMITER 
-                else
-                    delimiter=" "
-                fi
-               
-               printLivedataLine "$LIVEDATA_RAINRATE_HEADER $delimiter $VALUE_RAININTENSITY"  "$LIVEDATA_RAINRATE" "$VALUE_RAIN_FMT"  "$UNIT_RAINRATE" "%4s" 'rrate'  '' '' "$VALUE_RAININTENSITY_STATUS" 
-            fi
-        # rainhour available in Ecowitt http request
-        [ -n "$LIVEDATA_RAINHOUR" ]     && printLivedataRainLine "$LIVEDATA_RAINHOUR_RAW"  "$LIVEDATA_RAINHOUR_LIMIT"  "$LIVEDATA_RAINHOUR_HEADER"  "$LIVEDATA_RAINHOUR" "$UNIT_RAIN" 'rhour' "" "$STYLE_LIMIT_LIVEDATA_RAINHOUR"
-        [ -n "$LIVEDATA_RAINDAY" ]      && printLivedataRainLine "$LIVEDATA_RAINDAY_RAW"   "$LIVEDATA_RAINDAY_LIMIT"   "$LIVEDATA_RAINDAY_HEADER"   "$LIVEDATA_RAINDAY"  "$UNIT_RAIN" 'rday' "" "$STYLE_LIMIT_LIVEDATA_RAINDAY"
-        [ -n "$LIVEDATA_RAINEVENT" ]    && printLivedataRainLine "$LIVEDATA_RAINEVENT_RAW" "$LIVEDATA_RAINEVENT_LIMIT" "$LIVEDATA_RAINEVENT_HEADER" "$LIVEDATA_RAINEVENT" "$UNIT_RAIN" 'revent' "" "$STYLE_LIMIT_LIVEDATA_RAINEVENT"
-
-        [ -n "$LIVEDATA_RAINWEEK" ]     && printLivedataLine "$LIVEDATA_RAINWEEK_HEADER" "$LIVEDATA_RAINWEEK"    "$VALUE_RAIN_FMT" "$UNIT_RAIN" "%3s" 'rweek' ''  "$LIVEDATA_WH40_RAINFALL_BATTERY" "$LIVEDATA_WH40_RAINFALL_BATTERY_STATE" "" "$LIVEDATA_WH40_RAINFALL_SIGNAL" "$LIVEDATA_WH40_RAINFALL_SIGNAL_STATE"
-        [ -n "$LIVEDATA_RAINMONTH" ]    && printLivedataLine "$LIVEDATA_RAINMONTH_HEADER" "$LIVEDATA_RAINMONTH"  "$VALUE_RAIN_FMT" "$UNIT_RAIN" "%3s" 'rmonth' "$VALUE_RAIN_FMT"
-        [ -n "$LIVEDATA_RAINYEAR" ]     && printLivedataLine "$LIVEDATA_RAINYEAR_HEADER" "$LIVEDATA_RAINYEAR"    "$VALUE_RAIN_FMT" "$UNIT_RAIN" "%3s" 'ryear'
-        [ -n "$LIVEDATA_RAINTOTAL" ]    && printLivedataLine "$LIVEDATA_RAINTOTAL_HEADER" "$LIVEDATA_RAINTOTAL"  "$VALUE_RAIN_FMT" "$UNIT_RAIN" "%3s" 'rtotal' "$VALUE_RAIN_FMT"
-    fi
-
-     if [ -z "$LIVEVIEW_HIDE_TEMP" ]; then 
-        [ -n "$LIVEDATA_TEMP1" ] && printLivedataHeader "" "$LIVEDATA_TEMP_HEADER"
-        n=1
-        while [ "$n" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
-        #shellcheck disable=SC2153
-        {
-            #eval echo !!!!!!!!!!!!!!!!! \"\$LIVEDATA_TEMP${n}_SIGNAL_STATE\" n=$n
-            #set -x
-            eval " if [ -n ''"\$LIVEDATA_TEMP$n" ]; then
-                       # setSGIBatteryLowNormal "\$LIVEDATA_TEMP${n}_BATTERY"
-                        printLivedataLine \"\$LIVEDATA_TEMP_HEADER$n\" \"\$LIVEDATA_TEMP$n\" '%6.1f'  \"\$UNIT_TEMP\" '%2s' 'temp$n' '' \"\$LIVEDATA_TEMP${n}_BATTERY\" \"\$LIVEDATA_TEMP${n}_BATTERY_STATE\" '' \"\$LIVEDATA_TEMP${n}_SIGNAL\" \"\$LIVEDATA_TEMP${n}_SIGNAL_STATE\"
-                   fi "
-            #set +x
-        }
-            n=$((n + 1))
-        done
-
-        n=1
-        while [ "$n" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
-        #shellcheck disable=SC2153
-        {
-            eval "[ -n ''"\$LIVEDATA_HUMI$n" ] && printLivedataLine \"\$LIVEDATA_HUMIDITY_HEADER$n\" \"\$LIVEDATA_HUMI$n\" \"%6u\" \"%\" \"%4s\" \"hum$n\" \"%4u\""
-        }
-            n=$((n + 1))
-        done
-
-     fi
-
-    if [ -z "$LIVEVIEW_HIDE_SOILMOISTURE" ]; then
-        [ -n "$LIVEDATA_SOILMOISTURE1" ] && printLivedataHeader "" "$LIVEDATA_SOILMOISTURE_HEADER"
-        n=1
-        while [ "$n" -le "$SENSORTYPE_WH51SOILMOISTURE_MAXCH" ]; do
-            eval "if [ -n ''"\$LIVEDATA_SOILMOISTURE$n" ]; then
-                    #setSGIBatteryVoltage \"\$LIVEDATA_SOILMOISTURE${n}_BATTERY_RAW\"
-                    printLivedataLine  \"\$LIVEDATA_SOILMOISTURE_HEADER$n\" \"\$LIVEDATA_SOILMOISTURE$n\" \"%6u\" \"%\" \"%4s\" \"sm$n\" \"%3u\" \"\$LIVEDATA_SOILMOISTURE${n}_BATTERY\" \"\$LIVEDATA_SOILMOISTURE${n}_BATTERY_STATE\" '' \"\$LIVEDATA_SOILMOISTURE${n}_SIGNAL\" \"\$LIVEDATA_SOILMOISTURE${n}_SIGNAL_STATE\"
-                  fi "
-            n=$((n + 1))
-        done
-    fi
-
-    if [ -z "$LIVEVIEW_HIDE_SOILTEMPERATURE" ]; then
-
-        [ -n "$LIVEDATA_SOILTEMP1" ] && printLivedataHeader "" "$LIVEDATA_SOILTEMP_HEADER"
-        n=1
-        while [ "$n" -le "$SENSORTYPE_WH34SOILTEMP_MAXCH" ]; do
-            eval "if [ -n ''"\$LIVEDATA_SOILTEMP$n" ]; then
-                    #setSGIBatteryVoltage \"\$LIVEDATA_SOILTEMP${n}_BATTERY_RAW\"
-                    printLivedataLine \"\$LIVEDATA_SOILTEMP_HEADER$n\" \"\$LIVEDATA_SOILTEMP$n\" \"%6.1f\" \"$UNIT_TEMP\" \"%2s\" \"st$n\" '' \"\$LIVEDATA_SOILTEMP${n}_BATTERY\" \"\$LIVEDATA_SOILTEMP${n}_BATTERY_STATE\" '' \"\$LIVEDATA_SOILMOISTURE${n}_SIGNAL\" \"\$LIVEDATA_SOILMOISTURE${n}_SIGNAL_STATE\"
-                  fi"
-            n=$((n + 1))
-        done
-    fi
-   
-    if [ -z "$LIVEVIEW_HIDE_TEMPUSR" ]; then
-       
-       [ -n "$LIVEDATA_TF_USR1" ] && printLivedataHeader "" "$LIVEDATA_TEMPUSR_HEADER"
-        n=1
-        while [ "$n" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
-            eval "if [ -n ''"\$LIVEDATA_TF_USR$n" ]; then
-                #setSGIBatteryVoltage \"\$LIVEDATA_TF_USR${n}_BATTERY_RAW\"
-                printLivedataLine \"\$LIVEDATA_TF_USR_HEADER$n\" \"\$LIVEDATA_TF_USR$n\" \"%6.1f\" \"\$UNIT_TEMP\" \"%2s\" \"tusr$n\" '' \"\$LIVEDATA_TF_USR${n}_BATTERY\"  \"\$LIVEDATA_TF_USR${n}_BATTERY_STATE\" '' \"\$LIVEDATA_TF_USR${n}_SIGNAL\"  \"\$LIVEDATA_TF_USR${n}_SIGNAL_STATE\"
-                fi"
-            n=$((n + 1))
-        done
-    fi
-
-    if [ -z "$LIVEVIEW_HIDE_LEAK" ]; then
-
-        [ -n "$LIVEDATA_LEAK1" ] && printLivedataHeader "" "$LIVEDATA_LEAK_HEADER"
-        n=1
-        while [ "$n" -le "$SENSORTYPE_WH55LEAK_MAXCH" ]; do
-            #TEST eval LIVEDATA_LEAK$n=1
-            #shellcheck disable=SC2034
-            VALUE_LEAK=$LIVEDATA_LEAK_NO
-            eval "if [ -n ''"\$LIVEDATA_LEAK$n" ]; then
-                        #setSGIBatteryLowNormal \"\$LIVEDATA_LEAK${n}_BATTERY\"
-                        [ \"\$LIVEDATA_LEAK$n\" -ne 0 ] && STYLE_LIVE_VALUE=\"$STYLE_LEAK\" && VALUE_LEAK=$LIVEDATA_LEAK_YES
-                        LIVEDATA_LEAK_HEADER$n=\"\$LIVEDATA_LEAK_HEADER$n \$VALUE_LEAK_DELIMITER \$VALUE_LEAK\"
-                        printLivedataLine \"\$LIVEDATA_LEAK_HEADER$n\" \"\$LIVEDATA_LEAK$n\" \"%6u\" \"\" \"%4s\" \"leak$n\" '' \"\$LIVEDATA_LEAK${n}_BATTERY\" \"\$LIVEDATA_LEAK${n}_BATTERY_STATE\" '' \"\$LIVEDATA_LEAK${n}_SIGNAL\" \"\$LIVEDATA_LEAK${n}_SIGNAL_STATE\"
-                fi"
-            n=$((n + 1))
-        done
-    fi
-
-    if [ -z "$LIVEVIEW_HIDE_PM25" ]; then
-
-        [ -n "$LIVEDATA_PM251" ] && printLivedataHeader "" "$LIVEDATA_PM25_HEADER"
-        n=1
-        while [ "$n" -le "$SENSORTYPE_WH43PM25_MAXCH" ]; do
-            #shellcheck disable=SC2153
-            eval "if [ -n ''"\$LIVEDATA_PM25$n" ]; then
-                            #setSGIBatteryLowNormal \"\$LIVEDATA_PM25${n}_BATTERY\"
-                            if [ -z \"\$LIVEVIEW_HIDE_PM25AQI\" ]; then
-                                setAQI \"\$LIVEDATA_PM25${n}_RAW\"
-                                setStyleAQI \"\$LIVEDATA_PM25${n}_RAW\"
-                                STYLE_LIVE_VALUE=\$STYLE_AQI
-                            else
-                              unset VALUE_PM25_AQI_DELIMITER
-                            fi
-                            LIVEDATA_PM25_HEADER$n=\"\$LIVEDATA_PM25_HEADER$n \$VALUE_PM25_AQI_DELIMITER \$VALUE_PM25_AQI\"
-                            printLivedataLine \"\$LIVEDATA_PM25_HEADER$n\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$UNIT_PM25\" \"%6s\" \"pm25$n\" '' \"\$LIVEDATA_PM25${n}_BATTERY\" \"\$LIVEDATA_PM25${n}_BATTERY_STATE\" '' \"\$LIVEDATA_PM25${n}_SIGNAL\" \"\$LIVEDATA_PM25${n}_SIGNAL_STATE\"
-                 fi"
-            n=$((n + 1))
-        done
-
-        n=1
-        while [ "$n" -le "$SENSORTYPE_WH43PM25_MAXCH" ]; do
-            eval "if [ -n ''"\$LIVEDATA_PM25_24HAVG$n" ]; then
-                        if [ -z \"\$LIVEVIEW_HIDE_PM25AQI\" ]; then
-                            setAQI \"\$LIVEDATA_PM25_24HAVG${n}_RAW\"
-                            setStyleAQI \"\$LIVEDATA_PM25_24HAVG${n}_RAW\"
-                            STYLE_LIVE_VALUE=\$STYLE_AQI
-                        else
-                            unset VALUE_PM25_AQI_DELIMITER
-                        fi
-                        LIVEDATA_PM25_24HAVG_HEADER$n=\"\$LIVEDATA_PM25_24HAVG_HEADER$n \$VALUE_PM25_AQI_DELIMITER \$VALUE_PM25_AQI\"
-                        printLivedataLine \"\$LIVEDATA_PM25_24HAVG_HEADER$n\" \"\$LIVEDATA_PM25_24HAVG$n\" \"%6.1f\" \"\$UNIT_PM25\" \"%6s\" \"pm25a$n\" \"%6.1f\"
-             fi"
-            n=$((n + 1))
-        done
-    fi
-
-    if [ -z "$LIVEVIEW_HIDE_CO2" ]; then
-
-        #WH45
-        if [ -n "$LIVEDATA_WH45CO2_TEMPF" ]; then
-             #setSGIBatteryLowNormal "$LIVEDATA_WH45CO2_BATTERY"
-             printLivedataHeader "" "$LIVEDATA_WH45CO2_HEADER"
-             printLivedataLine "$LIVEDATA_WH45CO2_TEMPF_HEADER" "$LIVEDATA_WH45CO2_TEMPF"  "%6.1f" "$UNIT_TEMP" "%2s" 'temp' '' "$LIVEDATA_WH45CO2_BATTERY" "$LIVEDATA_WH45CO2_BATTERY_STATE" "" "$LIVEDATA_WH45CO2_SIGNAL" "$LIVEDATA_WH45CO2_SIGNAL_STATE"
-        fi
-
-        [ -n "$LIVEDATA_WH45CO2_HUMI" ]         && printLivedataLine "$LIVEDATA_WH45CO2_HUMI_HEADER" "$LIVEDATA_WH45CO2_HUMI"                "%6u" "$UNIT_HUMIDITY" "%4s" 'humi'
-        [ -n "$LIVEDATA_WH45CO2_PM10" ]         && printLivedataLine "$LIVEDATA_WH45CO2_PM10_HEADER" "$LIVEDATA_WH45CO2_PM10"                "%6.1f" "$UNIT_PM25" "%7s" 'pm10'
-        [ -n "$LIVEDATA_WH45CO2_PM10_24HAVG" ]  && printLivedataLine "$LIVEDATA_WH45CO2_PM10_24HAVG_HEADER" "$LIVEDATA_WH45CO2_PM10_24HAVG"  "%6.1f" "$UNIT_PM25" "%7s" 'pm10a'
-        if [ -n "$LIVEDATA_WH45CO2_PM25" ]; then
-            setAQI "$LIVEDATA_WH45CO2_PM25_RAW"
-            setStyleAQI "$LIVEDATA_WH45CO2_PM25_RAW"
-            STYLE_LIVE_VALUE=$STYLE_AQI
-            LIVEDATA_WH45CO2_PM25_HEADER="$LIVEDATA_WH45CO2_PM25_HEADER $VALUE_PM25_AQI_DELIMITER $VALUE_PM25_AQI"
-            printLivedataLine "$LIVEDATA_WH45CO2_PM25_HEADER" "$LIVEDATA_WH45CO2_PM25"                "%6.1f" "$UNIT_PM25" "%7s" 'pm25'
-        fi
-        if [ -n "$LIVEDATA_WH45CO2_PM25_24HAVG" ]; then
-            setAQI "$LIVEDATA_WH45CO2_PM25_24HAVG_RAW"
-            setStyleAQI "$LIVEDATA_WH45CO2_PM25_24HAVG_RAW"
-            STYLE_LIVE_VALUE=$STYLE_AQI
-            LIVEDATA_WH45CO2_PM25_24HAVG_HEADER="$LIVEDATA_WH45CO2_PM25_24HAVG_HEADER $VALUE_PM25_AQI_DELIMITER $VALUE_PM25_AQI"
-            printLivedataLine "$LIVEDATA_WH45CO2_PM25_24HAVG_HEADER" "$LIVEDATA_WH45CO2_PM25_24HAVG"  "%6.1f" "$UNIT_PM25" "%7s" 'pm25a'
-        fi
-        [ -n "$LIVEDATA_WH45CO2_CO2" ]          && printLivedataLine "$LIVEDATA_WH45CO2_CO2_HEADER" "$LIVEDATA_WH45CO2_CO2"                  "%6u" "$UNIT_CO2" "%6s" 'co2'
-        [ -n "$LIVEDATA_WH45CO2_CO2_24HAVG" ]   && printLivedataLine "$LIVEDATA_WH45CO2_CO2_24HAVG_HEADER" "$LIVEDATA_WH45CO2_CO2_24HAVG"           "%6u" "$UNIT_CO2" "%6s" 'co2a'
-    fi
-
-    if [ -z "$LIVEVIEW_HIDE_LIGHTNING" ]; then
-
-        if [ -n "$LIVEDATA_LIGHTNING_DISTANCE" ]; then
-            printLivedataHeader "" "$LIVEDATA_LIGHTNING_HEADER"
-            printLivedataLine "$LIVEDATA_LIGHTNING_DISTANCE_HEADER" "$LIVEDATA_LIGHTNING_DISTANCE"    "%6u" "km" "%5s" 'ldist' '' "$LIVEDATA_WH57_LIGHTNING_BATTERY" "$LIVEDATA_WH57_LIGHTNING_BATTERY_STATE" '' "$LIVEDATA_WH57_LIGHTNING_SIGNAL" "$LIVEDATA_WH57_LIGHTNING_SIGNAL_STATE" 
-        fi
-        [ -n "$LIVEDATA_LIGHTNING_TIME" ]       && printLivedataLine "$LIVEDATA_LIGHTNING_TIME_UTC_HEADER" "$LIVEDATA_LIGHTNING_TIME_UTC"    "%19s" "" "%5s" "lightningutc" 
-        [ -n "$LIVEDATA_LIGHTNING_POWER" ]      && printLivedataLine "$LIVEDATA_LIGHTNING_POWER_HEADER" "$LIVEDATA_LIGHTNING_POWER"          "%6u" "" "%5s" 'lpower' "%6u"
-    
-    fi
-
-    if [ -z "$LIVEVIEW_HIDE_LEAFWETNESS" ]; then
-        [ -n "$LIVEDATA_LEAFWETNESS1" ] && printLivedataHeader "" "$LIVEDATA_LEAFWETNESS_HEADER"
-        n=1
-        while [ "$n" -le "$SENSORTYPE_WH35LEAFWETNESS_MAXCH" ]; do
-            eval "if [ -n ''"\$LIVEDATA_LEAFWETNESS$n" ]; then
-                    #setSGIBatteryVoltage \"\$LIVEDATA_LEAFWETNESS${n}_BATTERY_RAW\"
-                    printLivedataLine \"\$LIVEDATA_LEAFWETNESS_HEADER$n\" \"\$LIVEDATA_LEAFWETNESS$n\" \"%6u\" \"%\" \"%4s\"  \"leaf$n\" '' \"\$LIVEDATA_LEAFWETNESS${n}_BATTERY\" \"\$LIVEDATA_LEAFWETNESS${n}_BATTERY_STATE\" '' \"\$LIVEDATA_LEAFWETNESS${n}_SIGNAL\" \"\$LIVEDATA_LEAFWETNESS${n}_SIGNAL_STATE\"
-            fi"
-            n=$((n + 1))
-        done
-    fi
-
-    #battery
-
-    if [ -z "$HIDE_BATTERY_LIVEDATA" ]; then
-      :
-       # printLivedataBatteryLowNormal "$LIVEDATA_WH65_BATTERY" "$LIVEDATA_WH65_BATTERY_STATE" "LIVEDATA_WH65_BATTERY_HEADER" 'bwh65'
-       # printLivedataBatteryVoltage   "$LIVEDATA_WH68_BATTERY" "$LIVEDATA_WH68_BATTERY_STATE" "LIVEDATA_WH68_BATTERY_HEADER" 'bwh68'
-       # printLivedataBatteryVoltage   "$LIVEDATA_WH80_BATTERY" "$LIVEDATA_WH80_BATTERY_STATE" "LIVEDATA_WH68_BATTERY_HEADER"  'bwh80'
-       # printLivedataBatteryLowNormal "$LIVEDATA_WH32_TEMPERATURE_BATTERY" "$LIVEDATA_WH32_TEMPERATURE_BATTERY_STATE" "LIVEDATA_WH32_TEMPERATURE_BATTERY_HEADER" 'btout' 
-       # printLivedataBatteryLowNormal "$LIVEDATA_WH40_RAINFALL_BATTERY" "$LIVEDATA_WH40_RAINFALL_BATTERY_STATE" "LIVEDATA_WH40_RAINFALL_BATTERY_HEADER" 'brain'
-        #printLivedataBatteryLowNormal "$LIVEDATA_WH57_LIGHTNING_BATTERY" "$LIVEDATA_WH57_LIGHTNING_BATTERY_STATE" "LIVEDATA_WH57_LIGHTNING_BATTERY_HEADER" 'bwh57'
-     
-    fi
-
-    #system
-   
-    if [ -z "$LIVEVIEW_HIDE_SYSTEM" ]; then
-        
-        printLivedataHeader "" "$LIVEDATA_SYSTEM_HEADER"
-
-        [ -n "$LIVEDATA_SYSTEM_VERSION" ]   && printLivedataLine "$LIVEDATA_SYSTEM_VERSION_HEADER"   "$LIVEDATA_SYSTEM_VERSION"   "%-14s" "" "%5s" 'version'
-        [ -n "$LIVEDATA_SYSTEM_MODEL" ]     && printLivedataLine "$LIVEDATA_SYSTEM_MODEL_HEADER"     "$LIVEDATA_SYSTEM_MODEL"     "%-7s"  "" "%5s" 'model'
-        if [ -n "$LIVEDATA_SYSTEM_UTC" ]; then
-       
-            if [  "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT" -eq 0 ]; then
-               if [ "$LIVEDATA_SYSTEM_TIMEZONE_DST_BIT" -eq 1 ]; then
-                    printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER" "$LIVEDATA_SYSTEM_UTC $LIVEDATA_SYSTEM_TIMEZONE_OFFSET_HOURS DST" "%-20s" "" "%5s" 'utc'
-               else
-                    printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER" "$LIVEDATA_SYSTEM_UTC $LIVEDATA_SYSTEM_TIMEZONE_OFFSET_HOURS" "%-20s" "" "%5s" 'utc'
-                fi     
-            else
-                printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER"       "$LIVEDATA_SYSTEM_UTC"       "%-20s" "" "%5s" 'utc'
-            fi
-
-        #    [ -n "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" ] && printLivedataLine "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER" "$LIVEDATA_SYSTEM_TIMEZONE_AUTO" "%s"
-        #    [ -n "$LIVEDATA_SYSTEM_TIMEZONE_DST" ] && printLivedataLine "$LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER" "$LIVEDATA_SYSTEM_TIMEZONE_DST" "%s"
-        #    [ -n "$LIVEDATA_SYSTEM_TIMEZONE" ] && printLivedataLine "$LIVEDATA_SYSTEM_TIMEZONE_HEADER" "$LIVEDATA_SYSTEM_TIMEZONE" "%-32.32s"
-        fi
-        
-        [ -n "$LIVEDATA_SYSTEM_FREQUENCY" ] && printLivedataLine "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$LIVEDATA_SYSTEM_FREQUENCY" "%-7s"  "" "%5s" 'freq' 
-        [ -n "$LIVEDATA_SYSTEM_SENSORTYPE" ] && printLivedataLine "$LIVEDATA_SYSTEM_SENSORTYPE_HEADER" "$LIVEDATA_SYSTEM_SENSORTYPE" "%4s" "" "%4s" 'type' '' "$LIVEDATA_WH65_BATTERY" "$LIVEDATA_WH65_BATTERY_STATE" "" "$LIVEDATA_WH65_SIGNAL" "$LIVEDATA_WH65_SIGNAL_STATE"
-   
-       # setLivedataProtocolStyle "$LIVEDATA_SYSTEM_PROTOCOL"
-       # space=' '
-       # [ -z "$LIVEDATA_SYSTEM_PROTOCOL_VERSION" ] && unset space
-       #    STYLE_LIVE_VALUE=$VALUE_STYLE_PROTOCOL   printLivedataLine "$LIVEDATA_SYSTEM_PROTOCOL_HEADER" "$LIVEDATA_SYSTEM_PROTOCOL_LONG$space$LIVEDATA_SYSTEM_PROTOCOL_VERSION" "%s" 
-       
-        [ -n "$LIVEDATA_SENSOR_COUNT_CONNECTED" ] && STYLE_LIVE_VALUE=$STYLE_SENSOR_CONNECTED printLivedataLineFinal "$LIVEDATA_SYSTEM_SENSOR_CONNECTED_HEADER" "$LIVEDATA_SENSOR_COUNT_CONNECTED" "%2u"
-        [ -n "$LIVEDATA_SENSOR_COUNT_DISCONNECTED" ] && STYLE_LIVE_VALUE=$STYLE_SENSOR_DISCONNECTED printLivedataLineFinal "$LIVEDATA_SYSTEM_SENSOR_DISCONNECTED_HEADER" "$LIVEDATA_SENSOR_COUNT_DISCONNECTED" "%2u"
-        [ -n "$LIVEDATA_SENSOR_COUNT_SEARCHING" ] && STYLE_LIVE_VALUE=$STYLE_SENSOR_SEARCH    printLivedataLine "$LIVEDATA_SYSTEM_SENSOR_SEARCHING_HEADER" "$LIVEDATA_SENSOR_COUNT_SEARCHING" "%2u"
-        [ -n "$LIVEDATA_SENSOR_COUNT_DISABLED" ] && STYLE_LIVE_VALUE=$STYLE_SENSOR_DISABLE   printLivedataLine "$LIVEDATA_SYSTEM_SENSOR_DISABLED_HEADER" "$LIVEDATA_SENSOR_COUNT_DISABLED" "%2u"
-
-    fi
-
-    #WH68 sa,WH80 sa,WH40 rfall,WH32 tout
-   # printLivedataLine '' "$LIVEDATA_WH68_BATTERY" "$LIVEDATA_WH45CO2_BATTERY_STATE" "" "$LIVEDATA_WH45CO2_SIGNAL" "$LIVEDATA_WH45CO2_SIGNAL_STATE"
-  
-    printAppendBuffer
-
-    #unset local variables for ksh -> made global by using () function syntax without function keyword
-    #https://www.unix.com/shell-programming-and-scripting/137435-ksh-different-syntax-function.html
-    #man ksh93: ksh93 uses static scoping (one global scope, one local scope per function) and allows local variables only on Korn style functions
-    
-    unset n delimiter space
-}
-
 newRuler()
 #creates a ruler for debugging positioning on screen
 {
@@ -1204,7 +729,6 @@ getDateUTC()
 {
     VALUE_DATE_UTC=$(date -u -d @"$1" +'%F %T') #add field
 }
-
 
 resetAppendBuffer()
 {
@@ -1255,353 +779,6 @@ setLivedataSignal()
        setSignal "LEAFWETNESS$(( $1 - SENSORTYPE_WH35LEAFWETNESS + 1))" "$2"
     fi
       
-}
-
-getHexDigit() {
-    unset VALUE_HEX_DIGIT
-
-    if [ "$1" -ge 0 ] && [ "$1" -le 9 ]; then
-        VALUE_HEX_DIGIT=$1
-    elif [ "$1" -eq 10 ]; then
-        VALUE_HEX_DIGIT='a'
-    elif [ "$1" -eq 11 ]; then
-        VALUE_HEX_DIGIT='b'
-    elif [ "$1" -eq 12 ]; then
-        VALUE_HEX_DIGIT='c'
-    elif [ "$1" -eq 13 ]; then
-        VALUE_HEX_DIGIT='d'
-    elif [ "$1" -eq 14 ]; then
-        VALUE_HEX_DIGIT='e'
-    elif [ "$1" -eq 15 ]; then
-        VALUE_HEX_DIGIT='f'
-    fi
-}
-
-newPacketBody() {
-    if [ -z "$1" ]; then
-        echo >&2 Error no command given to newPacketBody
-        return 1
-    fi
-
-    PACKET_TX_CMD=$(($1))
-    getCommandName "$PACKET_TX_CMD"
-
-    PACKET_TX_PREAMBLE="255 255"
-    unset PACKET_TX_BODY
-}
-
-getLength()
-#get length of tx packet buffer
-#$1 string of uint8 integers with space
-{
-    IFS=' '
-    VALUE_LENGTH=0
-    for BYTE in $1; do
-      VALUE_LENGTH=$(( VALUE_LENGTH + 1 ))
-    done
-    unset BYTE
-}
-
-checksumPacketTX() {
-    getLength "$PACKET_TX_BODY"
-    PACKET_TX_BODY_LENGTH=$((VALUE_LENGTH + 2)) # at least 2 byte for length + checksum bytes
-
-    if [ "$PACKET_TX_CMD" -eq "$CMD_BROADCAST" ] || [ "$PACKET_TX_CMD" -eq $CMD_WRITE_SSID ]; then # 2 byte length 
-        PACKET_TX_BODY_LENGTH=$(( PACKET_TX_BODY_LENGTH + 1 ))
-        PACKET_TX_LENGTH=" $(( ((PACKET_TX_BODY_LENGTH + 1) & 0xff00) >> 8 )) $(( (PACKET_TX_BODY_LENGTH + 1) & 0xff ))"
-    else
-        PACKET_TX_LENGTH=$((PACKET_TX_BODY_LENGTH + 1)) # add 1 byte for cmd field
-    fi
-
-    if [ -n "$PACKET_TX_BODY" ]; then
-        PACKET_TX_BODY="$PACKET_TX_CMD $PACKET_TX_LENGTH $PACKET_TX_BODY"
-
-    else
-        PACKET_TX_BODY="$PACKET_TX_CMD $PACKET_TX_LENGTH"
-    fi
-
-    checksum "$PACKET_TX_BODY"
-
-    PACKET_TX_BODY="$PACKET_TX_BODY $VALUE_CHECKSUM"
-    PACKET_TX="$PACKET_TX_PREAMBLE $PACKET_TX_BODY"
-
-    [ $DEBUG -eq 1 ] && echo >&2 "PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
-}
-
-
-createPacketTX()
-{
-    checksumPacketTX
-    convertBufferFromDecToOctalEscape "$PACKET_TX" # \0377 \0377 \0nnn
-
-    PACKET_TX_ESCAPE=$VALUE_OCTAL_BUFFER_ESCAPE
-}
-
-sendPacket() {
-    EXITCODE_SENDPACKET=0
-
-   if ! sendPacketnc "$@"; then # $@ each arg expands to a separate word
-      EXITCODE_SENDPACKET=$EXITCODE_SENDPACKETNC
-      [ "$DEBUG" -eq 1 ] && echo >&2 "Sendpacket failed with error code $EXITCODE_SENDPACKET"
-   fi
-    
-    return "$EXITCODE_SENDPACKET"
-}
-
-sendPacketnc() { #$1 - command
-    EXITCODE_SENDPACKETNC=0
-    #$2 - host
-
-    timeout_nc=0.05
-    timeout_udp_broadcast=0.236 # timeout selected based on udp port scanning 254 hosts in 60s (60s/254=0.236s)
-    useTimeout=0
-
-    #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
-    if [ $# -ge 1 ]; then
-        newPacketBody "$1"
-    fi
-
-    if [ -n "$2" ]; then
-        host="$2" # for udp broadcast probing on subnet
-    else
-        host="$C_HOST" # -g option
-    fi
-
-    if [ -z "$host" ]; then
-      echo >&2 Error: No host specified
-      EXITCODE_SENDPACKETNC="$ERROR_NO_HOST_SPECIFIED"
-      return $EXITCODE_SENDPACKETNC
-    fi
-
-    createPacketTX
-
-    { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" ] ; } &&
-    {
-        printf >&2 "> %-20s" "$COMMAND_NAME"
-        printBuffer >&2 "$PACKET_TX"
-    }
-
-    unset rxpipecmd txpipecmd
-
-    if [ "$DEBUG_OPTION_TRACEPACKET" -eq 1 ]; then
-       #visual studio code: problems with : display for date -> using space
-       tracedate=$(date +'%H %M %S %N') #https://superuser.com/questions/674464/print-current-time-with-milliseconds
-       rxpipecmd=" | tee \"rx-$COMMAND_NAME-$tracedate.hex\""
-       txpipecmd=" | tee \"tx-$COMMAND_NAME-$tracedate.hex\""
-    fi
-
-    port=$PORT_GW_TCP
-
-    if [ $PACKET_TX_CMD -eq $CMD_BROADCAST ]; then
-        ncUDPOpt='-u' # udp mode
-        port=$PORT_GW_UDP
-        timeout_nc=$timeout_udp_broadcast
-        useTimeout=1
-    elif [ "$PACKET_TX_CMD" -eq $CMD_WRITE_RESET ] || [ "$PACKET_TX_CMD" -eq $CMD_WRITE_SSID ]; then
-        :
-    elif [ "$PACKET_TX_CMD" -eq $CMD_REBOOT ]; then
-       useTimeout=1
-       timeout_nc=1
-       #sometimes result packet from gw is not received, and nc hangs
-    fi
-
-    # change between openbsd/nmap ncat in WSL2/ubuntu - sudo update-alternatives --config nc
-
-    odcmdstr="od -A n -t u1 -w$MAX_16BIT_UINT"
-
-    if [ "$NC_VERSION" = $NC_OPENBSD ]; then
-
-        # -N shutdown(2) the network socket after EOF on the input / from man nc - otherwise nc hangs
-        nccmdstr="\"$NC_CMD\" -4 -N -w 1 $ncUDPOpt $host $port" 
-       
-       # if [ "$useTimeout" -eq 1 ]; then
-       #    nccmdstr="timeout $timeout_nc $nccmdstr"
-       # fi
-        
-        cmdstr="printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd | $nccmdstr $rxpipecmd | $odcmdstr"
-
-    elif [ "$NC_VERSION" = $NC_NMAP ]; then
-
-        #sleep to disable immediate EOF and shutdown of ncat -> which leads to data not received from udp socket
-       
-        nccmdstr="\"$NC_CMD\" -4 -w 1  $ncUDPOpt $host $port"
-        cmdstr="{ printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd ; sleep $timeout_nc; } |  $nccmdstr $rxpipecmd | $odcmdstr"
-
-    elif [ "$NC_VERSION" = $NC_TOYBOX ]; then
-
-        nccmdstr="$NC_CMD -4 $ncUDPOpt $host $port"
-        
-        if [ "$useTimeout" -eq 1 ]; then
-           nccmdstr="timeout $timeout_nc $nccmdstr"
-        fi
-
-        cmdstr="printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd | $nccmdstr $rxpipecmd | $odcmdstr"
-
-    elif [ "$NC_VERSION" = $NC_BUSYBOX ]; then
-
-        nccmdstr="$NC_CMD $host $port"
-
-        if [ -z "$ncUDPOpt" ]; then
-            cmdstr="printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd |  $nccmdstr $rxpipecmd | $odcmdstr"
-        else
-            echo >&2 Busybox nc does not support UDP
-        fi
-    else
-        echo >&2 "Error: nc version $NC_VERSION not supported sendPacketnc $ERROR_DEPENDENCY_NC"
-        return "$ERROR_DEPENDENCY_NC"
-    fi
-
-    if [ -n "$cmdstr" ]; then
-
-       if [ -n "$DEBUG_OPTION_COMMAND" ] && [ "$DEBUG_OPTION_COMMAND" -eq 1 ]; then
-            printf >&2 "%s: %s\n" "$COMMAND_NAME" "$cmdstr"
-       fi
-       
-       if [ $DEBUG -eq 1 ]; then
-            echo >&2 "Sending packet to ip $host port $port"
-       fi 
-
-       od_buffer=$(eval "$cmdstr" )
-       #maybe use: https://stackoverflow.com/questions/1550933/catching-error-codes-in-a-shell-pipe
-       parsePacket "$od_buffer"
-       EXITCODE_SENDPACKETNC=$?
-    fi
-
-    unset ncUDPOpt ncIdleOpt port host timeout_udp_broadcast useTimeout timeout_nc od_buffer cmdstr nccmdstr odcmdstr  rxpipecmd txpipecmd
-
-    return $EXITCODE_SENDPACKETNC
-}
-
-discovery() {
-    if [ -n "$NC_VERSION" ]; then
-        discovery_nc "$@"
-    else
-        echo >&2 Error nc not found, cannot scan for devices
-    fi
-}
-
-discovery_udp_subnet() { #$1 - subnet, for example 192.168.3
-    #issue: nc fails to read when sending to subnet broadcast address 192.168.3.255
-    #host reply with ICMP host/port unreachable or broadcast response
-    #send broadcast cmd to port 46000
-    #some host responses take a long time > 175ms, but most take only 4-8ms, so -s subnet should be run multiple times to get all hosts on the subnet
-    #wireshark filter: ip.addr == 192.168.3.80 || ip.addr == 192.168.3.49 || ip.addr == 192.168.3.204
-    #wireshark: Time field: "Delta time displayed"
-    #testing environment: vEthernet WSL adapter/ubuntu, Windows 11, Realtek RTL8852AE WiFi 6 802.11ax PCIe, Huawei AX mesh router 5Ghz channel 36,WPA2
-    
-    EXITCODE_DISCOVERY=0
-
-    case $1 in
-        *.*.*) 
-                subnet_valid=1
-                ;;
-            *)
-                subnet_valid=0 
-                ;;
-    esac
-
-   if [ $subnet_valid -eq 0 ]; then
-        echo >&2 "Error: Invalid subnet address, use ddd.ddd.ddd"
-        EXITCODE_DISCOVERY=$ERROR_INVALID_SUBNET
-        return "$ERROR_INVALID_SUBNET"
-   fi
-    
-    hostnumber=1
-    while [ "$hostnumber" -le 254 ]; do
-        #[ $DEBUG -eq 1 ] && 
-        printf >&2 "\r%s " "$1.$hostnumber"
-        sendPacket $CMD_BROADCAST "$1.$hostnumber" 
-        hostnumber=$((hostnumber + 1))
-    done
-
-    unset hostnumber
-
-    return $EXITCODE_DISCOVERY
-}
-
-discovery_nc() { #$1 - subnet for udp scan
-
-    scan_max_iterations=10
-    scan_nc_idle_timeout=0.005 # 5ms
-
-    case "$KSH_VERSION" in
-        *Android*)
-            echo >&2 "Error: UDP scanning for devices not supported ( -u -l options ), nc version $NC_VERSION"
-            # udp -u -l option gives 1 error code and 'nc: listen' output
-            return "$ERROR_NC_UDP_SCAN_UNAVAILABLE"
-            ;;
-    esac
-
-    if [ -z "$1" ]; then # set up server on 59387 port
-
-        if [ "$NC_VERSION" = $NC_NMAP ]; then
-            scan_max_iterations=30
-            SCAN_NC_TIMEOUT=0.1
-        fi
-
-        if scan_result=$(
-            n=0
-            while [ $n -lt $scan_max_iterations ]; do
-                if [ "$NC_VERSION" = $NC_NMAP ]; then
-                    $NC_CMD -4 -u -i $scan_nc_idle_timeout -l $PORT_CLIENT_UDP 2>/dev/null | od -A n -w64 -t x1
-                else
-                    timeout $SCAN_NC_TIMEOUT "$NC_CMD" -4 -u -l $PORT_CLIENT_UDP 2>/dev/null | od -A n -w64 -t x1
-                fi
-                n=$((n + 1))
-            done | sort -u
-        ); then #"A Brief POSIX Advocacy: Shell Script Portability" https://www.usenix.org/system/files/login/articles/login_spring16_09_tomei.pdf
-
-            if [ -n "$scan_result" ]; then
-                IFS=$(printf "\n\b") # #https://stackoverflow.com/questions/16831429/when-setting-ifs-to-split-on-newlines-why-is-it-necessary-to-include-a-backspac
-                for broadcast in $scan_result; do
-                    parse_od_hex_packet "$broadcast"
-                done
-            fi
-        else
-            echo >&2 Error failed to obtain scan result while listening on UDP port $PORT_CLIENT_UDP, error code $?
-        fi
-    else
-        discovery_udp_subnet "$1"
-    fi
-
-    unset scan_max_iterations scan_nc_idle_timeout n broadcast
-
-    return $EXITCODE_DISCOVERY
-}
-
-checksum() {
-    sum=0
-
-    [ "$DEBUG" -eq 1 ] && >&2 echo  "checksum calculation on $1"
-    
-    IFS=" "
-    for BYTE in $1; do
-        [ $DEBUG -eq 1 ] && >&2 echo  "checksum read $BYTE"
-        sum=$(( (sum + BYTE) & 255 ))
-    done
-
-    [ $DEBUG -eq 1 ] &&  >&2  echo "checksum $sum $(printf "%2x" $sum)"
-
-    VALUE_CHECKSUM=$sum
-
-     unset sum BYTE
-}
-
-newCustomizedPacket() {
-    newPacketBody $CMD_WRITE_CUSTOMIZED
-    writeString "$C_WS_CUSTOMIZED_ID"
-    writeString "$C_WS_CUSTOMIZED_PASSWORD"
-    writeString "$C_WS_CUSTOMIZED_SERVER"
-    writeUInt16BE "$C_WS_CUSTOMIZED_PORT"
-    writeUInt16BE "$C_WS_CUSTOMIZED_INTERVAL"
-    writeUInt8 "$C_WS_CUSTOMIZED_HTTP"
-    writeUInt8 "$C_WS_CUSTOMIZED_ENABLED"
-}
-
-newPathPacket() {
-    newPacketBody $CMD_WRITE_PATH
-    writeString "$C_WS_CUSTOMIZED_PATH_ECOWITT"
-    writeString "$C_WS_CUSTOMIZED_PATH_WU"
 }
 
 parseSystemOption()
@@ -1678,126 +855,6 @@ parseSystemOption()
 
     return $EXITCODE_PARSESYSTEMOPTIONS
 
-}
-
-sendSystemPacket() 
-#$1 systemtype, $2 tz index, $3 dst bit, $4 autooff bit
-{
-    dst=0
-
-    #autooff 0->auto 1
-    #autooff 1->auto 0
-
-    if [ "$4" -eq 0 ]; then
-        dst=$(($3 | 2))
-    else
-        dst=$(($3))
-    fi
-
-    newPacketBody $CMD_WRITE_SYSTEM
-
-    writeUInt8      0       # frequency - only read
-    writeUInt8      "$1"    # sensortype 0=WH24, 1=WH65
-    writeUInt32BE   0       # UTC time - only read
-    writeUInt8      "$2"    # timezone index/manual -> not updated by setting auto timezone
-    writeUInt8      "$dst"  # daylight saving - dst
-    
-    unset dst
-
-    [ $DEBUG -eq 1 ] && echo >&2 Send system sensortye "$1" tz "$2" dst "$3"
-
-    sendPacket
-
-    return "$EXITCODE_SENDPACKET"
-}
-
-sendRaindata() {
-   
-    newPacketBody $CMD_WRITE_RAINDATA
-
-    writeUInt32BE "$1" # rainday
-    writeUInt32BE "$2" # rainweek
-    writeUInt32BE "$3" # rainmonth
-    writeUInt32BE "$4" # rainyear
-
-    [ $DEBUG -eq 1 ] && echo >&2 rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
-
-    sendPacket
-   
-   return "$EXITCODE_SENDPACKET"
-}
-
-sendCalibration() {
-    
-    newPacketBody $CMD_WRITE_CALIBRATION
-
-    writeInt16BE    "$1" #intempoffset
-    writeInt8       "$2" #inhumidityoffset
-    writeInt32BE    "$3" #absoffset
-    writeInt32BE    "$4" #reloffset
-    writeInt16BE    "$5" #outtempoffset
-    writeInt8       "$6" #outhumidityoffset
-    writeInt16BE    "$7" #winddiroffset
-
-    #[ $DEBUG -eq 1 ] &&
-     echo >&2 "Sending calibration intemp $1 inhumi $2 abspressure $3 relpressure $4 outtemp $5 outhumi $6 winddirection $7"
-    
-    sendPacket
-    
-
-    return "$EXITCODE_SENDPACKET"
-}
-
-sendEcowittIntervalnew() {
-    # observation: GW1000 red-wifi led blinks slowly if not sending data to ecowitt when 0=off
-    if [ "$1" -ge 0 ] && [ "$1" -le 5 ]; then
-        newPacketBody $CMD_WRITE_ECOWITT_INTERVAL
-        writeUInt8 "$1" #interval
-        [ $DEBUG -eq 1 ] && echo >&2 Sending ecowitt interval "$1"
-        sendPacket
-    else
-        echo >&2 Error Not a valid ecowitt interval, range 0-5 minutes
-    fi
-}
-
-sendEcowittInterval() {
-    # observation: GW1000 red-wifi led blinks slowly if not sending data to ecowitt when 0=off
-    if [ "$1" -ge 0 ] && [ "$1" -le 5 ]; then
-        newPacketBody $CMD_WRITE_ECOWITT_INTERVAL
-        writeUInt8 "$1" #interval
-        [ $DEBUG -eq 1 ] && echo >&2 Sending ecowitt interval "$1"
-        sendPacket
-    else
-        echo >&2 Error Not a valid ecowitt interval, range 0-5 minutes
-    fi
-}
-
-sendWeatherservice() {
-
-    newPacketBody "$1"
-    writeString "$2"
-    writeString "$3"
-
-    case "$1" in
-    "$CMD_WRITE_WOW")
-        writeUInt8 0 # stationnum size - unused
-        writeUInt8 1
-        ;;
-
-    "$CMD_WRITE_WEATHERCLOUD")
-        writeUInt8 1
-        ;;
-    esac
-    [ $DEBUG -eq 1 ] && echo >&2 "Sending weather service $1 id $2 password $3"
-    sendPacket
-}
-
-sendCustomized() {
-    newCustomizedPacket
-    sendPacket
-
-    newPathPacket
-    sendPacket
 }
 
 updateCustomized() {
@@ -1954,73 +1011,7 @@ logErr()
      [ "$1" -eq 1 ] && { shift; echo >&2 "$*" ; }
 }
 
-initnc() 
-#different versions of nc use slightly different options
-{
-    EXITCODE_INITNC=0
 
-    DEBUG_FUNC="initnc"
-    DEBUG_NC=${DEBUG_NC:=$DEBUG}
-   
-   #if force nc version on command line NC_VERSION=? ./gw ...
-    if [ -n "$NC_VERSION" ]; then
-        
-        #specifying override path to nc executable is possible: NC_CMD='/path/nc' ./gw ...
-        if [ "$NC_VERSION" = $NC_NMAP ]; then
-            [ -z "$NC_CMD" ] && NC_CMD=$(which ncat)
-        elif [ "$NC_VERSION" = $NC_OPENBSD ]; then
-            [ -z "$NC_CMD" ] && NC_CMD=$(which nc)
-        elif [ "$NC_VERSION" = $NC_BUSYBOX ]; then
-            [ -z "$NC_CMD" ] && NC_CMD="$(which busybox) nc"
-        elif [ "$NC_VERSION" = $NC_TOYBOX ]; then
-            [ -z "$NC_CMD" ] && NC_CMD="$(which toybox) nc"
-        else
-            EXITCODE_INITNC=$ERROR_DEPENDENCY_NC
-            return $EXITCODE_INITNC
-        fi
-       
-    else
-
-        NC_CMD="$(which nc 2>/dev/null)"
-        if [ -z "$NC_CMD" ]; then
-            logErr $DEBUG_NC "$DEBUG_FUNC nc not found. Ubuntu: sudo update-alternatives --config nc"
-            EXITCODE_INITNC=$ERROR_DEPENDENCY_NC
-        else
-            # ls -l $(readlink -f /usr/bin/nc)
-            case "$(readlink -f "$NC_CMD" 2>&1)" in 
-                
-                */nc.openbsd|*/netcat) NC_VERSION=$NC_OPENBSD #nc.openbsd Ubuntu/netcat Fedora
-                                        ;;
-                
-                */ncat) NC_VERSION=$NC_NMAP 
-                        ;;
-                    
-                    *)  logErr $DEBUG_NC "$DEBUG_FUNC Warning: Failed to determine nc version, not nc openbsd/ncat, use NC_VERSION=, NM_CMD= to override, trying openbsd compability"
-                        NC_VERSION=$NC_OPENBSD
-                        ;;
-            esac
-
-        fi
-    fi
-        
-    logErr $DEBUG_NC "$DEBUG_FUNC $NC_VERSION $NC_CMD"
-    unset DEBUG_FUNC
-
-    return $EXITCODE_INITNC
-}
-
-initConfigDir() {
-
-  #  DIR_CONFIG=$HOME"/.config/gw"                              # .config subdirectory used for configuration on gnome/linux
-    
-  #  [ -n "$EXTERNAL_STORAGE" ] && DIR_CONFIG=$EXTERNAL_STORAGE # testing in Android 11 adb shell
-  #  DIR_LIVEDATA="$EXTERNAL_STORAGE/tmp/gw/livedata"
-  #  [ ! -d "$DIR_CONFIG" ] || [ ! -d "$DIR_LIVEDATA" ]  && mkdir -p -v "$DIR_CONFIG" "$DIR_LIVEDATA"   1>&2
-  #  [ "$DEBUG" -eq 1 ] &&  echo >&2 Directory config "$DIR_CONFIG" livedata "$DIR_LIVEDATA"
-
-    #SHELLPID=$$
-  :
-}
 
 argEmptyOrOption() {
     [ "$DEBUG" -eq 1 ] && echo >&2 argEmptyOrOption "$@"
@@ -2060,30 +1051,6 @@ initcoptCommands ()
     CMDOPT_VERSION='version|ver'
 }
 
-writeSensorId()
-#$1 - low sensortype, $2 - high sensortype, $3 - sensorid
-{
-
-    newPacketBody $CMD_WRITE_SENSOR_ID
-
-    if [ -z "$2" ]; then
-     [ "$DEBUG" -eq 1 ] && printf >&2 "Writing sensor type %2d sensorid %x\n" "$1" "$3"
-      writeUInt8 "$1"
-      writeUInt32BE "$3"
-    else
-      n="$1"
-      while [ "$n" -le "$2" ]; do
-        [ "$DEBUG" -eq 1 ] && printf >&2  "Writing sensor type %2d sensorid %x\n" "$n" "$3"
-         writeUInt8 "$n"
-         writeUInt32BE "$3"
-         n=$(( n + 1 ))
-      done
-    fi
-
-    unset n
-
-    sendPacket
-}
 
 parseRangeExpression()
 {
@@ -2334,9 +1301,7 @@ processCalibrationOptions()
 
             a|absoffset)  if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10_ABS" -le $CALIBRATION_ABSOFFSET_MAX ]; then
                              [ "$C_CALIBRATION_ABSOFFSET_INT" -ne "$VALUE_FLOAT_SCALE10" ] && { 
-                                 set -x
-                                 calibration_absoffset=$VALUE_FLOAT_SCALE10; calibration_need_update=1; 
-                                 set +x ; }
+                                 calibration_absoffset=$VALUE_FLOAT_SCALE10; calibration_need_update=1;  }
                         else
                            echo >&2 "Warning: Invalid value for $expr, min/max -$CALIBRATION_ABSOFFSET_MAX/$CALIBRATION_ABSOFFSET_MAX (scale 10)"
                         fi
@@ -2657,56 +1622,6 @@ processCommand() {
     return "$EXITCODE_PROCESSCOMMAND"
 }
 
-isNumber() {
-    #https://stackoverflow.com/questions/806906/how-do-i-test-if-a-variable-is-a-number-in-bash?page=1&tab=votes#tab-top
-    isnumber_int=$1
-    case "$isnumber_int" in
-              -*) isnumber_int=${isnumber_int#-} ;; # remove sign
-    esac
-
-    case "$isnumber_int" in
-        '' | *[!0-9]* ) return 1 ;;
-        *) return 0 ;;
-    esac
-    unset isnumber_int
-   #echo "1: $1"
-   #if [ "$1" -ge 0 ] || [ "$1" -lt 0 ]; then #does not work in ksh93
-   #  return 0
-   #else
-   #  return 1
-   #fi
-}
-
-isHex()
-{
-    case $1 in 
-      '' | *[!0-9a-fA-F]*) return 1 ;;
-      *) return 0 ;;
-    esac
-}
-
-initTerm()
-{
-    
-    #https://stackoverflow.com/questions/1780483/lines-and-columns-environmental-variables-lost-in-a-script
-    if [ -n "$COLUMNS" ] && [ -n "$LINES" ]; then
-        TERM_COLUMNS=$COLUMNS
-        TERM_LINES=$LINES
-    elif type stty >/dev/null; then
-      size=$(stty size)
-      TERM_LINES=${size% *}
-      TERM_COLUMNS=${size#* }
-    elif type tput >/dev/null; then
-       #shellcheck disable=SC2034
-       {
-       TERM_LINES=$(tput lines)
-       TERM_COLUMNS=$(tput cols)
-       }
-    fi
-
-    unset size
-
-}
 
 test_printf_sformat()
 {
@@ -2724,96 +1639,6 @@ test_printf_sformat()
     unset od_unicode
 }
 
-initShell() {
-    #shellcheck disable=SC3010,SC2050
-    eval "if 2>/dev/null 1>/dev/null type '[['  && 2>/dev/null [[ a =~ a ]] ; then
-        SHELL_SUPPORT_TILDE_REGEX=1
-    else
-        SHELL_SUPPORT_TILDE_REGEX=0
-    fi"
-
-    #shellcheck disable=SC3044
-    if type typeset >/dev/null; then
-        export SHELL_SUPPORT_TYPESET=1 # allows function in subprocess/ui-view to access it
-    else
-        export SHELL_SUPPORT_TYPESET=0
-    fi
-
-    if [ -n "$ZSH_VERSION" ]; then
-    #https://zsh.sourceforge.io/FAQ/zshfaq03.html
-       setopt shwordsplit  #zsh compability for "1 2 3" -> split in 1 2 3
-    fi
-
-    if [ -n "$BASH_VERSION" ]; then
-        #shellcheck disable=SC3045
-        type_res=$(type -t printf) # otherwise language translation
-    else
-        type_res=$(type printf)
-    fi
-
-    case "$type_res" in 
-        
-        *builtin) #mksh does not have printf bulitin -> printf calls clone a new process -> reduced performance -> prefer echo over printf unless formatting is absolutely required
-            
-            SHELL_SUPPORT_BULTIN_PRINTF=1 
-              #storing value in variable from printf
-            #shellcheck disable=SC3045
-            if printf -v SHELL_SUPPORT_BULTIN_PRINTF_VOPT "%s" "-v" 1>/dev/null 2>/dev/null && [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" = '-v' ]; then
-                SHELL_SUPPORT_BULTIN_PRINTF_VOPT=1
-            else
-                SHELL_SUPPORT_BULTIN_PRINTF_VOPT=0
-            fi
-        ;;
-        
-        *is*)
-            #shellcheck disable=SC2034
-            SHELL_SUPPORT_BULTIN_PRINTF=0
-            ;;
-    esac
-
-     test_printf_sformat #only zsh bultin printf works with unicode when using %-30s format -> workaround \r\t\t\t\t positioning instead which works with every shell printf
-     
-   #shellcheck disable=SC2034,SC3019
-  # I=$(( 10 ** 1 )) 2>/dev/null;
-  #dash shell exit with: arithmetic expression: expecting primary: " 10 ** 1 "
-    
-    if [ -n "$BASH_VERSION" ] || [ -n "$ZSH_VERSION" ] || [ "$KSH_VERSION" = "Version AJM 93u+ 2012-08-01" ]; then
-      SHELL_SUPPORT_MATH_POWER=1
-      [ -z "$BASH_VERSION" ] && SHELL_SUPPORT_FLOATINGPOINT=1 || SHELL_SUPPORT_FLOATINGPOINT=0 #set 0 for bash
-    else
-      SHELL_SUPPORT_MATH_POWER=0 #probably
-      SHELL_SUPPORT_FLOATINGPOINT=0 #probably
-    fi
-    
-    #https://stackoverflow.com/questions/602912/how-do-you-echo-a-4-digit-unicode-character-in-bash/602924#602924
-
-    SHELL_SUPPORT_UNICODE=1 # assume shell supports unicode
-   
-     [ "$DEBUG" -eq 1 ] && >&2 echo Shell support unicode "$SHELL_SUPPORT_UNICODE"
-
-    #TEST unciode: i=$(( 0x2500 )); while [ "$i" -le $(( 0x2600 )) ]; do printf -v hex "%x" "$i"; eval 'printf "%s \u$hex\n" "$hex"'; i=$(( i + 1 )); done
-    
-#https://www.gnu.org/software/gettext/manual/html_node/The-TERM-variable.html
-#https://www.gnu.org/software/gettext/libtextstyle/manual/html_node/The-NO_005fCOLOR-variable.html
-# TEST : msgcat --color=test
-    [ "$DEBUG" -eq 1 ] && >&2 echo TERM "$TERM" NO_COLOR "$NO_COLOR"
-
-    if [ -z "$NO_COLOR" ]; then
-        case "$TERM" in
-            *color)
-                    # shellcheck source=./style/ansiesc.sh
-                    . "$GWDIR/style/ansiesc.sh"
-                    ;;
-        esac
-    fi
-    
-   if ! SHELL_DECIMAL_POINT=$(locale decimal_point) 2>/dev/null; then
-      SHELL_DECIMAL_POINT="."
-   fi
-    
-    unset type_res
-   
-}
 
 printWeatherServices () {
     sendPacket $CMD_READ_ECOWITT_INTERVAL
@@ -3008,18 +1833,6 @@ processUnitOptions()
     done
 
     unset f
-}
-
-createWIFIpacket()
-#$1 SSID, $2 password
-{
-    [ $DEBUG -eq 1 ] && echo >&2 "createWIFIpacket SSID $1 Password $2"
-    newPacketBody $CMD_WRITE_SSID
-    #ssid packet has two byte length
-    # TEST wsview android app, wireshark: ffff | 11 |001b| 
-    #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/ConfigrouterFragment.java - SaveData
-    writeString "$1" # ssid
-    writeString "$2" # password
 }
 
 processDebugOptions()
@@ -3354,8 +2167,8 @@ while [ $# -gt 0 ]; do
 
             C_HOST="$2"
             #sendPacket "$CMD_READ_MAC" >/dev/null
-            sendPacket "$CMD_READ_VERSION" >/dev/null; 
-            sendPacket "$CMD_READ_SYSTEM" >/dev/null;  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
+            sendPacket "$CMD_READ_VERSION" >/dev/null 
+            sendPacket "$CMD_READ_SYSTEM" >/dev/null  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
             #sendPacket "$CMD_READ_SENSOR_ID_NEW" >/dev/null
 
             shift 2

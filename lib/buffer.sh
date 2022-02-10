@@ -1,4 +1,4 @@
-#!/usr/bin/sh
+#!/bin/sh
 
 newBuffer() {
     eval "$1=\"$2\""

@@ -1,4 +1,4 @@
-#!/usr/bin/sh
+#!/bin/sh
 
 FW_0=０
 FW_1=１
