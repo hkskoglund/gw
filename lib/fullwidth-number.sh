@@ -1,5 +1,6 @@
 #!/bin/sh
-
+#shellcheck disable=SC2034
+{
 FW_0=０
 FW_1=１
 FW_2=２
@@ -10,7 +11,7 @@ FW_6=６
 FW_7=７
 FW_8=８
 FW_9=９
-
+}
 convertNumberToUnicodeFullwidth()
 {
     DEBUG_FUNC=convertNumberToUnicodeFullwidth
