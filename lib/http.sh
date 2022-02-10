@@ -8,16 +8,16 @@ httpServer()
 
     [ "$DEBUG" -eq 1 ] && >&2 echo Listening on port "$1"
 
-    if [ $NC_VERSION = $NC_NMAP ]; then 
+    if [ "$NC_VERSION" = "$NC_NMAP" ]; then 
         http_message=$("$NC_CMD" -l -i 0.1 "$1" 2>/dev/null) # - idle timeout to exit early, not waiting for client to close/FIN
         EXITCODE_HTTPSERVER=$? 
         if [ "$EXITCODE_HTTPSERVER" -eq 2 ]; then
           EXITCODE_HTTPSERVER=0 # 2 exit from nc when idle timeout expires (Ncat: Idle timeout expired (100 ms). QUITTING.)
         fi
-    elif [ $NC_VERSION = $NC_OPENBSD ]; then
+    elif [ "$NC_VERSION" = "$NC_OPENBSD" ]; then
         http_message=$("$NC_CMD" -l -w 1 "$1" 2>/dev/null) # - -w to exit on idle for 1s
         EXITCODE_HTTPSERVER=$?
-    elif [ $NC_VERSION = $NC_TOYBOX ]; then 
+    elif [ "$NC_VERSION" = "$NC_TOYBOX" ]; then 
         http_message=$("$NC_CMD" -p "$1" -W 1 -l  2>/dev/null) # - -W to exit on idle for 1s
         EXITCODE_HTTPSERVER=$?
     else
@@ -27,7 +27,7 @@ httpServer()
 
     if [ -z "$http_message" ]; then
         [ "$DEBUG" -eq 1 ] && echo >&2 Empty http message from nc
-        return $ERROR_HTTP_MESSSAGE_EMPTY
+        return "$ERROR_HTTP_MESSSAGE_EMPTY"
     fi
 
     if [ -n "$DEBUG_OPTION_HTTP" ]; then
@@ -52,12 +52,12 @@ httpServer()
 
     unset http_message
     
-    return $EXITCODE_HTTPSERVER
+    return "$EXITCODE_HTTPSERVER"
 }
 
 parseHttpHeader()
 {
-    [ $DEBUG -eq 1 ] &&  echo >&2 "parseHttpHeader $1"
+    [ "$DEBUG" -eq 1 ] &&  echo >&2 "parseHttpHeader $1"
     
     IFS=: read -r HTTP_KEY HTTP_VALUE <<EOH
 $1
@@ -96,7 +96,7 @@ parseHttpLines()
         N=$(( N + 1 ))
         [ $NBODY -eq 0 ] && eval HTTP_LINE$N="\${HTTP_LINE$N%?}" # remove trailing \r (\n removed by read), do not touch body
         eval "if [ \"\${#HTTP_LINE$N}\" -eq 0 ]; then NBODY=$((N + 1 )); fi" 
-      [ $DEBUG -eq 1 ] &&  eval echo >&2 HTTP LINE $N \"\$HTTP_LINE$N\"
+      [ "$DEBUG" -eq 1 ] &&  eval echo >&2 HTTP LINE $N \"\$HTTP_LINE$N\"
     done <<EOF
 $1
 EOF
@@ -412,7 +412,7 @@ parseHttpRequestWunderground()
               ;;
             
             humidity)
-                if [ "$value" != $WUNDERGROUND_UNDEFINED_VALUE ]; then
+                if [ "$value" != "$WUNDERGROUND_UNDEFINED_VALUE" ]; then
                   export LIVEDATA_OUTHUMI="$value"
                 fi
                 ;;
@@ -479,14 +479,14 @@ parseHttpRequestWunderground()
 
             solarradiation)
                 
-                 if [ "$value" != $WUNDERGROUND_UNDEFINED_VALUE ]; then
+                 if [ "$value" != "$WUNDERGROUND_UNDEFINED_VALUE" ]; then
                    export LIVEDATA_UV="$value"
                 fi
                 ;;
 
             UV)
                
-                 if [ "$value" != $WUNDERGROUND_UNDEFINED_VALUE ]; then
+                 if [ "$value" != "$WUNDERGROUND_UNDEFINED_VALUE" ]; then
                      export LIVEDATA_UVI="$value"
                  fi
                 ;;
@@ -541,20 +541,20 @@ parseHttpRequestWunderground()
 setTemperatureHttpLivedata()
 {
     #skip undefined value -9999
-    if [ "$2" = $WUNDERGROUND_UNDEFINED_VALUE ]; then
+    if [ "$2" = "$WUNDERGROUND_UNDEFINED_VALUE" ]; then
       return
     fi
 
     convert_farenheit_to_celciusScale10 "$2" 
-    if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 1 ]; then
-       roundFloat $VALUE_CELCIUS_SCALE10
+    if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 1 ]; then
+       roundFloat "$VALUE_CELCIUS_SCALE10"
        VALUE_CELCIUS_SCALE10=$VALUE_FLOAT_TO_INT
     fi
     eval export "$1_RAW=$VALUE_CELCIUS_SCALE10"
-    if [ "$UNIT_TEMPERATURE_MODE" -eq $UNIT_TEMPERATURE_CELCIUS ]; then
+    if [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_CELCIUS" ]; then
         convertScale10ToFloat "$VALUE_CELCIUS_SCALE10"
         eval export "$1"="$VALUE_SCALE10_FLOAT"
-    elif [ "$UNIT_TEMPERATURE_MODE" -eq $UNIT_TEMPERATURE_FARENHEIT ]; then
+    elif [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_FARENHEIT" ]; then
         eval export "$1"="$2"
     fi
 }
@@ -562,37 +562,37 @@ setTemperatureHttpLivedata()
 setPressureHttpLivedata()
 {
     convert_inhg_to_hpa "$2"
-     if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 1 ]; then
+     if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 1 ]; then
        roundFloat "$VALUE_INHG_HPA_SCALE10"
        VALUE_INHG_HPA_SCALE10=$VALUE_FLOAT_TO_INT
     fi
     eval export "$1"_RAW="$VALUE_INHG_HPA_SCALE10"
-    if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
+    if [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_HPA" ]; then
         convertScale10ToFloat "$VALUE_INHG_HPA_SCALE10"
         eval export "$1"="$VALUE_SCALE10_FLOAT"
-    elif [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_INHG ]; then
+    elif [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_INHG" ]; then
         eval export "$1"="$2"
     fi
 }
 
 setWindHttpLivedata()
 {
-     if [ "$2" = $WUNDERGROUND_UNDEFINED_VALUE ]; then
+     if [ "$2" = "$WUNDERGROUND_UNDEFINED_VALUE" ]; then
       return
     fi
 
     convert_mph_To_mps "$2"
-      if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 1 ]; then
+      if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 1 ]; then
         roundFloat "$VALUE_MPS_SCALE10"
         VALUE_MPS_SCALE10=$VALUE_FLOAT_TO_INT
     fi
     eval export "$1_RAW=$VALUE_MPS_SCALE10"
-    if [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPS ]; then
+    if [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_MPS" ]; then
        convertScale10ToFloat "$VALUE_MPS_SCALE10"
        eval export "$1"="$VALUE_SCALE10_FLOAT"
-    elif [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPH ]; then
+    elif [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_MPH" ]; then
        eval export "$1"="$2"
-    elif [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_KMH ]; then
+    elif [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_KMH" ]; then
        convert_mph_to_kmhScale10 "$2"
        convertScale10ToFloat "$VALUE_KMH_SCALE10"
        eval export "$1"="$VALUE_SCALE10_FLOAT"
@@ -601,7 +601,7 @@ setWindHttpLivedata()
 
 setWindDirHttpLivedata()
 {
-    if [ "$2" = $WUNDERGROUND_UNDEFINED_VALUE ]; then
+    if [ "$2" = "$WUNDERGROUND_UNDEFINED_VALUE" ]; then
       return
     fi
  
@@ -616,15 +616,15 @@ setRainHttpLivedata()
 #$2 - value
 {
     convert_in_to_mm "$2"
-    if [ $SHELL_SUPPORT_FLOATINGPOINT -eq 1 ]; then
+    if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 1 ]; then
         roundFloat "$VALUE_IN_MM_SCALE10"
         VALUE_IN_MM_SCALE10=$VALUE_FLOAT_TO_INT
     fi
     eval export "$1"_RAW="$VALUE_IN_MM_SCALE10"
-    if [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_MM ]; then
+    if [ "$UNIT_RAIN_MODE" -eq "$UNIT_RAIN_MM" ]; then
         convertScale10ToFloat "$VALUE_IN_MM_SCALE10"
         eval export "$1"="$VALUE_SCALE10_FLOAT"
-    elif [ "$UNIT_RAIN_MODE" -eq $UNIT_RAIN_IN ]; then
+    elif [ "$UNIT_RAIN_MODE" -eq "$UNIT_RAIN_IN" ]; then
         eval export "$1"="$2"
     fi
 }

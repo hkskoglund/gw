@@ -36,7 +36,7 @@ printLivedataLineFinal()
 
     #TEST UTF-8: for f in $(seq -s' ' 255); do eval printf "\\\x$(printf "%x" "$f")"; done
 
-    if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then 
+    if [ "$LIVEDATA_VIEW" -eq "$LIVEDATA_VIEW_NORMAL" ]; then 
        
         status_line="$9"
         case $status_line in # only use UNICODE battery icon/skip detailed battery levels
@@ -120,12 +120,12 @@ printLivedata()
             printLivedataHeader "" "$LIVEDATA_PRESSURE_HEADER"
              setLivedataValueStyleLt "$LIVEDATA_RELBARO_RAW" "$LIVEDATA_RELBARO_LIMIT_LOW"
          
-         if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
+         if [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_HPA" ]; then
              printLivedataLine "$LIVEDATA_RELBARO_HEADER" "$LIVEDATA_RELBARO" "%6.1f" "$UNIT_PRESSURE" "%4s" 'rbaro'
              [ -n "$LIVEDATA_ABSBARO" ] && {
                  setLivedataValueStyleLt "$LIVEDATA_ABSBARO_RAW" "$LIVEDATA_ABSBARO_LIMIT_LOW"
                  printLivedataLine "$LIVEDATA_ABSBARO_HEADER" "$LIVEDATA_ABSBARO" "%6.1f" "$UNIT_PRESSURE" "%4s" 'abaro'; }
-         elif [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_INHG ]; then
+         elif [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_INHG" ]; then
              printLivedataLine "$LIVEDATA_RELBARO_HEADER" "$LIVEDATA_RELBARO" "%6.2f" "$UNIT_PRESSURE" "%4s" 'rbaro'
              [ -n "$LIVEDATA_ABSBARO" ] && printLivedataLine "$LIVEDATA_ABSBARO_HEADER" "$LIVEDATA_ABSBARO" "%6.2f" "$UNIT_PRESSURE" "%4s" 'abaro'
          fi

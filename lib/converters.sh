@@ -338,11 +338,11 @@ convertFloatToScale10()
         esac
     fi
 
-    [ $DEBUG_CONVERT -eq 1 ] && echo >&2 "Converting float $1 to $VALUE_FLOAT_SCALE10 (scale 10)" 
+    [ "$DEBUG_CONVERT" -eq 1 ] && echo >&2 "Converting float $1 to $VALUE_FLOAT_SCALE10 (scale 10)" 
 
     unset int dec dec_suffix sign DEBUG_CONVERT
 
-    return $EXITCODE_CONVERTFLOAT_SCALE10
+    return "$EXITCODE_CONVERTFLOAT_SCALE10"
 
 }
 
@@ -392,11 +392,11 @@ convertFloatToScale10()
         esac
     fi
 
-    [ $DEBUG_CONVERT -eq 1 ] && echo >&2 "Converting float $1 to $VALUE_FLOAT_SCALE10 (scale 10)" 
+    [ "$DEBUG_CONVERT" -eq 1 ] && echo >&2 "Converting float $1 to $VALUE_FLOAT_SCALE10 (scale 10)" 
 
     unset int dec dec_suffix sign DEBUG_CONVERT
 
-    return $EXITCODE_CONVERTFLOAT_SCALE10
+    return "$EXITCODE_CONVERTFLOAT_SCALE10"
 
 }
 
@@ -414,7 +414,7 @@ convertHexToOctal() { #$1 - 0xff format
     msb=$((dec >> 6))
     VALUE_OCTAL=$msb$middle$lsb
 
-    [ $DEBUG -eq 1 ] && echo >&2 Converting "$1" to octal "$VALUE_OCTAL"
+    [ "$DEBUG" -eq 1 ] && echo >&2 Converting "$1" to octal "$VALUE_OCTAL"
 
     unset dec lsb msb middle
 }
@@ -427,16 +427,16 @@ convertBufferFromDecToOctalEscape() {
         VALUE_OCTAL_BUFFER_ESCAPE="$VALUE_OCTAL_BUFFER_ESCAPE\\0$VALUE_OCTAL"
     done
 
-    [ $DEBUG -eq 1 ] && echo >&2 "Octal buffer $VALUE_OCTAL_BUFFER_ESCAPE"
+    [ "$DEBUG" -eq 1 ] && echo >&2 "Octal buffer $VALUE_OCTAL_BUFFER_ESCAPE"
 
     unset BYTE
 }
 
 convertTemperatureLivedata()
 {
-    if [ "$UNIT_TEMPERATURE_MODE" -eq $UNIT_TEMPERATURE_CELCIUS ]; then
+    if [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_CELCIUS" ]; then
         convertScale10ToFloat "$1"
-    elif [ "$UNIT_TEMPERATURE_MODE" -eq $UNIT_TEMPERATURE_FARENHEIT ]; then
+    elif [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_FARENHEIT" ]; then
         convert_celciusScale10_to_farenheitScale10 "$1"
         convertScale10ToFloat "$VALUE_FARENHEIT_SCALE10"
     fi
@@ -444,9 +444,9 @@ convertTemperatureLivedata()
 
 convertPressureLivedata()
 {
-    if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
+    if [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_HPA" ]; then
         convertScale10ToFloat "$1"
-    elif [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_INHG ]; then
+    elif [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_INHG" ]; then
         convert_hpaScale10_To_inhgScale10 "$1"
         convertScale10ToFloat "$VALUE_INHG_SCALE10"
     fi
@@ -454,12 +454,12 @@ convertPressureLivedata()
 
 convertWindLivedata()
 {
-    if [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPS ]; then
+    if [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_MPS" ]; then
         convertScale10ToFloat "$1"
-    elif [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_MPH ]; then
+    elif [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_MPH" ]; then
         convcert_mpsScale10_to_mphScale10 "$1"
         convertScale10ToFloat "$VALUE_MPH_SCALE10"
-    elif [ "$UNIT_WIND_MODE" -eq $UNIT_WIND_KMH ]; then
+    elif [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_KMH" ]; then
         convert_mpsScale10_To_kmhScale10 "$1"
         convertScale10ToFloat "$VALUE_KMH_SCALE10"
     fi
