@@ -765,7 +765,7 @@ printOrLogLivedata()
 
     if [ -z "$LOG_CMD" ]; then
        if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then
-            set | grep ^LIVEDATA | grep -v _HEADER
+            #set | grep ^LIVEDATA | grep -v _HEADER
             printLivedata
        else
           echo >&2 Not implemented liveview $LIVEDATA_VIEW
