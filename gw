@@ -6,6 +6,7 @@
 GWDIR=${GWDIR:="."}
 
 . $GWDIR/lib/constants.sh
+. $GWDIR/lib/sensortype.sh
 . $GWDIR/lib/error.sh
 . $GWDIR/lib/util.sh
 . $GWDIR/lib/command.sh
@@ -18,11 +19,9 @@ GWDIR=${GWDIR:="."}
 . $GWDIR/lib/timezone.sh
 . $GWDIR/lib/mode.sh
 . $GWDIR/lib/fullwidth-number.sh
-. $GWDIR/lib/pm25.sh
-. $GWDIR/lib/rainintensity.sh
-. $GWDIR/lib/uvi.sh
-. $GWDIR/lib/beufort.sh
-. $GWDIR/style/limits.sh
+. $GWDIR/lib/limits.sh
+. $GWDIR/lib/livedata-header.sh
+. $GWDIR/lib/wind.sh
 . $GWDIR/view/default.sh
 
 initShell() {
@@ -476,15 +475,6 @@ printCommands() {
     unset cmd commands
 }
 
-parseRangeExpression()
-{
-    IFS=- # range with hyphen, for example 31-33
-            #shellcheck disable=SC2086
-    set -- $1
-    VALUE_RANGE_LOW=$1 #global for use if 
-    VALUE_RANGE_HIGH=$2
-}
-
 processSensorOptions()
 # process -c sensor command option; format: 31-38=disable,40-47=disable
 {
@@ -775,6 +765,7 @@ printOrLogLivedata()
 
     if [ -z "$LOG_CMD" ]; then
        if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then
+            set | grep ^LIVEDATA | grep -v _HEADER
             printLivedata
        else
           echo >&2 Not implemented liveview $LIVEDATA_VIEW
@@ -789,79 +780,9 @@ printOrLogLivedata()
     fi
 }
 
-#read -r -u 0 -t 0 STDIN
 
-#if [ -n "$STDIN" ]; then
-#  echo STDIN "$STDIN"
-:
-#maybe parse packet if gw used as filter echo hex dump | gw
 
-#fi
 
-initUnit()
-{
-    if [ -z "$UNIT_TEMPERATURE_MODE" ]; then 
-        setTemperatureMode $UNIT_TEMPERATURE_CELCIUS # default
-    else
-        setTemperatureMode "$UNIT_TEMPERATURE_MODE"
-    fi
-
-    if [ -z "$UNIT_PRESSURE_MODE" ]; then
-        setPressureMode $UNIT_PRESSURE_HPA # default
-    else
-        setPressureMode "$UNIT_PRESSURE_MODE"
-    fi
-
-    if [ -z "$UNIT_RAIN_MODE" ]; then 
-        setRainMode $UNIT_RAIN_MM #default
-    else
-        setRainMode "$UNIT_RAIN_MODE"
-    fi
-    
-    if [ -z "$UNIT_WIND_MODE" ]; then 
-        setWindMode $UNIT_WIND_MPS #default
-    else
-        setWindMode "$UNIT_WIND_MODE"
-    fi
-
-    if [ $SHELL_SUPPORT_UNICODE -eq 1 ]; then
-        UNIT_LIGHT="㏓"
-    else
-        UNIT_LIGHT="lux"
-    fi 
-    
-    if [ $SHELL_SUPPORT_UNICODE -eq 1 ]; then
-        UNIT_PM25="µg/㎥"
-    else
-        UNIT_PM25="µg/m3"
-    fi
-
-    UNIT_CO2="ppm"
-    UNIT_HUMIDITY="%"
-
-    if [ $SHELL_SUPPORT_UNICODE -eq 1 ]; then
-        UNIT_DEGREE="°"
-    else
-        UNIT_DEGREE="deg"
-    fi
-
-}
-
-initWinddirectionCompass()
-{
-    WIND_DIRECTION_NNE="$WIND_DIRECTION_N$WIND_DIRECTION_N$WIND_DIRECTION_E"
-        WIND_DIRECTION_NE="$WIND_DIRECTION_N$WIND_DIRECTION_E"
-    WIND_DIRECTION_ENE="$WIND_DIRECTION_E$WIND_DIRECTION_N$WIND_DIRECTION_E"
-    WIND_DIRECTION_ESE="$WIND_DIRECTION_E$WIND_DIRECTION_S$WIND_DIRECTION_E"
-        WIND_DIRECTION_SE="$WIND_DIRECTION_S$WIND_DIRECTION_E"
-    WIND_DIRECTION_SSE="$WIND_DIRECTION_S$WIND_DIRECTION_S$WIND_DIRECTION_E"
-    WIND_DIRECTION_SSW="$WIND_DIRECTION_S$WIND_DIRECTION_S$WIND_DIRECTION_W"
-        WIND_DIRECTION_SW="$WIND_DIRECTION_S$WIND_DIRECTION_W"
-    WIND_DIRECTION_WSW="$WIND_DIRECTION_W$WIND_DIRECTION_S$WIND_DIRECTION_W"
-    WIND_DIRECTION_WNW="$WIND_DIRECTION_W$WIND_DIRECTION_N$WIND_DIRECTION_W"
-        WIND_DIRECTION_NW="$WIND_DIRECTION_N$WIND_DIRECTION_W"
-    WIND_DIRECTION_NNW="$WIND_DIRECTION_N$WIND_DIRECTION_N$WIND_DIRECTION_W"
-}
 
 processUnitOptions()
 #format: temp=farenheit|celius,pressure=inhg|hpa
@@ -1378,6 +1299,15 @@ processCommand() {
 
     return "$EXITCODE_PROCESSCOMMAND"
 }
+
+#read -r -u 0 -t 0 STDIN
+
+#if [ -n "$STDIN" ]; then
+#  echo STDIN "$STDIN"
+:
+#maybe parse packet if gw used as filter echo hex dump | gw
+
+#fi
 
 initShell
 initTerm

@@ -1,5 +1,38 @@
 #!/bin/sh
 
+GWDIR=${GWDIR:="."}
+DEBUG=${DEBUG:=0}
+DEBUG_OPTION_APPEND=${DEBUG_OPTION_APPEND:=0}
+SHELL_SUPPORT_UNICODE=${SHELL_SUPPORT_UNICODE:=1}
+HIDE_RAIN_LIVEDATA_AUTO=${HIDE_RAIN_LIVEDATA_AUTO:=0} # auto hide_liveview when 0 today (0=off)
+HIDE_LIGHT_LIVEDATA_AUTO=${HIDE_LIGHT_LIVEDATA_AUTO:=0} # auto hide_liveview when 0/dark
+LV_DELIMITER='-'
+ 
+ if  ! type appendBuffer >/dev/null 2>/dev/null; then 
+   . $GWDIR/lib/appendBuffer.sh
+fi
+
+if ! type initUnit >/dev/null 2>/dev/null; then
+  . $GWDIR/lib/mode.sh
+  initUnit
+fi
+
+if [ -z "$LIVEDATA_INTEMP_HEADER" ]; then # assume lib not loaded
+  . $GWDIR/lib/livedata-header.sh
+fi
+
+if [ -z "$CSI" ]; then 
+    . $GWDIR/style/ansiesc.sh
+fi
+
+if [ -z "$LIVEDATA_RAINHOUR_LIMIT" ]; then
+    . $GWDIR/lib/limits.sh
+fi
+
+if [ -z "$WIND_DIRECTION_N" ]; then
+    . $GWDIR/lib/wind.sh
+fi
+
 printLivedataLine()
 #allows to intercept/disable printing during debugging
 {
@@ -36,46 +69,43 @@ printLivedataLineFinal()
 
     #TEST UTF-8: for f in $(seq -s' ' 255); do eval printf "\\\x$(printf "%x" "$f")"; done
 
-    if [ "$LIVEDATA_VIEW" -eq "$LIVEDATA_VIEW_NORMAL" ]; then 
-       
-        status_line="$9"
-        case $status_line in # only use UNICODE battery icon/skip detailed battery levels
-             $UNICODE_BATTERY*) status_line=$UNICODE_BATTERY
-                                ;;
-             $UNICODE_BATTERY_LOW*) status_line=$UNICODE_BATTERY_LOW 
-                                ;;
-        esac
+    status_line="$9"
+    case $status_line in # only use UNICODE battery icon/skip detailed battery levels
+            $UNICODE_BATTERY*) status_line=$UNICODE_BATTERY
+                            ;;
+            $UNICODE_BATTERY_LOW*) status_line=$UNICODE_BATTERY_LOW 
+                            ;;
+    esac
 
-        signal_line="${12}"
-        case $signal_line in 
-             $UNICODE_SIGNAL*) signal_line=$UNICODE_SIGNAL
-                             ;;
-        esac
+    signal_line="${12}"
+    case $signal_line in 
+            $UNICODE_SIGNAL*) signal_line=$UNICODE_SIGNAL
+                            ;;
+    esac
 
-        status_line="$status_line$signal_line" #merge for compact format
-        unset signal_line
+    status_line="$status_line$signal_line" #merge for compact format
+    unset signal_line
 
-        [ -n "$LIVEVIEW_HIDE_STATUSLINE" ] && unset status_line
-  
-        if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_APPEND" -eq 1 ]; then 
-            appendFormat " $header_fmt %s %s %s %s\n"
-        fi
-        
-        if [ -n "$STYLE_LIVE_VALUE" ]; then
-            [ -z "$4" ] && unset space # skip space if unit empty
-            appendFormat "$header_fmt $STYLE_LIVE_VALUE$3$space$unit_fmt$STYLE_RESET $status_fmt $signal_fmt\n"
-        else
-            appendFormat "$header_fmt $3 $unit_fmt $status_fmt $signal_fmt\n"
-        fi
+    [ -n "$LIVEVIEW_HIDE_STATUSLINE" ] && unset status_line
 
-        unset STYLE_LIVE_VALUE
-
-        if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_APPEND" -eq 1 ]; then 
-            appendArgs "'$header_fmt' '$3' '$unit_fmt' '$status_fmt' '$signal_fmt'"
-        fi
-
-       appendArgs "'$1' '$2' '$4' '$status_line' '$signal_line'"
+    if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_APPEND" -eq 1 ]; then 
+        appendFormat " $header_fmt %s %s %s %s\n"
     fi
+    
+    if [ -n "$STYLE_LIVE_VALUE" ]; then
+        [ -z "$4" ] && unset space # skip space if unit empty
+        appendFormat "$header_fmt $STYLE_LIVE_VALUE$3$space$unit_fmt$STYLE_RESET $status_fmt $signal_fmt\n"
+    else
+        appendFormat "$header_fmt $3 $unit_fmt $status_fmt $signal_fmt\n"
+    fi
+
+    unset STYLE_LIVE_VALUE
+
+    if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_APPEND" -eq 1 ]; then 
+        appendArgs "'$header_fmt' '$3' '$unit_fmt' '$status_fmt' '$signal_fmt'"
+    fi
+
+    appendArgs "'$1' '$2' '$4' '$status_line' '$signal_line'"
    
     unset header_fmt ch status_fmt unit_fmt status_line signal_fmt signal_line
 
@@ -105,7 +135,6 @@ printLivedata()
          setLivedataValueStyleLtGt "$LIVEDATA_INTEMP_RAW" "$LIVEDATA_INTEMP_LIMIT_LOW" "$LIVEDATA_INTEMP_LIMIT_HIGH" "$STYLE_LIVEDATA_INTEMP_LIMIT_LOW" "$STYLE_LIVEDATA_INTEMP_LIMIT_HIGH"
          printLivedataLine "$LIVEDATA_INTEMP_HEADER"  "$LIVEDATA_INTEMP" "%6.1f" "$UNIT_TEMP" "%s" 'in' "%s" 
      fi
-
     
      if [ -n "$LIVEDATA_OUTTEMP" ]; then
          setLivedataValueStyleLtGt "$LIVEDATA_OUTTEMP_RAW" "$LIVEDATA_OUTTEMP_LIMIT_LOW" "$LIVEDATA_OUTTEMP_LIMIT_HIGH" "$STYLE_LIMIT_LIVEDATA_OUTTEMP" "$STYLE_LIVEDATA_OUTTEMP_LIMIT_HIGH"
@@ -144,7 +173,7 @@ printLivedata()
       
        [ -n "$LIVEDATA_WINDSPEED" ] && printLivedataHeader "" "$LIVEDATA_WIND_HEADER"
 
-       [ -z "$LIVEVIEW_HIDE_COMPASS" ] && [ -n "$LIVEDATA_WINDSPEED" ] && [ -n "$LIVEDATA_WINDGUSTSPEED" ] && [ -n "$LIVEDATA_WINDDIRECTION" ] && newLivedataCompass "$UNICODE_WIND" "$VALUE_COMPASS"
+       [ -z "$LIVEVIEW_HIDE_COMPASS" ] && [ -n "$LIVEDATA_WINDSPEED" ] && [ -n "$LIVEDATA_WINDGUSTSPEED" ] && [ -n "$LIVEDATA_WINDDIRECTION" ] && newLivedataCompass "$LIVEDATA_WINDDIRECTION_COMPASS_UNICODE" "$VALUE_COMPASS"
          
         if [ -n "$LIVEDATA_WINDSPEED" ]; then
             if [ -z "$LIVEVIEW_HIDE_BEUFORT" ]; then
@@ -161,12 +190,12 @@ printLivedata()
                 setStyleBeufort "$LIVEDATA_WINDGUSTSPEED_RAW"
                 STYLE_LIVE_VALUE=$STYLE_BEUFORT
            else
-             unset VALUE_BEUFORT_DELIMITER
+             unset LV_DELIMITER
             fi
-            printLivedataLine  "$LIVEDATA_WINDGUSTSPEED_HEADER $VALUE_BEUFORT_DELIMITER $VALUE_BEUFORT $VALUE_BEUFORT_DESCRIPTION " "$LIVEDATA_WINDGUSTSPEED" "%6.1f" "$UNIT_WIND" "%4s" 'wgspd' "%6.1f" "" "" "\t%s$LIVEVIEW_COMPASS_WE_FMT"
+            printLivedataLine  "$LIVEDATA_WINDGUSTSPEED_HEADER $LV_DELIMITER $VALUE_BEUFORT $VALUE_BEUFORT_DESCRIPTION " "$LIVEDATA_WINDGUSTSPEED" "%6.1f" "$UNIT_WIND" "%4s" 'wgspd' "%6.1f" "" "" "\t%s$LIVEVIEW_COMPASS_WE_FMT"
         fi
 
-        LIVEDATA_WINDDIRECTION_HEADER="$LIVEDATA_WINDDIRECTION_HEADER $VALUE_COMPASS_DELIMITER $LIVEDATA_WINDDIRECTION_COMPASS" #integrate direction in header
+        LIVEDATA_WINDDIRECTION_HEADER="$LIVEDATA_WINDDIRECTION_HEADER $LV_DELIMITER $LIVEDATA_WINDDIRECTION_COMPASS" #integrate direction in header
         
         [ -n "$LIVEDATA_WINDDIRECTION" ] && printLivedataLine "$LIVEDATA_WINDDIRECTION_HEADER" "$LIVEDATA_WINDDIRECTION"   "%6u" "$UNIT_DEGREE"\
          "%5s" 'wdeg' "%4u" "$LIVEDATA_WINDDIRECTION" "" "\t%s$LIVEVIEW_COMPASS_S_FMT"
@@ -177,15 +206,15 @@ printLivedata()
                 setStyleBeufort "$LIVEDATA_WINDDAILYMAX_RAW"
                 STYLE_LIVE_VALUE=$STYLE_BEUFORT
             else
-                unset VALUE_BEUFORT_DELIMITER
+                unset LV_DELIMITER
             fi
-            printLivedataLine  "$LIVEDATA_WINDDAILYMAX_HEADER $VALUE_BEUFORT_DELIMITER $VALUE_BEUFORT $VALUE_BEUFORT_DESCRIPTION"   "$LIVEDATA_WINDDAILYMAX"  "%6.1f" "$UNIT_WIND" "%4s" 'wdmax' "%6.1f" 
+            printLivedataLine  "$LIVEDATA_WINDDAILYMAX_HEADER $LV_DELIMITER $VALUE_BEUFORT $VALUE_BEUFORT_DESCRIPTION"   "$LIVEDATA_WINDDAILYMAX"  "%6.1f" "$UNIT_WIND" "%4s" 'wdmax' "%6.1f" 
          fi 
       
         #[ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]    && printLivedataLine "LIVEDATA_WINDDIRECTION_COMPASS_HEADER"   "$LIVEDATA_WINDDIRECTION_COMPASS"  "%6s" "" "%5s" 'wdir' "%4s"
     fi
 
-    if [ -n "$LIVEDATA_LIGHT" ] && [ "$LIVEDATA_LIGHT_RAW" -eq 0 ] && [ "$HIDE_LIGHT_LIVEDATA_AUTO" -eq 1 ]; then
+    if [ -n "$LIVEDATA_LIGHT" ] && [ -n "$LIVEDATA_LIGHT_RAW" ] && [ "$LIVEDATA_LIGHT_RAW" -eq 0 ] && [ "$HIDE_LIGHT_LIVEDATA_AUTO" -eq 1 ]; then
       LIVEVIEW_HIDE_LIGHT=1 # auto hide_liveview, when dark
     fi
 
@@ -200,9 +229,9 @@ printLivedata()
                 #shellcheck disable=SC2153
                 STYLE_LIVE_VALUE=$STYLE_UVI
             else
-              unset VALUE_UVI_DELIMITER
+              unset LV_DELIMITER
             fi
-            printLivedataLine "$LIVEDATA_UVI_HEADER $VALUE_UVI_DELIMITER $VALUE_UV_RISK" "$LIVEDATA_UVI"      "%6u" "    " "%4s" 'uvi' "%3u"
+            printLivedataLine "$LIVEDATA_UVI_HEADER $LV_DELIMITER $VALUE_UV_RISK" "$LIVEDATA_UVI"      "%6u" "    " "%4s" 'uvi' "%3u"
         fi
     fi
 
@@ -223,7 +252,7 @@ printLivedata()
                STYLE_LIVE_VALUE=$STYLE_RAININTENSITY
               
                if [ "$LIVEDATA_RAINRATE_RAW" -gt 0 ]; then
-                    delimiter=$VALUE_RAININTENSITY_DELIMITER 
+                    delimiter=$LV_DELIMITER 
                 else
                     delimiter=" "
                 fi
@@ -318,7 +347,7 @@ printLivedata()
             eval "if [ -n ''"\$LIVEDATA_LEAK$n" ]; then
                         #setSGIBatteryLowNormal \"\$LIVEDATA_LEAK${n}_BATTERY\"
                         [ \"\$LIVEDATA_LEAK$n\" -ne 0 ] && STYLE_LIVE_VALUE=\"$STYLE_LEAK\" && VALUE_LEAK=$LIVEDATA_LEAK_YES
-                        LIVEDATA_LEAK_HEADER$n=\"\$LIVEDATA_LEAK_HEADER$n \$VALUE_LEAK_DELIMITER \$VALUE_LEAK\"
+                        LIVEDATA_LEAK_HEADER$n=\"\$LIVEDATA_LEAK_HEADER$n \$LV_DELIMITER \$VALUE_LEAK\"
                         printLivedataLine \"\$LIVEDATA_LEAK_HEADER$n\" \"\$LIVEDATA_LEAK$n\" \"%6u\" \"\" \"%4s\" \"leak$n\" '' \"\$LIVEDATA_LEAK${n}_BATTERY\" \"\$LIVEDATA_LEAK${n}_BATTERY_STATE\" '' \"\$LIVEDATA_LEAK${n}_SIGNAL\" \"\$LIVEDATA_LEAK${n}_SIGNAL_STATE\"
                 fi"
             n=$((n + 1))
@@ -338,9 +367,9 @@ printLivedata()
                                 setStyleAQI \"\$LIVEDATA_PM25${n}_RAW\"
                                 STYLE_LIVE_VALUE=\$STYLE_AQI
                             else
-                              unset VALUE_PM25_AQI_DELIMITER
+                              unset LV_PM25_AQI_DELIMITER
                             fi
-                            LIVEDATA_PM25_HEADER$n=\"\$LIVEDATA_PM25_HEADER$n \$VALUE_PM25_AQI_DELIMITER \$VALUE_PM25_AQI\"
+                            LIVEDATA_PM25_HEADER$n=\"\$LIVEDATA_PM25_HEADER$n \$LV_PM25_AQI_DELIMITER \$VALUE_PM25_AQI\"
                             printLivedataLine \"\$LIVEDATA_PM25_HEADER$n\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$UNIT_PM25\" \"%6s\" \"pm25$n\" '' \"\$LIVEDATA_PM25${n}_BATTERY\" \"\$LIVEDATA_PM25${n}_BATTERY_STATE\" '' \"\$LIVEDATA_PM25${n}_SIGNAL\" \"\$LIVEDATA_PM25${n}_SIGNAL_STATE\"
                  fi"
             n=$((n + 1))
@@ -354,9 +383,9 @@ printLivedata()
                             setStyleAQI \"\$LIVEDATA_PM25_24HAVG${n}_RAW\"
                             STYLE_LIVE_VALUE=\$STYLE_AQI
                         else
-                            unset VALUE_PM25_AQI_DELIMITER
+                            unset LV_PM25_AQI_DELIMITER
                         fi
-                        LIVEDATA_PM25_24HAVG_HEADER$n=\"\$LIVEDATA_PM25_24HAVG_HEADER$n \$VALUE_PM25_AQI_DELIMITER \$VALUE_PM25_AQI\"
+                        LIVEDATA_PM25_24HAVG_HEADER$n=\"\$LIVEDATA_PM25_24HAVG_HEADER$n \$LV_PM25_AQI_DELIMITER \$VALUE_PM25_AQI\"
                         printLivedataLine \"\$LIVEDATA_PM25_24HAVG_HEADER$n\" \"\$LIVEDATA_PM25_24HAVG$n\" \"%6.1f\" \"\$UNIT_PM25\" \"%6s\" \"pm25a$n\" \"%6.1f\"
              fi"
             n=$((n + 1))
@@ -379,14 +408,14 @@ printLivedata()
             setAQI "$LIVEDATA_WH45CO2_PM25_RAW"
             setStyleAQI "$LIVEDATA_WH45CO2_PM25_RAW"
             STYLE_LIVE_VALUE=$STYLE_AQI
-            LIVEDATA_WH45CO2_PM25_HEADER="$LIVEDATA_WH45CO2_PM25_HEADER $VALUE_PM25_AQI_DELIMITER $VALUE_PM25_AQI"
+            LIVEDATA_WH45CO2_PM25_HEADER="$LIVEDATA_WH45CO2_PM25_HEADER $LV_PM25_AQI_DELIMITER $VALUE_PM25_AQI"
             printLivedataLine "$LIVEDATA_WH45CO2_PM25_HEADER" "$LIVEDATA_WH45CO2_PM25"                "%6.1f" "$UNIT_PM25" "%7s" 'pm25'
         fi
         if [ -n "$LIVEDATA_WH45CO2_PM25_24HAVG" ]; then
             setAQI "$LIVEDATA_WH45CO2_PM25_24HAVG_RAW"
             setStyleAQI "$LIVEDATA_WH45CO2_PM25_24HAVG_RAW"
             STYLE_LIVE_VALUE=$STYLE_AQI
-            LIVEDATA_WH45CO2_PM25_24HAVG_HEADER="$LIVEDATA_WH45CO2_PM25_24HAVG_HEADER $VALUE_PM25_AQI_DELIMITER $VALUE_PM25_AQI"
+            LIVEDATA_WH45CO2_PM25_24HAVG_HEADER="$LIVEDATA_WH45CO2_PM25_24HAVG_HEADER $LV_PM25_AQI_DELIMITER $VALUE_PM25_AQI"
             printLivedataLine "$LIVEDATA_WH45CO2_PM25_24HAVG_HEADER" "$LIVEDATA_WH45CO2_PM25_24HAVG"  "%6.1f" "$UNIT_PM25" "%7s" 'pm25a'
         fi
         [ -n "$LIVEDATA_WH45CO2_CO2" ]          && printLivedataLine "$LIVEDATA_WH45CO2_CO2_HEADER" "$LIVEDATA_WH45CO2_CO2"                  "%6u" "$UNIT_CO2" "%6s" 'co2'
@@ -433,7 +462,7 @@ printLivedata()
    
     if [ -z "$LIVEVIEW_HIDE_SYSTEM" ]; then
         
-        printLivedataHeader "" "$LIVEDATA_SYSTEM_HEADER"
+       [ -n "$LIVEDATA_SYSTEM_VERSION" ] &&  printLivedataHeader "" "$LIVEDATA_SYSTEM_HEADER"
 
         [ -n "$LIVEDATA_SYSTEM_VERSION" ]   && printLivedataLine "$LIVEDATA_SYSTEM_VERSION_HEADER"   "$LIVEDATA_SYSTEM_VERSION"   "%-14s" "" "%5s" 'version'
         [ -n "$LIVEDATA_SYSTEM_MODEL" ]     && printLivedataLine "$LIVEDATA_SYSTEM_MODEL_HEADER"     "$LIVEDATA_SYSTEM_MODEL"     "%-7s"  "" "%5s" 'model'
@@ -481,7 +510,6 @@ printLivedata()
     unset n delimiter space
 }
 
-
 newLivedataCompass()
 #$1 unicode direction, $2 - wind direction 
 {
@@ -506,7 +534,6 @@ newLivedataCompass()
     unset style_needle
 }
 
-
 printLivedataRainLine()
 {
     #echo "printLivedataRainLine $*"
@@ -524,9 +551,9 @@ printLivedataRainLine()
 setLivedataValueStyleLtGt()
 #$1 - raw value, $2 low limit, 3$ high limit, $4 sgi low, $5 sgi high
 {
-    if [ -n "$2" ] && [ "$1" -lt "$2" ]; then
+    if [ -n "$1" ] &&  [ -n "$2" ] && [ "$1" -lt "$2" ]; then
         STYLE_LIVE_VALUE=$4
-    elif [ -n "$3" ] && [ "$1" -gt "$3" ]; then
+    elif [ -n "$1" ] &&  [ -n "$3" ] && [ "$1" -gt "$3" ]; then
         STYLE_LIVE_VALUE=$5
     fi
 }
@@ -649,7 +676,6 @@ printWHBatterySignal()
     fi
 }
 
-
 setLivedataProtocolStyle()
 {
     case "$1" in
@@ -666,14 +692,21 @@ setLivedataProtocolStyle()
 setRainIntensityStatus()
 {
     if [ "$1" -eq 0 ]; then
-      unset VALUE_RAININTENSITY_STATUS
+        unset VALUE_RAININTENSITY_STATUS
     elif [ "$1" -gt 0 ] &&  [ "$1" -lt "$RAININTENSITY_LIGHT_LIMIT" ]; then
-      VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE
+        VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE
     elif [ "$1" -ge "$RAININTENSITY_LIGHT_LIMIT" ] && [ "$1" -lt "$RAININTENSITY_MODERATE_LIMIT" ]; then
-      VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE$UNICODE_RAINRATE
+         VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE$UNICODE_RAINRATE
     elif [ "$1" -ge  "$RAININTENSITY_MODERATE_LIMIT" ] && [ "$1" -lt "$RAININTENSITY_HEAVY_LIMIT" ]; then
-      VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE$UNICODE_RAINRATE$UNICODE_RAINRATE
+        VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE$UNICODE_RAINRATE$UNICODE_RAINRATE
     elif [ "$1" -gt "$RAININTENSITY_HEAVY_LIMIT" ]; then
-      VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE$UNICODE_RAINRATE$UNICODE_RAINRATE$UNICODE_RAINRATE
+        VALUE_RAININTENSITY_STATUS=$UNICODE_RAINRATE$UNICODE_RAINRATE$UNICODE_RAINRATE$UNICODE_RAINRATE
     fi
 }
+
+[ $DEBUG -eq 1 ] && echo >&2 "Entering auto startup detection with arguments 0: $0" 
+case $0 in 
+    "$GWDIR"/view/default.sh) 
+                        [ $DEBUG -eq 1 ] && echo >&2 Auto start of printlivedata
+                        printLivedata ;; # auto start if called directly on command line
+esac

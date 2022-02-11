@@ -633,6 +633,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             export LIVEDATA_WINDDIRECTION="$VALUE_UINT16BE"
             convertWindDirectionToCompassDirection "$LIVEDATA_WINDDIRECTION"
             export LIVEDATA_WINDDIRECTION_COMPASS="$VALUE_COMPASS_DIRECTION"
+            export LIVEDATA_WINDDIRECTION_COMPASS_UNICODE="$VALUE_COMPASS_DIRECTION_UNICODE"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex winddirection uint16BE $LIVEDATA_WINDDIRECTION $UNIT_DEGREE"
 
 

@@ -130,4 +130,12 @@ newRuler()
     unset n
 }
 
+parseRangeExpression()
+{
+    IFS=- # range with hyphen, for example 31-33
+            #shellcheck disable=SC2086
+    set -- $1
+    VALUE_RANGE_LOW=$1 #global for use if 
+    VALUE_RANGE_HIGH=$2
+}
 
