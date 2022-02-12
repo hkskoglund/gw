@@ -765,6 +765,7 @@ printOrLogLivedata()
 
     if [ -z "$LOG_CMD" ]; then
        if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then
+       #https://stackoverflow.com/questions/10411616/grep-regex-not-containing-string
             #set | grep ^LIVEDATA | grep -v _HEADER
             printLivedata
        else
@@ -779,10 +780,6 @@ printOrLogLivedata()
      #esac
     fi
 }
-
-
-
-
 
 processUnitOptions()
 #format: temp=farenheit|celius,pressure=inhg|hpa

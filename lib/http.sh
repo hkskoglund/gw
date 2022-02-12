@@ -185,7 +185,7 @@ parseHttpRequestEcowitt()
             
             winddir)
 
-                    setWindDirHttpLivedata LIVEDATA_WINDDIRECTION "$value"
+                    setWindDirHttpLivedata LIVEDATA_WINDDIRECTION_UINT16 "$value"
                 ;;
 
             windspeedmph)
@@ -253,14 +253,14 @@ parseHttpRequestEcowitt()
 
                 channel=${key##pm25_ch}
                 eval export "LIVEDATA_PM25$channel=$value"
-                eval export "LIVEDATA_PM25${channel}_RAW=${value%%.?}${value##*.}"
+                eval export "LIVEDATA_PM25${channel}_UINT16=${value%%.?}${value##*.}"
                 ;;
 
             pm25_avg_24h_ch?)
 
                 channel=${key##pm25_avg_24h_ch}
                 eval export "LIVEDATA_PM25_24HAVG$channel=$value"
-                eval export "LIVEDATA_PM25_24HAVG${channel}_RAW=${value%%.?}${value##*.}"
+                eval export "LIVEDATA_PM25_24HAVG${channel}_UINT16=${value%%.?}${value##*.}"
 
                 ;;
 
@@ -463,7 +463,7 @@ parseHttpRequestWunderground()
 
             winddir)
 
-                setWindDirHttpLivedata LIVEDATA_WINDDIRECTION "$value"
+                setWindDirHttpLivedata LIVEDATA_WINDDIRECTION_UINT16 "$value"
 
                 ;;
 
@@ -494,7 +494,7 @@ parseHttpRequestWunderground()
             AqPM2\.5)
                 #shellcheck disable=SC2034
                 export LIVEDATA_PM251="$value"
-                export LIVEDATA_PM251_RAW="${value%%.?}${value##*.}"
+                export LIVEDATA_PM251_UINT16="${value%%.?}${value##*.}"
                 ;;
 
             soilmoisture)
