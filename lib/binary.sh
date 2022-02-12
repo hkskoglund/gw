@@ -581,13 +581,13 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             export LIVEDATA_INTEMP_INT16="$VALUE_INT16BE"
             convertTemperatureLivedata "$VALUE_INT16BE"
             export LIVEDATA_INTEMP="$VALUE_SCALE10_FLOAT" 
-             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex intemp int16be $LIVEDATA_INTEMP_INT16 intemp $LIVEDATA_INTEMP $UNIT_UNICODE_CELCIUS"
+             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex intemp int16be $LIVEDATA_INTEMP_INT16 intemp $LIVEDATA_INTEMP $UNIT_UNICODE_CELCIUS"
 
         elif [ "$ldf" -eq "$LDF_INHUMI" ]; then
 
             readUInt8
             export LIVEDATA_INHUMI="$VALUE_UINT8"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex inhumi uint8 $LIVEDATA_INHUMI $UNIT_HUMIDITY"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex inhumi uint8 $LIVEDATA_INHUMI $UNIT_HUMIDITY"
 
 
         elif [ "$ldf" -eq "$LDF_ABSBARO" ]; then
@@ -598,7 +598,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             convertPressureLivedata "$VALUE_UINT16BE"
             export LIVEDATA_ABSBARO="$VALUE_SCALE10_FLOAT"
             
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex absbaro int16be $LIVEDATA_ABSBARO_UINT16 absbaro $LIVEDATA_ABSBARO $UNIT_UNICODE_PRESSURE_HPA"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex absbaro int16be $LIVEDATA_ABSBARO_UINT16 absbaro $LIVEDATA_ABSBARO $UNIT_UNICODE_PRESSURE_HPA"
 
 
         elif [ "$ldf" -eq "$LDF_RELBARO" ]; then
@@ -607,7 +607,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             export LIVEDATA_RELBARO_UINT16="$VALUE_UINT16BE"
             convertPressureLivedata "$VALUE_UINT16BE"
             export LIVEDATA_RELBARO="$VALUE_SCALE10_FLOAT"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex relbaro int16be $LIVEDATA_RELBARO_UINT16 relbaro $LIVEDATA_RELBARO  $UNIT_UNICODE_PRESSURE_HPA"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex relbaro int16be $LIVEDATA_RELBARO_UINT16 relbaro $LIVEDATA_RELBARO  $UNIT_UNICODE_PRESSURE_HPA"
 
 
         elif [ "$ldf" -eq "$LDF_OUTTEMP" ]; then
@@ -617,14 +617,14 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             convertTemperatureLivedata "$VALUE_INT16BE" 
             export LIVEDATA_OUTTEMP="$VALUE_SCALE10_FLOAT"
             
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex outtemp int16be $LIVEDATA_OUTTEMP_INT16 outtemp $LIVEDATA_OUTTEMP $UNIT_UNICODE_CELCIUS"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex outtemp int16be $LIVEDATA_OUTTEMP_INT16 outtemp $LIVEDATA_OUTTEMP $UNIT_UNICODE_CELCIUS"
 
 
         elif [ "$ldf" -eq "$LDF_OUTHUMI" ]; then
 
             readUInt8
             export LIVEDATA_OUTHUMI="$VALUE_UINT8"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex outhumi uint8 $LIVEDATA_OUTHUMI $UNIT_HUMIDITY"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex outhumi uint8 $LIVEDATA_OUTHUMI $UNIT_HUMIDITY"
 
 
         elif [ "$ldf" -eq "$LDF_WINDDIRECTION" ]; then
@@ -634,16 +634,16 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             convertWindDirectionToCompassDirection "$LIVEDATA_WINDDIRECTION_UINT16"
             export LIVEDATA_WINDDIRECTION_COMPASS="$VALUE_COMPASS_DIRECTION"
             export LIVEDATA_WINDDIRECTION_COMPASS_UNICODE="$VALUE_COMPASS_DIRECTION_UNICODE"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex winddirection uint16BE $LIVEDATA_WINDDIRECTION_UINT16 $UNIT_DEGREE"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex winddirection uint16BE $LIVEDATA_WINDDIRECTION_UINT16 $UNIT_DEGREE"
 
 
         elif [ "$ldf" -eq "$LDF_WINDSPEED" ]; then
 
             readUInt16BE
-            export LIVEDATA_WINDSPEED_RAW="$VALUE_UINT16BE"
+            export LIVEDATA_WINDSPEED_UINT16="$VALUE_UINT16BE"
             convertWindLivedata "$VALUE_UINT16BE"
             export LIVEDATA_WINDSPEED="$VALUE_SCALE10_FLOAT"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex windspeed uint16BE $LIVEDATA_WINDSPEED_RAW windspeed $LIVEDATA_WINDSPEED $UNIT_UNICODE_WIND_MPS"  
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex windspeed uint16BE $LIVEDATA_WINDSPEED_UINT16 windspeed $LIVEDATA_WINDSPEED $UNIT_UNICODE_WIND_MPS"  
 
 
         elif [ "$ldf" -eq "$LDF_WINDGUSTSPPED" ]; then
@@ -652,7 +652,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             export LIVEDATA_WINDGUSTSPEED_UINT16="$VALUE_UINT16BE"
             convertWindLivedata "$VALUE_UINT16BE"
             export LIVEDATA_WINDGUSTSPEED="$VALUE_SCALE10_FLOAT"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex windgustspeed uint16BE $LIVEDATA_WINDGUSTSPEED_UINT16 windspeed $LIVEDATA_WINDGUSTSPEED $UNIT_UNICODE_WIND_MPS"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex windgustspeed uint16BE $LIVEDATA_WINDGUSTSPEED_UINT16 windspeed $LIVEDATA_WINDGUSTSPEED $UNIT_UNICODE_WIND_MPS"
 
 
         elif [ "$ldf" -eq "$LDF_DAYLWINDMAX" ]; then
@@ -661,7 +661,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             export LIVEDATA_WINDDAILYMAX_UINT16="$VALUE_UINT16BE"
             convertWindLivedata "$VALUE_UINT16BE"
             export LIVEDATA_WINDDAILYMAX="$VALUE_SCALE10_FLOAT"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex winddailymax uint16BE $LIVEDATA_WINDDAILYMAX_UINT16 winddailymax $LIVEDATA_WINDDAILYMAX $UNIT_UNICODE_WIND_MPS"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex winddailymax uint16BE $LIVEDATA_WINDDAILYMAX_UINT16 winddailymax $LIVEDATA_WINDDAILYMAX $UNIT_UNICODE_WIND_MPS"
 
 
         elif [ "$ldf" -eq "$LDF_LIGHT" ]; then
@@ -670,7 +670,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             export LIVEDATA_LIGHT_UINT32="$VALUE_UINT32BE"
             convertScale10ToFloat "$VALUE_UINT32BE"
             export LIVEDATA_LIGHT="$VALUE_SCALE10_FLOAT"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex light uint32BE $LIVEDATA_LIGHT_UINT32 light $LIVEDATA_LIGHT lux"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex light uint32BE $LIVEDATA_LIGHT_UINT32 light $LIVEDATA_LIGHT lux"
 
 
         elif [ "$ldf" -eq "$LDF_UV" ]; then
@@ -678,13 +678,14 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             readUInt16BE
             export LIVEDATA_UV_UINT16="$VALUE_UINT16BE"
 
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex  UV value $VALUE_UINT16BE, converting lux $LIVEDATA_LIGHT to W/m2 instead "
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex  UV value uint16be $VALUE_UINT16BE, converting lux $LIVEDATA_LIGHT to W/m2 instead "
+            #uint16 value is approximately equal to lux->W/m2 conversion (31, 3735 lux -> 29.5 W/m2)
             #setUVMode $UNIT_UV_MICROWM2
             #is it µW? is it scale 10 ?
             #lux 976 -> solar radiation raw value 11 -> ecowitt protcol: 7.7 W/m2
             #https://help.ambientweather.net/help/why-is-the-lux-to-w-m-2-conversion-factor-126-7/
             setUVMode "$UNIT_UV_WATTM2"
-            VALUE_UINT16BE=$(( ${LIVEDATA_LIGHT_UINT32}*1075/136000 ))
+            VALUE_UINT16BE=$(( LIVEDATA_LIGHT_UINT32*1075/136000 ))
             convertScale10ToFloat "$VALUE_UINT16BE"
             export LIVEDATA_UV="$VALUE_SCALE10_FLOAT"
 
@@ -692,7 +693,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
             readUInt8
             export LIVEDATA_UVI="$VALUE_UINT8"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex uvi uint8 $LIVEDATA_UVI"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex uvi uint8 $LIVEDATA_UVI"
 
 
         elif [ "$ldf" -eq "$LDF_SOILMOISTURE1" ] || [ "$ldf" -eq "$LDF_SOILMOISTURE2" ] ||
@@ -703,7 +704,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             readUInt8
             channel=$((((ldf - LDF_SOILMOISTURE1) / 2) + 1))
             eval "export LIVEDATA_SOILMOISTURE$channel=$VALUE_UINT8"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex soilmoisture$channel uint8 $VALUE_UINT8 $UNIT_HUMIDITY"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex soilmoisture$channel uint8 $VALUE_UINT8 $UNIT_HUMIDITY"
 
  
         elif [ "$ldf" -eq "$LDF_SOILTEMP1" ] || [ "$ldf" -eq "$LDF_SOILTEMP2" ] ||
@@ -716,7 +717,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             channel=$((((ldf - LDF_SOILTEMP1) / 2) + 1))
             eval "export LIVEDATA_SOILTEMP${channel}_INT16=$VALUE_INT16BE"
             eval "export LIVEDATA_SOILTEMP$channel=$VALUE_SCALE10_FLOAT"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex soiltemperature$channel int16BE $VALUE_INT16BE $VALUE_SCALE10_FLOAT $UNIT_UNICODE_CELCIUS"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex soiltemperature$channel int16BE $VALUE_INT16BE $VALUE_SCALE10_FLOAT $UNIT_UNICODE_CELCIUS"
 
 
         elif [ "$ldf" -ge "$LDF_TEMP1" ] && [ "$ldf" -le "$LDF_TEMP8" ]; then
@@ -727,7 +728,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             channel=$((ldf - LDF_TEMP1 + 1))
             eval "export LIVEDATA_TEMP${channel}_INT16BE=$VALUE_INT16BE"
             eval "export LIVEDATA_TEMP$channel=$VALUE_SCALE10_FLOAT"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex temperature$channel int16BE $VALUE_INT16BE $VALUE_SCALE10_FLOAT $UNIT_UNICODE_CELCIUS"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex temperature$channel int16BE $VALUE_INT16BE $VALUE_SCALE10_FLOAT $UNIT_UNICODE_CELCIUS"
 
 
         elif [ "$ldf" -ge "$LDF_HUMI1" ] && [ "$ldf" -le "$LDF_HUMI8" ]; then
@@ -736,7 +737,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
             channel=$((ldf - LDF_HUMI1 + 1))
             eval "export LIVEDATA_HUMI$channel=$VALUE_UINT8"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex humidity$channel uint8 $VALUE_UINT8 $UNIT_HUMIDITY"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex humidity$channel uint8 $VALUE_UINT8 $UNIT_HUMIDITY"
 
 
         elif [ "$ldf" -eq "$LDF_RAINMONTH" ]; then

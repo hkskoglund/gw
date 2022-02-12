@@ -30,7 +30,7 @@ checksumPacketTX() {
     getPacketLength "$PACKET_TX_BODY"
     PACKET_TX_BODY_LENGTH=$((VALUE_LENGTH + 2)) # at least 2 byte for length + checksum bytes
 
-    if [ "$PACKET_TX_CMD" -eq "$CMD_BROADCAST" ] || [ "$PACKET_TX_CMD" -eq $CMD_WRITE_SSID ]; then # 2 byte length 
+    if [ "$PACKET_TX_CMD" -eq "$CMD_BROADCAST" ] || [ "$PACKET_TX_CMD" -eq "$CMD_WRITE_SSID" ]; then # 2 byte length 
         PACKET_TX_BODY_LENGTH=$(( PACKET_TX_BODY_LENGTH + 1 ))
         PACKET_TX_LENGTH=" $(( ((PACKET_TX_BODY_LENGTH + 1) & 0xff00) >> 8 )) $(( (PACKET_TX_BODY_LENGTH + 1) & 0xff ))"
     else
@@ -49,7 +49,7 @@ checksumPacketTX() {
     PACKET_TX_BODY="$PACKET_TX_BODY $VALUE_CHECKSUM"
     PACKET_TX="$PACKET_TX_PREAMBLE $PACKET_TX_BODY"
 
-    [ $DEBUG -eq 1 ] && echo >&2 "PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
+    [ "$DEBUG" -eq 1 ] && echo >&2 "PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
 }
 
 
@@ -89,10 +89,7 @@ sendPacketnc() { #$1 - command
     #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
     if [ -n "$1" ]; then 
         newPacketBody "$1"
-    else
-       echo >&2 "$DEBUG_FUNC Empty command"
-       EXITCODE_SENDPACKETNC=$ERROR_EMPTY_COMMAND
-       return "$EXITCODE_SENDPACKETNC"
+    
     fi
 
     if [ -n "$2" ]; then
@@ -104,7 +101,7 @@ sendPacketnc() { #$1 - command
     if [ -z "$host" ]; then
       echo >&2 Error: No host specified
       EXITCODE_SENDPACKETNC="$ERROR_NO_HOST_SPECIFIED"
-      return $EXITCODE_SENDPACKETNC
+      return "$EXITCODE_SENDPACKETNC"
     fi
 
     createPacketTX
@@ -126,14 +123,14 @@ sendPacketnc() { #$1 - command
 
     port=$PORT_GW_TCP
 
-    if [ $PACKET_TX_CMD -eq $CMD_BROADCAST ]; then
+    if [ $PACKET_TX_CMD -eq "$CMD_BROADCAST" ]; then
         ncUDPOpt='-u' # udp mode
         port=$PORT_GW_UDP
         timeout_nc=$timeout_udp_broadcast
         useTimeout=1
-    elif [ "$PACKET_TX_CMD" -eq $CMD_WRITE_RESET ] || [ "$PACKET_TX_CMD" -eq $CMD_WRITE_SSID ]; then
+    elif [ "$PACKET_TX_CMD" -eq "$CMD_WRITE_RESET" ] || [ "$PACKET_TX_CMD" -eq "$CMD_WRITE_SSID" ]; then
         :
-    elif [ "$PACKET_TX_CMD" -eq $CMD_REBOOT ]; then
+    elif [ "$PACKET_TX_CMD" -eq "$CMD_REBOOT" ]; then
        useTimeout=1
        timeout_nc=1
        #sometimes result packet from gw is not received, and nc hangs
@@ -143,7 +140,7 @@ sendPacketnc() { #$1 - command
 
     odcmdstr="od -A n -t u1 -w$MAX_16BIT_UINT"
 
-    if [ "$NC_VERSION" = $NC_OPENBSD ]; then
+    if [ "$NC_VERSION" = "$NC_OPENBSD" ]; then
 
         # -N shutdown(2) the network socket after EOF on the input / from man nc - otherwise nc hangs
         nccmdstr="\"$NC_CMD\" -4 -N -w 1 $ncUDPOpt $host $port" 
@@ -154,14 +151,14 @@ sendPacketnc() { #$1 - command
         
         cmdstr="printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd | $nccmdstr $rxpipecmd | $odcmdstr"
 
-    elif [ "$NC_VERSION" = $NC_NMAP ]; then
+    elif [ "$NC_VERSION" = "$NC_NMAP" ]; then
 
         #sleep to disable immediate EOF and shutdown of ncat -> which leads to data not received from udp socket
        
         nccmdstr="\"$NC_CMD\" -4 -w 1  $ncUDPOpt $host $port"
         cmdstr="{ printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd ; sleep $timeout_nc; } |  $nccmdstr $rxpipecmd | $odcmdstr"
 
-    elif [ "$NC_VERSION" = $NC_TOYBOX ]; then
+    elif [ "$NC_VERSION" = "$NC_TOYBOX" ]; then
 
         nccmdstr="$NC_CMD -4 $ncUDPOpt $host $port"
         
@@ -171,7 +168,7 @@ sendPacketnc() { #$1 - command
 
         cmdstr="printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd | $nccmdstr $rxpipecmd | $odcmdstr"
 
-    elif [ "$NC_VERSION" = $NC_BUSYBOX ]; then
+    elif [ "$NC_VERSION" = "$NC_BUSYBOX" ]; then
 
         nccmdstr="$NC_CMD $host $port"
 
@@ -191,7 +188,7 @@ sendPacketnc() { #$1 - command
             printf >&2 "%s: %s\n" "$COMMAND_NAME" "$cmdstr"
        fi
        
-       if [ $DEBUG -eq 1 ]; then
+       if [ "$DEBUG" -eq 1 ]; then
             echo >&2 "Sending packet to ip $host port $port"
        fi 
 
@@ -244,13 +241,13 @@ discovery_udp_subnet() { #$1 - subnet, for example 192.168.3
     while [ "$hostnumber" -le 254 ]; do
         #[ $DEBUG -eq 1 ] && 
         printf >&2 "\r%s " "$1.$hostnumber"
-        sendPacket $CMD_BROADCAST "$1.$hostnumber" 
+        sendPacket "$CMD_BROADCAST" "$1.$hostnumber" 
         hostnumber=$((hostnumber + 1))
     done
 
     unset hostnumber
 
-    return $EXITCODE_DISCOVERY
+    return "$EXITCODE_DISCOVERY"
 }
 
 discovery_nc() { #$1 - subnet for udp scan
@@ -268,7 +265,7 @@ discovery_nc() { #$1 - subnet for udp scan
 
     if [ -z "$1" ]; then # set up server on 59387 port
 
-        if [ "$NC_VERSION" = $NC_NMAP ]; then
+        if [ "$NC_VERSION" = "$NC_NMAP" ]; then
             scan_max_iterations=30
             SCAN_NC_TIMEOUT=0.1
         fi
@@ -276,10 +273,10 @@ discovery_nc() { #$1 - subnet for udp scan
         if scan_result=$(
             n=0
             while [ $n -lt $scan_max_iterations ]; do
-                if [ "$NC_VERSION" = $NC_NMAP ]; then
-                    $NC_CMD -4 -u -i $scan_nc_idle_timeout -l $PORT_CLIENT_UDP 2>/dev/null | od -A n -w64 -t x1
+                if [ "$NC_VERSION" = "$NC_NMAP" ]; then
+                    $NC_CMD -4 -u -i $scan_nc_idle_timeout -l "$PORT_CLIENT_UDP" 2>/dev/null | od -A n -w64 -t x1
                 else
-                    timeout $SCAN_NC_TIMEOUT "$NC_CMD" -4 -u -l $PORT_CLIENT_UDP 2>/dev/null | od -A n -w64 -t x1
+                    timeout $SCAN_NC_TIMEOUT "$NC_CMD" -4 -u -l "$PORT_CLIENT_UDP" 2>/dev/null | od -A n -w64 -t x1
                 fi
                 n=$((n + 1))
             done | sort -u
@@ -292,7 +289,7 @@ discovery_nc() { #$1 - subnet for udp scan
                 done
             fi
         else
-            echo >&2 Error failed to obtain scan result while listening on UDP port $PORT_CLIENT_UDP, error code $?
+            echo >&2 Error failed to obtain scan result while listening on UDP port "$PORT_CLIENT_UDP", error code $?
         fi
     else
         discovery_udp_subnet "$1"
@@ -300,7 +297,7 @@ discovery_nc() { #$1 - subnet for udp scan
 
     unset scan_max_iterations scan_nc_idle_timeout n broadcast
 
-    return $EXITCODE_DISCOVERY
+    return "$EXITCODE_DISCOVERY"
 }
 
 checksum() {
@@ -310,11 +307,11 @@ checksum() {
     
     IFS=" "
     for BYTE in $1; do
-        [ $DEBUG -eq 1 ] && >&2 echo  "checksum read $BYTE"
+        [ "$DEBUG" -eq 1 ] && >&2 echo  "checksum read $BYTE"
         sum=$(( (sum + BYTE) & 255 ))
     done
 
-    [ $DEBUG -eq 1 ] &&  >&2  echo "checksum $sum $(printf "%2x" $sum)"
+    [ "$DEBUG" -eq 1 ] &&  >&2  echo "checksum $sum $(printf "%2x" $sum)"
 
     VALUE_CHECKSUM=$sum
 
@@ -322,7 +319,7 @@ checksum() {
 }
 
 newCustomizedPacket() {
-    newPacketBody $CMD_WRITE_CUSTOMIZED
+    newPacketBody "$CMD_WRITE_CUSTOMIZED"
     writeString "$C_WS_CUSTOMIZED_ID"
     writeString "$C_WS_CUSTOMIZED_PASSWORD"
     writeString "$C_WS_CUSTOMIZED_SERVER"
@@ -333,7 +330,7 @@ newCustomizedPacket() {
 }
 
 newPathPacket() {
-    newPacketBody $CMD_WRITE_PATH
+    newPacketBody "$CMD_WRITE_PATH"
     writeString "$C_WS_CUSTOMIZED_PATH_ECOWITT"
     writeString "$C_WS_CUSTOMIZED_PATH_WU"
 }
@@ -352,7 +349,7 @@ sendSystemPacket()
         dst=$(($3))
     fi
 
-    newPacketBody $CMD_WRITE_SYSTEM
+    newPacketBody "$CMD_WRITE_SYSTEM"
 
     writeUInt8      0       # frequency - only read
     writeUInt8      "$1"    # sensortype 0=WH24, 1=WH65
@@ -362,7 +359,7 @@ sendSystemPacket()
     
     unset dst
 
-    [ $DEBUG -eq 1 ] && echo >&2 Send system sensortye "$1" tz "$2" dst "$3"
+    [ "$DEBUG" -eq 1 ] && echo >&2 Send system sensortye "$1" tz "$2" dst "$3"
 
     sendPacket
 
@@ -371,14 +368,14 @@ sendSystemPacket()
 
 sendRaindata() {
    
-    newPacketBody $CMD_WRITE_RAINDATA
+    newPacketBody "$CMD_WRITE_RAINDATA"
 
     writeUInt32BE "$1" # rainday
     writeUInt32BE "$2" # rainweek
     writeUInt32BE "$3" # rainmonth
     writeUInt32BE "$4" # rainyear
 
-    [ $DEBUG -eq 1 ] && echo >&2 rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
+    [ "$DEBUG" -eq 1 ] && echo >&2 rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
 
     sendPacket
    
@@ -387,7 +384,7 @@ sendRaindata() {
 
 sendCalibration() {
     
-    newPacketBody $CMD_WRITE_CALIBRATION
+    newPacketBody "$CMD_WRITE_CALIBRATION"
 
     writeInt16BE    "$1" #intempoffset
     writeInt8       "$2" #inhumidityoffset
@@ -409,9 +406,9 @@ sendCalibration() {
 sendEcowittIntervalnew() {
     # observation: GW1000 red-wifi led blinks slowly if not sending data to ecowitt when 0=off
     if [ "$1" -ge 0 ] && [ "$1" -le 5 ]; then
-        newPacketBody $CMD_WRITE_ECOWITT_INTERVAL
+        newPacketBody "$CMD_WRITE_ECOWITT_INTERVAL"
         writeUInt8 "$1" #interval
-        [ $DEBUG -eq 1 ] && echo >&2 Sending ecowitt interval "$1"
+        [ "$DEBUG" -eq 1 ] && echo >&2 Sending ecowitt interval "$1"
         sendPacket
     else
         echo >&2 Error Not a valid ecowitt interval, range 0-5 minutes
@@ -421,9 +418,9 @@ sendEcowittIntervalnew() {
 sendEcowittInterval() {
     # observation: GW1000 red-wifi led blinks slowly if not sending data to ecowitt when 0=off
     if [ "$1" -ge 0 ] && [ "$1" -le 5 ]; then
-        newPacketBody $CMD_WRITE_ECOWITT_INTERVAL
+        newPacketBody "$CMD_WRITE_ECOWITT_INTERVAL"
         writeUInt8 "$1" #interval
-        [ $DEBUG -eq 1 ] && echo >&2 Sending ecowitt interval "$1"
+        [ "$DEBUG" -eq 1 ] && echo >&2 Sending ecowitt interval "$1"
         sendPacket
     else
         echo >&2 Error Not a valid ecowitt interval, range 0-5 minutes
@@ -446,7 +443,7 @@ sendWeatherservice() {
         writeUInt8 1
         ;;
     esac
-    [ $DEBUG -eq 1 ] && echo >&2 "Sending weather service $1 id $2 password $3"
+    [ "$DEBUG" -eq 1 ] && echo >&2 "Sending weather service $1 id $2 password $3"
     sendPacket
 }
 
@@ -462,7 +459,7 @@ writeSensorId()
 #$1 - low sensortype, $2 - high sensortype, $3 - sensorid
 {
 
-    newPacketBody $CMD_WRITE_SENSOR_ID
+    newPacketBody "$CMD_WRITE_SENSOR_ID"
 
     if [ -z "$2" ]; then
      [ "$DEBUG" -eq 1 ] && printf >&2 "Writing sensor type %2d sensorid %x\n" "$1" "$3"
@@ -486,8 +483,8 @@ writeSensorId()
 createWIFIpacket()
 #$1 SSID, $2 password
 {
-    [ $DEBUG -eq 1 ] && echo >&2 "createWIFIpacket SSID $1 Password $2"
-    newPacketBody $CMD_WRITE_SSID
+    [ "$DEBUG" -eq 1 ] && echo >&2 "createWIFIpacket SSID $1 Password $2"
+    newPacketBody "$CMD_WRITE_SSID"
     #ssid packet has two byte length
     # TEST wsview android app, wireshark: ffff | 11 |001b| 
     #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/ConfigrouterFragment.java - SaveData

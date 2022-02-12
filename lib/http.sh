@@ -38,12 +38,12 @@ httpServer()
     
     case "$http_message" in
         
-        POST*tempinf*)  parseHttpRequestEcowitt "$http_message"
+        POST*tempinf*)  parseEcowittHttpRequest "$http_message"
                 
                 #https://stackoverflow.com/a/69836872/2076536
                 ;;
         
-        GET*tempf*)   parseHttpRequestWunderground "$http_message"
+        GET*tempf*)   parseWundergroundHttpReqest "$http_message"
                 #cd /tmp/gw/wunderground; watch -n 16 'for f in *; do read v < "$f"; printf "%-30s %s\n" "$f" "$v"; done'
                 ;;
         *) echo >&2 Error: Unable to parse "$http_message" #maybe add csv/json response on request?
@@ -118,7 +118,7 @@ EOL
     fi
 }
 
-parseHttpRequestEcowitt()
+parseEcowittHttpRequest()
 #$1 - http request message (entire)
 {
 
@@ -185,7 +185,7 @@ parseHttpRequestEcowitt()
             
             winddir)
 
-                    setWindDirHttpLivedata LIVEDATA_WINDDIRECTION_UINT16 "$value"
+                    setWindDirHttpLivedata LIVEDATA_WINDDIRECTION "$value" UINT16
                 ;;
 
             windspeedmph)
@@ -205,37 +205,37 @@ parseHttpRequestEcowitt()
         
             rainratein)
 
-                setRainHttpLivedata LIVEDATA_RAINRATE "$value"
+                setRainHttpLivedata LIVEDATA_RAINRATE "$value" UINT16
                 ;;
 
             eventrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINEVENT "$value"
+                setRainHttpLivedata LIVEDATA_RAINEVENT "$value" UINT16
                 ;;
 
                 hourlyrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINHOUR "$value"
+                setRainHttpLivedata LIVEDATA_RAINHOUR "$value" UINT16
                 ;;
 
                 dailyrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINDAY "$value"
+                setRainHttpLivedata LIVEDATA_RAINDAY "$value" UINT16
                 ;;
 
             weeklyrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINWEEK "$value"
+                setRainHttpLivedata LIVEDATA_RAINWEEK "$value" UINT16
                 ;;
 
             monthlyrainin)
                 
-                setRainHttpLivedata LIVEDATA_RAINMONTH "$value"
+                setRainHttpLivedata LIVEDATA_RAINMONTH "$value" UINT32
                 ;;
 
             yearlyrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINYEAR "$value"
+                setRainHttpLivedata LIVEDATA_RAINYEAR "$value" UINT32
                 ;;
 
             totalrainin)
@@ -360,7 +360,8 @@ parseHttpRequestEcowitt()
     unset f key value
 }
 
-parseHttpRequestWunderground()
+parseWundergroundHttpReqest()
+#gw doesnt send request unless station id and station password are set
 {
    parseHttpLines "$1"
 
@@ -438,27 +439,27 @@ parseHttpRequestWunderground()
 
             rainin)
                 #or pr hour?
-                setRainHttpLivedata LIVEDATA_RAINRATE "$value"
+                setRainHttpLivedata LIVEDATA_RAINRATE "$value" UINT16
                 ;;
 
             dailyrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINDAY "$value"
+                setRainHttpLivedata LIVEDATA_RAINDAY "$value" UINT16
                 ;;
 
             weeklyrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINWEEK "$value"
+                setRainHttpLivedata LIVEDATA_RAINWEEK "$value" UINT16
                 ;;
 
             monthlyrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINMONTH "$value"
+                setRainHttpLivedata LIVEDATA_RAINMONTH "$value" UINT32
                 ;;
 
             yearlyrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINYEAR "$value"
+                setRainHttpLivedata LIVEDATA_RAINYEAR "$value" UINT32
                 ;;
 
             winddir)
@@ -536,95 +537,4 @@ parseHttpRequestWunderground()
     printOrLogLivedata
 
     unset http_request f key value
-}
-
-setTemperatureHttpLivedata()
-{
-    #skip undefined value -9999
-    if [ "$2" = "$WUNDERGROUND_UNDEFINED_VALUE" ]; then
-      return
-    fi
-
-    convert_farenheit_to_celciusScale10 "$2" 
-    if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 1 ]; then
-       roundFloat "$VALUE_CELCIUS_SCALE10"
-       VALUE_CELCIUS_SCALE10=$VALUE_FLOAT_TO_INT
-    fi
-    eval export "$1_RAW=$VALUE_CELCIUS_SCALE10"
-    if [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_CELCIUS" ]; then
-        convertScale10ToFloat "$VALUE_CELCIUS_SCALE10"
-        eval export "$1"="$VALUE_SCALE10_FLOAT"
-    elif [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_FARENHEIT" ]; then
-        eval export "$1"="$2"
-    fi
-}
-
-setPressureHttpLivedata()
-{
-    convert_inhg_to_hpa "$2"
-     if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 1 ]; then
-       roundFloat "$VALUE_INHG_HPA_SCALE10"
-       VALUE_INHG_HPA_SCALE10=$VALUE_FLOAT_TO_INT
-    fi
-    eval export "$1"_RAW="$VALUE_INHG_HPA_SCALE10"
-    if [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_HPA" ]; then
-        convertScale10ToFloat "$VALUE_INHG_HPA_SCALE10"
-        eval export "$1"="$VALUE_SCALE10_FLOAT"
-    elif [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_INHG" ]; then
-        eval export "$1"="$2"
-    fi
-}
-
-setWindHttpLivedata()
-{
-     if [ "$2" = "$WUNDERGROUND_UNDEFINED_VALUE" ]; then
-      return
-    fi
-
-    convert_mph_To_mps "$2"
-      if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 1 ]; then
-        roundFloat "$VALUE_MPS_SCALE10"
-        VALUE_MPS_SCALE10=$VALUE_FLOAT_TO_INT
-    fi
-    eval export "$1_RAW=$VALUE_MPS_SCALE10"
-    if [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_MPS" ]; then
-       convertScale10ToFloat "$VALUE_MPS_SCALE10"
-       eval export "$1"="$VALUE_SCALE10_FLOAT"
-    elif [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_MPH" ]; then
-       eval export "$1"="$2"
-    elif [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_KMH" ]; then
-       convert_mph_to_kmhScale10 "$2"
-       convertScale10ToFloat "$VALUE_KMH_SCALE10"
-       eval export "$1"="$VALUE_SCALE10_FLOAT"
-    fi
-}
-
-setWindDirHttpLivedata()
-{
-    if [ "$2" = "$WUNDERGROUND_UNDEFINED_VALUE" ]; then
-      return
-    fi
- 
-    eval export "$1"="$2" 
-    convertWindDirectionToCompassDirection "$2"
-    eval export "$1"_COMPASS="$VALUE_COMPASS_DIRECTION"
-
-}
-
-setRainHttpLivedata()
-#$1 - field name
-#$2 - value
-{
-    convert_in_to_mm "$2"
-    if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 1 ]; then
-        roundFloat "$VALUE_IN_MM_SCALE10"
-        VALUE_IN_MM_SCALE10=$VALUE_FLOAT_TO_INT
-    fi
-    eval export "$1"_RAW="$VALUE_IN_MM_SCALE10"
-    if [ "$UNIT_RAIN_MODE" -eq "$UNIT_RAIN_MM" ]; then
-        convertScale10ToFloat "$VALUE_IN_MM_SCALE10"
-        eval export "$1"="$VALUE_SCALE10_FLOAT"
-    elif [ "$UNIT_RAIN_MODE" -eq "$UNIT_RAIN_IN" ]; then
-        eval export "$1"="$2"
-    fi
 }

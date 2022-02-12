@@ -558,3 +558,106 @@ convertUInt8ToHex() {
 
     unset lsb lsb_hexdigit msb
 }
+
+setPressureHttpLivedata()
+{
+    convert_inhg_to_hpa "$2"
+    
+    if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 1 ]; then
+       roundFloat "$VALUE_INHG_HPA_SCALE10"
+       VALUE_INHG_HPA_SCALE10=$VALUE_FLOAT_TO_INT
+    fi
+
+    eval export "$1"_UINT16="$VALUE_INHG_HPA_SCALE10"
+    
+    if [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_HPA" ]; then
+        convertScale10ToFloat "$VALUE_INHG_HPA_SCALE10"
+        eval export "$1"="$VALUE_SCALE10_FLOAT"
+    elif [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_INHG" ]; then
+        eval export "$1"="$2"
+    fi
+}
+
+setWindHttpLivedata()
+{
+    if [ "$2" = "$WUNDERGROUND_UNDEFINED_VALUE" ]; then
+      return
+    fi
+
+    convert_mph_To_mps "$2"
+
+    if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 1 ]; then
+        roundFloat "$VALUE_MPS_SCALE10"
+        VALUE_MPS_SCALE10=$VALUE_FLOAT_TO_INT
+    fi
+    
+    eval export "$1_UINT16=$VALUE_MPS_SCALE10"
+    
+    if [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_MPS" ]; then
+       convertScale10ToFloat "$VALUE_MPS_SCALE10"
+       eval export "$1"="$VALUE_SCALE10_FLOAT"
+    elif [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_MPH" ]; then
+       eval export "$1"="$2"
+    elif [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_KMH" ]; then
+       convert_mph_to_kmhScale10 "$2"
+       convertScale10ToFloat "$VALUE_KMH_SCALE10"
+       eval export "$1"="$VALUE_SCALE10_FLOAT"
+    fi
+}
+
+setWindDirHttpLivedata()
+{
+    if [ "$2" = "$WUNDERGROUND_UNDEFINED_VALUE" ]; then
+      return
+    fi
+ 
+    eval export "$1"_"$3"="$2" 
+    convertWindDirectionToCompassDirection "$2"
+    eval export "$1"_COMPASS="$VALUE_COMPASS_DIRECTION"
+    eval export "$1"_COMPASS_UNICODE="$VALUE_COMPASS_DIRECTION_UNICODE"
+
+}
+
+setRainHttpLivedata()
+#$1 - field name
+#$2 - value
+#$3 - raw type
+{
+    convert_in_to_mm "$2"
+
+    if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 1 ]; then
+        roundFloat "$VALUE_IN_MM_SCALE10"
+        VALUE_IN_MM_SCALE10=$VALUE_FLOAT_TO_INT
+    fi
+    
+    eval export "$1_$3"="$VALUE_IN_MM_SCALE10"
+    
+    if [ "$UNIT_RAIN_MODE" -eq "$UNIT_RAIN_MM" ]; then
+        convertScale10ToFloat "$VALUE_IN_MM_SCALE10"
+        eval export "$1"="$VALUE_SCALE10_FLOAT"
+    elif [ "$UNIT_RAIN_MODE" -eq "$UNIT_RAIN_IN" ]; then
+        eval export "$1"="$2"
+    fi
+}
+
+
+setTemperatureHttpLivedata()
+{
+    #skip undefined value -9999
+    if [ "$2" = "$WUNDERGROUND_UNDEFINED_VALUE" ]; then
+      return
+    fi
+
+    convert_farenheit_to_celciusScale10 "$2" 
+    if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 1 ]; then
+       roundFloat "$VALUE_CELCIUS_SCALE10"
+       VALUE_CELCIUS_SCALE10=$VALUE_FLOAT_TO_INT
+    fi
+    eval export "$1_INT16=$VALUE_CELCIUS_SCALE10"
+    if [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_CELCIUS" ]; then
+        convertScale10ToFloat "$VALUE_CELCIUS_SCALE10"
+        eval export "$1"="$VALUE_SCALE10_FLOAT"
+    elif [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_FARENHEIT" ]; then
+        eval export "$1"="$2"
+    fi
+}
