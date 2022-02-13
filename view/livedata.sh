@@ -221,7 +221,8 @@ printLivedata()
     if [ -z "$LIVEVIEW_HIDE_LIGHT" ]; then
         [ -n "$LIVEDATA_LIGHT" ] && printLivedataHeader "" "$LIVEDATA_SOLARRADIATION_HEADER"
         [ -n "$LIVEDATA_LIGHT" ]    && printLivedataLine "$LIVEDATA_LIGHT_HEADER" "$LIVEDATA_LIGHT"  "%6.1f" "$UNIT_LIGHT" "%4s" 'light'
-        [ -n "$LIVEDATA_SOLARRADIATION" ]       && printLivedataLine "$LIVEDATA_SOLARRADIATION_WATTM2_HEADER" "$LIVEDATA_SOLARRADIATION"        "%6.1f" "$UNIT_SOLARRADIATION" "%5s" 'uv'
+        [ -n "$LIVEDATA_SOLARRADIATION" ]       && printLivedataLine "$LIVEDATA_SOLARRADIATION_WATTM2_HEADER" "$LIVEDATA_SOLARRADIATION"        "%6.1f" "$UNIT_SOLARRADIATION" "%5s" 'solarradiation'
+        [ -n "$LIVEDATA_UV" ] && printLivedataLine "$LIVEDATA_UV_HEADER" "$LIVEDATA_UV" "%6.1f" "$UNIT_UV" "%5s" 'uv'
         if [ -n "$LIVEDATA_UVI" ]; then
            if [ -z "$LIVEVIEW_HIDE_UVI" ]; then
                 setUVRisk "$LIVEDATA_UVI"
@@ -706,7 +707,7 @@ setRainIntensityStatus()
 
 [ $DEBUG -eq 1 ] && echo >&2 "Entering auto startup detection with arguments 0: $0" 
 case $0 in 
-    "$GWDIR"/view/default.sh) 
+    "$GWDIR"/view/livedata.sh) 
                         [ $DEBUG -eq 1 ] && echo >&2 Auto start of printlivedata
                         printLivedata ;; # auto start if called directly on command line
 esac

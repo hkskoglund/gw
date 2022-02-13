@@ -22,7 +22,7 @@ GWDIR=${GWDIR:="."}
 . $GWDIR/lib/limits.sh
 . $GWDIR/lib/livedata-header.sh
 . $GWDIR/lib/wind.sh
-. $GWDIR/view/default.sh
+. $GWDIR/view/livedata.sh
 
 initShell() {
     #shellcheck disable=SC3010,SC2050
