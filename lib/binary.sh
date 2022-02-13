@@ -598,7 +598,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             convertPressureLivedata "$VALUE_UINT16BE"
             export LIVEDATA_ABSBARO="$VALUE_SCALE10_FLOAT"
             
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex absbaro int16be $LIVEDATA_ABSBARO_UINT16 absbaro $LIVEDATA_ABSBARO $UNIT_UNICODE_PRESSURE_HPA"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex absbaro uint16be $LIVEDATA_ABSBARO_UINT16 absbaro $LIVEDATA_ABSBARO $UNIT_UNICODE_PRESSURE_HPA"
 
 
         elif [ "$ldf" -eq "$LDF_RELBARO" ]; then
@@ -607,7 +607,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             export LIVEDATA_RELBARO_UINT16="$VALUE_UINT16BE"
             convertPressureLivedata "$VALUE_UINT16BE"
             export LIVEDATA_RELBARO="$VALUE_SCALE10_FLOAT"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex relbaro int16be $LIVEDATA_RELBARO_UINT16 relbaro $LIVEDATA_RELBARO  $UNIT_UNICODE_PRESSURE_HPA"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex relbaro uint16be $LIVEDATA_RELBARO_UINT16 relbaro $LIVEDATA_RELBARO  $UNIT_UNICODE_PRESSURE_HPA"
 
 
         elif [ "$ldf" -eq "$LDF_OUTTEMP" ]; then
@@ -643,7 +643,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             export LIVEDATA_WINDSPEED_UINT16="$VALUE_UINT16BE"
             convertWindLivedata "$VALUE_UINT16BE"
             export LIVEDATA_WINDSPEED="$VALUE_SCALE10_FLOAT"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex windspeed uint16BE $LIVEDATA_WINDSPEED_UINT16 windspeed $LIVEDATA_WINDSPEED $UNIT_UNICODE_WIND_MPS"  
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex windspeed uint16be $LIVEDATA_WINDSPEED_UINT16 windspeed $LIVEDATA_WINDSPEED $UNIT_UNICODE_WIND_MPS"  
 
 
         elif [ "$ldf" -eq "$LDF_WINDGUSTSPPED" ]; then
@@ -652,7 +652,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             export LIVEDATA_WINDGUSTSPEED_UINT16="$VALUE_UINT16BE"
             convertWindLivedata "$VALUE_UINT16BE"
             export LIVEDATA_WINDGUSTSPEED="$VALUE_SCALE10_FLOAT"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex windgustspeed uint16BE $LIVEDATA_WINDGUSTSPEED_UINT16 windspeed $LIVEDATA_WINDGUSTSPEED $UNIT_UNICODE_WIND_MPS"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex windgustspeed uint16be $LIVEDATA_WINDGUSTSPEED_UINT16 windspeed $LIVEDATA_WINDGUSTSPEED $UNIT_UNICODE_WIND_MPS"
 
 
         elif [ "$ldf" -eq "$LDF_DAYLWINDMAX" ]; then
@@ -677,8 +677,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
             readUInt16BE
             export LIVEDATA_UV_UINT16="$VALUE_UINT16BE"
-
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex  UV value uint16be $VALUE_UINT16BE, converting lux $LIVEDATA_LIGHT to W/m2 instead "
+            # uv gain can be used to calibrate value
             #uint16 value is approximately equal to lux->W/m2 conversion (31, 3735 lux -> 29.5 W/m2)
             #setUVMode $UNIT_UV_MICROWM2
             #is it µW? is it scale 10 ?
@@ -687,7 +686,9 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             setUVMode "$UNIT_UV_WATTM2"
             VALUE_UINT16BE=$(( LIVEDATA_LIGHT_UINT32*1075/136000 ))
             convertScale10ToFloat "$VALUE_UINT16BE"
-            export LIVEDATA_UV="$VALUE_SCALE10_FLOAT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex uv uint16be $LIVEDATA_UV_UINT16, converting lux $LIVEDATA_LIGHT to $VALUE_SCALE10_FLOAT W/m2 instead"
+
+            export LIVEDATA_SOLARRADIATION="$VALUE_SCALE10_FLOAT"
 
         elif [ "$ldf" -eq "$LDF_UVI" ]; then
 

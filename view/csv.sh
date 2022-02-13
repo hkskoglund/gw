@@ -8,7 +8,7 @@ if [ -n "$LIVEDATA_WINDSPEED" ]; then # assumes other variables are set
 fi
 
 if [ -n "$LIVEDATA_LIGHT" ]; then
-    LOG_CSV="$LOG_CSV,$LIVEDATA_LIGHT,$LIVEDATA_UV,$LIVEDATA_UVI"
+    LOG_CSV="$LOG_CSV,$LIVEDATA_LIGHT,$LIVEDATA_SOLARRADIATION,$LIVEDATA_UVI"
 fi
 
 if [ -n "$LIVEDATA_RAINRATE" ]; then 
