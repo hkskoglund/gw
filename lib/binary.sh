@@ -670,25 +670,27 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             export LIVEDATA_LIGHT_UINT32="$VALUE_UINT32BE"
             convertScale10ToFloat "$VALUE_UINT32BE"
             export LIVEDATA_LIGHT="$VALUE_SCALE10_FLOAT"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex light uint32BE $LIVEDATA_LIGHT_UINT32 light $LIVEDATA_LIGHT lux"
+             VALUE_UINT16BE=$(( LIVEDATA_LIGHT_UINT32*1075/136000 ))
+            convertScale10ToFloat "$VALUE_UINT16BE"
+            export LIVEDATA_SOLARRADIATION="$VALUE_SCALE10_FLOAT"
+            setSolarRadiationAndUVUnit
+
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex light uint32BE $LIVEDATA_LIGHT_UINT32 light $LIVEDATA_LIGHT lux, solar radiation: $LIVEDATA_SOLARRADIATION W/m2 "
 
 
         elif [ "$ldf" -eq "$LDF_UV" ]; then
 
             readUInt16BE
             export LIVEDATA_UV_UINT16="$VALUE_UINT16BE"
+            convertScale10ToFloat "$VALUE_UINT16BE" # assume its scale 10?
+            export LIVEDATA_UV="$VALUE_SCALE10_FLOAT"
             # uv gain can be used to calibrate value
             #uint16 value is approximately equal to lux->W/m2 conversion (31, 3735 lux -> 29.5 W/m2)
-            #setUVMode $UNIT_UV_MICROWM2
             #is it µW? is it scale 10 ?
             #lux 976 -> solar radiation raw value 11 -> ecowitt protcol: 7.7 W/m2
             #https://help.ambientweather.net/help/why-is-the-lux-to-w-m-2-conversion-factor-126-7/
-            setUVMode "$UNIT_UV_WATTM2"
-            VALUE_UINT16BE=$(( LIVEDATA_LIGHT_UINT32*1075/136000 ))
-            convertScale10ToFloat "$VALUE_UINT16BE"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex uv uint16be $LIVEDATA_UV_UINT16, converting lux $LIVEDATA_LIGHT to $VALUE_SCALE10_FLOAT W/m2 instead"
-
-            export LIVEDATA_SOLARRADIATION="$VALUE_SCALE10_FLOAT"
+           
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex uv uint16be $LIVEDATA_UV_UINT16, uv: $LIVEDATA_UV $UNIT_UV"
 
         elif [ "$ldf" -eq "$LDF_UVI" ]; then
 

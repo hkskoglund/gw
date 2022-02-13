@@ -1497,7 +1497,7 @@ while [ $# -gt 0 ]; do
                shift; continue
             fi
 
-            setUVMode $UNIT_UV_WATTM2
+            setSolarRadiationAndUVUnit
 
             if [ -z "$LOG_CMD" ]; then
                httpServer "$2"

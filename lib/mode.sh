@@ -13,9 +13,6 @@ UNIT_WIND_MPS=0
 UNIT_WIND_MPH=1
 UNIT_WIND_KMH=2
 
-UNIT_UV_MICROWM2=0 # used by Ecowitt protocol
-UNIT_UV_WATTM2=1
-
 UNIT_UNICODE_CELCIUS="℃"
 UNIT_UNICODE_FARENHEIT="℉"
 UNIT_UNICODE_WIND_MPS="m/s"
@@ -39,21 +36,17 @@ setWindMode()
 
 }
 
-setUVMode()
+setSolarRadiationAndUVUnit()
 {
-    UNIT_UV_MODE=$1
-
-    if [ "$UNIT_UV_MODE" -eq "$UNIT_UV_MICROWM2" ]; then
-        UNIT_UV="W/m2?" # documentation for livedata protocol: ITEM_UV uW/m2?
-    elif [ "$UNIT_UV_MODE" -eq "$UNIT_UV_WATTM2" ]; then
-        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-            UNIT_UV="W/㎡"   
-        else
-            UNIT_UV="W/m2"
-        fi
+    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+        UNIT_SOLARRADIATION="W/㎡"
+        UNIT_UV="µW/㎡"
+    else
+        UNIT_SOLARRADIATION="W/m2"
+        UNIT_UV="µW/m2"
     fi
 
-    [ "$DEBUG" -eq 1 ] && >&2 echo Unit UV : $UNIT_UV
+    [ "$DEBUG" -eq 1 ] && >&2 echo Unit solar radiation: $UNIT_SOLARRADIATION uv: $UNIT_UV
 
 }
 
