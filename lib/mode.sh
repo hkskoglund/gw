@@ -13,11 +13,45 @@ UNIT_WIND_MPS=0
 UNIT_WIND_MPH=1
 UNIT_WIND_KMH=2
 
+UNIT_LIGHT_LUX=0
+UNIT_LIGHT_WATTM2=1
+
 UNIT_UNICODE_CELCIUS="℃"
 UNIT_UNICODE_FARENHEIT="℉"
 UNIT_UNICODE_WIND_MPS="m/s"
 UNIT_UNICODE_PRESSURE_HPA="hPa"
 UNIT_UNICODE_RAIN_MM="mm"
+UNIT_UNICODE_LIGHT_LUX="㏓"
+UNIT_UNICODE_M2="㎡"
+
+setLightMode()
+{
+    UNIT_LIGHT_MODE=$1
+
+    if [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_LUX" ]; then
+        if [ "$SHELL_SUPPORT_UNICODE" ]; then
+            UNIT_LIGHT=$UNIT_UNICODE_LIGHT_LUX
+        else
+            UNIT_LIGHT="lux"
+        fi
+    elif [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_WATTM2" ]; then
+        if [ "$SHELL_SUPPORT_UNICODE" ]; then
+            UNIT_LIGHT="W/"$UNIT_UNICODE_M2
+        else
+            UNIT_LIGHT="W/m2"
+        fi
+    fi
+
+    if [ "$SHELL_SUPPORT_UNICODE" ]; then
+        UNIT_UV="µW/$UNIT_UNICODE_M2"
+    else
+        UNIT_UV="µW/m2"
+    fi
+
+    [ "$DEBUG" -eq 1 ] && >&2 echo Unit solar radiation: $UNIT_LIGHT uv: $UNIT_UV
+
+
+}
 
 setWindMode()
 {
@@ -33,20 +67,6 @@ setWindMode()
     fi
     
     [ "$DEBUG" -eq 1 ] && >&2 echo Unit wind : "$UNIT_WIND"
-
-}
-
-setSolarRadiationAndUVUnit()
-{
-    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-        UNIT_SOLARRADIATION="W/㎡"
-        UNIT_UV="µW/㎡"
-    else
-        UNIT_SOLARRADIATION="W/m2"
-        UNIT_UV="µW/m2"
-    fi
-
-    [ "$DEBUG" -eq 1 ] && >&2 echo Unit solar radiation: $UNIT_SOLARRADIATION uv: $UNIT_UV
 
 }
 
@@ -131,12 +151,12 @@ initUnit()
         setWindMode "$UNIT_WIND_MODE"
     fi
 
-    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-        UNIT_LIGHT="㏓"
+    if [ -z "$UNIT_LIGHT_MODE" ]; then
+        setLightMode $UNIT_LIGHT_WATTM2 #default
     else
-        UNIT_LIGHT="lux"
-    fi 
-    
+        setLightMode "$UNIT_LIGHT_MODE"
+    fi
+
     if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
         UNIT_PM25="µg/㎥"
     else

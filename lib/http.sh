@@ -272,7 +272,7 @@ parseEcowittHttpRequest()
 
             solarradiation)
             
-                   export LIVEDATA_SOLARRADIATION="$value"
+                   setLightHttpLivedata LIVEDATA_LIGHT "$value"
                 ;;
 
             uv)
@@ -481,7 +481,7 @@ parseWundergroundHttpReqest()
             solarradiation)
                 
                  if [ "$value" != "$WUNDERGROUND_UNDEFINED_VALUE" ]; then
-                   export LIVEDATA_SOLARRADIATION="$value"
+                   setLightHttpLivedata LIVEDATA_LIGHT "$value"
                 fi
                 ;;
 

@@ -782,7 +782,7 @@ printOrLogLivedata()
 }
 
 processUnitOptions()
-#format: temp=farenheit|celius,pressure=inhg|hpa
+#format: temp=farenheit|celius,pressure=inhg|hpa,wind=mph|mps|kmh,rain=mm|inch,light=lux|watt
 {
     IFS=,
     for f in $1; do
@@ -826,14 +826,24 @@ processUnitOptions()
             rain|r)     case "$2" in
                                 mm)         setRainMode $UNIT_RAIN_MM
                                             ;;
-                                in)         setRainMode $UNIT_RAIN_IN
+                                inch)         setRainMode $UNIT_RAIN_IN
                                             ;;
-                                *)          echo >&2 Warning: Unknown rain mode "$2", use "mm|in" 
+                                *)          echo >&2 Warning: Unknown rain mode "$2", use "mm|inch" 
                                             ;;
                         esac
                         ;;
                     
-                    *)      echo >&2 Warning: Unknown mode "$1", use "temperature|t, pressure|p, wind|w, rain|r" 
+            light|l)    case "$2" in
+                            lux)    setLightMode $UNIT_LIGHT_LUX
+                                    ;;
+                            watt)   setLightMode $UNIT_LIGHT_WATTM2
+                                    ;;
+                                *)  echo >&2 Warning: Unknown light mode "$2", use "lux|watt"
+                                    ;;
+                        esac
+                        ;;
+
+                    *)      echo >&2 Warning: Unknown mode "$1", use "temperature|t, pressure|p, wind|w, rain|r, light|l" 
                             ;;
         esac
     done
@@ -1496,8 +1506,6 @@ while [ $# -gt 0 ]; do
                EXITCODE_MAIN=$ERROR_LISTEN_INVALID_PORTNUMBER
                shift; continue
             fi
-
-            setSolarRadiationAndUVUnit
 
             if [ -z "$LOG_CMD" ]; then
                httpServer "$2"

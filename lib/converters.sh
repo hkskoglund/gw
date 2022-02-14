@@ -432,6 +432,36 @@ convertBufferFromDecToOctalEscape() {
     unset BYTE
 }
 
+convert_wattm2_to_lux()
+#format : 42.94 watt
+{
+    if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 1 ]; then
+       VALUE_SCALE10_FLOAT=$(( $1 * 136000/1075 ))
+    else
+        getFloatAsIntDecmial "$1"
+        
+        convertScale10ToFloat "$(( FLOAT_AS_INT*13600/1075 ))"
+    fi
+
+    [ "$DEBUG" -eq 1 ] && echo >&2 "Convert $1 $UNIT_LIGHT_WATTM2 to $VALUE_SCALE10_FLOAT lux, shell floating point support: $SHELL_SUPPORT_FLOATINGPOINT"
+}
+
+convertLightLivedata()
+{
+     if [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_LUX" ]; then
+
+                convertScale10ToFloat "$VALUE_UINT32BE"
+             
+            elif [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_WATTM2" ]; then
+
+                #lux 976 -> ecowitt protcol: 7.7 W/m2
+                #https://help.ambientweather.net/help/why-is-the-lux-to-w-m-2-conversion-factor-126-7/
+           
+                convertScale10ToFloat "$(( LIVEDATA_LIGHT_UINT32*1075/136000 ))"
+                export LIVEDATA_LIGHT="$VALUE_SCALE10_FLOAT"
+            fi
+}
+
 convertTemperatureLivedata()
 {
     if [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_CELCIUS" ]; then
@@ -557,6 +587,16 @@ convertUInt8ToHex() {
     fi
 
     unset lsb lsb_hexdigit msb
+}
+
+setLightHttpLivedata()
+{
+    if [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_LUX" ]; then
+        convert_wattm2_to_lux "$2"
+        eval export "$1"="$VALUE_SCALE10_FLOAT"
+    elif [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_WATTM2" ]; then #default in http request, no conversion
+          eval export "$1"="$2"
+    fi
 }
 
 setPressureHttpLivedata()

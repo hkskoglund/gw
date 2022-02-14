@@ -668,18 +668,10 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
             readUInt32BE
             export LIVEDATA_LIGHT_UINT32="$VALUE_UINT32BE"
-            convertScale10ToFloat "$VALUE_UINT32BE"
+            convertLightLivedata "$LIVEDATA_LIGHT_UINT32"
             export LIVEDATA_LIGHT="$VALUE_SCALE10_FLOAT"
-             #lux 976 -> solar radiation raw value 11 -> ecowitt protcol: 7.7 W/m2
-            #https://help.ambientweather.net/help/why-is-the-lux-to-w-m-2-conversion-factor-126-7/
-           
-             VALUE_UINT16BE=$(( LIVEDATA_LIGHT_UINT32*1075/136000 ))
-            convertScale10ToFloat "$VALUE_UINT16BE"
-            export LIVEDATA_SOLARRADIATION="$VALUE_SCALE10_FLOAT"
 
-            setSolarRadiationAndUVUnit
-
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:light type: uint32be $LIVEDATA_LIGHT_UINT32 $LIVEDATA_LIGHT lux, solar radiation: $LIVEDATA_SOLARRADIATION $UNIT_SOLARRADIATION"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:light type: uint32be $LIVEDATA_LIGHT_UINT32 lux $LIVEDATA_LIGHT  $UNIT_LIGHT"
 
 
         elif [ "$ldf" -eq "$LDF_UV" ]; then
@@ -689,9 +681,11 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             convertScale10ToFloat "$VALUE_UINT16BE" # assume its scale 10?
             export LIVEDATA_UV="$VALUE_SCALE10_FLOAT"
             # uv gain can be used to calibrate value
-            #is it µW/m2? is it scale 10 ?
-           
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:uv type: uint16be $LIVEDATA_UV_UINT16 $LIVEDATA_UV $UNIT_UV"
+            #is it µW/m^2? is it scale 10 ? scale 10 gives best resolution
+            #scale 10: 0.1 µW/m2 = 0.1/(100*cm*100cm) = 0.1/(10000cm^2) = 1000 µW/cm^2 = 1mW/cm^2, resolution: 1mW/cm2
+            #not scale 10: 1 µW/m2 = 10mW/cm2, resolution: 10mW/cm2
+            #conversion info: https://www.linshangtech.com/tech/tech508.html
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:uv type: uint16be $LIVEDATA_UV_UINT16 $LIVEDATA_UV $UNIT_UV = $LIVEDATA_UV_UINT16 mW/㎠"
 
         elif [ "$ldf" -eq "$LDF_UVI" ]; then
 
@@ -768,21 +762,21 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         elif [ "$ldf" -eq "$LDF_RAINDAY" ]; then
 
             readUInt16BE
-            export LIVEDATA_RAINDAY_UINT16=$VALUE_UINT16BE
+            export LIVEDATA_RAINDAY_UINT16="$VALUE_UINT16BE"
             convertScale10ToFloat "$VALUE_UINT16BE"
             export LIVEDATA_RAINDAY="$VALUE_SCALE10_FLOAT"
 
         elif [ "$ldf" -eq "$LDF_RAINEVENT" ]; then
 
             readUInt16BE
-            export LIVEDATA_RAINEVENT_UINT16=$VALUE_UINT16BE
+            export LIVEDATA_RAINEVENT_UINT16="$VALUE_UINT16BE"
             convertScale10ToFloat "$VALUE_UINT16BE"
             export LIVEDATA_RAINEVENT="$VALUE_SCALE10_FLOAT"
 
         elif [ "$ldf" -eq "$LDF_RAINRATE" ]; then
 
             readUInt16BE
-            export LIVEDATA_RAINRATE_UINT16=$VALUE_UINT16BE
+            export LIVEDATA_RAINRATE_UINT16="$VALUE_UINT16BE"
             convertScale10ToFloat "$VALUE_UINT16BE"
             export LIVEDATA_RAINRATE="$VALUE_SCALE10_FLOAT"
 
@@ -851,19 +845,19 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
             readUInt16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
-            export LIVEDATA_WH45CO2_PM25_UINT16=$VALUE_UINT16BE
+            export LIVEDATA_WH45CO2_PM25_UINT16="$VALUE_UINT16BE"
             export LIVEDATA_WH45CO2_PM25="$VALUE_SCALE10_FLOAT"
 
             readUInt16BE
             convertScale10ToFloat "$VALUE_UINT16BE"
-            export LIVEDATA_WH45CO2_PM25_24HAVG_UINT16=$VALUE_UINT16BE
+            export LIVEDATA_WH45CO2_PM25_24HAVG_UINT16="$VALUE_UINT16BE"
             export LIVEDATA_WH45CO2_PM25_24HAVG="$VALUE_SCALE10_FLOAT"
 
             readUInt16BE
-            export LIVEDATA_WH45CO2_CO2=$VALUE_UINT16BE
+            export LIVEDATA_WH45CO2_CO2="$VALUE_UINT16BE"
 
             readUInt16BE
-            export LIVEDATA_WH45CO2_CO2_24HAVG=$VALUE_UINT16BE
+            export LIVEDATA_WH45CO2_CO2_24HAVG="$VALUE_UINT16BE"
 
             readUInt8
             export LIVEDATA_WH45CO2_BATTERY="$VALUE_UINT8"

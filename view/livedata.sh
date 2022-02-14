@@ -219,10 +219,19 @@ printLivedata()
     fi
 
     if [ -z "$LIVEVIEW_HIDE_LIGHT" ]; then
+
         [ -n "$LIVEDATA_LIGHT" ] && printLivedataHeader "" "$LIVEDATA_SOLARRADIATION_HEADER"
-        [ -n "$LIVEDATA_LIGHT" ]    && printLivedataLine "$LIVEDATA_LIGHT_HEADER" "$LIVEDATA_LIGHT"  "%6.1f" "$UNIT_LIGHT" "%4s" 'light'
-        [ -n "$LIVEDATA_SOLARRADIATION" ]       && printLivedataLine "$LIVEDATA_SOLARRADIATION_WATTM2_HEADER" "$LIVEDATA_SOLARRADIATION"        "%6.1f" "$UNIT_SOLARRADIATION" "%5s" 'solarradiation'
+
+        if [ -n "$LIVEDATA_LIGHT" ]; then
+            if [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_WATTM2" ]; then
+                 printLivedataLine "$LIVEDATA_LIGHT_HEADER" "$LIVEDATA_LIGHT"  "%6.2f" "$UNIT_LIGHT" "%4s" 'light'
+            elif [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_LUX" ]; then 
+                printLivedataLine "$LIVEDATA_LIGHT_HEADER" "$LIVEDATA_LIGHT"  "%6.0f" "$UNIT_LIGHT" "%4s" 'light'
+            fi
+        fi
+            
         [ -n "$LIVEDATA_UV" ] && printLivedataLine "$LIVEDATA_UV_HEADER" "$LIVEDATA_UV" "%6.1f" "$UNIT_UV" "%5s" 'uv'
+        
         if [ -n "$LIVEDATA_UVI" ]; then
            if [ -z "$LIVEVIEW_HIDE_UVI" ]; then
                 setUVRisk "$LIVEDATA_UVI"
