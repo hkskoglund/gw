@@ -255,7 +255,7 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 ### -c, --command COMMAND OPTIONS - send command to device
 ### -l, --listen PORT - listen for incoming ecowitt/wunderground http requests
 ### -s, --scan SUBNET - scan for devices on xxx.xxx.xxx 
-### -H, --hide-headers HEADERS - hide headers from output in default view
+### -H, --hide-headers HEADERS - hide headers in livedata view
 ### -u, --unit UNITS - set unit conversion for pressure,rain and wind<br><br>
 
 # Commands
@@ -285,14 +285,15 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 
 ## reset - reset device to default settings<br><br>
 
-## Headers - hide/filter output in default view
+## Headers - hide/filter groups in livedata view
 ### headers | h, rain | r, wind | w, beufort | b, temperature | t, light | l, uvi, system | s, soilmoisture | sm, soiltemperature | st, leak, co2, pm25, pm25aqi, leafwetness | leafw, lightning, tempusr | tusr, compass | c, status, sensor-header | sh<br><br>
 
 ## Units
 ### pressure | p = inhg | hpa
 ### temperature | t = celcius | c | farenheit | f
-### rain | r = mm | in
-### wind | w = mph | kmh | mps<br><br>
+### rain | r = mm | inch
+### wind | w = mph | kmh | mps
+### light | l = lux | watt<br><br>
 
 ## Environment variables
 ### NO_COLOR - set to disable ansi escape terminal color styling

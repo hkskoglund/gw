@@ -5,8 +5,10 @@ httpServer()
 #$1 - port number 
 {
     EXITCODE_HTTPSERVER=0
+    DEBUG_HTTPSERVER=${DEBUG_HTTPSERVER:=$DEBUG}
+    DEBUG_FUNC="httpServer"
 
-    [ "$DEBUG" -eq 1 ] && >&2 echo Listening on port "$1"
+    [ "$DEBUG_HTTPSERVER" -eq 1 ] && >&2 echo $DEBUG_FUNC: Listening on port "$1"
 
     if [ "$NC_VERSION" = "$NC_NMAP" ]; then 
         http_message=$("$NC_CMD" -l -i 0.1 "$1" 2>/dev/null) # - idle timeout to exit early, not waiting for client to close/FIN
@@ -26,7 +28,7 @@ httpServer()
     fi
 
     if [ -z "$http_message" ]; then
-        [ "$DEBUG" -eq 1 ] && echo >&2 Empty http message from nc
+        [ "$DEBUG_HTTPSERVER" -eq 1 ] && echo >&2 $DEBUG_FUNC: Empty http message from nc
         return "$ERROR_HTTP_MESSSAGE_EMPTY"
     fi
 
@@ -50,7 +52,7 @@ httpServer()
            ;;
     esac
 
-    unset http_message
+    unset http_message DEBUG_HTTPSERVER
     
     return "$EXITCODE_HTTPSERVER"
 }
