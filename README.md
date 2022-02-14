@@ -1,12 +1,12 @@
 # gw - shell script for viewing weather data and sensors connected to gw-1000 or compatible devices
 
-gw reads weather data from gw-1000 on the local network and shows it in a table. It supports both the binary protocol (*client*-mode) and http requests (*server*-mode). It also can be used to configure settings on the device. For example gw can act as a server by setting the *customized server* setting.
+gw reads weather data from gw-1000 on the local network and shows all data in a liveview table. Data can be filtered to limit output, for example hiding rain. It supports both the binary protocol (*client*-mode) and http requests (*server*-mode). Settings on the device can also be configured. For example gw can act as a server by setting the *customized server* to receive Ecowitt or Wunderground http requests.
 
 The sensor view lists current battery, signal status and state (searching/disabled/hexid) to all sensors. Setting a new sensor state, for example from searching to disabled is supported.
 
-It designed with *portability* in mind and tested on bash, zsh, ksh93, mksh and **dash**. Ansi escape codes are used to style wind, uv index, and pm25 air quality index. 
+It is designed with *portability* in mind and tested on bash, zsh, ksh93, mksh and **dash**. Ansi escape codes are used to style wind, uv index, and pm25 air quality index. 
 
-The script is dependent on the external **nc** and  **od** utilities.
+The script uses the standard **nc** and  **od** utilities available on most systems.
 
 # Screenshot Windows Terminal/WSL 2
 ![Screenshot Liveview with headings - Windows Terminal v1.11.3471.0 - WSL2](./img/Skjermbilde%202022-01-26%20144206.png)
@@ -45,9 +45,9 @@ The script is dependent on the external **nc** and  **od** utilities.
 
 ＳＯＬＡＲ
 
- Light                           1255.0 ㏓
+ Solar radiation                 1255.0 ㏓
  Solar UV radiation                 9.9 W/㎡
- Solar UV index - LOW                 0
+ Solar UV index - LOW            <span style="background-color:green; color: black">   0      </span>
 
 ＳＯＩＬＭＯＩＳＴＵＲＥ
 
