@@ -297,7 +297,7 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 
 ## calibrate | cal **[OPTIONS]** - get/set calibration
 ### OPTIONS - comma separated list: it | intemp=[-]offset (℃) ,ih | inhumi=[-]offset (%), ot | outtemp=[-]offset (℃),oh | outhumi=[-]offset (%), a|absolute=[-]offset (hPa), r|relative=[-]offset (hPa), w | winddir=[-]offset (°)
-reset will set all calibration offsets to 0
+reset will set all calibration offsets to 0. Calibration is updated on the device each minute (based on test: while true; do ./gw -g 192.168.3.26 -c l | egrep -i "press|utc|host" ; sleep 1;  done)
 
 ## reboot - reboot device<br>
 ## reset - reset device to default settings<br><br>
