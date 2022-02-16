@@ -71,14 +71,14 @@ System sensors searching         <span style="color:green">29</span>
 System sensors disabled          <span style="color: red">11</span>
 </pre>
 
-## Continous monitoring each 1 minute -H option to hide
+## Continous monitoring each 1 minute -H option to hide groups (rain, system, temperature and leak)
 <code> while true; do clear;./gw -g 192.168.3.16 -H rain,system,t,leak  -c l; sleep 60; done</code>
 
-## Listen for incoming http Ecowitt/Wunderground request on port 8080
+## Listen for Ecowitt/Wunderground http request on port 8080
 
 <code>./gw -l 8080</code>
 
-## Viewing sensor configuration
+## Viewing current sensor configuration
 
 <code>./gw -g 192.168.3.16 -c sensor</code>
 <pre>
@@ -243,15 +243,7 @@ calibration out humidity offset             0   %
 calibration wind direction offset           0
 </pre>
 
-# Background
-I started to program the tool in javascript/nodejs which would have been easier due to standard libraries for arrays, readUInt and http parsing, but decided to test if its possible to do it in the shell/terminal using the standard unix nc/ncat and od utilities. For arrays I am creating them dynamically by using eval. readUint-functions are included in the script, as well as http parsing for Ecowitt and Wunderground protocol requests.
 
-# Implementation
-It will try to detect which version of nc (nc bsd/nmap, toybox, busybox) is available and tailor command options accoringly in [initnc](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L4334). The basic overall operation of the script for sending a command to gw is ["printf %b "$octalBuffer" | nc -4 $gwip $gwport | od"](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L3703-L3704) then parsing is done in [parsePacket](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L3399). Finaly livedata are printed in [printLivedata](https://github.com/hkskoglund/gw/blob/a0968f97c8cb69aa1f87b3155eaef63e927c398d/gw#L2123). The implementation is based on the [Ecowitt binary protocol specification](https://osswww.ecowitt.net/uploads/20210716/WN1900%20GW1000,1100%20WH2680,2650%20telenet%20v1.6.0%20.pdf). Unit conversion is initialized in [initUnit()](https://github.com/hkskoglund/gw/blob/a0968f97c8cb69aa1f87b3155eaef63e927c398d/gw#L6112-L6113). It is possible to extend the script by creating a new script view for your particular purpose using exported LIVEDATA environment variables.
-
-## Styling
-
-Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styling can be customized in [ansiesc.sh](./style/ansiesc.sh), [style-beufort.sh](./style/style-beufort.sh)
 
 # Usage
 ### Basic
@@ -270,7 +262,8 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 ### -l, --listen PORT - listen for incoming ecowitt/wunderground http requests
 ### -s, --scan SUBNET - scan for devices on xxx.xxx.xxx 
 ### -H, --hide-headers HEADERS - hide headers in livedata view
-### -u, --unit UNITS - set unit conversion for pressure,rain and wind<br><br>
+### -u, --unit UNITS - set unit conversion for pressure,rain and wind
+### -d, --debug [OPTIONS] - print debug information<br><br>
 
 # Commands
 
@@ -278,13 +271,13 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 
 ## sensor | s **[OPTIONS]** - get/set sensor state (searching/disabled/hexid)
 
-### **OPTIONS** -  range *lowtype*-*hightype*=searching | s | connected | c | disconnected or single sensor *type*=*hexid*. For example to disable sensors 40-47 (leafwetnetness), the command is -c sensor 40-47=disable. The command following = is optional, in this case only sensors matching the range will be printed. To list only connected sensors, use -c sensor connected or shortform -c s c.<br><br>
+### **OPTIONS** -  range *lowtype*-*hightype*=[ searching | s | connected | c | disconnected ] or [ single sensor *type*=*hexid* ].<br> For example to disable sensors 40-47 (leafwetnetness), use -c sensor 40-47=disable. The command following = is optional, in this case only sensors matching the range will be printed. To list only connected sensors, use -c sensor connected or shortform -c s c.<br><br>
 
 ## customized | c **[OPTIONS]** - get/set customized server configuration 
-### **OPTIONS** comma separated list: id, password | pw, server | s, port | p , interval | i, http | h, enabled | e, path_wunderground | p_w or path_ecowitt | p_e<br><br>
+### **OPTIONS** comma delimited list [ key=value, ... ];: id=, password | pw=, server | s=, port | p= , interval | i=, http | h=, enabled | e=, path_wunderground | p_w=, path_ecowitt | p_e=<br><br>
 
 ## system | sys **[OPTIONS]** - get/set system manual/auto timezone,daylight saving, system type (wh24/wh65)<br>
-### **OPTIONS** auto=on | off |1 | 0, dst= on |off | 1 | 0, tz=*tzindex*|?, type=wh24 | wh65 | 0 |1. *tzindex* is a number between 0-107. Specifying *tzindex*=? will print available timezones.<br><br>
+### **OPTIONS** comma delimited list [ key=value, ... ]; auto=on | off |1 | 0, dst= on |off | 1 | 0, tz=*tzindex*|?, type=wh24 | wh65 | 0 |1.<br>*tzindex* is a number between 0-107. Specifying *tzindex*=? will print available timezones.<br><br>
 
 ## wifi-server | w-s **SSID** **PASSWORD** - server configuration of ssid and password 
 ### Listen for incoming tcp connection on port 49123 from device and send new ssid/password when connected. It may be neccessary to use a manual ip/netmask on server, for example 192.168.4.2/255.255.255.0.<br><br>
@@ -293,10 +286,10 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 ### Send a wifi configuration packet with ssid and password to the gw. This command must be used with the -g **host** option.<br><br>
 
 ## rain | r **[RAINOPTIONS]** - get/set rain day, week, month and year
-### RAINOPTIONS comma separated list: day= | week= | month= | year=< value in mm ><br><br>
+### RAINOPTIONS comma delimited list [ key=value, ... ]; day= | week= | month= | year=< value in mm ><br><br>
 
 ## calibrate | cal **[OPTIONS]** - get/set calibration
-### OPTIONS - comma separated list: it | intemp=[-]offset (℃) ,ih | inhumi=[-]offset (%), ot | outtemp=[-]offset (℃),oh | outhumi=[-]offset (%), a|absolute=[-]offset (hPa), r|relative=[-]offset (hPa), w | winddir=[-]offset (°)
+### OPTIONS - comma delimited list [ key=value, ... ]; it | intemp=[-]offset (℃) ,ih | inhumi=[-]offset (%), ot | outtemp=[-]offset (℃),oh | outhumi=[-]offset (%), a|absolute=[-]offset (hPa), r|relative=[-]offset (hPa), w | winddir=[-]offset (°)
 reset will set all calibration offsets to 0. Calibration is updated on the device each minute (based on test: while true; do ./gw -g 192.168.3.26 -c l | egrep -i "press|utc|host" ; sleep 1;  done)
 
 ## reboot - reboot device<br>
@@ -305,12 +298,29 @@ reset will set all calibration offsets to 0. Calibration is updated on the devic
 # Option: -H - hide/filter groups in livedata view
 ## headers | h, rain | r, wind | w, beufort | b, temperature | t, light | l, uvi, system | s, soilmoisture | sm, soiltemperature | st, leak, co2, pm25, pm25aqi, leafwetness | leafw, lightning, tempusr | tusr, compass | c, status, sensor-header | sh<br><br>
 
-## Units
-### pressure | p = inhg | hpa
-### temperature | t = celcius | c | farenheit | f
-### rain | r = mm | inch
-### wind | w = mph | kmh | mps
-### light | l = lux | watt<br><br>
+# Option -u [k=v,...]
+## pressure | p = inhg | hpa
+## temperature | t = celcius | c | farenheit | f
+## rain | r = mm | inch
+## wind | w = mph | kmh | mps
+## light | l = lux | watt<br><br>
+# Option -d [k,...kn]
+## command - print command sent to device
+<code>./gw -g 192.168.3.16 -d command -c version</code>
+<pre>read version: printf %b "\0377\0377\0120\0003\0123"  | "/usr/bin/nc" -4 -N -w 1  192.168.3.16 45000  | od -A n -t u1 -w131071
+GW1000A_V1.6.8</pre>
+## http | h - print http request received from device
+## buffer | b - print hex buffer to/from device
+<code> ./gw -g 192.168.3.16 -d buffer -c version</code>
+<pre>> read version         ff ff 50 03 53
+< read version         ff ff 50 12 0e 47 57 31 30 30 30 41 5f 56 31 2e 36 2e 38 c0</pre>
+GW1000A_V1.6.8
+## trace | t - creates .hex rx/tx files with command/response
+<code> ./gw -g 192.168.3.16 -d trace -c version; ls *.hex</code>
+<pre>'rx-read version-14 20 03 412733378.hex'
+'tx-read version-14 20 03 412733378.hex'</pre>
+## append | a - print append format/args for liveview
+<br><br>
 
 ## Environment variables
 ### NO_COLOR - set to disable ansi escape terminal color styling
@@ -321,6 +331,16 @@ If NC_VERSION is set, NC_CMD will be determined automatically by *which*-command
 The purpose of NC_VERSION is to tailor options used in each executable
 ### DEBUG_INITNC - valid values 0 | 1 - shows debug info for initnc/auto-detect
 <br>
+
+# Background
+I started to program the tool in javascript/nodejs which would have been easier due to standard libraries for arrays, readUInt and http parsing, but decided to test if its possible to do it in the shell/terminal using the standard unix nc/ncat and od utilities. For arrays I am creating them dynamically by using eval. readUint-functions are included in the script, as well as http parsing for Ecowitt and Wunderground protocol requests.
+
+# Implementation
+It will try to detect which version of nc (nc bsd/nmap, toybox, busybox) is available and tailor command options accoringly in [initnc](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L4334). The basic overall operation of the script for sending a command to gw is ["printf %b "$octalBuffer" | nc -4 $gwip $gwport | od"](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L3703-L3704) then parsing is done in [parsePacket](https://github.com/hkskoglund/gw/blob/f04f02748469b1f8ac9096d7ccc48fe2048a64b3/gw#L3399). Finaly livedata are printed in [printLivedata](https://github.com/hkskoglund/gw/blob/a0968f97c8cb69aa1f87b3155eaef63e927c398d/gw#L2123). The implementation is based on the [Ecowitt binary protocol specification](https://osswww.ecowitt.net/uploads/20210716/WN1900%20GW1000,1100%20WH2680,2650%20telenet%20v1.6.0%20.pdf). Unit conversion is initialized in [initUnit()](https://github.com/hkskoglund/gw/blob/a0968f97c8cb69aa1f87b3155eaef63e927c398d/gw#L6112-L6113). It is possible to extend the script by creating a new script view for your particular purpose using exported LIVEDATA environment variables.
+
+## Styling
+
+Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styling can be customized in [ansiesc.sh](./style/ansiesc.sh), [style-beufort.sh](./style/style-beufort.sh)
 
 # Running script in Windows Subsystem for Linux 2 - WSL2
 portproxy must be used, open up customized server port(8080), 49123 for wifi-server configuration<br>
