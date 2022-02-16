@@ -1302,16 +1302,19 @@ processCommand() {
 
         calibration | calibrate | cal)
    
-            sendPacket $CMD_READ_CALIBRATION >/dev/null
+            if sendPacket $CMD_READ_CALIBRATION >/dev/null; then 
 
-            case "$1" in
-                ""|--*|-*) printCalibration
-                ;;
-                
-                *) processCalibrationOptions "$1"
-                ;;
-            esac
-            
+                case "$1" in
+                    ""|--*|-*) printCalibration
+                    ;;
+                    
+                    *) processCalibrationOptions "$1"
+                    ;;
+                esac
+            fi
+            set -x
+            EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
+            set +x
             ;;
 
         *)
