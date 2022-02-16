@@ -140,7 +140,7 @@ calibration absolute pressure offset        $C_CALIBRATION_ABSOFFSET $UNIT_PRESS
 calibration relative pressure offset        $C_CALIBRATION_RELOFFSET $UNIT_PRESSURE
 calibration out temperature offset          $C_CALIBRATION_OUTTEMPOFFSET $UNIT_TEMP
 calibration out humidity offset             $C_CALIBRATION_OUTHUMIDITYOFFSET   %
-calibration wind direction offset           $C_CALIBRATION_WINDDIROFFSET" 
+calibration wind direction offset           $C_CALIBRATION_WINDDIROFFSET $UNIT_DEGREE"
    # fi
 
 }

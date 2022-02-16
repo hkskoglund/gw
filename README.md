@@ -231,8 +231,17 @@ rain year  85.9 mm
 </pre>
 
 ## Calibration barometre
-<code>./gw -g 192.168.3.16 -c calibrate absolute=1,relative=-2 </code>
-
+<code>./gw -g 192.168.3.16 -c calibrate absolute=-1.7,relative=1.7 </code>
+<pre>
+./gw -g 192.168.3.16 -c calibrate a=-1.7,r=1.7 -c cal
+calibration in temperature offset           0.0 ℃
+calibration in humidity offset              0   %
+calibration absolute pressure offset        -1.7 hPa
+calibration relative pressure offset        1.7 hPa
+calibration out temperature offset          0.0 ℃
+calibration out humidity offset             0   %
+calibration wind direction offset           0
+</pre>
 
 # Background
 I started to program the tool in javascript/nodejs which would have been easier due to standard libraries for arrays, readUInt and http parsing, but decided to test if its possible to do it in the shell/terminal using the standard unix nc/ncat and od utilities. For arrays I am creating them dynamically by using eval. readUint-functions are included in the script, as well as http parsing for Ecowitt and Wunderground protocol requests.

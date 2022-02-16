@@ -167,7 +167,7 @@ initUnit()
     UNIT_HUMIDITY="%"
 
     if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-        UNIT_DEGREE="°"
+        UNIT_DEGREE=$UNIT_UNICODE_WINDDIRECTION
     else
         UNIT_DEGREE="deg"
     fi
