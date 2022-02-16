@@ -659,9 +659,14 @@ parseRaindataOptions()
 }
 
 processCalibrationOptions()
+#it seems like gw-1000, fw 1.6.8, runs calibratation update each minute
+#test term 1: while true; do ./gw -g 192.168.3.26 -c l | egrep -i "press|utc|host|version" ; sleep 1;  done
+#test term 2: ./gw -g 192.168.3.26 -c cal a=2
+#procedure for calibration: find absolute pressure at location, -c cal a=0,r=0, -c a=aoffset, -c r=roffset (absolute offset also affects relative pressure)
 {
     #DEBUG_CALIBRATION_OPTIONS=1
     DEBUG_CALIBRATION_OPTIONS=${DEBUG_CALIBRATION_OPTIONS:=$DEBUG}
+    DEBUG_FUNC='processCalibrationOptions'
 
     calibration_intemp=$C_CALIBRATION_INTEMPOFFSET_INT
     calibration_inhumi=$C_CALIBRATION_INHUMIDITYOFFSET
@@ -673,6 +678,7 @@ processCalibrationOptions()
 
     IFS=,
     calibration_need_update=0
+
     for expr in $1; do
         IFS='='
         #shellcheck disable=SC2086
@@ -712,7 +718,7 @@ processCalibrationOptions()
                         fi
                         ;;
 
-            a|absoffset)  if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10_ABS" -le $CALIBRATION_ABSOFFSET_MAX ]; then
+            a|absoffset|absolute|abs)  if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10_ABS" -le $CALIBRATION_ABSOFFSET_MAX ]; then
                              [ "$C_CALIBRATION_ABSOFFSET_INT" -ne "$VALUE_FLOAT_SCALE10" ] && { 
                                  calibration_absoffset=$VALUE_FLOAT_SCALE10; calibration_need_update=1;  }
                         else
@@ -720,7 +726,7 @@ processCalibrationOptions()
                         fi
                         ;;
             
-            r|reloffset) if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10_ABS" -le $CALIBRATION_RELOFFSET_MAX ]; then
+            r|reloffset|relative|rel) if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10_ABS" -le $CALIBRATION_RELOFFSET_MAX ]; then
 
                               [ "$C_CALIBRATION_RELOFFSET_INT" -ne "$VALUE_FLOAT_SCALE10" ] && { calibration_reloffset=$VALUE_FLOAT_SCALE10; calibration_need_update=1; }
                         else
@@ -728,12 +734,24 @@ processCalibrationOptions()
                         fi
                          ;;
 
-            w|winddiroffset) if isNumber "$2" &&  [ "$2" -ge -$CALIBRATION_WINDDIROFFSET_MAX ] && [ "$2" -le $CALIBRATION_WINDDIROFFSET_MAX ] ; then
+            w|winddiroffset|winddir) if isNumber "$2" &&  [ "$2" -ge -$CALIBRATION_WINDDIROFFSET_MAX ] && [ "$2" -le $CALIBRATION_WINDDIROFFSET_MAX ] ; then
                                [ "$calibration_winddir" -ne "$2" ] && { calibration_winddir=$2; calibration_need_update=1; }
                             else
                                 echo >&2 "Warning: Invalid value for $expr, min/max -$CALIBRATION_WINDDIROFFSET_MAX/$CALIBRATION_WINDDIROFFSET_MAX"
                             fi
                         ;;
+
+            reset)  calibration_intemp=0 # maybe convenient shorthand, instead of multiple a=0,r=0,....
+                    calibration_inhumi=0
+                    calibration_outtemp=0
+                    calibration_outhumi=0
+                    calibration_absoffset=0
+                    calibration_reloffset=0
+                    calibration_winddir=0
+
+                    calibration_need_update=1
+                    [ "$DEBUG_CALIBRATION_OPTIONS" -eq 1 ] && echo >&2 "$DEBUG_FUNC Reset calibration"
+                    ;;
 
             *) echo >&2 "Error: Unknown key $1, use it | intemp, ih | inhumi, ot | outtemp, oh | outhumi, a | absoffset, r | reloffset, w | winddiroffset"
                 ;;
@@ -1280,12 +1298,12 @@ processCommand() {
 
             ;;
 
-        calibration | cal)
+        calibration | calibrate | cal)
    
-            sendPacket $CMD_READ_CALIBRATION
+            sendPacket $CMD_READ_CALIBRATION >/dev/null
 
             case "$1" in
-                ""|--*|-*) :
+                ""|--*|-*) printCalibration
                 ;;
                 
                 *) processCalibrationOptions "$1"
