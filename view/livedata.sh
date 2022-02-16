@@ -123,6 +123,7 @@ printLivedataHeader()
 
 printLivedata() 
 {
+
     #debugging: call printLivedataFinal directly for problematic line and set DEBUG_LIVEDATA_LINE=1
     #DEBUG_LIVEDATA_LINE=1
 
@@ -469,7 +470,7 @@ printLivedata()
     fi
 
     #system
-   
+    
     if [ -z "$LIVEVIEW_HIDE_SYSTEM" ]; then
         
        [ -n "$LIVEDATA_SYSTEM_VERSION" ] &&  printLivedataHeader "" "$LIVEDATA_SYSTEM_HEADER"
@@ -479,7 +480,7 @@ printLivedata()
         [ -n "$LIVEDATA_SYSTEM_MODEL" ]     && printLivedataLine "$LIVEDATA_SYSTEM_MODEL_HEADER"     "$LIVEDATA_SYSTEM_MODEL"     "%-7s"  "" "%5s" 'model'
         if [ -n "$LIVEDATA_SYSTEM_UTC" ]; then
        
-            if [  "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT" -eq 0 ]; then
+            if [ -n "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT" ] && [  "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT" -eq 0 ]; then
                if [ "$LIVEDATA_SYSTEM_TIMEZONE_DST_BIT" -eq 1 ]; then
                     printLivedataLine "$LIVEDATA_SYSTEM_UTC_HEADER" "$LIVEDATA_SYSTEM_UTC $LIVEDATA_SYSTEM_TIMEZONE_OFFSET_HOURS DST" "%-20s" "" "%5s" 'utc'
                else
@@ -715,9 +716,12 @@ setRainIntensityStatus()
     fi
 }
 
+#use zsh -c "./gw" invokation
 [ $DEBUG -eq 1 ] && echo >&2 "Entering auto startup detection with arguments 0: $0" 
-case $0 in 
-    "$GWDIR"/view/livedata.sh) 
-                        [ $DEBUG -eq 1 ] && echo >&2 Auto start of printlivedata
-                        printLivedata ;; # auto start if called directly on command line
-esac
+
+    case $0 in 
+        "$GWDIR"/view/livedata.sh) 
+                            [ $DEBUG -eq 1 ] && echo >&2 Auto start of printlivedata
+                            printLivedata ;; # auto start if called directly on command line
+    esac
+

@@ -514,7 +514,7 @@ parseWundergroundHttpReqest()
                 ;;
 
             softwaretype)
-
+            
                export LIVEDATA_SYSTEM_VERSION="$value"
                ;;
 

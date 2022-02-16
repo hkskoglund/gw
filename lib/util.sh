@@ -8,10 +8,10 @@ isNumber() {
     esac
 
     case "$isnumber_int" in
-        '' | *[!0-9]* ) return 1 ;;
-        *) return 0 ;;
+        '' | *[!0-9]* )  unset isnumber_int;  return 1 ;;
+        *)  unset isnumber_int; return 0 ;;
     esac
-    unset isnumber_int
+   
    #echo "1: $1"
    #if [ "$1" -ge 0 ] || [ "$1" -lt 0 ]; then #does not work in ksh93
    #  return 0

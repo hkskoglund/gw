@@ -778,7 +778,9 @@ copyConfigurationToLivedata()
 
 printOrLogLivedata()
 {
-    copyConfigurationToLivedata
+    if [ $LIVEDATA_SYSTEM_PROTOCOL = $LIVEDATA_PROTOCOL_ECOWITT_BINARY ]; then
+         copyConfigurationToLivedata
+    fi
 
     if [ -z "$LOG_CMD" ]; then
        if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then
