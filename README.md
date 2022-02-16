@@ -319,6 +319,7 @@ GW1000A_V1.6.8
 <code> ./gw -g 192.168.3.16 -d trace -c version; ls *.hex</code>
 <pre>'rx-read version-14 20 03 412733378.hex'
 'tx-read version-14 20 03 412733378.hex'</pre>
+Allows viewing hex file in Visual Studio Code
 ## append | a - print append format/args for liveview
 <br><br>
 
