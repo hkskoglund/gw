@@ -394,8 +394,7 @@ sendCalibration() {
     writeInt8       "$6" #outhumidityoffset
     writeInt16BE    "$7" #winddiroffset
 
-    #[ $DEBUG -eq 1 ] &&
-     echo >&2 "Sending calibration intemp $1 inhumi $2 abspressure $3 relpressure $4 outtemp $5 outhumi $6 winddirection $7"
+    [ "$DEBUG" -eq 1 ] && echo >&2 "Sending calibration intemp $1 inhumi $2 abspressure $3 relpressure $4 outtemp $5 outhumi $6 winddirection $7"
     
     sendPacket
     

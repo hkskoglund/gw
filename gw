@@ -229,6 +229,7 @@ copySystemToLivedata()
     LIVEDATA_SYSTEM_TIMEZONE_DST_BIT=$C_SYSTEM_TIMEZONE_DST_BIT
     LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT=$C_SYSTEM_TIMEZONE_AUTO_BIT
     LIVEDATA_SYSTEM_TIMEZONE_OFFSET_HOURS=$C_SYSTEM_TIMEZONE_OFFSET_HOURS
+    LIVEDATA_SYSTEM_HOST=$C_HOST
 
 }
 
@@ -760,8 +761,6 @@ copyConfigurationToLivedata()
 printOrLogLivedata()
 {
     copyConfigurationToLivedata
-
-    unset LOG_CMD
 
     if [ -z "$LOG_CMD" ]; then
        if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then
@@ -1339,6 +1338,19 @@ while [ $# -gt 0 ]; do
 
     case $KEY in
 
+       -m | --merge)
+
+                #wait n seconds, merge all request received
+                #use case: 1 gw 868Mhz receive rainfall sensor data, 1 gw 433Mhz receives ulatrasonic sensor array -> send to same port
+                #MERGE_CMD=1
+                #mergeHttpRequest &
+                ##{ while true; do sleep 30; echo "$(date) MERGING" ; set; done } &
+                #pstree -p
+                #jobs
+                #shift
+                :
+                ;;
+
        -v | --view) IFS=,
                     for liveview in $2; do
                        case "$liveview" in
@@ -1511,11 +1523,23 @@ while [ $# -gt 0 ]; do
                httpServer "$2"
                EXITCODE_MAIN=$?
             else
+               unset startHttpTime stopHttpTime
                while true; do
+                  [ -z "$startHttpTime" ] && startHttpTime=$(date +%s)
                   if ! httpServer "$2"; then
-                    EXITCODE_MAIN=$?
+                    #[ $DEBUG -eq 1 ] &&
+                    >&2 echo Failed http server listen $EXITCODE_HTTPSERVER
+                    EXITCODE_MAIN=$EXITCODE_HTTPSERVER
                     break
+                  else
+                    stopHttpTime=$(date +%s)
+                    echo "starttime $startHttpTime stopHttpTime $stopHttpTime"
+                    if [ $(( stopHttpTime - startHttpTime )) -ge 30 ] && [ -n "$LOG_CMD" ]; then
+                      unset startHttpTime stopHttpTime
+                      #eval "$LOG_CMD"
+                    fi
                   fi
+
                 done
             fi 
 

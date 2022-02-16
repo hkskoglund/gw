@@ -163,7 +163,6 @@ convertFloatTo2sComplement()
 #convert N-bit signed float to 2's complement, big endian: most significant bits to the left
 #$1 - number, $2 - N bits
 {
-    DEBUG_CONVERT=1
     DEBUG_CONVERT=${DEBUG_CONVERT:=$DEBUG}
 
     case "$1" in

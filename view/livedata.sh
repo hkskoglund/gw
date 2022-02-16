@@ -474,6 +474,7 @@ printLivedata()
         
        [ -n "$LIVEDATA_SYSTEM_VERSION" ] &&  printLivedataHeader "" "$LIVEDATA_SYSTEM_HEADER"
 
+        [ -n "$LIVEDATA_SYSTEM_HOST" ] && printLivedataLine "$LIVEDATA_SYSTEM_HOST_HEADER"   "$LIVEDATA_SYSTEM_HOST"   "%-14s" "" "%5s" 'host'
         [ -n "$LIVEDATA_SYSTEM_VERSION" ]   && printLivedataLine "$LIVEDATA_SYSTEM_VERSION_HEADER"   "$LIVEDATA_SYSTEM_VERSION"   "%-14s" "" "%5s" 'version'
         [ -n "$LIVEDATA_SYSTEM_MODEL" ]     && printLivedataLine "$LIVEDATA_SYSTEM_MODEL_HEADER"     "$LIVEDATA_SYSTEM_MODEL"     "%-7s"  "" "%5s" 'model'
         if [ -n "$LIVEDATA_SYSTEM_UTC" ]; then

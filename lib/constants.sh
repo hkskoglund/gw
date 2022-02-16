@@ -60,6 +60,7 @@ PORT_GW_UDP=46000
 PORT_CLIENT_UDP=59387
 
 LOG_INTERVAL=${LOG_INTERVAL:=60} # default 60 seconds
+MERGE_CMD=0 # disable merging of http requests during a merge window (n seconds)
 
 SPATTERNID_CONNECTED=connected
 SPATTERNID_DISCONNECTED=disconnected

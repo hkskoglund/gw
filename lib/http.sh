@@ -357,7 +357,9 @@ parseEcowittHttpRequest()
         esac
     done
 
-    printOrLogLivedata
+    if [ -z "$LOG_CMD" ]; then
+       printOrLogLivedata
+    fi
 
     unset f key value
 }
@@ -536,7 +538,9 @@ parseWundergroundHttpReqest()
         esac
     done
 
-    printOrLogLivedata
+    if [ -z "$LOG_CMD" ]; then
+        printOrLogLivedata
+    fi
 
     unset http_request f key value
 }
