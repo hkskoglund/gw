@@ -272,7 +272,7 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 ### **OPTIONS** -  range *lowtype*-*hightype*=searching | s | connected | c | disconnected or single sensor *type*=*hexid*. For example to disable sensors 40-47 (leafwetnetness), the command is -c sensor 40-47=disable. The command following = is optional, in this case only sensors matching the range will be printed. To list only connected sensors, use -c sensor connected or shortform -c s c.<br><br>
 
 ## customized | c **[OPTIONS]** - get/set customized server configuration 
-### **OPTIONS** is specified in a , separated list of key=value. Allowed keys are id, password | pw, server | s, port | p , interval | i, http | h, enabled | e, path_wunderground | p_w or path_ecowitt | p_e<br><br>
+### **OPTIONS** comma separated list: id, password | pw, server | s, port | p , interval | i, http | h, enabled | e, path_wunderground | p_w or path_ecowitt | p_e<br><br>
 
 ## system | sys **[OPTIONS]** - get/set system manual/auto timezone,daylight saving, system type (wh24/wh65)<br>
 ### **OPTIONS** auto=on | off |1 | 0, dst= on |off | 1 | 0, tz=*tzindex*|?, type=wh24 | wh65 | 0 |1. *tzindex* is a number between 0-107. Specifying *tzindex*=? will print available timezones.<br><br>
@@ -284,10 +284,10 @@ Terminal ansi escape codes is used to style solar,pm25, rain and wind data. Styl
 ### Send a wifi configuration packet with ssid and password to the gw. This command must be used with the -g **host** option.<br><br>
 
 ## rain | r **[RAINOPTIONS]** - get/set rain day, week, month and year
-### RAINOPTIONS comma separated expression with day= | week= | month= | year=< value in mm ><br><br>
+### RAINOPTIONS comma separated list: day= | week= | month= | year=< value in mm ><br><br>
 
 ## calibrate | cal **[OPTIONS]** - get/set calibration
-### OPTIONS - it | intemp=[-]offset (℃) ,ih | inhumi=[-]offset (%), ot | outtemp=[-]offset (℃),oh | outhumi=[-]offset (%), a|absolute=[-]offset (hPa), r|relative=[-]offset (hPa), w | winddir=[-]offset (°)
+### OPTIONS - comma separated list: it | intemp=[-]offset (℃) ,ih | inhumi=[-]offset (%), ot | outtemp=[-]offset (℃),oh | outhumi=[-]offset (%), a|absolute=[-]offset (hPa), r|relative=[-]offset (hPa), w | winddir=[-]offset (°)
 reset will set all calibration offsets to 0
 
 ## reboot - reboot device<br>
