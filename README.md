@@ -243,8 +243,6 @@ calibration out humidity offset             0   %
 calibration wind direction offset           0
 </pre>
 
-
-
 # Usage
 ### Basic
 ./gw [ -g **ip** ] [ -c **command** ] [-l **port** ] 
@@ -257,15 +255,15 @@ calibration wind direction offset           0
 
 # Options
 
-### -g, --gw IP - ip adress to device<br>
-### -c, --command COMMAND OPTIONS - send command to device
-### -l, --listen PORT - listen for incoming ecowitt/wunderground http requests
-### -s, --scan SUBNET - scan for devices on xxx.xxx.xxx 
-### -H, --hide-headers HEADERS - hide headers in livedata view
-### -u, --unit UNITS - set unit conversion for pressure,rain and wind
-### -d, --debug [OPTIONS] - print debug information<br><br>
+## -g, --gw IP - ip adress to device<br>
+## -c, --command COMMAND [OPTIONS] - send command to device
+## -l, --listen PORT - listen for incoming ecowitt/wunderground http requests
+## -s, --scan SUBNET - scan for devices on xxx.xxx.xxx 
+## -H, --hide-headers HEADERS - hide headers in livedata view
+## -u, --unit UNITS - set unit conversion for pressure,rain and wind
+## -d, --debug [OPTIONS] - print debug information<br><br>
 
-# Commands
+# option -c
 
 ## livedata | l - get livedata from gw<br><br>
 
@@ -284,23 +282,42 @@ When **auto=on** is on, the timezone is determined automatically. Otherwise the 
 ## wifi-server | w-s **SSID** **PASSWORD** - server configuration of ssid and password 
 ### Listen for incoming tcp connection on port 49123 from device and send new ssid/password when connected. It may be neccessary to use a manual ip/netmask on server, for example 192.168.4.2/255.255.255.0.<br><br>
 
-## wifi-client | w-c **SSID** **PASSWORD** -client configuration of ssid and password
+## wifi-client | w-c | ssid **SSID** **PASSWORD** - client configuration of ssid and password
 ### Send a wifi configuration packet with ssid and password to the gw. This command must be used with the -g **host** option.<br><br>
 
-## rain | r **[RAINOPTIONS]** - get/set rain day, week, month and year
-### RAINOPTIONS comma delimited list [ key=value, ... ]; day= | week= | month= | year=< value in mm ><br><br>
+## rain | r **[OPTIONS]** - get/set rain day, week, month and year
+### OPTIONS comma delimited list [ key=value, ... ]; day= | week= | month= | year=< value in mm ><br><br>
 
 ## calibrate | cal **[OPTIONS]** - get/set calibration
 ### OPTIONS - comma delimited list [ key=value, ... ]; it | intemp=[-]offset (℃) ,ih | inhumi=[-]offset (%), ot | outtemp=[-]offset (℃),oh | outhumi=[-]offset (%), a|absolute=[-]offset (hPa), r|relative=[-]offset (hPa), w | winddir=[-]offset (°)
 reset will set all calibration offsets to 0. Calibration is updated on the device each minute (based on test: while true; do ./gw -g 192.168.3.26 -c l | egrep -i "press|utc|host" ; sleep 1;  done)
 
 ## reboot - reboot device<br>
-Reboot takes about 5 seconds. Time is synchronized with cn.pool.ntp.org each hour. Timezone, utcoffset, sunrise/sunset and reported from rtpdate.ecowitt.net. Wind daily max is reset during reboot. To see the daily wind max each hour, set up a background job.<br>
-<code> while true; do ./gw -g 192.168.3.16 -c reboot; sleep 1h; done &</code>
+Reboot takes about 5 seconds. Time is synchronized with cn.pool.ntp.org each hour. Timezone, utcoffset, sunrise/sunset are fetched from rtpdate.ecowitt.net. Wind daily max is reset during reboot.
 ## reset - reset device to default settings<br><br>
 
 # Option: -H - hide/filter groups in livedata view
-## headers | h, rain | r, wind | w, beufort | b, temperature | t, light | l, uvi, system | s, soilmoisture | sm, soiltemperature | st, leak, co2, pm25, pm25aqi, leafwetness | leafw, lightning, tempusr | tusr, compass | c, status, sensor-header | sh<br><br>
+Comma separated list of headers groups and styling: for example <code>-H headers,rain</code> hides group headers/compact view and rain group
+## headers | h
+## rain | r
+## wind | w
+## temperature | t
+## light | l
+## system | s
+## soilmoisture | sm
+## soiltemperature | st
+## leak
+## co2
+## pm25
+## pm25aqi
+## leafwetness | leafw
+## lightning
+## tempusr | tusr
+## compass | c
+## status - hide status line with battery and signal information 
+## sensor-header | sh - hides sensor header in sensor view
+## beufort | b - hides beufort styling
+## uvi - hides uvi styling<br><br>
 
 # Option -u [k=v,...]
 ## pressure | p = inhg | hpa
@@ -327,14 +344,14 @@ Allows viewing hex file in Visual Studio Code
 ## append | a - print append format/args for liveview
 <br><br>
 
-## Environment variables
-### NO_COLOR - set to disable ansi escape terminal color styling
-### NC_VERSION - set nc version manually if auto-detect fails
-#### Valid values: openbsd, nmap, busybox, toybox; example NC_VERSION=busybox | toybox
-### NC_CMD - set path to nc binary if nc executable is not in the path
+# Environment variables
+## NO_COLOR - set to disable ansi escape terminal color styling
+## NC_VERSION - set nc version manually if auto-detect fails
+### Valid values: openbsd, nmap, busybox, toybox; example NC_VERSION=busybox | toybox
+## NC_CMD - set path to nc binary if nc executable is not in the path
 If NC_VERSION is set, NC_CMD will be determined automatically by *which*-command searching the path, but it can be set manually; example NC_CMD=/home/user/test/toybox NC_VERSION=toybox ./gw<br>
 The purpose of NC_VERSION is to tailor options used in each executable
-### DEBUG_INITNC - valid values 0 | 1 - shows debug info for initnc/auto-detect
+## DEBUG_INITNC - valid values 0 | 1 - shows debug info for initnc/auto-detect
 <br>
 
 # Background
