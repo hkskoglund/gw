@@ -344,6 +344,10 @@ Allows viewing hex file in Visual Studio Code
 ## append | a - print append format/args for liveview
 <br><br>
 
+# Standalone execution of livedata view
+The standard livedata view can be run standalone and will intepret LIVEDATA environment variables. Used for testing.
+<code>LIVEDATA_INTEMP=20 LIVEDATA_OUTTEMP=1 ./view/livedata.sh</code>
+
 # Environment variables
 ## NO_COLOR - set to disable ansi escape terminal color styling
 ## NC_VERSION - set nc version manually if auto-detect fails
