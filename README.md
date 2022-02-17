@@ -298,7 +298,7 @@ Reboot takes about 5 seconds. Time is synchronized with cn.pool.ntp.org each hou
 
 # Option: -H - hide/filter groups in livedata view
 Comma separated list of headers groups and styling: for example <code>-H headers,rain</code> hides group headers/compact view and rain group
-## headers | h
+## headers | h - hides group headers, resulting in a compact view
 ## rain | r
 ## wind | w
 ## temperature | t

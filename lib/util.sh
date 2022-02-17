@@ -77,7 +77,6 @@ roundFloat()
     fi
 }
 
-
 test_printf_sformat()
 {
     od_unicode=$(printf "%2s" "🔋" | od -A n -t x1)

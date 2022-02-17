@@ -1021,7 +1021,6 @@ isWriteCommand() {
         [ "$1" -eq "$CMD_WRITE_SYSTEM" ]
 }
 
-
 printWeatherServices () {
     sendPacket "$CMD_READ_ECOWITT_INTERVAL"
     sendPacket "$CMD_READ_WUNDERGROUND"

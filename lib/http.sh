@@ -1,6 +1,5 @@
 #!/bin/sh
 
-
 httpServer()
 #$1 - port number 
 {
@@ -87,7 +86,6 @@ EOH
     unset HTTP_KEY HTTP_VALUE
    #IFS=- set -- $HTTP_KEY
 }
-
 
 parseHttpLines()
 {

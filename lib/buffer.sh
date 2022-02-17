@@ -8,13 +8,77 @@ writeUInt8() {
     PACKET_TX_BODY="$PACKET_TX_BODY $1 "
 }
 
+writeInt8()
+{
+    convertFloat8To2sComplement "$1"
+    writeUInt8 "$VALUE_UINT_2SCOMPLEMENT"
+}
+
 writeUInt16BE() {
     [ "$DEBUG" -eq 1 ] && >&2 echo writeUInt16BE "$1" 
     PACKET_TX_BODY="$PACKET_TX_BODY $(($1 >> 8)) $(($1 & 0xff)) "
 }
 
+writeInt16BE()
+{
+    convertFloat16To2sComplement "$1"
+    writeUInt16BE "$VALUE_UINT_2SCOMPLEMENT"
+}
+
 writeUInt32BE() {
     PACKET_TX_BODY="$PACKET_TX_BODY $(($1 >> 24)) $((($1 & 0xff0000) >> 16))  $((($1 & 0xff00) >> 8))  $(($1 & 0xff)) "
+}
+
+writeInt32BE()
+{
+    convertFloat32To2sComplement "$1"
+    writeUInt32BE "$VALUE_UINT_2SCOMPLEMENT"
+}
+
+writeString()
+{
+  # PACKET_TX_BODY="${#1} $(printf "%s" "$1" | od -A n -t u1)"
+
+    str=$1
+    len=${#str}
+
+    [ "$DEBUG" -eq 1 ] && >&2 echo  "writeString $1 len $len"
+
+    PACKET_TX_BODY="$PACKET_TX_BODY $len"
+    unset APPEND_FORMAT_WRITE_STRING APPEND_STRING
+
+    n=1
+    while [ -n "$str" ]; do
+        suffix=${str#?}
+        eval C$n='${str%%"$suffix"}'
+        APPEND_FORMAT_WRITE_STRING=$APPEND_FORMAT_WRITE_STRING'%d ' # wait with printf-processing until entire sting is built
+        APPEND_STRING=$APPEND_STRING'\"$'"C$n " # \'$var or \"$var - char to ascii conversion in printf bulitin/command argument
+        str=$suffix
+        n=$(( n + 1 ))
+    done
+
+    if [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" -eq  1 ] && [ -n "$APPEND_FORMAT_WRITE_STRING" ]; then
+        eval printf -v decstr \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING"
+        #shellcheck disable=SC2154
+        PACKET_TX_BODY="$PACKET_TX_BODY $decstr"
+    elif [ -n "$APPEND_FORMAT_WRITE_STRING" ]; then
+        PACKET_TX_BODY="$PACKET_TX_BODY $(eval printf \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING")" #ok, run in subshell
+    fi
+
+    #cleanup variables
+    unset APPEND_FORMAT_WRITE_STRING APPEND_STRING
+    n=1
+    while [ "$n" -le "$len" ]; do
+        unset C$n 
+        n=$(( n + 1 ))
+    done
+
+    resetAppendBuffer
+
+    unset len str decstr n
+
+    [ "$DEBUG" -eq 1 ] && >&2 echo  "writeString $PACKET_TX_BODY"
+
 }
 
 readSlice() { #$1 - number of bytes n to read
@@ -143,7 +207,6 @@ readString() { #https://bugs.launchpad.net/ubuntu/+source/dash/+bug/1499473
     unset len_uint8 n
 }
 
-
 convertFloat8To2sComplement()
 {
     convertFloatTo2sComplement "$1" 8
@@ -175,71 +238,6 @@ convertFloatTo2sComplement()
     esac
 
    [ "$DEBUG_CONVERT" -eq 1 ] &&  echo >&2 "convertFloatTo2sComplement convert $1 to unsigned $2-bit $VALUE_UINT_2SCOMPLEMENT"
-
-}
-
-writeInt8()
-{
-    convertFloat8To2sComplement "$1"
-    writeUInt8 "$VALUE_UINT_2SCOMPLEMENT"
-}
-
-
-writeInt16BE()
-{
-    convertFloat16To2sComplement "$1"
-    writeUInt16BE "$VALUE_UINT_2SCOMPLEMENT"
-}
-
-writeInt32BE()
-{
-    convertFloat32To2sComplement "$1"
-    writeUInt32BE "$VALUE_UINT_2SCOMPLEMENT"
-}
-
-writeString()
-{
-  # PACKET_TX_BODY="${#1} $(printf "%s" "$1" | od -A n -t u1)"
-
-    str=$1
-    len=${#str}
-
-    [ "$DEBUG" -eq 1 ] && >&2 echo  "writeString $1 len $len"
-
-    PACKET_TX_BODY="$PACKET_TX_BODY $len"
-    unset APPEND_FORMAT_WRITE_STRING APPEND_STRING
-
-    n=1
-    while [ -n "$str" ]; do
-        suffix=${str#?}
-        eval C$n='${str%%"$suffix"}'
-        APPEND_FORMAT_WRITE_STRING=$APPEND_FORMAT_WRITE_STRING'%d ' # wait with printf-processing until entire sting is built
-        APPEND_STRING=$APPEND_STRING'\"$'"C$n " # \'$var or \"$var - char to ascii conversion in printf bulitin/command argument
-        str=$suffix
-        n=$(( n + 1 ))
-    done
-
-    if [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" -eq  1 ] && [ -n "$APPEND_FORMAT_WRITE_STRING" ]; then
-        eval printf -v decstr \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING"
-        #shellcheck disable=SC2154
-        PACKET_TX_BODY="$PACKET_TX_BODY $decstr"
-    elif [ -n "$APPEND_FORMAT_WRITE_STRING" ]; then
-        PACKET_TX_BODY="$PACKET_TX_BODY $(eval printf \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING")" #ok, run in subshell
-    fi
-
-    #cleanup variables
-    unset APPEND_FORMAT_WRITE_STRING APPEND_STRING
-    n=1
-    while [ "$n" -le "$len" ]; do
-        unset C$n 
-        n=$(( n + 1 ))
-    done
-
-    resetAppendBuffer
-
-    unset len str decstr n
-
-    [ "$DEBUG" -eq 1 ] && >&2 echo  "writeString $PACKET_TX_BODY"
 
 }
 

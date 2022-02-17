@@ -1,67 +1,13 @@
 #!/bin/sh
 
-newPacketBody() {
-    if [ -z "$1" ]; then
-        echo >&2 Error no command given to newPacketBody
-        dumpstack #works in Bash
-        return 1
-    fi
+DEBUG=${DEBUG:=0}
 
-    PACKET_TX_CMD=$(($1))
-    getCommandName "$PACKET_TX_CMD"
+if ! type convertBufferFromDecToOctalEscape 1>/dev/null 2>/dev/null; then
+    . ./lib/converters.sh
+fi
 
-    PACKET_TX_PREAMBLE="255 255"
-    unset PACKET_TX_BODY
-}
-
-getPacketLength()
-#get length of tx packet buffer
-#$1 string of uint8 integers with space
+sendPacket() 
 {
-    IFS=' '
-    VALUE_LENGTH=0
-    for BYTE in $1; do
-      VALUE_LENGTH=$(( VALUE_LENGTH + 1 ))
-    done
-    unset BYTE
-}
-
-checksumPacketTX() {
-    getPacketLength "$PACKET_TX_BODY"
-    PACKET_TX_BODY_LENGTH=$((VALUE_LENGTH + 2)) # at least 2 byte for length + checksum bytes
-
-    if [ "$PACKET_TX_CMD" -eq "$CMD_BROADCAST" ] || [ "$PACKET_TX_CMD" -eq "$CMD_WRITE_SSID" ]; then # 2 byte length 
-        PACKET_TX_BODY_LENGTH=$(( PACKET_TX_BODY_LENGTH + 1 ))
-        PACKET_TX_LENGTH=" $(( ((PACKET_TX_BODY_LENGTH + 1) & 0xff00) >> 8 )) $(( (PACKET_TX_BODY_LENGTH + 1) & 0xff ))"
-    else
-        PACKET_TX_LENGTH=$((PACKET_TX_BODY_LENGTH + 1)) # add 1 byte for cmd field
-    fi
-
-    if [ -n "$PACKET_TX_BODY" ]; then
-        PACKET_TX_BODY="$PACKET_TX_CMD $PACKET_TX_LENGTH $PACKET_TX_BODY"
-
-    else
-        PACKET_TX_BODY="$PACKET_TX_CMD $PACKET_TX_LENGTH"
-    fi
-
-    checksum "$PACKET_TX_BODY"
-
-    PACKET_TX_BODY="$PACKET_TX_BODY $VALUE_CHECKSUM"
-    PACKET_TX="$PACKET_TX_PREAMBLE $PACKET_TX_BODY"
-
-    [ "$DEBUG" -eq 1 ] && echo >&2 "PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
-}
-
-
-createPacketTX()
-{
-    checksumPacketTX
-    convertBufferFromDecToOctalEscape "$PACKET_TX" # \0377 \0377 \0nnn
-
-    PACKET_TX_ESCAPE=$VALUE_OCTAL_BUFFER_ESCAPE
-}
-
-sendPacket() {
     EXITCODE_SENDPACKET=0
 
    if ! sendPacketnc "$@"; then # $@ each arg expands to a separate word
@@ -72,7 +18,9 @@ sendPacket() {
     return "$EXITCODE_SENDPACKET"
 }
 
-sendPacketnc() { #$1 - command
+sendPacketnc()
+#$1 - command
+{ 
     EXITCODE_SENDPACKETNC=0
     DEBUG_SENDPACKETNC=${DEBUG_SENDPACKETNC:=$DEBUG}
     DEBUG_FUNC='sendPacketnc'
@@ -84,7 +32,6 @@ sendPacketnc() { #$1 - command
     timeout_nc=0.05
     timeout_udp_broadcast=0.236 # timeout selected based on udp port scanning 254 hosts in 60s (60s/254=0.236s)
     useTimeout=0
-
 
     #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
     if [ -n "$1" ]; then 
@@ -123,7 +70,7 @@ sendPacketnc() { #$1 - command
 
     port=$PORT_GW_TCP
 
-    if [ $PACKET_TX_CMD -eq "$CMD_BROADCAST" ]; then
+    if [ "$PACKET_TX_CMD" -eq "$CMD_BROADCAST" ]; then
         ncUDPOpt='-u' # udp mode
         port=$PORT_GW_UDP
         timeout_nc=$timeout_udp_broadcast
@@ -201,6 +148,67 @@ sendPacketnc() { #$1 - command
     unset ncUDPOpt ncIdleOpt port host timeout_udp_broadcast useTimeout timeout_nc od_buffer cmdstr nccmdstr odcmdstr  rxpipecmd txpipecmd
 
     return $EXITCODE_SENDPACKETNC
+}
+
+newPacketBody() 
+{
+    if [ -z "$1" ]; then
+        echo >&2 Error no command given to newPacketBody
+        dumpstack #works in Bash
+        return 1
+    fi
+
+    PACKET_TX_CMD=$(($1))
+    getCommandName "$PACKET_TX_CMD"
+
+    PACKET_TX_PREAMBLE="255 255"
+    unset PACKET_TX_BODY
+}
+
+getPacketLength()
+#get length of tx packet buffer
+#$1 string of uint8 integers with space
+{
+    IFS=' '
+    VALUE_LENGTH=0
+    for BYTE in $1; do
+      VALUE_LENGTH=$(( VALUE_LENGTH + 1 ))
+    done
+    unset BYTE
+}
+
+checksumPacketTX() {
+    getPacketLength "$PACKET_TX_BODY"
+    PACKET_TX_BODY_LENGTH=$((VALUE_LENGTH + 2)) # at least 2 byte for length + checksum bytes
+
+    if [ "$PACKET_TX_CMD" -eq "$CMD_BROADCAST" ] || [ "$PACKET_TX_CMD" -eq "$CMD_WRITE_SSID" ]; then # 2 byte length 
+        PACKET_TX_BODY_LENGTH=$(( PACKET_TX_BODY_LENGTH + 1 ))
+        PACKET_TX_LENGTH=" $(( ((PACKET_TX_BODY_LENGTH + 1) & 0xff00) >> 8 )) $(( (PACKET_TX_BODY_LENGTH + 1) & 0xff ))"
+    else
+        PACKET_TX_LENGTH=$((PACKET_TX_BODY_LENGTH + 1)) # add 1 byte for cmd field
+    fi
+
+    if [ -n "$PACKET_TX_BODY" ]; then
+        PACKET_TX_BODY="$PACKET_TX_CMD $PACKET_TX_LENGTH $PACKET_TX_BODY"
+
+    else
+        PACKET_TX_BODY="$PACKET_TX_CMD $PACKET_TX_LENGTH"
+    fi
+
+    checksum "$PACKET_TX_BODY"
+
+    PACKET_TX_BODY="$PACKET_TX_BODY $VALUE_CHECKSUM"
+    PACKET_TX="$PACKET_TX_PREAMBLE $PACKET_TX_BODY"
+
+    [ "$DEBUG" -eq 1 ] && echo >&2 "PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
+}
+
+createPacketTX()
+{
+    checksumPacketTX
+    convertBufferFromDecToOctalEscape "$PACKET_TX" # \0377 \0377 \0nnn
+
+    PACKET_TX_ESCAPE=$VALUE_OCTAL_BUFFER_ESCAPE
 }
 
 discovery() {
