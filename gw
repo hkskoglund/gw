@@ -1082,7 +1082,7 @@ processCommand() {
             ;;
 
 
-        w-c | wifi-client)
+        w-c | wifi-client | ssid)
 
            if [ -z "$2" ]; then
                 echo >&2 Error: Empty SSID not allowed
