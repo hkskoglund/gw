@@ -295,7 +295,7 @@ When **auto=on** is on, the timezone is determined automatically. Otherwise the 
 reset will set all calibration offsets to 0. Calibration is updated on the device each minute (based on test: while true; do ./gw -g 192.168.3.26 -c l | egrep -i "press|utc|host" ; sleep 1;  done)
 
 ## reboot - reboot device<br>
-Wind daily max is reset during reboot. To see the daily wind max each hour, set up a background job.<br>
+Reboot takes about 5 seconds. Time is synchronized with cn.pool.ntp.org each hour. Timezone, utcoffset, sunrise/sunset and reported from rtpdate.ecowitt.net. Wind daily max is reset during reboot. To see the daily wind max each hour, set up a background job.<br>
 <code> while true; do ./gw -g 192.168.3.16 -c reboot; sleep 1h; done &</code>
 ## reset - reset device to default settings<br><br>
 
