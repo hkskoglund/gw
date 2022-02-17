@@ -1312,9 +1312,7 @@ processCommand() {
                     ;;
                 esac
             fi
-            set -x
             EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
-            set +x
             ;;
 
         *)

@@ -277,7 +277,9 @@ calibration wind direction offset           0
 ### **OPTIONS** comma delimited list [ key=value, ... ];: id=, password | pw=, server | s=, port | p= , interval | i=, http | h=, enabled | e=, path_wunderground | p_w=, path_ecowitt | p_e=<br><br>
 
 ## system | sys **[OPTIONS]** - get/set system manual/auto timezone,daylight saving, system type (wh24/wh65)<br>
-### **OPTIONS** comma delimited list [ key=value, ... ]; auto=on | off |1 | 0, dst= on |off | 1 | 0, tz=*tzindex*|?, type=wh24 | wh65 | 0 |1.<br>*tzindex* is a number between 0-107. Specifying *tzindex*=? will print available timezones.<br><br>
+### **OPTIONS** comma delimited list [ key=value, ... ]; auto=on | off |1 | 0, dst= on |off | 1 | 0, tz=*tzindex*|?, type=wh24 | wh65 | 0 |1.<br>
+*tzindex* is a number between 0-107. Specifying *tzindex*=? will print available timezones.
+When **auto=on** is on, the timezone is determined automatically. Otherwise the manuall timezone setting is used. Daylight saving can be set with the **dst=on**. Every sensor attached to the device must be on the same frequency as the system frequency.<br>
 
 ## wifi-server | w-s **SSID** **PASSWORD** - server configuration of ssid and password 
 ### Listen for incoming tcp connection on port 49123 from device and send new ssid/password when connected. It may be neccessary to use a manual ip/netmask on server, for example 192.168.4.2/255.255.255.0.<br><br>
@@ -293,6 +295,8 @@ calibration wind direction offset           0
 reset will set all calibration offsets to 0. Calibration is updated on the device each minute (based on test: while true; do ./gw -g 192.168.3.26 -c l | egrep -i "press|utc|host" ; sleep 1;  done)
 
 ## reboot - reboot device<br>
+Wind daily max is reset during reboot. To see the daily wind max each hour, set up a background job.<br>
+<code> while true; do ./gw -g 192.168.3.16 -c reboot; sleep 1h; done &</code>
 ## reset - reset device to default settings<br><br>
 
 # Option: -H - hide/filter groups in livedata view
