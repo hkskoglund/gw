@@ -1,6 +1,7 @@
 #!/bin/sh
 
 DEBUG=${DEBUG:=0}
+DEBUG_PACKET=${DEBUG_PACKET:=$DEBUG}
 
 if ! type convertBufferFromDecToOctalEscape 1>/dev/null 2>/dev/null; then
     . ./lib/converters.sh
@@ -35,7 +36,7 @@ sendPacketnc()
 
     #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
     if [ -n "$1" ]; then 
-        newPacketBody "$1"
+        newPacket "$1"
     
     fi
 
@@ -150,10 +151,12 @@ sendPacketnc()
     return $EXITCODE_SENDPACKETNC
 }
 
-newPacketBody() 
+newPacket()
+#creates new packet
+#$1 command 
 {
     if [ -z "$1" ]; then
-        echo >&2 Error no command given to newPacketBody
+        echo >&2 Error: no command given to newPacket
         dumpstack #works in Bash
         return 1
     fi
@@ -163,6 +166,8 @@ newPacketBody()
 
     PACKET_TX_PREAMBLE="255 255"
     unset PACKET_TX_BODY
+
+    [ $DEBUG_PACKET -eq 1 ] && echo >&2 newPacket command "$1" "$COMMAND_NAME"
 }
 
 getPacketLength()
@@ -327,20 +332,20 @@ checksum() {
 }
 
 newCustomizedPacket() {
-    newPacketBody "$CMD_WRITE_CUSTOMIZED"
-    writeString "$C_WS_CUSTOMIZED_ID"
-    writeString "$C_WS_CUSTOMIZED_PASSWORD"
-    writeString "$C_WS_CUSTOMIZED_SERVER"
-    writeUInt16BE "$C_WS_CUSTOMIZED_PORT"
-    writeUInt16BE "$C_WS_CUSTOMIZED_INTERVAL"
-    writeUInt8 "$C_WS_CUSTOMIZED_HTTP"
-    writeUInt8 "$C_WS_CUSTOMIZED_ENABLED"
+    newPacket       "$CMD_WRITE_CUSTOMIZED"
+    writeString     PACKET_TX_BODY "$C_WS_CUSTOMIZED_ID" "customized id"
+    writeString     PACKET_TX_BODY "$C_WS_CUSTOMIZED_PASSWORD" "customized password"
+    writeString     PACKET_TX_BODY "$C_WS_CUSTOMIZED_SERVER" "customized server"
+    writeUInt16BE   PACKET_TX_BODY "$C_WS_CUSTOMIZED_PORT" "customized port"
+    writeUInt16BE   PACKET_TX_BODY "$C_WS_CUSTOMIZED_INTERVAL" "customized interval"
+    writeUInt8      PACKET_TX_BODY "$C_WS_CUSTOMIZED_HTTP" "customized http"
+    writeUInt8      PACKET_TX_BODY "$C_WS_CUSTOMIZED_ENABLED" "customized enabled"
 }
 
 newPathPacket() {
-    newPacketBody "$CMD_WRITE_PATH"
-    writeString "$C_WS_CUSTOMIZED_PATH_ECOWITT"
-    writeString "$C_WS_CUSTOMIZED_PATH_WU"
+    newPacket "$CMD_WRITE_PATH"
+    writeString PACKET_TX_BODY "$C_WS_CUSTOMIZED_PATH_ECOWITT"
+    writeString PACKET_TX_BODY "$C_WS_CUSTOMIZED_PATH_WU"
 }
 
 sendSystemPacket() 
@@ -357,13 +362,13 @@ sendSystemPacket()
         dst=$(($3))
     fi
 
-    newPacketBody "$CMD_WRITE_SYSTEM"
+    newPacket "$CMD_WRITE_SYSTEM"
 
-    writeUInt8      0       # frequency - only read
-    writeUInt8      "$1"    # sensortype 0=WH24, 1=WH65
-    writeUInt32BE   0       # UTC time - only read
-    writeUInt8      "$2"    # timezone index/manual -> not updated by setting auto timezone
-    writeUInt8      "$dst"  # daylight saving - dst
+    writeUInt8 PACKET_TX_BODY    0       # frequency - only read
+    writeUInt8 PACKET_TX_BODY    "$1"    # sensortype 0=WH24, 1=WH65
+    writeUInt32BE PACKET_TX_BODY  0       # UTC time - only read
+    writeUInt8 PACKET_TX_BODY   "$2"    # timezone index/manual -> not updated by setting auto timezone
+    writeUInt8 PACKET_TX_BODY  "$dst"  # daylight saving - dst
     
     unset dst
 
@@ -376,12 +381,12 @@ sendSystemPacket()
 
 sendRaindata() {
    
-    newPacketBody "$CMD_WRITE_RAINDATA"
+    newPacket "$CMD_WRITE_RAINDATA"
 
-    writeUInt32BE "$1" # rainday
-    writeUInt32BE "$2" # rainweek
-    writeUInt32BE "$3" # rainmonth
-    writeUInt32BE "$4" # rainyear
+    writeUInt32BE PACKET_TX_BODY "$1" # rainday
+    writeUInt32BE PACKET_TX_BODY "$2" # rainweek
+    writeUInt32BE PACKET_TX_BODY "$3" # rainmonth
+    writeUInt32BE PACKET_TX_BODY "$4" # rainyear
 
     [ "$DEBUG" -eq 1 ] && echo >&2 rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
 
@@ -392,15 +397,15 @@ sendRaindata() {
 
 sendCalibration() {
     
-    newPacketBody "$CMD_WRITE_CALIBRATION"
+    newPacket "$CMD_WRITE_CALIBRATION"
 
-    writeInt16BE    "$1" #intempoffset
-    writeInt8       "$2" #inhumidityoffset
-    writeInt32BE    "$3" #absoffset
-    writeInt32BE    "$4" #reloffset
-    writeInt16BE    "$5" #outtempoffset
-    writeInt8       "$6" #outhumidityoffset
-    writeInt16BE    "$7" #winddiroffset
+    writeInt16BE    PACKET_TX_BODY  "$1" #intempoffset
+    writeInt8       PACKET_TX_BODY "$2" #inhumidityoffset
+    writeInt32BE    PACKET_TX_BODY "$3" #absoffset
+    writeInt32BE    PACKET_TX_BODY "$4" #reloffset
+    writeInt16BE    PACKET_TX_BODY "$5" #outtempoffset
+    writeInt8       PACKET_TX_BODY "$6" #outhumidityoffset
+    writeInt16BE    PACKET_TX_BODY "$7" #winddiroffset
 
     [ "$DEBUG" -eq 1 ] && echo >&2 "Sending calibration intemp $1 inhumi $2 abspressure $3 relpressure $4 outtemp $5 outhumi $6 winddirection $7"
     
@@ -413,8 +418,8 @@ sendCalibration() {
 sendEcowittIntervalnew() {
     # observation: GW1000 red-wifi led blinks slowly if not sending data to ecowitt when 0=off
     if [ "$1" -ge 0 ] && [ "$1" -le 5 ]; then
-        newPacketBody "$CMD_WRITE_ECOWITT_INTERVAL"
-        writeUInt8 "$1" #interval
+        newPacket "$CMD_WRITE_ECOWITT_INTERVAL"
+        writeUInt8 PACKET_TX_BODY "$1" #interval
         [ "$DEBUG" -eq 1 ] && echo >&2 Sending ecowitt interval "$1"
         sendPacket
     else
@@ -425,8 +430,8 @@ sendEcowittIntervalnew() {
 sendEcowittInterval() {
     # observation: GW1000 red-wifi led blinks slowly if not sending data to ecowitt when 0=off
     if [ "$1" -ge 0 ] && [ "$1" -le 5 ]; then
-        newPacketBody "$CMD_WRITE_ECOWITT_INTERVAL"
-        writeUInt8 "$1" #interval
+        newPacket "$CMD_WRITE_ECOWITT_INTERVAL"
+        writeUInt8 PACKET_TX_BODY "$1" #interval
         [ "$DEBUG" -eq 1 ] && echo >&2 Sending ecowitt interval "$1"
         sendPacket
     else
@@ -436,18 +441,18 @@ sendEcowittInterval() {
 
 sendWeatherservice() {
 
-    newPacketBody "$1"
-    writeString "$2"
-    writeString "$3"
+    newPacket "$1"
+    writeString PACKET_TX_BODY "$2"
+    writeString PACKET_TX_BODY "$3"
 
     case "$1" in
     "$CMD_WRITE_WOW")
-        writeUInt8 0 # stationnum size - unused
-        writeUInt8 1
+        writeUInt8 PACKET_TX_BODY 0 # stationnum size - unused
+        writeUInt8 PACKET_TX_BODY 1
         ;;
 
     "$CMD_WRITE_WEATHERCLOUD")
-        writeUInt8 1
+        writeUInt8 PACKET_TX_BODY 1
         ;;
     esac
     [ "$DEBUG" -eq 1 ] && echo >&2 "Sending weather service $1 id $2 password $3"
@@ -466,18 +471,18 @@ writeSensorId()
 #$1 - low sensortype, $2 - high sensortype, $3 - sensorid
 {
 
-    newPacketBody "$CMD_WRITE_SENSOR_ID"
+    newPacket "$CMD_WRITE_SENSOR_ID"
 
     if [ -z "$2" ]; then
      [ "$DEBUG" -eq 1 ] && printf >&2 "Writing sensor type %2d sensorid %x\n" "$1" "$3"
-      writeUInt8 "$1"
-      writeUInt32BE "$3"
+      writeUInt8 PACKET_TX_BODY "$1"
+      writeUInt32BE PACKET_TX_BODY"$3"
     else
       n="$1"
       while [ "$n" -le "$2" ]; do
         [ "$DEBUG" -eq 1 ] && printf >&2  "Writing sensor type %2d sensorid %x\n" "$n" "$3"
-         writeUInt8 "$n"
-         writeUInt32BE "$3"
+         writeUInt8 PACKET_TX_BODY "$n"
+         writeUInt32BE PACKET_TX_BODY "$3"
          n=$(( n + 1 ))
       done
     fi
@@ -491,10 +496,10 @@ createWIFIpacket()
 #$1 SSID, $2 password
 {
     [ "$DEBUG" -eq 1 ] && echo >&2 "createWIFIpacket SSID $1 Password $2"
-    newPacketBody "$CMD_WRITE_SSID"
+    newPacket "$CMD_WRITE_SSID"
     #ssid packet has two byte length
     # TEST wsview android app, wireshark: ffff | 11 |001b| 
     #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/ConfigrouterFragment.java - SaveData
-    writeString "$1" # ssid
-    writeString "$2" # password
+    writeString PACKET_TX_BODY "$1" # ssid
+    writeString PACKET_TX_BODY "$2" # password
 }

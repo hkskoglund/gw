@@ -1,50 +1,92 @@
 #!/bin/sh
 
-newBuffer() {
-    eval "$1=\"$2\""
+DEBUG=${DEBUG:=0}
+DEBUG_BUFFER=${DEBUG_BUFFER:=$DEBUG}
+SHELL_SUPPORT_BULTIN_PRINTF_VOPT=${SHELL_SUPPORT_BULTIN_PRINTF_VOPT:=0}
+
+newBuffer() 
+# initialize new buffer, every operation is then
+# $1 buffername, $2 value
+{
+    if [ -n "$1" ]; then
+        eval "$1=\"$2\""
+        BUFFER="$1"
+        [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "init buffer name: $BUFFER, value: $2"
+
+    else
+        [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "Error: no buffer name"
+        return 1
+    fi
+
 }
 
-writeUInt8() {
-    PACKET_TX_BODY="$PACKET_TX_BODY $1 "
+writeUInt8()
+# write unsigned 8-bit int to buffer
+# $1 buffername, $2 unsigned 8-bit int
+ {
+    #PACKET_TX_BODY="$PACKET_TX_BODY $1 "
+    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt "$1" "$2" 
+    eval "$1=\"\$$1 $2 \""
 }
 
 writeInt8()
+# write signed 8-bit int to buffer using 2's complement
+# $1 buffername, $2 signed 8-bit int
 {
-    convertFloat8To2sComplement "$1"
-    writeUInt8 "$VALUE_UINT_2SCOMPLEMENT"
+    convertFloat8To2sComplement "$2"
+    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt "$1" "$2" 2complement: "$VALUE_UINT_2SCOMPLEMENT"
+    writeUInt8 "$1" "$VALUE_UINT_2SCOMPLEMENT"
 }
 
-writeUInt16BE() {
-    [ "$DEBUG" -eq 1 ] && >&2 echo writeUInt16BE "$1" 
-    PACKET_TX_BODY="$PACKET_TX_BODY $(($1 >> 8)) $(($1 & 0xff)) "
+writeUInt16BE()
+# write unsigned 16-bit int to buffer
+# $1 buffername, $2 unsigned 16-bit int
+ {
+    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt16BE "$1" "$2" 
+    eval "$1=\"\$$1 $(($2 >> 8)) $(($2 & 0xff)) \""
 }
 
 writeInt16BE()
+# write signed 16-bit int to buffer
+# $1 buffername, $2 signed 16-bit int
 {
-    convertFloat16To2sComplement "$1"
-    writeUInt16BE "$VALUE_UINT_2SCOMPLEMENT"
+    convertFloat16To2sComplement "$2"
+    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeInt16BE "$1" "$2" 2complement: "$VALUE_UINT_2SCOMPLEMENT"
+    writeUInt16BE "$1" "$VALUE_UINT_2SCOMPLEMENT"
 }
 
-writeUInt32BE() {
-    PACKET_TX_BODY="$PACKET_TX_BODY $(($1 >> 24)) $((($1 & 0xff0000) >> 16))  $((($1 & 0xff00) >> 8))  $(($1 & 0xff)) "
+writeUInt32BE()
+# write unsigned 32-bit int to buffer
+# $1 buffername, $2 unsigned 32-bit int
+{
+    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt32BE "$1" "$2" 
+    eval "$1=\"\$$1 $(($2 >> 24)) $((($2 & 0xff0000) >> 16))  $((($2 & 0xff00) >> 8))  $(($2 & 0xff)) \""
 }
 
 writeInt32BE()
+# write signed 32-bit int to buffer
+# $1 buffername, $2 signed 32-bit int
 {
-    convertFloat32To2sComplement "$1"
-    writeUInt32BE "$VALUE_UINT_2SCOMPLEMENT"
+    convertFloat32To2sComplement "$2"
+        [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeInt32BE "$1" "$2" 2complement: "$VALUE_UINT_2SCOMPLEMENT" 
+
+    writeUInt32BE "$1" "$VALUE_UINT_2SCOMPLEMENT"
 }
 
 writeString()
+#write string
+#$1 buffername , $2 string, $3 debug info
 {
   # PACKET_TX_BODY="${#1} $(printf "%s" "$1" | od -A n -t u1)"
 
-    str=$1
+    str=$2
     len=${#str}
 
-    [ "$DEBUG" -eq 1 ] && >&2 echo  "writeString $1 len $len"
+    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo  "writeString buffername:$1 string:$2 strlen: $len info: $3"
 
-    PACKET_TX_BODY="$PACKET_TX_BODY $len"
+    writeUInt8 "$1" "$len"
+
+#    PACKET_TX_BODY="$PACKET_TX_BODY $len"
     unset APPEND_FORMAT_WRITE_STRING APPEND_STRING
 
     n=1
@@ -59,10 +101,12 @@ writeString()
 
     if [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" -eq  1 ] && [ -n "$APPEND_FORMAT_WRITE_STRING" ]; then
         eval printf -v decstr \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING"
+        #PACKET_TX_BODY="$PACKET_TX_BODY $decstr"
         #shellcheck disable=SC2154
-        PACKET_TX_BODY="$PACKET_TX_BODY $decstr"
+        eval "$1=\"\$$1 $decstr\""
     elif [ -n "$APPEND_FORMAT_WRITE_STRING" ]; then
-        PACKET_TX_BODY="$PACKET_TX_BODY $(eval printf \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING")" #ok, run in subshell
+        #PACKET_TX_BODY="$PACKET_TX_BODY $(eval printf \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING")" #ok, run in subshell
+         eval "$1=\"\$$1 $(eval printf \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING")\""
     fi
 
     #cleanup variables
@@ -73,12 +117,7 @@ writeString()
         n=$(( n + 1 ))
     done
 
-    resetAppendBuffer
-
     unset len str decstr n
-
-    [ "$DEBUG" -eq 1 ] && >&2 echo  "writeString $PACKET_TX_BODY"
-
 }
 
 readSlice() { #$1 - number of bytes n to read
@@ -226,8 +265,6 @@ convertFloatTo2sComplement()
 #convert N-bit signed float to 2's complement, big endian: most significant bits to the left
 #$1 - number, $2 - N bits
 {
-    DEBUG_CONVERT=${DEBUG_CONVERT:=$DEBUG}
-
     case "$1" in
         -*) number=${1#-} # remove sign from negative number
             VALUE_UINT_2SCOMPLEMENT=$(( (2 << $2) - number))  # 2 << 31 = 2**32, 2scomplement + number = 2^N
@@ -237,7 +274,7 @@ convertFloatTo2sComplement()
             ;;
     esac
 
-   [ "$DEBUG_CONVERT" -eq 1 ] &&  echo >&2 "convertFloatTo2sComplement convert $1 to unsigned $2-bit $VALUE_UINT_2SCOMPLEMENT"
+   [ "$DEBUG_BUFFER" -eq 1 ] &&  echo >&2 "convertFloatTo2sComplement convert $1 to unsigned $2-bit $VALUE_UINT_2SCOMPLEMENT"
 
 }
 

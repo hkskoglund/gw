@@ -643,7 +643,7 @@ parseRaindataOptions()
                            >&2 echo "Warning: Invalid value for $rainexpr, min/max 0/$CALIBRATION_RAIN_MAX"
                          fi
                             ;;
-                *) >&2 echo "Warning: use day|d,week|w,month|m,year|y, for example d=10.0 sets daily rain to 10.0 mm"
+                *) >&2 echo "Warning: comma delimited list: day|d=, week|w=, month|m=, year|y=, d=10.0 sets daily rain to 10.0 mm"
                     ;;
             esac
     done
@@ -652,6 +652,8 @@ parseRaindataOptions()
         if ! sendRaindata "$rainday" "$rainweek" "$rainmonth" "$rainyear"; then
            echo >&2 Failed to send raindata 
         fi
+    else
+        echo >&2 "Info: rain data does not need updating"
     fi
 
     unset rainexpr rainday rainweek rainmonth rainyear rain_needsupdate
