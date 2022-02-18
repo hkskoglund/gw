@@ -1,6 +1,6 @@
 # gw - shell script for viewing weather data and sensors connected to gw-1000 or compatible devices
 
-gw reads weather data from gw-1000 and shows it in a liveview. Data can be filtered for example hiding rain. It supports the binary protocol (*client*-mode) and http requests (*server*-mode). Settings on the device can be configured. For example the *customized server* can be set to gw to receive Ecowitt or Wunderground http requests.
+gw reads weather data from gw-1000 and shows it in a live view. Data can be filtered for example hiding rain. It supports the binary protocol (*client*-mode) and http requests (*server*-mode). Settings on the device can be configured. For example gw can receive Ecowitt or Wunderground http requests by configuring the **customized server**.
 
 The sensor view lists current battery, signal status and state (searching/disabled/hexid) to all sensors. Setting a new sensor state, for example from searching to disabled is supported.
 

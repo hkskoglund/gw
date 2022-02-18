@@ -24,7 +24,6 @@ writeUInt8()
 # write unsigned 8-bit int to buffer
 # $1 buffername, $2 unsigned 8-bit int, $3 debug info
  {
-    #PACKET_TX_BODY="$PACKET_TX_BODY $1 "
     [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt "$1" "$2" "$3"
     eval "$1=\"\$$1 $2 \""
 }
@@ -75,6 +74,7 @@ writeInt32BE()
 
 writeString()
 #write string
+#optimization: dont fork subshell with od
 #$1 buffername , $2 string, $3 debug info
 {
   # PACKET_TX_BODY="${#1} $(printf "%s" "$1" | od -A n -t u1)"
@@ -86,7 +86,6 @@ writeString()
 
     writeUInt8 "$1" "$len" stringlength
 
-#    PACKET_TX_BODY="$PACKET_TX_BODY $len"
     unset APPEND_FORMAT_WRITE_STRING APPEND_STRING
 
     n=1
@@ -101,11 +100,9 @@ writeString()
 
     if [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" -eq  1 ] && [ -n "$APPEND_FORMAT_WRITE_STRING" ]; then
         eval printf -v decstr \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING"
-        #PACKET_TX_BODY="$PACKET_TX_BODY $decstr"
         #shellcheck disable=SC2154
         eval "$1=\"\$$1 $decstr\""
     elif [ -n "$APPEND_FORMAT_WRITE_STRING" ]; then
-        #PACKET_TX_BODY="$PACKET_TX_BODY $(eval printf \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING")" #ok, run in subshell
          eval "$1=\"\$$1 $(eval printf \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING")\""
     fi
 
