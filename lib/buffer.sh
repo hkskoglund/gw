@@ -22,53 +22,53 @@ newBuffer()
 
 writeUInt8()
 # write unsigned 8-bit int to buffer
-# $1 buffername, $2 unsigned 8-bit int
+# $1 buffername, $2 unsigned 8-bit int, $3 debug info
  {
     #PACKET_TX_BODY="$PACKET_TX_BODY $1 "
-    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt "$1" "$2" 
+    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt "$1" "$2" "$3"
     eval "$1=\"\$$1 $2 \""
 }
 
 writeInt8()
 # write signed 8-bit int to buffer using 2's complement
-# $1 buffername, $2 signed 8-bit int
+# $1 buffername, $2 signed 8-bit int, $3 debug info
 {
     convertFloat8To2sComplement "$2"
-    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt "$1" "$2" 2complement: "$VALUE_UINT_2SCOMPLEMENT"
-    writeUInt8 "$1" "$VALUE_UINT_2SCOMPLEMENT"
+    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt "$1" "$2" 2complement: "$VALUE_UINT_2SCOMPLEMENT" "$3"
+    writeUInt8 "$1" "$VALUE_UINT_2SCOMPLEMENT" 2complement
 }
 
 writeUInt16BE()
 # write unsigned 16-bit int to buffer
-# $1 buffername, $2 unsigned 16-bit int
+# $1 buffername, $2 unsigned 16-bit int, $3 debug info
  {
-    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt16BE "$1" "$2" 
+    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt16BE "$1" "$2" "$3"
     eval "$1=\"\$$1 $(($2 >> 8)) $(($2 & 0xff)) \""
 }
 
 writeInt16BE()
 # write signed 16-bit int to buffer
-# $1 buffername, $2 signed 16-bit int
+# $1 buffername, $2 signed 16-bit int, $3 debug info
 {
     convertFloat16To2sComplement "$2"
-    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeInt16BE "$1" "$2" 2complement: "$VALUE_UINT_2SCOMPLEMENT"
+    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeInt16BE "$1" "$2" 2complement: "$VALUE_UINT_2SCOMPLEMENT" "$3"
     writeUInt16BE "$1" "$VALUE_UINT_2SCOMPLEMENT"
 }
 
 writeUInt32BE()
 # write unsigned 32-bit int to buffer
-# $1 buffername, $2 unsigned 32-bit int
+# $1 buffername, $2 unsigned 32-bit int, $3 debug info
 {
-    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt32BE "$1" "$2" 
+    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt32BE "$1" "$2" "$3"
     eval "$1=\"\$$1 $(($2 >> 24)) $((($2 & 0xff0000) >> 16))  $((($2 & 0xff00) >> 8))  $(($2 & 0xff)) \""
 }
 
 writeInt32BE()
 # write signed 32-bit int to buffer
-# $1 buffername, $2 signed 32-bit int
+# $1 buffername, $2 signed 32-bit int, $3 debug info
 {
     convertFloat32To2sComplement "$2"
-        [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeInt32BE "$1" "$2" 2complement: "$VALUE_UINT_2SCOMPLEMENT" 
+        [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeInt32BE "$1" "$2" 2complement: "$VALUE_UINT_2SCOMPLEMENT" "$3"
 
     writeUInt32BE "$1" "$VALUE_UINT_2SCOMPLEMENT"
 }
@@ -84,7 +84,7 @@ writeString()
 
     [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo  "writeString buffername:$1 string:$2 strlen: $len info: $3"
 
-    writeUInt8 "$1" "$len"
+    writeUInt8 "$1" "$len" stringlength
 
 #    PACKET_TX_BODY="$PACKET_TX_BODY $len"
     unset APPEND_FORMAT_WRITE_STRING APPEND_STRING

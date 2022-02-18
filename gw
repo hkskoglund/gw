@@ -1070,7 +1070,7 @@ processCommand() {
                 shift
                 EXITCODE_PROCESSCOMMAND=$ERROR_SSID_EMPTY
            else
-                createWIFIpacket "$1" "$2"
+                newWIFIpacket "$1" "$2"
                 createPacketTX
                 od_buffer=$(printf %b "$PACKET_TX_ESCAPE" | timeout "$TIMEOUT_WIFICONFIG_SERVER" nc -l "$PORT_WIFICONFIG_SERVER_TCP" | od -A n -t u1 -w$MAX_16BIT_UINT) 
                 if parsePacket "$od_buffer"; then
@@ -1091,7 +1091,7 @@ processCommand() {
                 shift
                 EXITCODE_PROCESSCOMMAND=$ERROR_SSID_EMPTY
            else
-                createWIFIpacket "$1" "$2"
+                newWIFIpacket "$1" "$2"
                 if ! sendPacket && [ "$EXITCODE_SENDPACKET" -ne $ERROR_OD_BUFFER_EMPTY ]; then
                     #sometimes OK response from gw is not received -> empty buffer
                     echo >&2 Error: Failed to send wifi configuration to "$C_HOST", error code "$EXITCODE_SENDPACKET"
