@@ -117,8 +117,10 @@ writeString()
     unset len str decstr n
 }
 
-readSlice() { #$1 - number of bytes n to read
-    #read bytes available in $B1,...,$Bn
+readSlice()
+#$1 - number of bytes n to read
+#read bytes available in $B1,...,$Bn
+ { 
 
     n=1
     while [ "$n" -le "$1" ]; do
@@ -134,7 +136,9 @@ readSlice() { #$1 - number of bytes n to read
     unset n
 }
 
-readUInt8() {
+readUInt8()
+# read unsigned 8-bit int
+ {
     unset VALUE_UINT8
 
     if [ ${#OD_BUFFER} -ge 4 ]; then # 4 = max 3 spaces and 1 digit
@@ -150,13 +154,16 @@ readUInt8() {
     unset BYTE
 }
 
-readInt8() {
-#8-bit=sign bit
+readInt8() 
+# read signed 8-bit int, 8-bit=sign bit
+{
     readUInt8
     VALUE_INT8=$((-1 * (VALUE_UINT8 >> 7) * 0x80 + (VALUE_UINT8 & 0x7f)))
 }
 
-readUInt16BE() {
+readUInt16BE() 
+# read unsigned 16-bit int
+{
     unset VALUE_UINT16BE
 
     readUInt8
@@ -166,7 +173,9 @@ readUInt16BE() {
     unset msb
 }
 
-readUInt32BE() {
+readUInt32BE()
+# read unsigned 32-bit int
+{
     unset VALUE_UINT32BE
 
     if [ ${#OD_BUFFER} -ge 19 ]; then
@@ -190,29 +199,29 @@ readUInt32BE() {
     unset msb lsb msb2 lsb2
 }
 
-readInt16BE() { #2's complement big endian
-    #msb is the sign bit
+readInt16BE() 
+# read signed 16-bit int, 2's complement big endian, msb is the sign bit
+#Converting from two's complement representation https://en.wikipedia.org/wiki/Two%27s_complement
+{ 
     #VALUE_INT16BE_HEX=$hexstr
-    #Converting from two's complement representation https://en.wikipedia.org/wiki/Two%27s_complement
-
+    
     readUInt16BE
 
     VALUE_INT16BE=$((-1 * (VALUE_UINT16BE >> 15) * 32768 + (VALUE_UINT16BE & 32767)))
 }
 
-readInt32BE() { #2's complement big endian
-    #msb is the sign bit
-    #DEBUG_READWRITE_INT=1
-    DEBUG_READWRITE_INT=${DEBUG_READWRITE_INT:=$DEBUG}
-
+readInt32BE()
+# read signed 32-bit int, 2's complement big endian, msb is the sign bit
+{ 
     readUInt32BE
     VALUE_INT32BE=$((-1 * (VALUE_UINT32BE >> 31) * 0x80000000 + (VALUE_UINT32BE & 0x7fffffff)))
-    [ "$DEBUG_READWRITE_INT" -eq 1 ] && echo >&2 "readInt32BE unsigned 32-bit $VALUE_UINT32BE to signed 32-bit $VALUE_INT32BE"
-
+    [ "$DEBUG" -eq 1 ] && echo >&2 "readInt32BE unsigned 32-bit $VALUE_UINT32BE to signed 32-bit $VALUE_INT32BE"
 }
 
-readString() { #https://bugs.launchpad.net/ubuntu/+source/dash/+bug/1499473
-    #\x formatted printf not supported in dash -> must use \nnn-octal
+readString()
+# \x formatted printf format not supported in dash -> must use \nnn-octal format
+# https://bugs.launchpad.net/ubuntu/+source/dash/+bug/1499473
+ { 
    
     readUInt8
     len_uint8=$VALUE_UINT8
@@ -259,8 +268,8 @@ convertFloat32To2sComplement()
 }
 
 convertFloatTo2sComplement()
-#convert N-bit signed float to 2's complement, big endian: most significant bits to the left
-#$1 - number, $2 - N bits
+# convert N-bit signed float to 2's complement, big endian: most significant bits to the left
+# $1 number, $2 N bits
 {
     case "$1" in
         -*) number=${1#-} # remove sign from negative number
@@ -276,10 +285,12 @@ convertFloatTo2sComplement()
 }
 
 printBuffer()
-#$1 decimal buffer - print as hex buffer
+# print decimal buffer as hex buffer
+# $1 decimal buffer
  {
     unset APPEND_STRING
 
+    IFS=" "
     for BYTE in $1; do
         convertUInt8ToHex "$BYTE"
         APPEND_STRING=$APPEND_STRING" $VALUE_UINT8_HEX"
