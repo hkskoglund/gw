@@ -21,6 +21,7 @@ ERROR_SSID_EMPTY=19
 ERROR_PARSEPACKET_UNSUPPORTED_COMMAND=20
 ERROR_WIFICONFIG_SERVER_FAILED=21 # fail response code 1 from GW
 ERROR_CUSTOMIZED=22 #if customized settings is wrong
+ERROR_NO_COMMAND_SPECIFIED=23 # no command specified for sendpacket
 
 logErr()
 #$1 - 1=on,0=off

@@ -303,7 +303,7 @@ parseSystemOption()
       esac
     done
 
-    if ! sendSystemPacket "$systemtype" "$systemtzindex" "$systemdst" "$systemauto"; then
+    if ! sendSystemPacket "$systemtype" "$systemtzindex" "$systemdst" "$systemauto" "$C_HOST"; then
        EXITCODE_PARSESYSTEMOPTIONS=$?
        echo >&2 Error: Failed to send system packet
     fi
@@ -455,7 +455,7 @@ processCustomizedOptions() {
 
         [ $DEBUG -eq 1 ] && printCustomized >&2
 
-        sendCustomized
+        sendCustomized "$C_HOST"
     fi
 
     unset key value option
@@ -555,7 +555,7 @@ processSensorOptions()
             SPATTERNID_RANGE_LOW=$sensorType_low
             SPATTERNID_RANGE_HIGH=$sensorType_high
             if [ $sentReadSensorIdCommand -eq 0 ]; then 
-                sendPacket $CMD_READ_SENSOR_ID_NEW #only sent for first , expression
+                sendPacket $CMD_READ_SENSOR_ID_NEW "$C_HOST" #only sent for first , expression
                 sentReadSensorIdCommand=1
             else # yet another read (for example -c sensor 1-10,40-47) use in-memory buffer backup 
                IFS=" " parsePacket "$OD_BUFFER_BACKUP" 
@@ -594,7 +594,7 @@ processSensorOptions()
             return $ERROR_INVALID_SENSORID
         fi
 
-       writeSensorId "$sensorType_low" "$sensorType_high" "$sensorid"
+       sendSensorId "$sensorType_low" "$sensorType_high" "$sensorid" "$C_HOST"
           
     done
 
@@ -649,7 +649,7 @@ parseRaindataOptions()
     done
 
     if [ $rain_needsupdate -eq 1 ]; then
-        if ! sendRaindata "$rainday" "$rainweek" "$rainmonth" "$rainyear"; then
+        if ! sendRaindata "$rainday" "$rainweek" "$rainmonth" "$rainyear" "$C_HOST"; then
            echo >&2 Failed to send raindata 
         fi
     else
@@ -762,7 +762,7 @@ processCalibrationOptions()
     done
 
     if [ $calibration_need_update -eq 1 ]; then
-       if ! sendCalibration "$calibration_intemp" "$calibration_inhumi" "$calibration_absoffset" "$calibration_reloffset" "$calibration_outtemp" "$calibration_outhumi" "$calibration_winddir"  ; then
+       if ! sendCalibration "$calibration_intemp" "$calibration_inhumi" "$calibration_absoffset" "$calibration_reloffset" "$calibration_outtemp" "$calibration_outhumi" "$calibration_winddir" "$C_HOST" ; then
           echo >&2 "Error: Failed to send calibration to device $?"
        fi
     fi
@@ -1041,7 +1041,6 @@ processOptionsLiveview()
     done
 
     unset hide_liveview
-
 }
 
 processCommand() {
@@ -1071,10 +1070,10 @@ processCommand() {
                 EXITCODE_PROCESSCOMMAND=$ERROR_SSID_EMPTY
            else
                 newWIFIpacket "$1" "$2"
-                createPacketTX
+                createPacketTX "$CMD_WRITE_SSID"
                 od_buffer=$(printf %b "$PACKET_TX_ESCAPE" | timeout "$TIMEOUT_WIFICONFIG_SERVER" nc -l "$PORT_WIFICONFIG_SERVER_TCP" | od -A n -t u1 -w$MAX_16BIT_UINT) 
                 if parsePacket "$od_buffer"; then
-                    [ $VALUE_PACKET_WRITE_RESULT -eq 1 ] && EXITCODE_PROCESSCOMMAND=$ERROR_WIFICONFIG_SERVER_FAILED
+                    [ "$VALUE_PACKET_WRITE_RESULT" -eq 1 ] && EXITCODE_PROCESSCOMMAND=$ERROR_WIFICONFIG_SERVER_FAILED
                 else
                    echo >&2 "Error: No connection received for ${TIMEOUT_WIFICONFIG_SERVER}s on $PORT_WIFICONFIG_SERVER_TCP"
                    EXITCODE_PROCESSCOMMAND=$EXITCODE_PARSEPACKET
@@ -1082,7 +1081,6 @@ processCommand() {
                 shift && [ -n "$2" ] && shift
             fi
             ;;
-
 
         w-c | wifi-client | ssid)
 
@@ -1103,14 +1101,14 @@ processCommand() {
 
         "$CMDOPT_RESET")
 
-            if sendPacket $CMD_BROADCAST >/dev/null; then
+            if sendPacket $CMD_BROADCAST "$C_HOST" >/dev/null; then
 
                 printf "%s" "Reset $C_BROADCAST_MAC $C_BROADCAST_SSID (Y/N)? "
                 read -r REPLY
 
                 case $REPLY in
                     Y)
-                        sendPacket $CMD_WRITE_RESET # 3 blink in red LED
+                        sendPacket $CMD_WRITE_RESET "$C_HOST" # 3 blink in red LED
                         ;;
                 esac
 
@@ -1123,26 +1121,26 @@ processCommand() {
 
         reboot)
 
-            sendPacket $CMD_REBOOT
+            sendPacket $CMD_REBOOT "$C_HOST"
             ;;
 
         mac)
 
-            sendPacket $CMD_READ_MAC
+            sendPacket $CMD_READ_MAC "$C_HOST"
             ;;
 
         version|ver)
 
-            sendPacket $CMD_READ_VERSION
+            sendPacket $CMD_READ_VERSION "$C_HOST"
             ;;
 
         system | sys)
 
             if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_SYSTEM
+                sendPacket $CMD_READ_SYSTEM "$C_HOST"
             else
                 C_NOPRINT=1
-                sendPacket $CMD_READ_SYSTEM 
+                sendPacket $CMD_READ_SYSTEM "$C_HOST"
                 unset C_NOPRINT
                 parseSystemOption "$1"
                 EXITCODE_PROCESSCOMMAND=$EXITCODE_PARSESYSTEMOPTIONS
@@ -1152,10 +1150,9 @@ processCommand() {
         ecowitt | ec | e)
 
             if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_ECOWITT_INTERVAL
+                sendPacket $CMD_READ_ECOWITT_INTERVAL "$C_HOST"
             else
-                #sendEcowittInterval "$1"
-                sendEcowittIntervalnew "$1"
+                sendEcowittInterval "$1"
             fi
             
             ;;
@@ -1163,7 +1160,7 @@ processCommand() {
         wunderground | wu)
 
             if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_WUNDERGROUND
+                sendPacket $CMD_READ_WUNDERGROUND "$C_HOST"
             else
                 if [ $# -lt 2 ]; then
                     echo >&2 "Error: {id} {password} must be specified"
@@ -1190,7 +1187,7 @@ processCommand() {
         weathercloud | wc)
 
             if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_WEATHERCLOUD
+                sendPacket $CMD_READ_WEATHERCLOUD "$C_HOST"
             else
                 if [ $# -lt 2 ]; then
                     echo >&2 "Error: {id} {key} must be specified"
@@ -1203,12 +1200,12 @@ processCommand() {
         customized | c | cust)
 
             if argEmptyOrOption "$1"; then
-                if ! sendPacket $CMD_READ_PATH >/dev/null || ! sendPacket $CMD_READ_CUSTOMIZED; then
+                if ! sendPacket $CMD_READ_PATH  "$C_HOST" >/dev/null || ! sendPacket $CMD_READ_CUSTOMIZED  "$C_HOST"; then
                   >&2 echo Failed to get customized settings
                 fi
             else
                 
-                if sendPacket $CMD_READ_CUSTOMIZED >/dev/null && sendPacket $CMD_READ_PATH >/dev/null; then
+                if sendPacket $CMD_READ_CUSTOMIZED  "$C_HOST" >/dev/null && sendPacket $CMD_READ_PATH "$C_HOST" >/dev/null; then
                     if ! processCustomizedOptions "$1"; then
                         EXITCODE_PROCESSCOMMAND=$EXITCODE_CUSTOMIZED
                         #echo >&2 "Error: Failed to update customized settings"
@@ -1226,15 +1223,15 @@ processCommand() {
        #    ;;
 
         broadcast | b)
-            sendPacket $CMD_BROADCAST
+            sendPacket $CMD_BROADCAST "$C_HOST"
             ;;
 
         rain | r)
 
             if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_RAINDATA
+                sendPacket $CMD_READ_RAINDATA "$C_HOST"
             else
-                if sendPacket $CMD_READ_RAINDATA >/dev/null ; then #refresh
+                if sendPacket $CMD_READ_RAINDATA "$C_HOST" >/dev/null ; then #refresh
                     parseRaindataOptions "$1"
                     EXITCODE_PROCESSCOMMAND=$?
 
@@ -1248,15 +1245,17 @@ processCommand() {
 
         livedata | l)
 
-            sendPacket "$CMD_READ_SENSOR_ID_NEW" >/dev/null   #get battery and signal info as well
-
+            
+            sendPacket "$CMD_READ_SENSOR_ID_NEW" "$C_HOST" >/dev/null   #get battery and signal info as well
+            
             if [ -z "$LOG_CMD" ]; then
-                sendPacket $CMD_LIVEDATA
+
+                sendPacket $CMD_LIVEDATA "$C_HOST"
                 EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
             else
               
                 while true; do
-                  sendPacket $CMD_LIVEDATA
+                  sendPacket $CMD_LIVEDATA "$C_HOST"
                   sleep "$LOG_INTERVAL"
                 done
             fi
@@ -1265,7 +1264,7 @@ processCommand() {
 
         sensor_id)
 
-            sendPacket $CMD_READ_SENSOR_ID
+            sendPacket $CMD_READ_SENSOR_ID "$C_HOST"
             ;;
 
         sensor_id_new | sensor | s) # for new SENSOR_TYPE types
@@ -1276,19 +1275,19 @@ processCommand() {
                 case "$1" in 
                     connected|c)
                                     SPATTERNID=$SPATTERNID_CONNECTED #matches connected sensors
-                                    sendPacket $CMD_READ_SENSOR_ID_NEW
+                                    sendPacket $CMD_READ_SENSOR_ID_NEW "$C_HOST"
                                     ;;
                     disconnected)
                                     SPATTERNID=$SPATTERNID_DISCONNECTED
-                                    sendPacket $CMD_READ_SENSOR_ID_NEW
+                                    sendPacket $CMD_READ_SENSOR_ID_NEW "$C_HOST"
                                     ;;
                     searching|s)
                                     SPATTERNID=$SPATTERNID_SEARCHING
-                                    sendPacket $CMD_READ_SENSOR_ID_NEW
+                                    sendPacket $CMD_READ_SENSOR_ID_NEW "$C_HOST"
                                     ;;
                     disabled|d)
                                     SPATTERNID=$SPATTERNID_DISABLED
-                                    sendPacket $CMD_READ_SENSOR_ID_NEW
+                                    sendPacket $CMD_READ_SENSOR_ID_NEW "$C_HOST"
                                     ;;
                     
                     *) 
@@ -1297,14 +1296,14 @@ processCommand() {
                 esac
 
             else
-                sendPacket $CMD_READ_SENSOR_ID_NEW
+                sendPacket $CMD_READ_SENSOR_ID_NEW "$C_HOST"
             fi
 
             ;;
 
         calibration | calibrate | cal)
    
-            if sendPacket $CMD_READ_CALIBRATION >/dev/null; then 
+            if sendPacket $CMD_READ_CALIBRATION "$C_HOST" >/dev/null; then 
 
                 case "$1" in
                     ""|--*|-*) printCalibration
@@ -1436,7 +1435,7 @@ while [ $# -gt 0 ]; do
       
         -W | --show-ws)
             
-            printWeatherServices
+            printWeatherServices "$C_HOST"
             shift
             ;;
 
@@ -1509,10 +1508,10 @@ while [ $# -gt 0 ]; do
         -g | --gw)
 
             C_HOST="$2"
-            #sendPacket "$CMD_READ_MAC" >/dev/null
-            sendPacket "$CMD_READ_VERSION" >/dev/null 
-            sendPacket "$CMD_READ_SYSTEM" >/dev/null  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
-            #sendPacket "$CMD_READ_SENSOR_ID_NEW" >/dev/null
+            #sendPacket "$CMD_READ_MAC"  "$C_HOST">/dev/null
+            sendPacket "$CMD_READ_VERSION" "$C_HOST" >/dev/null 
+            sendPacket "$CMD_READ_SYSTEM" "$C_HOST" >/dev/null  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
+            #sendPacket "$CMD_READ_SENSOR_ID_NEW" "$C_HOST" >/dev/null
 
             shift 2
             ;;

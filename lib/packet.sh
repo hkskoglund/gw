@@ -7,54 +7,72 @@ if ! type convertBufferFromDecToOctalEscape 1>/dev/null 2>/dev/null; then
     . ./lib/converters.sh
 fi
 
-sendPacket() 
+sendPacket()
+# wrapper function for sending packet to host
+# previous prototype used bash tcp/udp functionality, instead of locking the script to bash only, nc command is used instead for allowing multiple shells
+# $1 command, $2 host
 {
     EXITCODE_SENDPACKET=0
 
+    #validate command
+    if [ -z "$1" ]; then
+      echo >&2 "Error: No command specified"
+      EXITCODE_SENDPACKET="$ERROR_NO_HOST_SPECIFIED"
+      return "$EXITCODE_SENDPACKET"
+    fi
+    
+    # validate host
+    if [ -z "$2" ]; then
+      echo >&2 "Error: No host specified"
+      EXITCODE_SENDPACKET="$ERROR_NO_HOST_SPECIFIED"
+      return "$EXITCODE_SENDPACKET"
+    fi
+
+     #init new packet for simple read command without body
+    if [ "$1" -eq "$CMD_BROADCAST" ] ||\
+        [ "$1" -eq "$CMD_LIVEDATA" ] ||\
+        [ "$1" -eq "$CMD_READ_CALIBRATION" ] ||\
+        [ "$1" -eq "$CMD_READ_CUSTOMIZED" ] ||\
+        [ "$1" -eq "$CMD_READ_ECOWITT_INTERVAL" ] ||\
+        [ "$1" -eq "$CMD_READ_MAC" ] ||\
+        [ "$1" -eq "$CMD_READ_PATH" ] ||\
+        [ "$1" -eq "$CMD_READ_RAINDATA" ] ||\
+        [ "$1" -eq "$CMD_READ_SENSOR_ID" ] ||\
+        [ "$1" -eq "$CMD_READ_SENSOR_ID_NEW" ] ||\
+        [ "$1" -eq "$CMD_READ_SYSTEM" ] ||\
+        [ "$1" -eq "$CMD_READ_VERSION" ] ||\
+        [ "$1" -eq "$CMD_READ_WEATHERCLOUD" ] ||\
+        [ "$1" -eq "$CMD_READ_WOW" ]; then
+        newPacket "$1"
+    fi
+
    if ! sendPacketnc "$@"; then # $@ each arg expands to a separate word
       EXITCODE_SENDPACKET=$EXITCODE_SENDPACKETNC
-      [ "$DEBUG" -eq 1 ] && echo >&2 "Sendpacket failed with error code $EXITCODE_SENDPACKET"
+      [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 "Sendpacket failed with error code $EXITCODE_SENDPACKET"
    fi
     
     return "$EXITCODE_SENDPACKET"
 }
 
 sendPacketnc()
-#$1 - command
+# send packet to host with nc
+# $1 command, $2 host ip
 { 
     EXITCODE_SENDPACKETNC=0
-    DEBUG_SENDPACKETNC=${DEBUG_SENDPACKETNC:=$DEBUG}
+    DEBUG_SENDPACKETNC=${DEBUG_SENDPACKETNC:=$DEBUG_PACKET}
     DEBUG_FUNC='sendPacketnc'
 
-    [ "$DEBUG_SENDPACKETNC" -eq 1 ] && echo >&2 "$DEBUG_FUNC args: $* length: $# 0: $0  1: $1 2: $2"
+    [ "$DEBUG_SENDPACKETNC" -eq 1 ] && echo >&2 "$DEBUG_FUNC args: $* length: $# 0: $0 command: $1 host: $2 PACKET_TX_BODY: $PACKET_TX_BODY"
     
-    #$2 - host
-
     timeout_nc=0.05
     timeout_udp_broadcast=0.236 # timeout selected based on udp port scanning 254 hosts in 60s (60s/254=0.236s)
     useTimeout=0
 
-    #simple command https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
-    if [ -n "$1" ]; then 
-        newPacket "$1"
-    
-    fi
 
-    if [ -n "$2" ]; then
-        host="$2" # for udp broadcast probing on subnet
-    else
-        host="$C_HOST" # -g option
-    fi
 
-    if [ -z "$host" ]; then
-      echo >&2 Error: No host specified
-      EXITCODE_SENDPACKETNC="$ERROR_NO_HOST_SPECIFIED"
-      return "$EXITCODE_SENDPACKETNC"
-    fi
+    createPacketTX "$1"
 
-    createPacketTX
-
-    { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" ] ; } &&
+    { [ "$DEBUG_SENDPACKETNC" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" ] ; } &&
     {
         printf >&2 "> %-20s" "$COMMAND_NAME"
         printBuffer >&2 "$PACKET_TX"
@@ -91,7 +109,7 @@ sendPacketnc()
     if [ "$NC_VERSION" = "$NC_OPENBSD" ]; then
 
         # -N shutdown(2) the network socket after EOF on the input / from man nc - otherwise nc hangs
-        nccmdstr="\"$NC_CMD\" -4 -N -w 1 $ncUDPOpt $host $port" 
+        nccmdstr="\"$NC_CMD\" -4 -N -w 1 $ncUDPOpt $2 $port" 
        
        # if [ "$useTimeout" -eq 1 ]; then
        #    nccmdstr="timeout $timeout_nc $nccmdstr"
@@ -103,12 +121,12 @@ sendPacketnc()
 
         #sleep to disable immediate EOF and shutdown of ncat -> which leads to data not received from udp socket
        
-        nccmdstr="\"$NC_CMD\" -4 -w 1  $ncUDPOpt $host $port"
+        nccmdstr="\"$NC_CMD\" -4 -w 1  $ncUDPOpt $2 $port"
         cmdstr="{ printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd ; sleep $timeout_nc; } |  $nccmdstr $rxpipecmd | $odcmdstr"
 
     elif [ "$NC_VERSION" = "$NC_TOYBOX" ]; then
 
-        nccmdstr="$NC_CMD -4 $ncUDPOpt $host $port"
+        nccmdstr="$NC_CMD -4 $ncUDPOpt $2 $port"
         
         if [ "$useTimeout" -eq 1 ]; then
            nccmdstr="timeout $timeout_nc $nccmdstr"
@@ -118,7 +136,7 @@ sendPacketnc()
 
     elif [ "$NC_VERSION" = "$NC_BUSYBOX" ]; then
 
-        nccmdstr="$NC_CMD $host $port"
+        nccmdstr="$NC_CMD $2 $port"
 
         if [ -z "$ncUDPOpt" ]; then
             cmdstr="printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd |  $nccmdstr $rxpipecmd | $odcmdstr"
@@ -136,8 +154,8 @@ sendPacketnc()
             printf >&2 "%s: %s\n" "$COMMAND_NAME" "$cmdstr"
        fi
        
-       if [ "$DEBUG" -eq 1 ]; then
-            echo >&2 "Sending packet to ip $host port $port"
+       if [ "$DEBUG_SENDPACKETNC" -eq 1 ]; then
+            echo >&2 "Sending packet $COMMAND_NAME to $2:$port"
        fi 
 
        od_buffer=$(eval "$cmdstr" )
@@ -152,8 +170,8 @@ sendPacketnc()
 }
 
 newPacket()
-#creates new packet
-#$1 command 
+# creates new packet, set PACKET_TX_CMD and PACKET_TX_PREAMLE="255 255", reset PACKET_TX_BODY
+# $1 command 
 {
     if [ -z "$1" ]; then
         echo >&2 Error: no command given to newPacket
@@ -171,8 +189,8 @@ newPacket()
 }
 
 getPacketLength()
-#get length of tx packet buffer
-#$1 string of uint8 integers with space
+# get length of tx packet buffer, set VALUE_LENGTH
+# $1 string of uint8 integers with space
 {
     IFS=' '
     VALUE_LENGTH=0
@@ -182,15 +200,41 @@ getPacketLength()
     unset BYTE
 }
 
-checksumPacketTX() {
-    getPacketLength "$PACKET_TX_BODY"
-    PACKET_TX_BODY_LENGTH=$((VALUE_LENGTH + 2)) # at least 2 byte for length + checksum bytes
+checksum()
+# calculates checksum, start at command byte, set VALUE_CHECKSUM
+# $1 buffer
+ {
+    sum=0
 
+   # [ "$DEBUG_PACKET" -eq 1 ] && >&2 echo  "checksum: $1"
+    
+    IFS=" "
+    for BYTE in $1; do
+       # [ "$DEBUG_PACKET" -eq 1 ] && >&2 echo  "checksum byte $BYTE, sum $sum"
+        sum=$(( (sum + BYTE) & 255 ))
+    done
+
+    [ "$DEBUG_PACKET" -eq 1 ] &&  >&2  echo "checksum dec:$sum hex: $(printf "%2x" $sum)"
+
+    VALUE_CHECKSUM=$sum
+
+     unset sum BYTE
+}
+
+checksumPacketTX()
+# calculates packet chekcum
+# $1 command
+# set PACKET_TX
+ {
+    getPacketLength "$PACKET_TX_BODY"
+    PACKET_TX_BODY_LENGTH=$((VALUE_LENGTH + 2)) # at least 2 byte for (length + checksum bytes)
+    
+   
     if [ "$PACKET_TX_CMD" -eq "$CMD_BROADCAST" ] || [ "$PACKET_TX_CMD" -eq "$CMD_WRITE_SSID" ]; then # 2 byte length 
         PACKET_TX_BODY_LENGTH=$(( PACKET_TX_BODY_LENGTH + 1 ))
         PACKET_TX_LENGTH=" $(( ((PACKET_TX_BODY_LENGTH + 1) & 0xff00) >> 8 )) $(( (PACKET_TX_BODY_LENGTH + 1) & 0xff ))"
     else
-        PACKET_TX_LENGTH=$((PACKET_TX_BODY_LENGTH + 1)) # add 1 byte for cmd field
+        PACKET_TX_LENGTH=$((PACKET_TX_BODY_LENGTH + 1)) # add 1 byte for command
     fi
 
     if [ -n "$PACKET_TX_BODY" ]; then
@@ -203,17 +247,205 @@ checksumPacketTX() {
     checksum "$PACKET_TX_BODY"
 
     PACKET_TX_BODY="$PACKET_TX_BODY $VALUE_CHECKSUM"
-    PACKET_TX="$PACKET_TX_PREAMBLE $PACKET_TX_BODY"
+    PACKET_TX="$PACKET_TX_PREAMBLE $PACKET_TX_BODY" #ff ff ...
 
-    [ "$DEBUG" -eq 1 ] && echo >&2 "PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
+    [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 "PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
 }
 
 createPacketTX()
+# creates checksum for packet, converts PACKET_TX from decimal to octal
+# $1 command
+# set PACKET_TX_ESCAPE
 {
-    checksumPacketTX
+    checksumPacketTX "$1"
     convertBufferFromDecToOctalEscape "$PACKET_TX" # \0377 \0377 \0nnn
-
     PACKET_TX_ESCAPE=$VALUE_OCTAL_BUFFER_ESCAPE
+}
+
+newCustomizedPacket()
+# creates a new customized packet
+ {
+    newPacket       "$CMD_WRITE_CUSTOMIZED"
+    writeString     PACKET_TX_BODY "$C_WS_CUSTOMIZED_ID" "customized id"
+    writeString     PACKET_TX_BODY "$C_WS_CUSTOMIZED_PASSWORD" "customized password"
+    writeString     PACKET_TX_BODY "$C_WS_CUSTOMIZED_SERVER" "customized server"
+    writeUInt16BE   PACKET_TX_BODY "$C_WS_CUSTOMIZED_PORT" "customized port"
+    writeUInt16BE   PACKET_TX_BODY "$C_WS_CUSTOMIZED_INTERVAL" "customized interval"
+    writeUInt8      PACKET_TX_BODY "$C_WS_CUSTOMIZED_HTTP" "customized http"
+    writeUInt8      PACKET_TX_BODY "$C_WS_CUSTOMIZED_ENABLED" "customized enabled"
+}
+
+newPathPacket()
+# creates a new path packet
+{
+    newPacket "$CMD_WRITE_PATH"
+    writeString PACKET_TX_BODY "$C_WS_CUSTOMIZED_PATH_ECOWITT" "customized path ecowitt"
+    writeString PACKET_TX_BODY "$C_WS_CUSTOMIZED_PATH_WU" "customized path wunderground"
+}
+
+newWIFIpacket()
+# creates a new wifi packet with ssid and password
+#$1 SSID, $2 password
+{
+    [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 "newWIFIpacket SSID $1 Password $2"
+    newPacket "$CMD_WRITE_SSID"
+    #ssid packet has two byte length
+    # TEST wsview android app, wireshark: ffff | 11 |001b| 
+    #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/ConfigrouterFragment.java - SaveData
+    writeString PACKET_TX_BODY "$1"  ssid
+    writeString PACKET_TX_BODY "$2"  password
+}
+
+sendSystemPacket() 
+# send system settings to host
+# $1 systemtype, $2 tz index, $3 dst bit, $4 autooff bit, $5 host
+{
+    dst=0
+
+    #autooff 0->auto 1
+    #autooff 1->auto 0
+
+    if [ "$4" -eq 0 ]; then
+        dst=$(($3 | 2))
+    else
+        dst=$(($3))
+    fi
+
+    newPacket "$CMD_WRITE_SYSTEM"
+
+    writeUInt8 PACKET_TX_BODY    0    frequency   # frequency - only read
+    writeUInt8 PACKET_TX_BODY    "$1" sensortype   # sensortype 0=WH24, 1=WH65
+    writeUInt32BE PACKET_TX_BODY  0   utctime    # UTC time - only read
+    writeUInt8 PACKET_TX_BODY   "$2"  timezoneindex  # timezone index/manual -> not updated by setting auto timezone
+    writeUInt8 PACKET_TX_BODY  "$dst" daylightsaving # daylight saving - dst
+    
+    unset dst
+
+    [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 Send system sensortye "$1" tz "$2" dst "$3"
+
+    sendPacket "$CMD_WRITE_SYSTEM" "$5"
+
+    return "$EXITCODE_SENDPACKET"
+}
+
+sendRaindata()
+# send rain data to host
+# $1 rainday, $2 rain week, $3 rain month, $4 rain year, $5 host ip
+ {
+   
+    newPacket "$CMD_WRITE_RAINDATA"
+
+    writeUInt32BE PACKET_TX_BODY "$1" rainday
+    writeUInt32BE PACKET_TX_BODY "$2" rainweek
+    writeUInt32BE PACKET_TX_BODY "$3" rainmonth
+    writeUInt32BE PACKET_TX_BODY "$4" rainyear
+
+    [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
+
+    sendPacket "$CMD_WRITE_RAINDATA" "$5"
+   
+   return "$EXITCODE_SENDPACKET"
+}
+
+sendCalibration()
+# send calibration offsets to host
+# $1 intempoffset, $2 inhumidityoffset, $3 absoffset, $4 reloffset, $5 outtempoffset, $6 outhumidityoffset, $7 winddiroffset, $8
+ {
+    
+    newPacket "$CMD_WRITE_CALIBRATION"
+
+    writeInt16BE    PACKET_TX_BODY  "$1" intempoffset
+    writeInt8       PACKET_TX_BODY "$2" inhumidityoffset 
+    writeInt32BE    PACKET_TX_BODY "$3" absoffset
+    writeInt32BE    PACKET_TX_BODY "$4" reloffset
+    writeInt16BE    PACKET_TX_BODY "$5" outtempoffset
+    writeInt8       PACKET_TX_BODY "$6" outhumidityoffset
+    writeInt16BE    PACKET_TX_BODY "$7" winddiroffset
+
+    [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 "Sending calibration intemp $1 inhumi $2 abspressure $3 relpressure $4 outtemp $5 outhumi $6 winddirection $7"
+    
+    sendPacket "$CMD_WRITE_CALIBRATION" "$8"
+    
+
+    return "$EXITCODE_SENDPACKET"
+}
+
+sendEcowittInterval()
+# send ecowitt interval to host
+# $1 interval 0-5, $2 host
+{
+    # observation: GW1000 red-wifi led blinks slowly if not sending data to ecowitt when 0=off
+    if [ "$1" -ge 0 ] && [ "$1" -le 5 ]; then
+        newPacket "$CMD_WRITE_ECOWITT_INTERVAL"
+        writeUInt8 PACKET_TX_BODY "$1" interval #interval
+        [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 Sending ecowitt interval "$1"
+        sendPacket "$CMD_WRITE_ECOWITT_INTERVAL" "$2"
+    else
+        echo >&2 Error: Not a valid ecowitt interval, range 0-5 minutes
+    fi
+}
+
+sendWeatherservice() 
+# send id and password to weatherservice (wow/weathercloud)
+# $1 command, $2 id, $3 password, $4 host
+{
+
+    newPacket "$1"
+    writeString PACKET_TX_BODY "$2" id
+    writeString PACKET_TX_BODY "$3" password
+
+    case "$1" in
+        "$CMD_WRITE_WOW")
+            writeUInt8 PACKET_TX_BODY 0 unused # stationnum size - unused
+            writeUInt8 PACKET_TX_BODY 1 wow
+            ;;
+
+        "$CMD_WRITE_WEATHERCLOUD")
+            writeUInt8 PACKET_TX_BODY 1 weathercloud
+            ;;
+    esac
+    
+    [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 "Sending weather service $1 id $2 password $3, host $4"
+
+    sendPacket "$1" "$4"
+}
+
+sendCustomized()
+# send customized packet to host
+# $1 host
+
+ {
+    newCustomizedPacket
+    sendPacket "$CMD_WRITE_CUSTOMIZED" "$1"
+
+    newPathPacket
+    sendPacket "$CMD_WRITE_PATH" "$1"
+}
+
+sendSensorId()
+# send sensor id for sensortype range
+# $1 low sensortype, $2 high sensortype, $3 sensorid, $4 host
+{
+
+    newPacket "$CMD_WRITE_SENSOR_ID"
+
+    if [ -z "$2" ]; then
+     [ "$DEBUG_PACKET" -eq 1 ] && printf >&2 "Writing sensor type %2d sensorid %x\n" "$1" "$3"
+      writeUInt8 PACKET_TX_BODY "$1" sensortype
+      writeUInt32BE PACKET_TX_BODY"$3" sensorid
+    else
+      n="$1"
+      while [ "$n" -le "$2" ]; do
+        [ "$DEBUG_PACKET" -eq 1 ] && printf >&2  "Writing sensor type %2d sensorid %x\n" "$n" "$3"
+         writeUInt8 PACKET_TX_BODY "$n" sensortype
+         writeUInt32BE PACKET_TX_BODY "$3" sensorid
+         n=$(( n + 1 ))
+      done
+    fi
+
+    unset n
+
+    sendPacket "$CMD_WRITE_SENSOR_ID" "$4"
 }
 
 discovery() {
@@ -252,7 +484,7 @@ discovery_udp_subnet() { #$1 - subnet, for example 192.168.3
     
     hostnumber=1
     while [ "$hostnumber" -le 254 ]; do
-        #[ $DEBUG -eq 1 ] && 
+        #[ $DEBUG_PACKET -eq 1 ] && 
         printf >&2 "\r%s " "$1.$hostnumber"
         sendPacket "$CMD_BROADCAST" "$1.$hostnumber" 
         hostnumber=$((hostnumber + 1))
@@ -311,195 +543,4 @@ discovery_nc() { #$1 - subnet for udp scan
     unset scan_max_iterations scan_nc_idle_timeout n broadcast
 
     return "$EXITCODE_DISCOVERY"
-}
-
-checksum() {
-    sum=0
-
-    [ "$DEBUG" -eq 1 ] && >&2 echo  "checksum calculation on $1"
-    
-    IFS=" "
-    for BYTE in $1; do
-        [ "$DEBUG" -eq 1 ] && >&2 echo  "checksum read $BYTE"
-        sum=$(( (sum + BYTE) & 255 ))
-    done
-
-    [ "$DEBUG" -eq 1 ] &&  >&2  echo "checksum $sum $(printf "%2x" $sum)"
-
-    VALUE_CHECKSUM=$sum
-
-     unset sum BYTE
-}
-
-newCustomizedPacket() {
-    newPacket       "$CMD_WRITE_CUSTOMIZED"
-    writeString     PACKET_TX_BODY "$C_WS_CUSTOMIZED_ID" "customized id"
-    writeString     PACKET_TX_BODY "$C_WS_CUSTOMIZED_PASSWORD" "customized password"
-    writeString     PACKET_TX_BODY "$C_WS_CUSTOMIZED_SERVER" "customized server"
-    writeUInt16BE   PACKET_TX_BODY "$C_WS_CUSTOMIZED_PORT" "customized port"
-    writeUInt16BE   PACKET_TX_BODY "$C_WS_CUSTOMIZED_INTERVAL" "customized interval"
-    writeUInt8      PACKET_TX_BODY "$C_WS_CUSTOMIZED_HTTP" "customized http"
-    writeUInt8      PACKET_TX_BODY "$C_WS_CUSTOMIZED_ENABLED" "customized enabled"
-}
-
-newPathPacket() {
-    newPacket "$CMD_WRITE_PATH"
-    writeString PACKET_TX_BODY "$C_WS_CUSTOMIZED_PATH_ECOWITT" "customized path ecowitt"
-    writeString PACKET_TX_BODY "$C_WS_CUSTOMIZED_PATH_WU" "customized path wunderground"
-}
-
-sendSystemPacket() 
-#$1 systemtype, $2 tz index, $3 dst bit, $4 autooff bit
-{
-    dst=0
-
-    #autooff 0->auto 1
-    #autooff 1->auto 0
-
-    if [ "$4" -eq 0 ]; then
-        dst=$(($3 | 2))
-    else
-        dst=$(($3))
-    fi
-
-    newPacket "$CMD_WRITE_SYSTEM"
-
-    writeUInt8 PACKET_TX_BODY    0    frequency   # frequency - only read
-    writeUInt8 PACKET_TX_BODY    "$1" sensortype   # sensortype 0=WH24, 1=WH65
-    writeUInt32BE PACKET_TX_BODY  0   utctime    # UTC time - only read
-    writeUInt8 PACKET_TX_BODY   "$2"  timezoneindex  # timezone index/manual -> not updated by setting auto timezone
-    writeUInt8 PACKET_TX_BODY  "$dst" daylightsaving # daylight saving - dst
-    
-    unset dst
-
-    [ "$DEBUG" -eq 1 ] && echo >&2 Send system sensortye "$1" tz "$2" dst "$3"
-
-    sendPacket
-
-    return "$EXITCODE_SENDPACKET"
-}
-
-sendRaindata() {
-   
-    newPacket "$CMD_WRITE_RAINDATA"
-
-    writeUInt32BE PACKET_TX_BODY "$1" rainday
-    writeUInt32BE PACKET_TX_BODY "$2" rainweek
-    writeUInt32BE PACKET_TX_BODY "$3" rainmonth
-    writeUInt32BE PACKET_TX_BODY "$4" rainyear
-
-    [ "$DEBUG" -eq 1 ] && echo >&2 rainday "$2" rainweek "$3" rainmonth "$4" rainyear "$5"
-
-    sendPacket
-   
-   return "$EXITCODE_SENDPACKET"
-}
-
-sendCalibration() {
-    
-    newPacket "$CMD_WRITE_CALIBRATION"
-
-    writeInt16BE    PACKET_TX_BODY  "$1" intempoffset
-    writeInt8       PACKET_TX_BODY "$2" inhumidityoffset 
-    writeInt32BE    PACKET_TX_BODY "$3" absoffset
-    writeInt32BE    PACKET_TX_BODY "$4" reloffset
-    writeInt16BE    PACKET_TX_BODY "$5" outtempoffset
-    writeInt8       PACKET_TX_BODY "$6" outhumidityoffset
-    writeInt16BE    PACKET_TX_BODY "$7" winddiroffset
-
-    [ "$DEBUG" -eq 1 ] && echo >&2 "Sending calibration intemp $1 inhumi $2 abspressure $3 relpressure $4 outtemp $5 outhumi $6 winddirection $7"
-    
-    sendPacket
-    
-
-    return "$EXITCODE_SENDPACKET"
-}
-
-sendEcowittIntervalnew() {
-    # observation: GW1000 red-wifi led blinks slowly if not sending data to ecowitt when 0=off
-    if [ "$1" -ge 0 ] && [ "$1" -le 5 ]; then
-        newPacket "$CMD_WRITE_ECOWITT_INTERVAL"
-        writeUInt8 PACKET_TX_BODY "$1" interval #interval
-        [ "$DEBUG" -eq 1 ] && echo >&2 Sending ecowitt interval "$1"
-        sendPacket
-    else
-        echo >&2 Error Not a valid ecowitt interval, range 0-5 minutes
-    fi
-}
-
-sendEcowittInterval() {
-    # observation: GW1000 red-wifi led blinks slowly if not sending data to ecowitt when 0=off
-    if [ "$1" -ge 0 ] && [ "$1" -le 5 ]; then
-        newPacket "$CMD_WRITE_ECOWITT_INTERVAL"
-        writeUInt8 PACKET_TX_BODY "$1" interval #interval
-        [ "$DEBUG" -eq 1 ] && echo >&2 Sending ecowitt interval "$1"
-        sendPacket
-    else
-        echo >&2 Error Not a valid ecowitt interval, range 0-5 minutes
-    fi
-}
-
-sendWeatherservice() {
-
-    newPacket "$1"
-    writeString PACKET_TX_BODY "$2" id
-    writeString PACKET_TX_BODY "$3" password
-
-    case "$1" in
-    "$CMD_WRITE_WOW")
-        writeUInt8 PACKET_TX_BODY 0 unused # stationnum size - unused
-        writeUInt8 PACKET_TX_BODY 1 wow
-        ;;
-
-    "$CMD_WRITE_WEATHERCLOUD")
-        writeUInt8 PACKET_TX_BODY 1 weathercloud
-        ;;
-    esac
-    [ "$DEBUG" -eq 1 ] && echo >&2 "Sending weather service $1 id $2 password $3"
-    sendPacket
-}
-
-sendCustomized() {
-    newCustomizedPacket
-    sendPacket
-
-    newPathPacket
-    sendPacket
-}
-
-writeSensorId()
-#$1 - low sensortype, $2 - high sensortype, $3 - sensorid
-{
-
-    newPacket "$CMD_WRITE_SENSOR_ID"
-
-    if [ -z "$2" ]; then
-     [ "$DEBUG" -eq 1 ] && printf >&2 "Writing sensor type %2d sensorid %x\n" "$1" "$3"
-      writeUInt8 PACKET_TX_BODY "$1" sensortype
-      writeUInt32BE PACKET_TX_BODY"$3" sensorid
-    else
-      n="$1"
-      while [ "$n" -le "$2" ]; do
-        [ "$DEBUG" -eq 1 ] && printf >&2  "Writing sensor type %2d sensorid %x\n" "$n" "$3"
-         writeUInt8 PACKET_TX_BODY "$n" sensortype
-         writeUInt32BE PACKET_TX_BODY "$3" sensorid
-         n=$(( n + 1 ))
-      done
-    fi
-
-    unset n
-
-    sendPacket
-}
-
-newWIFIpacket()
-#$1 SSID, $2 password
-{
-    [ "$DEBUG" -eq 1 ] && echo >&2 "newWIFIpacket SSID $1 Password $2"
-    newPacket "$CMD_WRITE_SSID"
-    #ssid packet has two byte length
-    # TEST wsview android app, wireshark: ffff | 11 |001b| 
-    #WSView_v1.1.51_apkpure.com_source_from_JADX/sources/com/ost/newnettool/Fragment/ConfigrouterFragment.java - SaveData
-    writeString PACKET_TX_BODY "$1"  ssid
-    writeString PACKET_TX_BODY "$2"  password
 }

@@ -1018,12 +1018,14 @@ isWriteCommand() {
         [ "$1" -eq "$CMD_WRITE_SYSTEM" ]
 }
 
-printWeatherServices () {
-    sendPacket "$CMD_READ_ECOWITT_INTERVAL"
-    sendPacket "$CMD_READ_WUNDERGROUND"
-    sendPacket "$CMD_READ_WOW"
-    sendPacket "$CMD_READ_WEATHERCLOUD"
-    sendPacket "$CMD_READ_CUSTOMIZED"
+printWeatherServices ()
+# $1 - host
+ {
+    sendPacket "$CMD_READ_ECOWITT_INTERVAL" "$1"
+    sendPacket "$CMD_READ_WUNDERGROUND" "$1"
+    sendPacket "$CMD_READ_WOW" "$1"
+    sendPacket "$CMD_READ_WEATHERCLOUD" "$1"
+    sendPacket "$CMD_READ_CUSTOMIZED" "$1"
 }
 
 getSignalUnicode()

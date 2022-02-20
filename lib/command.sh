@@ -34,7 +34,10 @@ CMD_WRITE_SYSTEM=$((0x31))
 CMD_READ_CALIBRATION=$((0x38))
 CMD_WRITE_CALIBRATION=$((0x39))
 
-getCommandName() { #$1 -decimal command
+getCommandName()
+# get command name, set COMMAND_NAME
+# $1 decimal command
+ { 
     case "$1" in
         "$CMD_READ_VERSION")            COMMAND_NAME='read version' ;;
         "$CMD_REBOOT")                  COMMAND_NAME='reboot' ;;
