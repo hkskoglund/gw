@@ -3,7 +3,6 @@ man/
 test/
 prod/
 deprecated/
-backup.txt
 itsraining.wav
 .vscode/settings.json
 watch.log
@@ -11,3 +10,4 @@ debug.log
 data.csv
 tx*.hex
 rx*.hex
+backup*.hex

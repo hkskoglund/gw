@@ -1043,7 +1043,10 @@ processOptionsLiveview()
     unset hide_liveview
 }
 
-processCommand() {
+processCommand()
+# process -c command
+# EXITCODE_PROCESSCOMMAND
+ {
    EXITCODE_PROCESSCOMMAND=0
 
    [ "$DEBUG" -eq 1 ] && >&2 echo ARGS to processCommand "$@" length "$#" COMMAND "$COMMAND"
@@ -1147,12 +1150,13 @@ processCommand() {
             fi
             ;;
 
-        ecowitt | ec | e)
+        ecowitt | e)
 
             if argEmptyOrOption "$1"; then
                 sendPacket $CMD_READ_ECOWITT_INTERVAL "$C_HOST"
             else
-                sendEcowittInterval "$1"
+                sendEcowittInterval "$1" "$C_HOST"
+                EXITCODE_PROCESSCOMMAND=$?
             fi
             
             ;;
@@ -1352,6 +1356,7 @@ initWinddirectionCompass
 #https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
 #useful CLI info: https://clig.dev/#arguments-and-flags
 
+# parse options
 while [ $# -gt 0 ]; do
 
     EXITCODE_MAIN=0
@@ -1360,18 +1365,25 @@ while [ $# -gt 0 ]; do
 
     case $KEY in
 
-       -m | --merge)
+       -b | --backup)
+                        FILENAME_BACKUP='backup.hex'
+                        IFS=' '
+                        #[ $DEBUG -eq 1 ] &&
+                         echo >&2 "$(date) Backup started to $FILENAME_BACKUP"
+                        for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND; do
+                            sendPacket $cmd "$C_HOST" "$FILENAME_BACKUP"
+                        done
+                        #[ $DEBUG -eq 1 ] &&
+                         echo >&2 "$(date) Backup stopped"
 
-                #wait n seconds, merge all request received
-                #use case: 1 gw 868Mhz receive rainfall sensor data, 1 gw 433Mhz receives ulatrasonic sensor array -> send to same port
-                #MERGE_CMD=1
-                #mergeHttpRequest &
-                ##{ while true; do sleep 30; echo "$(date) MERGING" ; set; done } &
-                #pstree -p
-                #jobs
-                #shift
-                :
-                ;;
+                        unset cmd
+                        shift
+                            
+                    ;;
+
+      -r | --restore)
+                        :
+                        ;;
 
        -v | --view) IFS=,
                     for liveview in $2; do
@@ -1411,7 +1423,7 @@ while [ $# -gt 0 ]; do
 
             ;;
 
-      -n   | --log-interval)
+       -n | --log-interval)
 
             if ! argEmptyOrOption "$2"; then
                 LOG_INTERVAL="$2"
@@ -1423,7 +1435,7 @@ while [ $# -gt 0 ]; do
             [ "$DEBUG" -eq 1 ] &&  echo >&2 Logging each "$LOG_INTERVAL" seconds
             ;;
 
-       -L  | --log)
+       -L | --log)
           
            if ! argEmptyOrOption "$2"; then
                LOG_CMD="$2"
@@ -1545,23 +1557,12 @@ while [ $# -gt 0 ]; do
                httpServer "$2"
                EXITCODE_MAIN=$?
             else
-               unset startHttpTime stopHttpTime
                while true; do
-                  [ -z "$startHttpTime" ] && startHttpTime=$(date +%s)
                   if ! httpServer "$2"; then
-                    #[ $DEBUG -eq 1 ] &&
-                    >&2 echo Failed http server listen $EXITCODE_HTTPSERVER
-                    EXITCODE_MAIN=$EXITCODE_HTTPSERVER
-                    break
-                  else
-                    stopHttpTime=$(date +%s)
-                    echo "starttime $startHttpTime stopHttpTime $stopHttpTime"
-                    if [ $(( stopHttpTime - startHttpTime )) -ge 30 ] && [ -n "$LOG_CMD" ]; then
-                      unset startHttpTime stopHttpTime
-                      #eval "$LOG_CMD"
-                    fi
+                    [ $DEBUG -eq 1 ] && >&2 echo Failed http server listen $EXITCODE_HTTPSERVER
+                    #EXITCODE_MAIN=$EXITCODE_HTTPSERVER
+                    #break
                   fi
-
                 done
             fi 
 

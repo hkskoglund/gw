@@ -55,8 +55,11 @@ sendPacket()
 }
 
 sendPacketnc()
-# send packet to host with nc
-# $1 command, $2 host ip
+# send packet to host with nc, append response to backup file if specified
+# $1 command, $2 host ip , $3 backup filename (optional)
+# DEBUG_OPTION_OD_BUFFER=1      print od buffer
+# DEBUG_OPTION_TRACEPACKET=1    create tx/rx files in .hex binary format
+# DEBUG_SENDPACKETNC=1          debug only this function
 { 
     EXITCODE_SENDPACKETNC=0
     DEBUG_SENDPACKETNC=${DEBUG_SENDPACKETNC:=$DEBUG_PACKET}
@@ -81,10 +84,16 @@ sendPacketnc()
     unset rxpipecmd txpipecmd
 
     if [ "$DEBUG_OPTION_TRACEPACKET" -eq 1 ]; then
-       #visual studio code: problems with : display for date -> using space
+       #visual studio code: problems with HH:MM:SS display for date -> using space
        tracedate=$(date +'%H %M %S %N') #https://superuser.com/questions/674464/print-current-time-with-milliseconds
        rxpipecmd=" | tee \"rx-$COMMAND_NAME-$tracedate.hex\""
        txpipecmd=" | tee \"tx-$COMMAND_NAME-$tracedate.hex\""
+    fi
+
+    if [ -n "$3" ]; then # append to backup file
+      set -x
+      rxpipecmd="$rxpipecmd | tee -a \"$3\""
+      set +x
     fi
 
     port=$PORT_GW_TCP
@@ -160,7 +169,12 @@ sendPacketnc()
 
        od_buffer=$(eval "$cmdstr" )
        #maybe use: https://stackoverflow.com/questions/1550933/catching-error-codes-in-a-shell-pipe
-       parsePacket "$od_buffer"
+       if [ -z "$3" ]; then
+            parsePacket "$od_buffer"
+       else
+            echo >> "$3" #append newline | 0xa
+        fi
+
        EXITCODE_SENDPACKETNC=$?
     fi
 
@@ -382,6 +396,7 @@ sendEcowittInterval()
         sendPacket "$CMD_WRITE_ECOWITT_INTERVAL" "$2"
     else
         echo >&2 Error: Not a valid ecowitt interval, range 0-5 minutes
+        return "$ERROR_INVALID_VALUE"
     fi
 }
 
