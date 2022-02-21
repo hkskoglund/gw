@@ -924,24 +924,14 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
     
 }
 
-parsePacket()
-# main parser, distributes parsing to other functions for each packet 
-# $1 od buffer
-# set PACKET_RX_LENGTH = length of received packet
+readPacketPreambleCommandLength()
+# init buffer, verify preamble = ff ff, read command and length
+# $1 buffername
+# set OD_BUFFER
+# set PACKET_RX_LENGTH
+# set EXITCODE_PARSEPACKET
 {
-   
-    EXITCODE_PARSEPACKET=0
-   
-    if [ -z "$1" ]; then
-        [ "$DEBUG" -eq 1 ] && echo >&2 Empty od buffer
-        EXITCODE_PARSEPACKET="$ERROR_OD_BUFFER_EMPTY"
-        return "$EXITCODE_PARSEPACKET"
-    fi
-
-    newBuffer "OD_BUFFER" "$1"
-    OD_BUFFER_BACKUP="$1"
-
-    readSlice OD_BUFFER 4
+    readSlice "$1" 4 # read into B1 B2 B3 B4
 
     PRX_PREAMBLE="$B1 $B2"
     if [ "$PRX_PREAMBLE" != "255 255" ]; then
@@ -958,13 +948,38 @@ parsePacket()
 
     #Packet length
     if [ "$PRX_CMD_UINT8" -eq "$CMD_BROADCAST" ] || [ "$PRX_CMD_UINT8" -eq "$CMD_LIVEDATA" ] || [ "$PRX_CMD_UINT8" -eq "$CMD_READ_SENSOR_ID_NEW" ]; then
-        readUInt8 OD_BUFFER "packet length"
+        readUInt8 "$1" "2 byte packet length lsb"
+        PACKET_RX_LENGTH_BYTES=2
         PACKET_RX_LENGTH=$(((B4 << 8) & VALUE_UINT8))
     else
+        PACKET_RX_LENGTH_BYTES=1
         PACKET_RX_LENGTH=$((B4))
     fi
 
     [ "$DEBUG" -eq 1 ] &&  echo >&2 "RX PACKET LENGTH $PACKET_RX_LENGTH"
+
+    return "$EXITCODE_PARSEPACKET"
+}
+
+parsePacket()
+# main parser, distributes parsing to other functions for each packet 
+# $1 od buffer
+# set PACKET_RX_LENGTH = length of received packet
+{
+     EXITCODE_PARSEPACKET=0
+
+     if [ -z "$1" ]; then
+        [ "$DEBUG" -eq 1 ] && echo >&2 Empty od buffer
+        EXITCODE_PARSEPACKET="$ERROR_OD_BUFFER_EMPTY"
+        return "$EXITCODE_PARSEPACKET"
+    fi
+
+    newBuffer "OD_BUFFER" "$1"
+    OD_BUFFER_BACKUP="$1"
+
+   if ! readPacketPreambleCommandLength "OD_BUFFER"; then
+      return "$EXITCODE_PARSEPACKET"
+   fi
 
     if isWriteCommand "$PRX_CMD_UINT8"; then
         parseResult
@@ -1004,6 +1019,37 @@ parsePacket()
     [ "$DEBUG" -eq 1 ] && echo >&2 "Received command $PRX_CMD integer cmd $PRX_CMD_UINT8"
 
     return "$EXITCODE_PARSEPACKET"
+}
+
+restoreBackup()
+# restore configuration from configuration backup file
+# $1 filename
+# $2 host
+{
+    RESTORE_BUFFER="$(od -A n -t u1 -w"$MAX_16BIT_UINT" "$1")"
+
+    while [ ${#RESTORE_BUFFER} -gt 0 ]; do 
+
+        if ! readPacketPreambleCommandLength  "RESTORE_BUFFER"; then
+            return "$EXITCODE_PARSEPACKET"
+        fi
+
+        echo >&2 "Restore $COMMAND_NAME dec: $PRX_CMD_UINT8 packet length:$PACKET_RX_LENGTH, packet length bytes: $PACKET_RX_LENGTH_BYTES"
+
+        newPacket "$(( PRX_CMD_UINT8 + 1))" # write command (read +1 )
+        RESTORE_N=1
+        while [ $RESTORE_N -le $(( PACKET_RX_LENGTH - PACKET_RX_LENGTH_BYTES - 2 )) ]; do # -2 = command + checksum
+            readUInt8 "RESTORE_BUFFER"
+           # writeUInt8 "PACKET_TX" "$VALUE_UINT8"
+            echo >&2 "Read $RESTORE_N $VALUE_UINT8 $(printf "%x" $VALUE_UINT8) odbuflen: ${#RESTORE_BUFFER}"
+            RESTORE_N=$(( RESTORE_N + 1))
+            done
+
+            DEBUG_SENDPACKETNC=1 sendPacket "$(( PRX_CMD_UINT8 + 1))" "$2"
+
+            readUInt8 "RESTORE_BUFFER" #checksum
+    done
+
 }
 
 isWriteCommand() {

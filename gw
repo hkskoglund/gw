@@ -1407,9 +1407,7 @@ while [ $# -gt 0 ]; do
                             printf "%s" "Overwrite current configuration for host $C_HOST (Y) ? "
                             read -r RESTORE_OVERWRITE_CURRENT
                             if [ "$RESTORE_OVERWRITE_CURRENT" = "Y" ]; then
-                              set -x
-                                RESTORE_OD_BUFFER=$(od -A n -t x1 -w$MAX_16BIT_UINT "$FILENAME_RESTORE")
-                                set +x
+                                restoreBackup "$FILENAME_RESTORE" "$C_HOST"
                             fi 
                             shift
                         fi

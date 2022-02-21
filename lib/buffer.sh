@@ -116,13 +116,14 @@ writeString()
 }
 
 readSlice()
-# read a slice of n bytes from buffer, set B1,...,Bn
+# read a slice of n bytes from buffer, 
 # $1 buffername, $2 number of bytes to read
+# set B1,...,Bn
  { 
 
     n=1
     while [ "$n" -le "$2" ]; do
-        readUInt8 "$1" "slice byte $n"
+        readUInt8 "$1" "read slice byte $n"
         eval "B$n=$VALUE_UINT8"
         if [ "$n" -le 6 ]; then # auto convert to hex for printing of MAC/broadcast command
         #shellcheck disable=SC2027
@@ -145,7 +146,6 @@ readUInt8()
 
     #if [ ${#OD_BUFFER} -ge 4 ]; then # 4 = max 3 spaces and 1 digit
 
-        set -- "OD_BUFFER"
     # for BYTE in $OD_BUFFER; do
     #        VALUE_UINT8=$((BYTE))
     #        OD_BUFFER=${OD_BUFFER#*"$BYTE"} #  # - remove shortest prefix pattern
@@ -158,7 +158,7 @@ readUInt8()
    # else
     #    return "$ERROR_OD_BUFFER_EMPTY"
     #fi
-    unset BYTE readuint_buffername readuint8_info
+    unset BYTE readuint8_buffername readuint8_info
 }
 
 readInt8() 
