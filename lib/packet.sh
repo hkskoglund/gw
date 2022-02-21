@@ -29,21 +29,22 @@ sendPacket()
     fi
 
      #init new packet for simple read command without body
-    if [ "$1" -eq "$CMD_BROADCAST" ] ||\
+    if  [ "$1" -eq "$CMD_BROADCAST" ] ||\
         [ "$1" -eq "$CMD_LIVEDATA" ] ||\
         [ "$1" -eq "$CMD_READ_CALIBRATION" ] ||\
-        [ "$1" -eq "$CMD_READ_CUSTOMIZED" ] ||\
         [ "$1" -eq "$CMD_READ_ECOWITT_INTERVAL" ] ||\
-        [ "$1" -eq "$CMD_READ_MAC" ] ||\
+        [ "$1" -eq "$CMD_READ_WUNDERGROUND" ] ||\
+        [ "$1" -eq "$CMD_READ_WOW" ] ||\
+        [ "$1" -eq "$CMD_READ_WEATHERCLOUD" ] ||\
+        [ "$1" -eq "$CMD_READ_CUSTOMIZED" ] ||\
         [ "$1" -eq "$CMD_READ_PATH" ] ||\
+        [ "$1" -eq "$CMD_READ_MAC" ] ||\
         [ "$1" -eq "$CMD_READ_RAINDATA" ] ||\
         [ "$1" -eq "$CMD_READ_SENSOR_ID" ] ||\
         [ "$1" -eq "$CMD_READ_SENSOR_ID_NEW" ] ||\
         [ "$1" -eq "$CMD_READ_SYSTEM" ] ||\
-        [ "$1" -eq "$CMD_READ_VERSION" ] ||\
-        [ "$1" -eq "$CMD_READ_WEATHERCLOUD" ] ||\
-        [ "$1" -eq "$CMD_READ_WOW" ]; then
-        newPacket "$1"
+        [ "$1" -eq "$CMD_READ_VERSION" ]; then
+             newPacket "$1"
     fi
 
    if ! sendPacketnc "$@"; then # $@ each arg expands to a separate word
@@ -70,8 +71,6 @@ sendPacketnc()
     timeout_nc=0.05
     timeout_udp_broadcast=0.236 # timeout selected based on udp port scanning 254 hosts in 60s (60s/254=0.236s)
     useTimeout=0
-
-
 
     createPacketTX "$1"
 
@@ -165,7 +164,9 @@ sendPacketnc()
             echo >&2 "Sending packet $COMMAND_NAME to $2:$port"
        fi 
 
+       #set -x
        od_buffer=$(eval "$cmdstr" )
+       #set +x
        #maybe use: https://stackoverflow.com/questions/1550933/catching-error-codes-in-a-shell-pipe
        if [ -z "$3" ]; then
             parsePacket "$od_buffer"
@@ -182,8 +183,10 @@ sendPacketnc()
 }
 
 newPacket()
-# creates new packet, set PACKET_TX_CMD and PACKET_TX_PREAMLE="255 255", reset PACKET_TX_BODY
+# creates new packet
 # $1 command 
+# set: PACKET_TX_CMD
+# set: PACKET_TX_PREAMLE="255 255"
 {
     if [ -z "$1" ]; then
         echo >&2 Error: no command given to newPacket
@@ -195,9 +198,10 @@ newPacket()
     getCommandName "$PACKET_TX_CMD"
 
     PACKET_TX_PREAMBLE="255 255"
-    unset PACKET_TX_BODY
+    unset PACKET_TX PACKET_TX_LENGTH PACKET_TX_ESCAPE PACKET_TX_BODY PACKET_TX_BODY_LENGTH
 
     [ $DEBUG_PACKET -eq 1 ] && echo >&2 newPacket command "$1" "$COMMAND_NAME"
+   #set | grep PACKET
 }
 
 getPacketLength()

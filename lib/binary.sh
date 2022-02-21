@@ -924,7 +924,11 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
     
 }
 
-parsePacket() {
+parsePacket()
+# main parser, distributes parsing to other functions for each packet 
+# $1 od buffer
+# set PACKET_RX_LENGTH = length of received packet
+{
    
     EXITCODE_PARSEPACKET=0
    
@@ -960,7 +964,7 @@ parsePacket() {
         PACKET_RX_LENGTH=$((B4))
     fi
 
-    [ "$DEBUG" -eq 1 ] && echo >&2 "RX PACKET LENGTH $PACKET_RX_LENGTH"
+    [ "$DEBUG" -eq 1 ] &&  echo >&2 "RX PACKET LENGTH $PACKET_RX_LENGTH"
 
     if isWriteCommand "$PRX_CMD_UINT8"; then
         parseResult

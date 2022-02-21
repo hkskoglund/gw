@@ -1374,7 +1374,7 @@ while [ $# -gt 0 ]; do
                             IFS=' '
                             #[ $DEBUG -eq 1 ] &&
                             echo >&2 "$(date) Backup started to $FILENAME_BACKUP"
-                            for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND $CMD_READ_SENSOR_ID_NEW; do
+                            for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND ; do
                                 getCommandName "$cmd"
                                 if sendPacket $cmd "$C_HOST" "$FILENAME_BACKUP"; then
                                      # [ $DEBUG -eq 1 ] &&
@@ -1404,7 +1404,7 @@ while [ $# -gt 0 ]; do
                             shift
                         else
                             FILENAME_RESTORE="$2"
-                            printf "%s" "Are you sure you want to overwrite current configuration for host $C_HOST (Y) ? "
+                            printf "%s" "Overwrite current configuration for host $C_HOST (Y) ? "
                             read -r RESTORE_OVERWRITE_CURRENT
                             if [ "$RESTORE_OVERWRITE_CURRENT" = "Y" ]; then
                               set -x
