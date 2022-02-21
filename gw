@@ -1365,24 +1365,55 @@ while [ $# -gt 0 ]; do
 
     case $KEY in
 
-       -b | --backup)
-                        FILENAME_BACKUP='backup.hex'
-                        IFS=' '
-                        #[ $DEBUG -eq 1 ] &&
-                         echo >&2 "$(date) Backup started to $FILENAME_BACKUP"
-                        for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND; do
-                            sendPacket $cmd "$C_HOST" "$FILENAME_BACKUP"
-                        done
-                        #[ $DEBUG -eq 1 ] &&
-                         echo >&2 "$(date) Backup stopped"
+       -b | --backup)   if [ -z "$C_HOST" ]; then
+                             echo >&2 Error: No host
+                            EXITCODE_MAIN=$ERROR_NO_HOST_SPECIFIED
+                            shift
+                        else
+                            FILENAME_BACKUP='backup.hex'
+                            IFS=' '
+                            #[ $DEBUG -eq 1 ] &&
+                            echo >&2 "$(date) Backup started to $FILENAME_BACKUP"
+                            for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND $CMD_READ_SENSOR_ID_NEW; do
+                                getCommandName "$cmd"
+                                if sendPacket $cmd "$C_HOST" "$FILENAME_BACKUP"; then
+                                     # [ $DEBUG -eq 1 ] &&
+                                     echo >&2 "OK $COMMAND_NAME"
+                                else
+                                   echo >&2 "FAILED $COMMAND_NAME, error code: $?"
+                                fi
+                               
+                            done
+                            #[ $DEBUG -eq 1 ] &&
+                            echo >&2 "$(date) Backup stopped"
 
-                        unset cmd
-                        shift
+                            unset cmd FILENAME_BACKUP
+                            shift
+                        fi
                             
                     ;;
 
-      -r | --restore)
-                        :
+      -r | --restore)   # check for -g host
+                        if argEmptyOrOption "$2"; then
+                            echo >&2 Error: Please provide backup filename to restore
+                            shift
+                            EXITCODE_MAIN=$ERROR_INVALID_FILENAME
+                        elif [ -z "$C_HOST" ]; then
+                            echo >&2 Error: No host
+                            EXITCODE_MAIN=$ERROR_NO_HOST_SPECIFIED
+                            shift
+                        else
+                            FILENAME_RESTORE="$2"
+                            printf "%s" "Are you sure you want to overwrite current configuration for host $C_HOST (Y) ? "
+                            read -r RESTORE_OVERWRITE_CURRENT
+                            if [ "$RESTORE_OVERWRITE_CURRENT" = "Y" ]; then
+                              set -x
+                                RESTORE_OD_BUFFER=$(od -A n -t x1 -w$MAX_16BIT_UINT "$FILENAME_RESTORE")
+                                set +x
+                            fi 
+                            shift
+                        fi
+                        
                         ;;
 
        -v | --view) IFS=,

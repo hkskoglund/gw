@@ -91,9 +91,7 @@ sendPacketnc()
     fi
 
     if [ -n "$3" ]; then # append to backup file
-      set -x
       rxpipecmd="$rxpipecmd | tee -a \"$3\""
-      set +x
     fi
 
     port=$PORT_GW_TCP
@@ -171,8 +169,8 @@ sendPacketnc()
        #maybe use: https://stackoverflow.com/questions/1550933/catching-error-codes-in-a-shell-pipe
        if [ -z "$3" ]; then
             parsePacket "$od_buffer"
-       else
-            echo >> "$3" #append newline | 0xa
+      # else
+      #      echo >> "$3" #append newline | 0xa
         fi
 
        EXITCODE_SENDPACKETNC=$?
