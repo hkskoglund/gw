@@ -26,6 +26,7 @@ ERROR_INVALID_VALUE=24
 ERROR_INVALID_FILENAME=25
 ERROR_READ_BUFFER=26 # failed to read from buffer
 
+
 logErr()
 #$1 - 1=on,0=off
 {
