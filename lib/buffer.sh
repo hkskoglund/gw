@@ -306,7 +306,15 @@ readString()
 # $1 buffername, $2 debug info
  { 
    
-    readUInt8 "$1" "string length"
+    EXITCODE_BUFFER=0
+    read_buffername=$1
+    read_info=$2
+
+    if ! readUInt8 "$1" "string length"; then 
+        echo >&2 "Error: Unable to read string length from buffername: $1 info: $2"
+        return "$ERROR_READ_BUFFER"
+    fi    
+    
     len_uint8=$VALUE_UINT8
 
     unset VALUE_STRING_ESCAPE
@@ -315,25 +323,34 @@ readString()
     n=1
     while [ "$n" -le "$len_uint8" ]; do
 
-        readUInt8 "$1" "string byte $n"
-
-        convertHexToOctal "$VALUE_UINT8"
-        VALUE_STRING_ESCAPE="$VALUE_STRING_ESCAPE\\0$VALUE_OCTAL"
+        if readUInt8 "$1" "string byte $n"; then
+            convertHexToOctal "$VALUE_UINT8"
+            VALUE_STRING_ESCAPE="$VALUE_STRING_ESCAPE\\0$VALUE_OCTAL"
+        else
+            echo >&2 "Error: failed to read string byte $n"
+            EXITCODE_BUFFER=$ERROR_READ_BUFFER
+            break
+        fi
 
         n=$((n + 1))
 
     done
 
-    if [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" -eq 1 ]; then
-        #shellcheck disable=SC3045
-         printf -v VALUE_STRING "%b" "$VALUE_STRING_ESCAPE"
-    else
-       VALUE_STRING=$(printf "%b" "$VALUE_STRING_ESCAPE") # convert to string
-    fi
-   
+    if [ "$EXITCODE_BUFFER" -eq 0 ]; then
+
+        if [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" -eq 1 ]; then
+            #shellcheck disable=SC3045
+            printf -v VALUE_STRING "%b" "$VALUE_STRING_ESCAPE"
+        else
+        VALUE_STRING=$(printf "%b" "$VALUE_STRING_ESCAPE") # convert to string
+        fi
+     fi
+     
     [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "readString: $VALUE_STRING length: ${#VALUE_STRING}"
 
     unset len_uint8 n
+
+    return "$EXITCODE_BUFFER"
 }
 
 convertFloat8To2sComplement()
