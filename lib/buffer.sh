@@ -131,8 +131,7 @@ readSlice()
      read_buffername=$1
      read_info=$2
 
-    #[ $DEBUG_BUFFER -eq 1 ] &&
-     echo >&2 "readSlice buffername: $1, bytes: $2"
+    [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "readSlice buffername: $1, bytes: $2"
 
     n=1
     while [ "$n" -le "$2" ]; do
@@ -345,7 +344,7 @@ readString()
         VALUE_STRING=$(printf "%b" "$VALUE_STRING_ESCAPE") # convert to string
         fi
      fi
-     
+
     [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "readString: $VALUE_STRING length: ${#VALUE_STRING}"
 
     unset len_uint8 n
