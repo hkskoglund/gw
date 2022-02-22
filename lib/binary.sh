@@ -925,9 +925,8 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 }
 
 readPacketPreambleCommandLength()
-# init buffer, verify preamble = ff ff, read command and length
+# verify preamble = ff ff, read command and length
 # $1 buffername
-# set OD_BUFFER
 # set PACKET_RX_LENGTH
 # set EXITCODE_PARSEPACKET
 {
@@ -941,10 +940,7 @@ readPacketPreambleCommandLength()
 
     PRX_CMD_UINT8=$((B3))
     getCommandName "$PRX_CMD_UINT8"
-    { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" ] ; } && {
-       printf >&2 "< %-20s" "$COMMAND_NAME"
-       printBuffer >&2 "$1" 
-    }
+  
 
     #Packet length
     if [ "$PRX_CMD_UINT8" -eq "$CMD_BROADCAST" ] || [ "$PRX_CMD_UINT8" -eq "$CMD_LIVEDATA" ] || [ "$PRX_CMD_UINT8" -eq "$CMD_READ_SENSOR_ID_NEW" ]; then
@@ -980,6 +976,11 @@ parsePacket()
    if ! readPacketPreambleCommandLength "OD_BUFFER"; then
       return "$EXITCODE_PARSEPACKET"
    fi
+
+     { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" ] ; } && {
+       printf >&2 "< %-20s" "$COMMAND_NAME"
+       printBuffer >&2 "$OD_BUFFER_BACKUP" 
+    }
 
     if isWriteCommand "$PRX_CMD_UINT8"; then
         parseResult
@@ -1022,7 +1023,7 @@ parsePacket()
 }
 
 restoreBackup()
-# restore configuration from configuration backup file
+# restore configuration from backup file
 # $1 filename
 # $2 host
 {
