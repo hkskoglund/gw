@@ -67,6 +67,7 @@ getCommandName()
         "$CMD_WRITE_SYSTEM")            COMMAND_NAME='write system' ;;
         "$CMD_READ_CALIBRATION")        COMMAND_NAME='read calibration' ;;
         "$CMD_WRITE_CALIBRATION")       COMMAND_NAME='write calibration' ;;
+        *)                              COMMAND_NAME="unknown command dec: $1" ;;
     esac
     
     if [ -z "$COMMAND_NAME" ]; then

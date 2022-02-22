@@ -240,18 +240,16 @@ checksum()
 }
 
 checksumPacketTX()
-# calculates packet chekcum
+# calculates packet chekcum and set final packet tx
 # $1 command
 # set PACKET_TX
  {
 
-      #[ "$DEBUG_PACKET" -eq 1 ] &&  
-      echo >&2 "checksumPacketTX: START command: $1 PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
+    [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 "checksumPacketTX: START command: $1 PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
 
     getPacketLength "$PACKET_TX_BODY"
     PACKET_TX_BODY_LENGTH=$((VALUE_LENGTH + 2)) # at least 2 byte for (length + checksum bytes)
     
-   
     if [ "$PACKET_TX_CMD" -eq "$CMD_BROADCAST" ] || [ "$PACKET_TX_CMD" -eq "$CMD_WRITE_SSID" ]; then # 2 byte length 
         PACKET_TX_BODY_LENGTH=$(( PACKET_TX_BODY_LENGTH + 1 ))
         PACKET_TX_LENGTH=" $(( ((PACKET_TX_BODY_LENGTH + 1) & 0xff00) >> 8 )) $(( (PACKET_TX_BODY_LENGTH + 1) & 0xff ))"
@@ -271,8 +269,7 @@ checksumPacketTX()
     PACKET_TX_BODY="$PACKET_TX_BODY $VALUE_CHECKSUM"
     PACKET_TX="$PACKET_TX_PREAMBLE $PACKET_TX_BODY" #ff ff ...
 
-    #[ "$DEBUG_PACKET" -eq 1 ] && 
-    echo >&2 "checksumPacketTX: END PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
+    [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 "checksumPacketTX: END PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
 }
 
 createPacketTX()

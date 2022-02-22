@@ -7,14 +7,20 @@ SHELL_SUPPORT_BULTIN_PRINTF_VOPT=${SHELL_SUPPORT_BULTIN_PRINTF_VOPT:=0}
 newBuffer() 
 # initialize new buffer
 # $1 buffername, $2 value
+# $1_HEAD index of current read position
 {
+    EXITCODE_BUFFER=0
+
     if [ -n "$1" ]; then
-        eval "$1=\"$2\""
-        [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "init buffer name: $1, value: $2"
+        eval "$1=\"$2\" $1_HEAD=1"
+        
+        [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "new buffer; buffername: $1, value: $2"
     else
         [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "Error: no buffer name"
-        return 1
+        EXITCODE_BUFFER="$ERROR_READ_BUFFER"
     fi
+
+    return "$EXITCODE_BUFFER"
 
 }
 
@@ -121,57 +127,78 @@ readSlice()
 # set B1,...,Bn
 # set B1HEX,...,B6HEX
  { 
+     EXITCODE_BUFFER=0
+     read_buffername=$1
+     read_info=$2
 
     #[ $DEBUG_BUFFER -eq 1 ] &&
-     echo >&2 "readSlice buffername: $1, readbytes: $2"
+     echo >&2 "readSlice buffername: $1, bytes: $2"
 
     n=1
     while [ "$n" -le "$2" ]; do
-        readUInt8 "$1" "read slice byte $n"
-        eval "B$n=$VALUE_UINT8"
-        if [ "$n" -le 6 ]; then # 
-            #shellcheck disable=SC2027
-           eval "convertUInt8ToHex \"\$B$n\"; B"$n"HEX=\$VALUE_UINT8_HEX"
+        if readUInt8 "$1" "read slice byte $n"; then
+            eval "B$n=$VALUE_UINT8"
+            if [ "$n" -le 6 ]; then # 
+                #shellcheck disable=SC2027
+            eval "convertUInt8ToHex \"\$B$n\"; B"$n"HEX=\$VALUE_UINT8_HEX"
+            fi
+        else
+           echo >&2 "Error: Unable to read slice from buffername: $read_buffername, info: $read_info"
+           EXITCODE_BUFFER=$ERROR_READ_BUFFER
         fi
         n=$((n + 1))
     done
 
     unset n
+    return "$EXITCODE_BUFFER"
 }
 
 readUInt8()
-# read unsigned 8-bit int from space delimited buffer of decimal numbers, removes uint in front of buffer and sets VALUE_UINT8
+# read unsigned 8-bit int from space delimited buffer of decimal numbers, removes uint in front of buffer/destructive
 # $1 buffername, $2 debug info
+# set VALUE_UINT8
  {
-    readuint8_buffername="$1"
-    readuint8_info="$2"
+     EXITCODE_BUFFER=0
+
+    read_buffername="$1"
+    read_info="$2"
 
     unset VALUE_UINT8
 
-    #if [ ${#OD_BUFFER} -ge 4 ]; then # 4 = max 3 spaces and 1 digit
-
-    # for BYTE in $OD_BUFFER; do
-    #        VALUE_UINT8=$((BYTE))
-    #        OD_BUFFER=${OD_BUFFER#*"$BYTE"} #  # - remove shortest prefix pattern
-    #        break
-    #    done
     IFS=" "
-    eval "for BYTE in \$$1; do VALUE_UINT8=\$((BYTE)); $1=\${$1#*\"\$BYTE\"}; break; done " # # = remove shortest prefix
-    # positional parameter $2 is destroyed? only $1 available
-     [ "$DEBUG_BUFFER" -eq 1 ] && [ -n "$VALUE_UINT8" ] && echo >&2 readUInt8 buffername: "$readuint8_buffername"  uint8: "$VALUE_UINT8" info: "$readuint8_info"
+   
+    eval set -- "\$$1"
+    VALUE_UINT8=$1
+    shift
+    eval "$read_buffername"=\""$*"\"
+    if [ -z "$VALUE_UINT8" ]; then
+      echo >&2 Error: Unable to read uint8 from buffer "$read_buffername"
+      EXITCODE_BUFFER=$ERROR_READ_BUFFER
+    fi
 
-   # else
-    #    return "$ERROR_OD_BUFFER_EMPTY"
-    #fi
+    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readUInt8 buffername: "$read_buffername" length: $#  uint8: "$VALUE_UINT8" info: "$read_info" 
+
     unset BYTE readuint8_buffername readuint8_info
+    return "$EXITCODE_BUFFER"
 }
 
 readInt8() 
 # read signed 8-bit int, 8-bit=sign bit,sets VALUE_INT8
 # $1 buffername, $2 debug info
 {
-    readUInt8 "$1" "$2"
-    VALUE_INT8=$((-1 * (VALUE_UINT8 >> 7) * 0x80 + (VALUE_UINT8 & 0x7f)))
+    EXITCODE_BUFFER=0
+    read_buffername=$1
+    read_info=$2
+
+    if readUInt8 "$1" "$2"; then
+        VALUE_INT8=$((-1 * (VALUE_UINT8 >> 7) * 0x80 + (VALUE_UINT8 & 0x7f)))
+    else
+      echo >&2 "Error: Unable to read int8 from buffername $read_buffername"
+      EXITCODE_BUFFER=$ERROR_READ_BUFFER
+    fi
+
+    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readInt8 buffername: "$read_buffername" bytelength: $#  int8: "$VALUE_INT8" info: "$read_info" 
+
 }
 
 readUInt16BE() 
@@ -179,59 +206,97 @@ readUInt16BE()
 # $1 buffername, $2 debug info
 {
     unset VALUE_UINT16BE
+    EXITCODE_BUFFER=0
+    read_buffername=$1
+    read_info=$2
 
-    readUInt8 "$1" "uint16 $2 msb"
-    msb=$VALUE_UINT8
-    readUInt8 "$1" "uint16 $2 lsb"
-    VALUE_UINT16BE=$(((msb << 8) | VALUE_UINT8))
-    unset msb
-}
-
-readUInt32BE()
-# read unsigned 32-bit int, set VALUE_UINT32BE
-{
-    unset VALUE_UINT32BE
-
-    if [ ${#OD_BUFFER} -ge 19 ]; then
-        readUInt8 OD_BUFFER "uint32 $2 msb"
-        msb=$VALUE_UINT8
-
-        readUInt8 OD_BUFFER "uint32 $2 lsb"
-        lsb=$VALUE_UINT8
-       
-        readUInt8 OD_BUFFER "uint32 $2 msb2"
-        msb2=$VALUE_UINT8
-       
-        readUInt8 OD_BUFFER "uint32 $2 lsb2"
-        lsb2=$VALUE_UINT8
-
-        VALUE_UINT32BE=$(((msb << 24) | (lsb << 16) | (msb2 << 8) | lsb2))
+     IFS=" "
+   
+    eval set -- "\$$1"
+    if [ -n "$1" ] && [ -n "$2" ]; then
+        VALUE_UINT16BE=$(( ($1 << 8) | $2 ))
+        shift 2
+        eval "$read_buffername"=\""$*"\"
     else
-        return "$ERROR_OD_BUFFER_EMPTY"
+       echo >&2 "Error: Unable to read uin16be from buffername $read_buffername msb: $1 lsb: $2"
+       EXITCODE_BUFFER=$ERROR_READ_BUFFER
     fi
 
-    unset msb lsb msb2 lsb2
+        [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readUInt16BE buffername: "$read_buffername" bytelength: $#  uint16: "$VALUE_UINT16BE" info: "$read_info" 
+    
+    return "$EXITCODE_BUFFER"
 }
 
 readInt16BE() 
-# read signed 16-bit int, 2's complement big endian, msb is the sign bit, set VALUE_INT16BE
+# read signed 16-bit int, 2's complement big endian, msb is the sign bit 
 # Converting from two's complement representation https://en.wikipedia.org/wiki/Two%27s_complement
 # $1 buffername, $2 debug info
+# set VALUE_INT16BE
 { 
-    #VALUE_INT16BE_HEX=$hexstr
+    unset VALUE_INT16BE
     
-    readUInt16BE "$1" "$2"
+    EXITCODE_BUFFER=0
 
-    VALUE_INT16BE=$((-1 * (VALUE_UINT16BE >> 15) * 32768 + (VALUE_UINT16BE & 32767)))
+    read_buffername=$1
+    read_info=$2
+
+    if readUInt16BE "$1" "$2"; then
+        VALUE_INT16BE=$((-1 * (VALUE_UINT16BE >> 15) * 32768 + (VALUE_UINT16BE & 32767)))
+    else
+        echo >&2 "Error: Unable to read int16be from buffername $read_buffername $read_info"
+        EXITCODE_BUFFER=$ERROR_READ_BUFFER
+    fi
+
+    return "$EXITCODE_BUFFER"
+
+}
+
+readUInt32BE()
+# read unsigned 32-bit int
+# set VALUE_UINT32BE
+{
+    unset VALUE_UINT32BE
+
+    EXITCODE_BUFFER=0
+    read_buffername=$1
+    read_info=$2
+
+     IFS=" "
+   
+    eval set -- "\$$1"
+    if [ -n "$1" ] && [ -n "$2" ] && [ -n "$3" ] && [ -n "$4" ]; then
+        VALUE_UINT32BE=$((($1 << 24) | ($2 << 16) | ($3 << 8) | $4))
+        shift 4
+        eval "$read_buffername"=\""$*"\"
+    else
+       echo >&2 "Error: Unable to read uint32be from buffername $read_buffername info: $read_info msb: $1 lsb: $2 msb2: $3 lsb2: $4"
+       EXITCODE_BUFFER=$ERROR_READ_BUFFER
+    fi
+
+    return "$EXITCODE_BUFFER"
+
 }
 
 readInt32BE()
-# read signed 32-bit int, 2's complement big endian, msb is the sign bit, set VALUE_UINT32BE
+# read signed 32-bit int, 2's complement big endian, msb is the sign bit
 # $1 buffername, $2 debug info
+# set VALUE_UINT32BE
 { 
-    readUInt32BE "$1" "$2"
-    VALUE_INT32BE=$((-1 * (VALUE_UINT32BE >> 31) * 0x80000000 + (VALUE_UINT32BE & 0x7fffffff)))
-    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 "readInt32BE unsigned 32-bit $VALUE_UINT32BE to signed 32-bit $VALUE_INT32BE"
+    unset VALUE_INT32BE
+    EXITCODE_BUFFER=0
+    read_buffername=$1
+    read_info=$2
+
+    if readUInt32BE "$1" "$2"; then
+        VALUE_INT32BE=$((-1 * (VALUE_UINT32BE >> 31) * 0x80000000 + (VALUE_UINT32BE & 0x7fffffff)))
+    else
+        echo >&2 "Error: Unable to read int32be from buffername $read_buffername info: $read_info"
+        EXITCODE_BUFFER=$ERROR_READ_BUFFER
+    fi
+
+    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 "readInt32BE unsigned 32-bit $VALUE_UINT32BE signed 32-bit $VALUE_INT32BE"
+
+    return "$EXITCODE_BUFFER"
 }
 
 readString()

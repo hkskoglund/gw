@@ -1122,13 +1122,11 @@ processCommand()
 
             ;;
 
-        reboot)
-            echo "REBOOTING..."
+        reboot) 
             sendPacket $CMD_REBOOT "$C_HOST"
             ;;
 
         mac)
-
             sendPacket $CMD_READ_MAC "$C_HOST"
             ;;
 

@@ -28,6 +28,8 @@ parseResult() {
      #   echo >&2 "$COMMAND_NAME OK"
     elif [ "$write_result" -eq 1 ]; then
         echo >&2 "$COMMAND_NAME FAIL"
+    else
+        echo >&2 "$COMMAND_NAME errorcode: $write_result"
     fi
 
     unset write_result
@@ -277,19 +279,19 @@ rain year  $ry $UNIT_RAIN"
 
 parseRaindata() {
 
-    readUInt32BE
+    readUInt32BE "OD_BUFFER" "rainrate"
     C_RAINRATE=$VALUE_UINT32BE
 
-    readUInt32BE
+    readUInt32BE "OD_BUFFER" "raindaily"
     C_RAINDAILY=$VALUE_UINT32BE
 
-    readUInt32BE
+    readUInt32BE "OD_BUFFER" "rainweek"
     C_RAINWEEK=$VALUE_UINT32BE
 
-    readUInt32BE
+    readUInt32BE "OD_BUFFER" "rainmonth"
     C_RAINMONTH=$VALUE_UINT32BE
 
-    readUInt32BE
+    readUInt32BE "OD_BUFFER" "rainyear"
     C_RAINYEAR=$VALUE_UINT32BE
 
     printRaindata
@@ -437,7 +439,7 @@ parseSensorIdNew()
         readUInt8  OD_BUFFER "sensor type"          #type
         stype=$VALUE_UINT8
        
-        readUInt32BE         #id
+        readUInt32BE OD_BUFFER "sensor id"        #id
         SID=$VALUE_UINT32BE
 
         readUInt8  OD_BUFFER "sensor battery"
@@ -526,7 +528,7 @@ parseSystem() {
         C_SYSTEM_SENSORTYPE_STATE="WH65"
     fi
 
-    readUInt32BE
+    readUInt32BE "OD_BUFFER" "system utc"
 
     C_SYSTEM_UTC=$VALUE_UINT32BE
     C_SYSTEM_UTC_STATE="$(date -u -d @"$VALUE_UINT32BE" +'%F %T')"
@@ -666,7 +668,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_LIGHT" ]; then
 
-            readUInt32BE
+            readUInt32BE OD_BUFFER "light"
             export LIVEDATA_LIGHT_UINT32="$VALUE_UINT32BE"
             convertLightLivedata "$LIVEDATA_LIGHT_UINT32"
             export LIVEDATA_LIGHT="$VALUE_SCALE10_FLOAT"
@@ -740,14 +742,14 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_RAINMONTH" ]; then
 
-            readUInt32BE
+            readUInt32BE "OD_BUFFER" "rainmonth"
             export LIVEDATA_RAINMONTH_UIN32="$VALUE_UINT32BE"
             convertScale10ToFloat "$VALUE_UINT32BE"
             export LIVEDATA_RAINMONTH="$VALUE_SCALE10_FLOAT"
 
         elif [ "$ldf" -eq "$LDF_RAINYEAR" ]; then
 
-            readUInt32BE
+            readUInt32BE "OD_BUFFER" "rainyear"
             export LIVEDATA_RAINYEAR_UINT32="$VALUE_UINT32BE"
             convertScale10ToFloat "$VALUE_UINT32BE"
             export LIVEDATA_RAINYEAR="$VALUE_SCALE10_FLOAT"
@@ -883,7 +885,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -ge "$LDF_LIGHTNING_TIME" ]; then
 
-            readUInt32BE
+            readUInt32BE "OD_BUFFER" "lightning type"
             export LIVEDATA_LIGHTNING_TIME="$VALUE_UINT32BE"
             getDateUTC "$LIVEDATA_LIGHTNING_TIME"
             export LIVEDATA_LIGHTNING_TIME_UTC="$VALUE_DATE_UTC"
@@ -891,7 +893,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -ge "$LDF_LIGHTNING_POWER" ]; then
 
-            readUInt32BE
+            readUInt32BE "OD_BUFFER" "lightning power"
             export LIVEDATA_LIGHTNING_POWER="$VALUE_UINT32BE"
 
         elif [ "$ldf" -ge "$LDF_LEAF_WETNESS_CH1" ] && [ "$ldf" -le "$LDF_LEAF_WETNESS_CH8" ]; then
@@ -941,7 +943,6 @@ readPacketPreambleCommandLength()
     PRX_CMD_UINT8=$((B3))
     getCommandName "$PRX_CMD_UINT8"
   
-
     #Packet length
     if [ "$PRX_CMD_UINT8" -eq "$CMD_BROADCAST" ] || [ "$PRX_CMD_UINT8" -eq "$CMD_LIVEDATA" ] || [ "$PRX_CMD_UINT8" -eq "$CMD_READ_SENSOR_ID_NEW" ]; then
         readUInt8 "$1" "2 byte packet length lsb"
