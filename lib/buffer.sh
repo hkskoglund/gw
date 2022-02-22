@@ -116,17 +116,21 @@ writeString()
 }
 
 readSlice()
-# read a slice of n bytes from buffer, 
+# read a slice of n bytes from buffer, first 6 bytes auto convert to hex for printing of MAC/broadcast command
 # $1 buffername, $2 number of bytes to read
 # set B1,...,Bn
+# set B1HEX,...,B6HEX
  { 
+
+    #[ $DEBUG_BUFFER -eq 1 ] &&
+     echo >&2 "readSlice buffername: $1, readbytes: $2"
 
     n=1
     while [ "$n" -le "$2" ]; do
         readUInt8 "$1" "read slice byte $n"
         eval "B$n=$VALUE_UINT8"
-        if [ "$n" -le 6 ]; then # auto convert to hex for printing of MAC/broadcast command
-        #shellcheck disable=SC2027
+        if [ "$n" -le 6 ]; then # 
+            #shellcheck disable=SC2027
            eval "convertUInt8ToHex \"\$B$n\"; B"$n"HEX=\$VALUE_UINT8_HEX"
         fi
         n=$((n + 1))
@@ -151,6 +155,7 @@ readUInt8()
     #        OD_BUFFER=${OD_BUFFER#*"$BYTE"} #  # - remove shortest prefix pattern
     #        break
     #    done
+    IFS=" "
     eval "for BYTE in \$$1; do VALUE_UINT8=\$((BYTE)); $1=\${$1#*\"\$BYTE\"}; break; done " # # = remove shortest prefix
     # positional parameter $2 is destroyed? only $1 available
      [ "$DEBUG_BUFFER" -eq 1 ] && [ -n "$VALUE_UINT8" ] && echo >&2 readUInt8 buffername: "$readuint8_buffername"  uint8: "$VALUE_UINT8" info: "$readuint8_info"

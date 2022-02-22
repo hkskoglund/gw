@@ -1027,7 +1027,9 @@ restoreBackup()
 # $1 filename
 # $2 host
 {
+    set -x
     RESTORE_BUFFER="$(od -A n -t u1 -w"$MAX_16BIT_UINT" "$1")"
+    set +x
 
     while [ ${#RESTORE_BUFFER} -gt 0 ]; do 
 
@@ -1037,12 +1039,12 @@ restoreBackup()
 
         echo >&2 "Restore $COMMAND_NAME dec: $PRX_CMD_UINT8 packet length:$PACKET_RX_LENGTH, packet length bytes: $PACKET_RX_LENGTH_BYTES"
 
-        newPacket "$(( PRX_CMD_UINT8 + 1))" # write command (read +1 )
+        newPacket "$(( PRX_CMD_UINT8 + 1))" # write command (read + 1 )
         RESTORE_N=1
         while [ $RESTORE_N -le $(( PACKET_RX_LENGTH - PACKET_RX_LENGTH_BYTES - 2 )) ]; do # -2 = command + checksum
             readUInt8 "RESTORE_BUFFER"
-           # writeUInt8 "PACKET_TX" "$VALUE_UINT8"
-            echo >&2 "Read $RESTORE_N $VALUE_UINT8 $(printf "%x" $VALUE_UINT8) odbuflen: ${#RESTORE_BUFFER}"
+          # writeUInt8 "PACKET_TX" "$VALUE_UINT8"
+            echo >&2 "Read RESTORE_N:$RESTORE_N uint8:$VALUE_UINT8 uint8hex:$(printf "%x" "$VALUE_UINT8") restorebuflen: ${#RESTORE_BUFFER}"
             RESTORE_N=$(( RESTORE_N + 1))
             done
 
