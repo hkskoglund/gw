@@ -1123,7 +1123,7 @@ processCommand()
             ;;
 
         reboot)
-
+            echo "REBOOTING..."
             sendPacket $CMD_REBOOT "$C_HOST"
             ;;
 

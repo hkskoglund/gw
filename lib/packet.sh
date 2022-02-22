@@ -28,7 +28,7 @@ sendPacket()
       return "$EXITCODE_SENDPACKET"
     fi
 
-     #init new packet for simple read command without body
+     #init new packet for simple command without body
     if  [ "$1" -eq "$CMD_BROADCAST" ] ||\
         [ "$1" -eq "$CMD_LIVEDATA" ] ||\
         [ "$1" -eq "$CMD_READ_CALIBRATION" ] ||\
@@ -43,7 +43,9 @@ sendPacket()
         [ "$1" -eq "$CMD_READ_SENSOR_ID" ] ||\
         [ "$1" -eq "$CMD_READ_SENSOR_ID_NEW" ] ||\
         [ "$1" -eq "$CMD_READ_SYSTEM" ] ||\
-        [ "$1" -eq "$CMD_READ_VERSION" ]; then
+        [ "$1" -eq "$CMD_READ_VERSION" ] ||\
+        [ "$1" -eq "$CMD_REBOOT" ] ||\
+        [ "$1" -eq "$CMD_RESET" ]  ; then
              newPacket "$1"
     fi
 
@@ -242,6 +244,10 @@ checksumPacketTX()
 # $1 command
 # set PACKET_TX
  {
+
+      #[ "$DEBUG_PACKET" -eq 1 ] &&  
+      echo >&2 "checksumPacketTX: START command: $1 PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
+
     getPacketLength "$PACKET_TX_BODY"
     PACKET_TX_BODY_LENGTH=$((VALUE_LENGTH + 2)) # at least 2 byte for (length + checksum bytes)
     
@@ -265,7 +271,8 @@ checksumPacketTX()
     PACKET_TX_BODY="$PACKET_TX_BODY $VALUE_CHECKSUM"
     PACKET_TX="$PACKET_TX_PREAMBLE $PACKET_TX_BODY" #ff ff ...
 
-    [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 "PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
+    #[ "$DEBUG_PACKET" -eq 1 ] && 
+    echo >&2 "checksumPacketTX: END PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
 }
 
 createPacketTX()
