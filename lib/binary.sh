@@ -11,8 +11,11 @@ parseVersion() {
 
 parseMAC() {
     
-    readSlice OD_BUFFER 6
-   
+    readSlice OD_BUFFER 6 "MAC"
+   IFS=' '
+   #shellcheck disable=SC2086
+   set -- $VALUE_SLICE
+   #todo: convert to hex
     C_MAC="$B1HEX:$B2HEX:$B3HEX:$B4HEX:$B5HEX:$B6HEX"
     echo "$C_MAC"
 }
@@ -47,13 +50,15 @@ printBroadcast() {
 
 parseBroadcast() {
 
-    readSlice OD_BUFFER 12
+    readSlice OD_BUFFER 12 "broadcast"
     #this is the station MAC/ip on local network.
     #Observation: when device is reset its annoncing hotspot accesspoint/AP with first byte of MAC changed
-
+    IFS=' '
+    #shellcheck disable=SC2086
+    set -- $VALUE_SLICE
     C_BROADCAST_MAC="$B1HEX:$B2HEX:$B3HEX:$B4HEX:$B5HEX:$B6HEX"
-    C_BROADCAST_IP="$B7.$B8.$B9.$B10"
-    C_BROADCAST_PORT="$(( (B11 << 8) | B12 ))"
+    C_BROADCAST_IP="$7.$8.$9.${10}"
+    C_BROADCAST_PORT="$(( (${11} << 8) | ${12} ))"
 
     readString OD_BUFFER "ssid version"
     #https://stackoverflow.com/questions/1469849/how-to-split-one-string-into-multiple-strings-separated-by-at-least-one-space-in
@@ -946,20 +951,27 @@ readPacketPreambleCommandLength()
 # set PACKET_RX_LENGTH
 # set EXITCODE_PARSEPACKET
 {
-    readSlice "$1" 4 # read into B1 B2 B3 B4
+    EXITCODE_PARSEPACKET=0
 
-    PRX_PREAMBLE="$B1 $B2"
+    readPacketPreambleCommandLength_buffername=$1
+    
+    readSlice "$1" 4 "packet preamble"
+
+    IFS=" " 
+    #shellcheck disable=SC2086
+    set -- $VALUE_SLICE
+    PRX_PREAMBLE="$1 $2"
     if [ "$PRX_PREAMBLE" != "255 255" ]; then
         EXITCODE_PARSEPACKET="$ERROR_PRX_PREAMBLE"
         return "$EXITCODE_PARSEPACKET"
     fi
 
-    PRX_CMD_UINT8=$((B3))
+    PRX_CMD_UINT8=$(($3))
     getCommandName "$PRX_CMD_UINT8"
   
     #Packet length
     if [ "$PRX_CMD_UINT8" -eq "$CMD_BROADCAST" ] || [ "$PRX_CMD_UINT8" -eq "$CMD_LIVEDATA" ] || [ "$PRX_CMD_UINT8" -eq "$CMD_READ_SENSOR_ID_NEW" ]; then
-        readUInt8 "$1" "2 byte packet length lsb"
+        readUInt8 "$readPacketPreambleCommandLength_buffername" "2 byte packet length lsb"
         PACKET_RX_LENGTH_BYTES=2
         PACKET_RX_LENGTH=$(((B4 << 8) & VALUE_UINT8))
     else
@@ -988,6 +1000,8 @@ parsePacket()
     OD_BUFFER_BACKUP="$1"
 
    if ! readPacketPreambleCommandLength "OD_BUFFER"; then
+      EXITCODE_PARSEPACKET=$?
+      echo >&2 "Error: Packet preamble failure, errorcode: $EXITCODE_PARSEPACKET"
       return "$EXITCODE_PARSEPACKET"
    fi
 
@@ -1041,9 +1055,7 @@ restoreBackup()
 # $1 filename
 # $2 host
 {
-    set -x
     RESTORE_BUFFER="$(od -A n -t u1 -w"$MAX_16BIT_UINT" "$1")"
-    set +x
 
     while [ ${#RESTORE_BUFFER} -gt 0 ]; do 
 

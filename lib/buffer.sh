@@ -129,34 +129,38 @@ writeString()
 }
 
 readSlice()
-# read a slice of n bytes from buffer, first 6 bytes auto convert to hex for printing of MAC/broadcast command
-# $1 buffername, $2 number of bytes to read
-# set B1,...,Bn
-# set B1HEX,...,B6HEX
+# read a slice of n bytes from buffer, start at $_HEAD position, first 6 bytes auto convert to hex for printing of MAC/broadcast command
+# $1 buffername, $2 number of bytes to read, $3 debug info
+# set VALUE_SLICE - new buffer of $2 bytes
  { 
+     unset VALUE_SLICE
+
      EXITCODE_BUFFER=0
      read_buffername=$1
-     read_info=$2
+     read_bytes=$2
+     read_info=$3
 
-    [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "readSlice buffername: $1, bytes: $2"
+    IFS=" "
+    eval set -- "\$$1"
+    next_index=$(( 1 + ${read_buffername}_HEAD )) # start reading at HEAD=0, positional index=1
 
-    n=1
-    while [ "$n" -le "$2" ]; do
-        if readUInt8 "$1" "read slice byte $n"; then
-            eval "B$n=$VALUE_UINT8"
-            if [ "$n" -le 6 ]; then # 
-                #shellcheck disable=SC2027
-            eval "convertUInt8ToHex \"\$B$n\"; B"$n"HEX=\$VALUE_UINT8_HEX"
-            fi
-        else
-           EXITCODE_BUFFER=$?
-           echo >&2 "Error: Unable to read slice from buffername: $read_buffername, info: $read_info"
-           break
-        fi
-        n=$((n + 1))
-    done
+    if [ $(( next_index + read_bytes )) -le  $#  ]; then
+        n=0
+        while [ "$n" -lt "$read_bytes" ]; do
+            eval VALUE_SLICE="\"$VALUE_SLICE \${$(( next_index + n ))}\"" "${read_buffername}_HEAD=$(( next_index + n ))"
+            n=$(( n + 1))
+            set +x
 
-    unset n
+        done
+    else
+      echo >&2 "Error: Attempt to read beyond buffer limit of $# bytes $read_buffername"
+      EXITCODE_BUFFER=$ERROR_READ_BUFFER
+    fi
+
+    [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "readSlice buffername: $read_buffername, bytes: $read_bytes, info: $read_info"
+
+    unset n next_index read_buffername read_bytes read_info
+
     return "$EXITCODE_BUFFER"
 }
 

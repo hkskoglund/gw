@@ -1548,8 +1548,8 @@ while [ $# -gt 0 ]; do
 
             C_HOST="$2"
             #sendPacket "$CMD_READ_MAC"  "$C_HOST">/dev/null
-            sendPacket "$CMD_READ_VERSION" "$C_HOST" >/dev/null 
-            sendPacket "$CMD_READ_SYSTEM" "$C_HOST" >/dev/null  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
+            #sendPacket "$CMD_READ_VERSION" "$C_HOST" >/dev/null 
+            #sendPacket "$CMD_READ_SYSTEM" "$C_HOST" >/dev/null  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
             #sendPacket "$CMD_READ_SENSOR_ID_NEW" "$C_HOST" >/dev/null
 
             shift 2
