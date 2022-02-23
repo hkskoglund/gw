@@ -434,7 +434,9 @@ parseSensorIdNew()
      LIVEDATA_SENSOR_COUNT_DISCONNECTED=0
      LIVEDATA_SENSOR_COUNT_DISABLED=0
 
-    while [ ${#OD_BUFFER} -ge 7 ]; do
+     parseSensorIdNew_max_length=$(( OD_BUFFER_LENGTH - 1 ))
+
+    while [ "$OD_BUFFER_HEAD" -lt $parseSensorIdNew_max_length ]; do
        
         readUInt8  OD_BUFFER "sensor type"          #type
         stype=$VALUE_UINT8
@@ -485,7 +487,7 @@ parseSensorIdNew()
 
     printAppendBuffer
 
-    unset stype signal battery printSensorHeader printSensorMatch
+    unset stype signal battery printSensorHeader printSensorMatch parseSensorIdNew_max_length
 }
 
 printSystem() 
@@ -567,11 +569,13 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
     LIVEDATA_SYSTEM_PROTOCOL=$LIVEDATA_PROTOCOL_ECOWITT_BINARY
     LIVEDATA_SYSTEM_PROTOCOL_LONG=$LIVEDATA_PROTOCOL_ECOWITT_BINARY_LONG
 
-    while [ "${#OD_BUFFER}" -gt 4 ]; do
+    parselivedata_max_length=$(( OD_BUFFER_LENGTH - 1 ))
 
-       # [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 Unparsed "$OD_BUFFER" length "${#OD_BUFFER}"
+    while [ "$OD_BUFFER_HEAD" -lt  $parselivedata_max_length ]; do
 
-        readUInt8 OD_BUFFER "livedata field"
+        [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "OD_BUFFER_HEAD $OD_BUFFER_HEAD OD_BUFFER_LENTTH $OD_BUFFER_LENGTH"
+
+        readUInt8 OD_BUFFER "livedata field id"
         ldf=$VALUE_UINT8
 
         convertUInt8ToHex "$ldf"
@@ -743,9 +747,10 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         elif [ "$ldf" -eq "$LDF_RAINMONTH" ]; then
 
             readUInt32BE "OD_BUFFER" "rainmonth"
-            export LIVEDATA_RAINMONTH_UIN32="$VALUE_UINT32BE"
+            export LIVEDATA_RAINMONTH_UINT32="$VALUE_UINT32BE"
             convertScale10ToFloat "$VALUE_UINT32BE"
             export LIVEDATA_RAINMONTH="$VALUE_SCALE10_FLOAT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:rainmonth type: uint32be $VALUE_UINT32BE rainmonth: $LIVEDATA_RAINMONTH"
 
         elif [ "$ldf" -eq "$LDF_RAINYEAR" ]; then
 
@@ -753,6 +758,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             export LIVEDATA_RAINYEAR_UINT32="$VALUE_UINT32BE"
             convertScale10ToFloat "$VALUE_UINT32BE"
             export LIVEDATA_RAINYEAR="$VALUE_SCALE10_FLOAT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:rainyear type: uint32be $VALUE_UINT32BE rainyear: $LIVEDATA_RAINYEAR"
 
         elif [ "$ldf" -eq "$LDF_RAINWEEK" ]; then
 
@@ -760,6 +766,8 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             export LIVEDATA_RAINWEEK_UINT16="$VALUE_UINT16BE"
             convertScale10ToFloat "$VALUE_UINT16BE"
             export LIVEDATA_RAINWEEK="$VALUE_SCALE10_FLOAT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:rainweek type: uint16be $VALUE_UINT16BE rainyear: $LIVEDATA_RAINWEEK"
+
 
         elif [ "$ldf" -eq "$LDF_RAINDAY" ]; then
 
@@ -767,6 +775,8 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             export LIVEDATA_RAINDAY_UINT16="$VALUE_UINT16BE"
             convertScale10ToFloat "$VALUE_UINT16BE"
             export LIVEDATA_RAINDAY="$VALUE_SCALE10_FLOAT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:rainday type: uint16be $VALUE_UINT16BE rainday: $LIVEDATA_RAINDAY"
+
 
         elif [ "$ldf" -eq "$LDF_RAINEVENT" ]; then
 
@@ -774,6 +784,8 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             export LIVEDATA_RAINEVENT_UINT16="$VALUE_UINT16BE"
             convertScale10ToFloat "$VALUE_UINT16BE"
             export LIVEDATA_RAINEVENT="$VALUE_SCALE10_FLOAT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:rainevent type: uint16be $VALUE_UINT16BE rainevent: $LIVEDATA_RAINWEEK"
+
 
         elif [ "$ldf" -eq "$LDF_RAINRATE" ]; then
 
@@ -781,6 +793,8 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             export LIVEDATA_RAINRATE_UINT16="$VALUE_UINT16BE"
             convertScale10ToFloat "$VALUE_UINT16BE"
             export LIVEDATA_RAINRATE="$VALUE_SCALE10_FLOAT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:rainrate type: uint16be $VALUE_UINT16BE rainerate: $LIVEDATA_RAINRATE"
+
 
         elif [ "$ldf" -ge "$LDF_LEAK_CH1" ] && [ "$ldf" -le "$LDF_LEAK_CH4" ]; then
             channel=$((ldf - LDF_LEAK_CH1 + 1))
@@ -909,10 +923,10 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
     done
 
-    if [ ${#OD_BUFFER} -eq 2 ] && [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ]; then
+    if [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ]; then
         readUInt8 OD_BUFFER "checksum"
         checksum=$VALUE_UINT8
-        echo >&2 checksum "$(printf "%02x" "$checksum")"
+        echo >&2 checksum "$(printf "%02x dec:%02u" "$checksum" "$checksum")"
     fi
 
     [ "$DEBUG_OPTION_TESTSENSOR" -eq 1 ] && injectTestSensorLivedata
@@ -922,7 +936,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
     printOrLogLivedata
 
-    unset ldf channel checksum DEBUG_FUNC
+    unset ldf channel checksum DEBUG_FUNC parselivedata_max_length
     
 }
 
@@ -961,7 +975,6 @@ readPacketPreambleCommandLength()
 parsePacket()
 # main parser, distributes parsing to other functions for each packet 
 # $1 od buffer
-# set PACKET_RX_LENGTH = length of received packet
 {
      EXITCODE_PARSEPACKET=0
 

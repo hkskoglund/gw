@@ -1248,7 +1248,7 @@ processCommand()
         livedata | l)
 
             
-            sendPacket "$CMD_READ_SENSOR_ID_NEW" "$C_HOST" >/dev/null   #get battery and signal info as well
+           # sendPacket "$CMD_READ_SENSOR_ID_NEW" "$C_HOST" >/dev/null   #get battery and signal info as well
             
             if [ -z "$LOG_CMD" ]; then
 
