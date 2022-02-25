@@ -5,37 +5,100 @@ DEBUG_BUFFER=${DEBUG_BUFFER:=$DEBUG}
 SHELL_SUPPORT_BULTIN_PRINTF_VOPT=${SHELL_SUPPORT_BULTIN_PRINTF_VOPT:=0}
 ERROR_READ_BUFFER=${ERROR_READ_BUFFER:=1}
 
+# debug bash: set -o posix; set | grep GWBUFFER; set +o posix
+# https://unix.stackexchange.com/questions/3510/how-to-print-only-defined-variables-shell-and-or-environment-variables-in-bash
+
 newBuffer() 
 # initialize new buffer with space delimited decimal uint8 string
 # $1 buffername, $2 value
 # set $1_HEAD index of current read position (zero index)
 # set $1_LENGTH number of bytes
+# append $1 to GWBUFFER_NAMES to keep track of buffers
 {
     EXITCODE_BUFFER=0
-    read_buffername=$1
+
+    read_buffername=$1 # every buffer start with GWBUFFER
     read_buffervalue=$2
 
-    if [ -n "$read_buffername" ]; then
-        eval "$read_buffername=\"$read_buffervalue\" ${read_buffername}_HEAD=0"
-        IFS=' '
-        eval set -- "$read_buffervalue"
-        eval "${read_buffername}_LENGTH=$#"
+    unset buffer_index
 
-        [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "new buffer; buffername: $read_buffername, value: $read_buffervalue, length: $#"
-    else
-        [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "Error: no buffer name"
-        EXITCODE_BUFFER="$ERROR_READ_BUFFER"
-    fi
+    case $GWBUFFER_NAMES in
+        *$read_buffername*) [ $DEBUG_BUFFER -eq 1 ] && echo >&2 echo "newBuffer: overwrite $read_buffername"
+                             destroyBuffer "$read_buffername" #overwrite
+                            ;;
+    esac
+
+    eval "$read_buffername=\"$read_buffervalue\" ${read_buffername}_HEAD=0"
+
+    GWBUFFER_NAMES="$GWBUFFER_NAMES$read_buffername " #keep track of buffernames
+
+    IFS=' '
+    eval set -- "$read_buffervalue"
+    eval "${read_buffername}_LENGTH=$#"
+    buffer_index=0
+    while [ $buffer_index -lt $# ]; do
+        eval "${read_buffername}_$buffer_index=\${$(( buffer_index +1 ))}"
+        buffer_index=$(( buffer_index + 1 ))
+    done
+
+    [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "new buffer; buffername: $read_buffername, value: $read_buffervalue, length: $#"
+   
+
+    unset read_buffername read_buffervalue buffer_index
 
     return "$EXITCODE_BUFFER"
 
+}
+
+destroyBuffer()
+# unset buffer
+# $1 buffername
+{
+
+    EXITCODE_BUFFER=0
+    read_buffername=$1
+    [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "Destroying buffer $read_buffername"
+
+    case $GWBUFFER_NAMES in
+      *$1*)
+            GWBUFFER_NAMES=${GWBUFFER_NAMES#*"$read_buffername"*}
+            eval buflen=\$"${read_buffername}_LENGTH"
+            N=0
+            #shellcheck disable=SC2154
+            while [ $N -lt "$buflen" ]; do
+                unset "${read_buffername}_$N"
+                N=$(( N + 1))
+            done 
+            unset "${read_buffername}" "${read_buffername}_LENGTH" "${read_buffername}_HEAD" 
+
+
+            ;;
+       *)   echo >&2 "Error: Unknown buffername $1, known buffers $GWBUFFER_NAMES"
+                 EXITCODE_BUFFER=$ERROR_READ_BUFFER
+            ;;
+    esac
+
+    unset N buflen
+
+    return $EXITCODE_BUFFER
+}
+
+destroyAllBuffers()
+# unset all buffers
+{
+    IFS=' '
+    [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "Destroying all buffers $GWBUFFER_NAMES"
+    for buffername in $GWBUFFER_NAMES; do
+      destroyBuffer "$buffername"
+    done
+    unset buffername
 }
 
 writeUInt8()
 # write unsigned 8-bit int to buffer
 # $1 buffername, $2 unsigned 8-bit int, $3 debug info
  {
-    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt "$1" "$2" "$3"
+    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt buffername:"$1" uint8:"$2" info: "$3"
     eval "$1=\"\$$1 $2 \""
 }
 
@@ -44,7 +107,7 @@ writeInt8()
 # $1 buffername, $2 signed 8-bit int, $3 debug info
 {
     convertFloat8To2sComplement "$2"
-    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt "$1" "$2" 2complement: "$VALUE_UINT_2SCOMPLEMENT" "$3"
+    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt8 buffername:"$1" int8:"$2" 2complement: "$VALUE_UINT_2SCOMPLEMENT" info:"$3"
     writeUInt8 "$1" "$VALUE_UINT_2SCOMPLEMENT" 2complement
 }
 
@@ -52,7 +115,7 @@ writeUInt16BE()
 # write unsigned 16-bit int to buffer
 # $1 buffername, $2 unsigned 16-bit int, $3 debug info
  {
-    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt16BE "$1" "$2" "$3"
+    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt16BE buffername:"$1" uint16:"$2" info:"$3"
     eval "$1=\"\$$1 $(($2 >> 8)) $(($2 & 0xff)) \""
 }
 
@@ -61,7 +124,7 @@ writeInt16BE()
 # $1 buffername, $2 signed 16-bit int, $3 debug info
 {
     convertFloat16To2sComplement "$2"
-    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeInt16BE "$1" "$2" 2complement: "$VALUE_UINT_2SCOMPLEMENT" "$3"
+    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeInt16BE buffername:"$1" int16:"$2" 2complement: "$VALUE_UINT_2SCOMPLEMENT" info: "$3"
     writeUInt16BE "$1" "$VALUE_UINT_2SCOMPLEMENT"
 }
 
@@ -69,7 +132,7 @@ writeUInt32BE()
 # write unsigned 32-bit int to buffer
 # $1 buffername, $2 unsigned 32-bit int, $3 debug info
 {
-    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt32BE "$1" "$2" "$3"
+    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeUInt32BE buffername:"$1" uint32:"$2" info:"$3"
     eval "$1=\"\$$1 $(($2 >> 24)) $((($2 & 0xff0000) >> 16))  $((($2 & 0xff00) >> 8))  $(($2 & 0xff)) \""
 }
 
@@ -78,7 +141,7 @@ writeInt32BE()
 # $1 buffername, $2 signed 32-bit int, $3 debug info
 {
     convertFloat32To2sComplement "$2"
-        [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeInt32BE "$1" "$2" 2complement: "$VALUE_UINT_2SCOMPLEMENT" "$3"
+        [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo writeInt32BE buffername:"$1" int32:"$2" 2complement: "$VALUE_UINT_2SCOMPLEMENT" info:"$3"
 
     writeUInt32BE "$1" "$VALUE_UINT_2SCOMPLEMENT"
 }
@@ -129,37 +192,36 @@ writeString()
 }
 
 readSlice()
-# read a slice of n bytes from buffer, start at $_HEAD position, first 6 bytes auto convert to hex for printing of MAC/broadcast command
+# read a slice of n bytes from buffer, start at $_HEAD position
 # $1 buffername, $2 number of bytes to read, $3 debug info
 # set VALUE_SLICE - new buffer of $2 bytes
  { 
      unset VALUE_SLICE
 
      EXITCODE_BUFFER=0
-     read_buffername=$1
-     read_bytes=$2
-     read_info=$3
+     readslice_buffername=$1
+     readslice_byte_count=$2
+     readslice_info=$3
 
-    IFS=" "
-    eval set -- "\$$1"
-    next_index=$(( 1 + ${read_buffername}_HEAD )) # start reading at HEAD=0, positional index=1
-
-    if [ $(( next_index + read_bytes )) -le  $#  ]; then
-        n=0
-        while [ "$n" -lt "$read_bytes" ]; do
-            eval VALUE_SLICE="\"$VALUE_SLICE \${$(( next_index + n ))}\"" "${read_buffername}_HEAD=$(( next_index + n ))"
-            n=$(( n + 1))
-            set +x
-
-        done
+    readslice_N=1
+    eval readslice_head_index="\$${readslice_buffername}_HEAD" readslice_buffer_length="\$${readslice_buffername}_LENGTH"
+    #shellcheck disable=SC2154
+    if ! [ $((readslice_head_index + readslice_byte_count )) -le "$readslice_buffer_length" ]; then
+        echo >&2 "Error: readSlice: Attempt to read beyond buffer limit; buffername: $readslice_buffername, bufferlength: $buffer_length"
+        EXITCODE_BUFFER=$ERROR_READ_BUFFER
     else
-      echo >&2 "Error: Attempt to read beyond buffer limit of $# bytes $read_buffername"
-      EXITCODE_BUFFER=$ERROR_READ_BUFFER
+        while [ $readslice_N -le "$readslice_byte_count" ]; do
+            eval VALUE_SLICE="\"$VALUE_SLICE \$${readslice_buffername}_$readslice_head_index\""
+            readslice_head_index=$(( readslice_head_index + 1))
+            readslice_N=$(( readslice_N + 1 ))
+        done
+
+        eval "${readslice_buffername}_HEAD=$readslice_head_index"
     fi
+    
+    [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "readSlice buffername: $read_buffername, bytes: $readslice_byte_count, info: $readslice_info"
 
-    [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "readSlice buffername: $read_buffername, bytes: $read_bytes, info: $read_info"
-
-    unset n next_index read_buffername read_bytes read_info
+    unset readslice_N readslice_head_index readslice_byte_count readslice_buffername readslice_info readslice_bufferlength 
 
     return "$EXITCODE_BUFFER"
 }
@@ -169,29 +231,26 @@ readUInt8()
 # $1 buffername, $2 debug info
 # set VALUE_UINT8
  {
+
+    unset VALUE_UINT8
+
     EXITCODE_BUFFER=0
+    read_buffername=$1
+    read_info=$2
 
-    unset VALUE_UINT8 next_index
-
-    read_buffername="$1"
-    read_info="$2"
-
-    IFS=" "
-    eval set -- "\$$1"
-    next_index=$(( 1 + ${read_buffername}_HEAD )) # start reading at HEAD=0, positional index=1
-
-    if [ $next_index -le $# ]; then
-         eval VALUE_UINT8="\${$next_index}" "${read_buffername}_HEAD=$next_index" # read uint8, advance HEAD to next position
+    if readSlice "$1" 1 "$2"; then
+    #shellcheck disable=SC2086
+      IFS=' '
+      set -- $VALUE_SLICE
+      VALUE_UINT8=$1
     else
-      echo >&2 "Error: Attempt to read beyond buffer limit of $# bytes $read_buffername"
-      EXITCODE_BUFFER=$ERROR_READ_BUFFER
+      EXITCODE_BUFFER=$?
     fi
 
-    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readUInt8 buffername: "$read_buffername" length: $#  uint8: "$VALUE_UINT8" info: "$read_info" 
+    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readUInt8 buffername: "$read_buffername" uint8: "$VALUE_UINT8" info: "$read_info" 
 
-    unset BYTE readuint8_buffername readuint8_info next_index
+    return $EXITCODE_BUFFER
 
-    return "$EXITCODE_BUFFER"
 }
 
 readInt8() 
@@ -202,17 +261,16 @@ readInt8()
     unset VALUE_INT8
 
     EXITCODE_BUFFER=0
-
     read_buffername=$1
     read_info=$2
 
     if readUInt8 "$1" "$2"; then
         VALUE_INT8=$((-1 * (VALUE_UINT8 >> 7) * 0x80 + (VALUE_UINT8 & 0x7f)))
     else
-      EXITCODE_BUFFER=$?
+        EXITCODE_BUFFER=$?
     fi
 
-    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readInt8 buffername: "$read_buffername" bytelength: $#  int8: "$VALUE_INT8" info: "$read_info" 
+    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readInt8 buffername: "$read_buffername" int8: "$VALUE_INT8" info: "$read_info" 
 
     return $EXITCODE_BUFFER
 
@@ -223,30 +281,23 @@ readUInt16BE()
 # $1 buffername, $2 debug info
 # set VALUE_UINT16BE
 {
-    unset VALUE_UINT16BE next_index lsb_index msb lsb
+    unset VALUE_UINT16BE
 
     EXITCODE_BUFFER=0
-    
     read_buffername=$1
     read_info=$2
 
-     IFS=" "
-    eval set -- "\$$1"
-    next_index=$(( 1 + ${read_buffername}_HEAD )) # start reading at HEAD=0, positional index=1
-    lsb_index=$(( next_index + 1 ))
-    if [ $lsb_index -le $# ]; then 
-        eval msb="\${$next_index}" lsb="\${$((lsb_index))}" "${read_buffername}_HEAD=$lsb_index"
-        #shellcheck disable=SC2154
-        VALUE_UINT16BE=$(( msb << 8 | lsb ))
+    if readSlice "$1" 2 "$2"; then
+        IFS=" "
+        eval set -- "$VALUE_SLICE"
+  
+        VALUE_UINT16BE=$(( ($1 << 8 ) | $2 ))
     else
-        echo >&2 "Error: Attempt to read beyond buffer limit of $# bytes $read_buffername"
-       EXITCODE_BUFFER=$ERROR_READ_BUFFER
+      EXITCODE_BUFFER=$?
     fi
+  
+    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readUInt16BE buffername: "$read_buffername"  uint16: "$VALUE_UINT16BE" info: "$read_info" 
 
-    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readUInt16BE buffername: "$read_buffername" bytelength: $#  uint16: "$VALUE_UINT16BE" info: "$read_info" 
-
-     unset next_index lsb_index msb lsb
-    
     return "$EXITCODE_BUFFER"
 }
 
@@ -259,7 +310,6 @@ readInt16BE()
     unset VALUE_INT16BE
     
     EXITCODE_BUFFER=0
-
     read_buffername=$1
     read_info=$2
 
@@ -269,7 +319,7 @@ readInt16BE()
         EXITCODE_BUFFER=$?
     fi
 
-    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readInt16BE buffername: "$read_buffername" bytelength: $#  int16: "$VALUE_INT16BE" info: "$read_info" 
+    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readInt16BE buffername: "$read_buffername"  int16: "$VALUE_INT16BE" info: "$read_info" 
 
 
     return "$EXITCODE_BUFFER"
@@ -279,34 +329,24 @@ readInt16BE()
 readUInt32BE()
 # read unsigned 32-bit int
 # set VALUE_UINT32BE
+# $1 buffername, $2 debug info
 {
-    unset VALUE_UINT32BE next_index lsb_index msb2_index lsb2_index msb lsb msb2 lsb2
+    unset VALUE_UINT32BE
 
     EXITCODE_BUFFER=0
-
     read_buffername=$1
     read_info=$2
 
-    IFS=" "
-    eval set -- "\$$1"
-    
-    next_index=$(( 1 + ${read_buffername}_HEAD )) # start reading at HEAD=0, positional index=1
-    lsb_index=$(( next_index + 1 ))
-    msb2_index=$(( next_index + 2))
-    lsb2_index=$(( next_index + 3))
-
-    if [ $lsb2_index -le $# ]; then
-        eval msb="\${$next_index}" lsb="\${$((lsb_index))}" msb2="\${$msb2_index}" lsb2="\${$((lsb2_index))}" "${read_buffername}_HEAD=$lsb2_index"
-        VALUE_UINT32BE=$(( ( msb << 24 ) | ( lsb << 16) | (msb2 << 8) | lsb2 ))
+    if readSlice "$1" 4 "$2"; then
+        IFS=" "
+        eval set -- "$VALUE_SLICE"
+        
+        VALUE_UINT32BE=$(( ( $1 << 24 ) | ( $2 << 16) | ( $3 << 8) | $4 ))
     else
-       echo >&2 "Error: Attempt to read beyond buffer limit of $# bytes $read_buffername"
-       EXITCODE_BUFFER=$ERROR_READ_BUFFER
+        EXITCODE_BUFFER=$?
     fi
-    
-     unset next_index lsb_index msb2_index lsb2_index msb lsb msb2 lsb2
-
-    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 "readUInt32BE unsigned 32-bit $VALUE_UINT32BE"
-
+  
+    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 echo >&2 readUInt32BE buffername: "$read_buffername"  uint32: "$VALUE_UINT32BE" info: "$read_info" 
 
     return "$EXITCODE_BUFFER"
 
@@ -320,7 +360,6 @@ readInt32BE()
     unset VALUE_INT32BE
 
     EXITCODE_BUFFER=0
-    
     read_buffername=$1
     read_info=$2
 
@@ -330,7 +369,8 @@ readInt32BE()
         EXITCODE_BUFFER=$?
     fi
 
-    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 "readInt32BE unsigned 32-bit $VALUE_UINT32BE signed 32-bit $VALUE_INT32BE"
+    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 echo >&2 readInt32BE buffername: "$read_buffername"  int32: "$VALUE_INT32BE" info: "$read_info" 
+
 
     return "$EXITCODE_BUFFER"
 }
@@ -378,7 +418,7 @@ readString()
             #shellcheck disable=SC3045
             printf -v VALUE_STRING "%b" "$VALUE_STRING_ESCAPE"
         else
-        VALUE_STRING=$(printf "%b" "$VALUE_STRING_ESCAPE") # convert to string
+             VALUE_STRING=$(printf "%b" "$VALUE_STRING_ESCAPE") # convert to string
         fi
      fi
 

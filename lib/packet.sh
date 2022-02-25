@@ -45,7 +45,7 @@ sendPacket()
         [ "$1" -eq "$CMD_READ_SYSTEM" ] ||\
         [ "$1" -eq "$CMD_READ_VERSION" ] ||\
         [ "$1" -eq "$CMD_REBOOT" ] ||\
-        [ "$1" -eq "$CMD_RESET" ]  ; then
+        [ "$1" -eq "$CMD_WRITE_RESET" ]  ; then
              newPacket "$1"
     fi
 
@@ -119,9 +119,9 @@ sendPacketnc()
         # -N shutdown(2) the network socket after EOF on the input / from man nc - otherwise nc hangs
         nccmdstr="\"$NC_CMD\" -4 -N -w 1 $ncUDPOpt $2 $port" 
        
-       # if [ "$useTimeout" -eq 1 ]; then
-       #    nccmdstr="timeout $timeout_nc $nccmdstr"
-       # fi
+        #if [ "$useTimeout" -eq 1 ]; then
+        #   nccmdstr="timeout $timeout_nc $nccmdstr"
+        #fi
         
         cmdstr="printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd | $nccmdstr $rxpipecmd | $odcmdstr"
 

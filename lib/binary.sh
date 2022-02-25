@@ -56,18 +56,33 @@ parseBroadcast() {
     IFS=' '
     #shellcheck disable=SC2086
     set -- $VALUE_SLICE
-    C_BROADCAST_MAC="$B1HEX:$B2HEX:$B3HEX:$B4HEX:$B5HEX:$B6HEX"
+    N=1
+    unset C_BROADCAST_MAC
+    while [ $N -le 6 ]; do
+        eval convertUInt8ToHex "\${$N}"
+        if [ $N -le 5 ]; then
+            C_BROADCAST_MAC="$C_BROADCAST_MAC$VALUE_UINT8_HEX:" 
+        else
+            C_BROADCAST_MAC="$C_BROADCAST_MAC$VALUE_UINT8_HEX"
+        fi 
+        N=$(( N + 1 ))
+    done
+
+   #C_BROADCAST_MAC="$B1HEX:$B2HEX:$B3HEX:$B4HEX:$B5HEX:$B6HEX"
     C_BROADCAST_IP="$7.$8.$9.${10}"
     C_BROADCAST_PORT="$(( (${11} << 8) | ${12} ))"
 
     readString OD_BUFFER "ssid version"
     #https://stackoverflow.com/questions/1469849/how-to-split-one-string-into-multiple-strings-separated-by-at-least-one-space-in
     #shellcheck disable=SC2086
+    
     set -- $VALUE_STRING # -- assign words to positional parameters
     C_BROADCAST_SSID=$1
     C_BROADCAST_VERSION=$2
 
     printBroadcast
+
+    unset N
 }
 
 printEcowittInterval() {
