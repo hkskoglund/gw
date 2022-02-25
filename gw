@@ -230,13 +230,12 @@ copySystemToLivedata()
     LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT=$C_SYSTEM_TIMEZONE_AUTO_BIT
     LIVEDATA_SYSTEM_TIMEZONE_OFFSET_HOURS=$C_SYSTEM_TIMEZONE_OFFSET_HOURS
     LIVEDATA_SYSTEM_HOST=$C_HOST
-
-}
-
-copyVersionToLivedata()
-{
     LIVEDATA_SYSTEM_VERSION="$C_VERSION"
+    LIVEDATA_SYSTEM_MAC=$C_MAC
+
 }
+
+
 
 parseSystemOption()
 #format : t=wh65,tz=3,dst=1|on,auto=on|1'
@@ -771,17 +770,10 @@ processCalibrationOptions()
     unset expr calibration_intemp calibration_inhumi calibration_outtemp calibration_outhumi calibration_absoffset calibration_reloffset calibration_winddir DEBUG_CALIBRATION_OPTIONS IFS
 }
 
-copyConfigurationToLivedata()
-#copies low-level configuration variables to UI-level variables
-{
-    copyVersionToLivedata
-    copySystemToLivedata
-}
-
 printOrLogLivedata()
 {
     if [ $LIVEDATA_SYSTEM_PROTOCOL = $LIVEDATA_PROTOCOL_ECOWITT_BINARY ]; then
-         copyConfigurationToLivedata
+         copySystemToLivedata
     fi
 
     if [ -z "$LOG_CMD" ]; then
@@ -1547,10 +1539,10 @@ while [ $# -gt 0 ]; do
         -g | --gw)
 
             C_HOST="$2"
-            #sendPacket "$CMD_READ_MAC"  "$C_HOST">/dev/null
-            #sendPacket "$CMD_READ_VERSION" "$C_HOST" >/dev/null 
-            #sendPacket "$CMD_READ_SYSTEM" "$C_HOST" >/dev/null  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
-            #sendPacket "$CMD_READ_SENSOR_ID_NEW" "$C_HOST" >/dev/null
+            sendPacket "$CMD_READ_MAC"  "$C_HOST">/dev/null
+            sendPacket "$CMD_READ_VERSION" "$C_HOST" >/dev/null 
+            sendPacket "$CMD_READ_SYSTEM" "$C_HOST" >/dev/null  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
+            sendPacket "$CMD_READ_SENSOR_ID_NEW" "$C_HOST" >/dev/null
 
             shift 2
             ;;

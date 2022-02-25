@@ -9,14 +9,11 @@ parseVersion() {
     echo "$C_VERSION"
 }
 
-parseMAC() {
-    
+parseMAC() 
+{
     readSlice OD_BUFFER 6 "MAC"
-   IFS=' '
-   #shellcheck disable=SC2086
-   set -- $VALUE_SLICE
-   #todo: convert to hex
-    C_MAC="$B1HEX:$B2HEX:$B3HEX:$B4HEX:$B5HEX:$B6HEX"
+    setMAC "$VALUE_SLICE"
+    C_MAC=$VALUE_MAC
     echo "$C_MAC"
 }
 
@@ -48,6 +45,24 @@ printBroadcast() {
     #fi
 }
 
+setMAC()
+{
+     IFS=' '
+    #shellcheck disable=SC2086
+    set -- $1
+    N=1
+    
+    while [ $N -le 6 ]; do
+        eval convertUInt8ToHex "\${$N}"
+        if [ $N -le 5 ]; then
+            VALUE_MAC="$VALUE_MAC$VALUE_UINT8_HEX:" 
+        else
+            VALUE_MAC="$VALUE_MAC$VALUE_UINT8_HEX"
+        fi 
+        N=$(( N + 1 ))
+    done
+}
+
 parseBroadcast() {
 
     readSlice OD_BUFFER 12 "broadcast"
@@ -56,17 +71,8 @@ parseBroadcast() {
     IFS=' '
     #shellcheck disable=SC2086
     set -- $VALUE_SLICE
-    N=1
-    unset C_BROADCAST_MAC
-    while [ $N -le 6 ]; do
-        eval convertUInt8ToHex "\${$N}"
-        if [ $N -le 5 ]; then
-            C_BROADCAST_MAC="$C_BROADCAST_MAC$VALUE_UINT8_HEX:" 
-        else
-            C_BROADCAST_MAC="$C_BROADCAST_MAC$VALUE_UINT8_HEX"
-        fi 
-        N=$(( N + 1 ))
-    done
+    getMAC "$VALUE_SLICE"
+    C_BROADCAST_MAC=$VALUE_MAC
 
    #C_BROADCAST_MAC="$B1HEX:$B2HEX:$B3HEX:$B4HEX:$B5HEX:$B6HEX"
     C_BROADCAST_IP="$7.$8.$9.${10}"
@@ -320,13 +326,16 @@ parseRaindata() {
 getSensorNameShort()
 {
     case "$1" in
-        0) if [ "$C_SYSTEM_SENSORTYPE" -eq "$SYSTEM_SENSOR_TYPE_WH24" ]; then
-             SENSORNAME_WH='WH24'
-             SENSORNAME_SHORT='Weather Station'
+        0) if [ -n "$C_SYSTEM_SENSORTYPE" ]; then
+                if [ "$C_SYSTEM_SENSORTYPE" -eq "$SYSTEM_SENSOR_TYPE_WH24" ]; then
+                SENSORNAME_WH='WH24'
+                else
+                SENSORNAME_WH='WH65'
+                fi
             else
-              SENSORNAME_WH='WH65'
-              SENSORNAME_SHORT="Weather Station"
+              SENSORNAME_WH='WH??' # no system information, cannot determine WH24/WH65
             fi
+            SENSORNAME_SHORT='Weather Station'
             ;;
         1) SENSORNAME_WH='WH68'
            SENSORNAME_SHORT="Weather Station"
@@ -961,7 +970,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 }
 
 readPacketPreambleCommandLength()
-# verify preamble = ff ff, read command and length
+# verify preamble = ff ff, read command and packet length
 # $1 buffername
 # set PACKET_RX_LENGTH
 # set EXITCODE_PARSEPACKET
@@ -969,13 +978,15 @@ readPacketPreambleCommandLength()
     EXITCODE_PARSEPACKET=0
 
     readPacketPreambleCommandLength_buffername=$1
-    
+    eval realPacketLength="\$${readPacketPreambleCommandLength_buffername}_LENGTH"
+
     readSlice "$1" 4 "packet preamble"
 
     IFS=" " 
     #shellcheck disable=SC2086
-    set -- $VALUE_SLICE
+    set -- $VALUE_SLICE # $1= 255 $2=255, $3=command, $4 msb packet length, optional $5 lsb packet length
     PRX_PREAMBLE="$1 $2"
+
     if [ "$PRX_PREAMBLE" != "255 255" ]; then
         EXITCODE_PARSEPACKET="$ERROR_PRX_PREAMBLE"
         return "$EXITCODE_PARSEPACKET"
@@ -986,15 +997,25 @@ readPacketPreambleCommandLength()
   
     #Packet length
     if [ "$PRX_CMD_UINT8" -eq "$CMD_BROADCAST" ] || [ "$PRX_CMD_UINT8" -eq "$CMD_LIVEDATA" ] || [ "$PRX_CMD_UINT8" -eq "$CMD_READ_SENSOR_ID_NEW" ]; then
-        readUInt8 "$readPacketPreambleCommandLength_buffername" "2 byte packet length lsb"
+        readUInt8 "$readPacketPreambleCommandLength_buffername" "command name: $COMMAND_NAME dec: $PRX_CMD_UINT8 16-bit packet length msb: $4 lsb"
         PACKET_RX_LENGTH_BYTES=2
-        PACKET_RX_LENGTH=$(((B4 << 8) & VALUE_UINT8))
+        PACKET_RX_LENGTH=$(( ($4 << 8) | VALUE_UINT8))
     else
         PACKET_RX_LENGTH_BYTES=1
-        PACKET_RX_LENGTH=$((B4))
+        PACKET_RX_LENGTH=$(($4))
     fi
 
-    [ "$DEBUG" -eq 1 ] &&  echo >&2 "RX PACKET LENGTH $PACKET_RX_LENGTH"
+    # verify packet length
+    #shellcheck disable=SC2154
+    if ! [ $(( realPacketLength - 2 )) -eq $PACKET_RX_LENGTH  ]; then # -2 for "255 255" packet header
+        #[ "$DEBUG" -eq 1 ] && 
+        echo >&2 "Warning: name: $COMMAND_NAME dec: $PRX_CMD_UINT8, reported packet length $PACKET_RX_LENGTH not the same as actual packet length $(( realPacketLength - 2 ))"
+        EXITCODE_PARSEPACKET=$ERROR_PARSEPACKET_LENGTH
+    else
+        [ "$DEBUG" -eq 1 ] &&  echo >&2 "RX PACKET LENGTH (byte 3 in packet) $PACKET_RX_LENGTH, actual packet length $(( realPacketLength - 2 )) "
+    fi
+
+    unset realPacketLength
 
     return "$EXITCODE_PARSEPACKET"
 }
@@ -1015,9 +1036,9 @@ parsePacket()
     OD_BUFFER_BACKUP="$1"
 
    if ! readPacketPreambleCommandLength "OD_BUFFER"; then
-      EXITCODE_PARSEPACKET=$?
-      echo >&2 "Error: Packet preamble failure, errorcode: $EXITCODE_PARSEPACKET"
-      return "$EXITCODE_PARSEPACKET"
+      echo >&2 "Warning: Packet preamble failure, errorcode: $EXITCODE_PARSEPACKET"
+
+      #return "$EXITCODE_PARSEPACKET"
    fi
 
      { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" ] ; } && {
