@@ -876,6 +876,8 @@ processDebugOptions()
         
             ""|--*|-*)  DEBUG=1
                         ;;
+            strict)     DEBUG_OPTION_STRICTPACKET=1 # check packet length and crc of received packets
+                        ;;
             t|trace)    DEBUG_OPTION_TRACEPACKET=1 # trace tx/rx packets in hex format during sendpacketnc
                         ;;
             a|append)   DEBUG_OPTION_APPEND=1 # print append format/args - default livedata view/table layout

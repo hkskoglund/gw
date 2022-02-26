@@ -94,6 +94,14 @@ destroyAllBuffers()
     unset buffername
 }
 
+moveHEAD()
+# moves HEAD pointer to index
+#$1 buffername, $2 0-index
+{
+    [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "Moving HEAD buffername:$1, position:$2"
+    eval "$1_HEAD=$2"
+}
+
 writeUInt8()
 # write unsigned 8-bit int to buffer
 # $1 buffername, $2 unsigned 8-bit int, $3 debug info
@@ -193,21 +201,28 @@ writeString()
 
 readSlice()
 # read a slice of n bytes from buffer, start at $_HEAD position
-# $1 buffername, $2 number of bytes to read, $3 debug info
+# $1 buffername, $2 number of bytes to read, $3 debug info, $4 start position (optional)
 # set VALUE_SLICE - new buffer of $2 bytes
  { 
      unset VALUE_SLICE
 
      EXITCODE_BUFFER=0
+
      readslice_buffername=$1
      readslice_byte_count=$2
      readslice_info=$3
+     readslice_startpos=$4
+
+     if [ -n "$readslice_startpos" ]; then
+        [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "readSlice: Moving HEAD buffername: $readslice_buffername, position: $readslice_startpos"
+        moveHEAD "$readslice_buffername" "$readslice_startpos"
+     fi
 
     readslice_N=1
     eval readslice_head_index="\$${readslice_buffername}_HEAD" readslice_buffer_length="\$${readslice_buffername}_LENGTH"
     #shellcheck disable=SC2154
     if ! [ $((readslice_head_index + readslice_byte_count )) -le "$readslice_buffer_length" ]; then
-        echo >&2 "Error: readSlice: Attempt to read beyond buffer limit; buffername: $readslice_buffername, bufferlength: $buffer_length"
+        echo >&2 "Error: readSlice: Attempt to read beyond buffer limit; buffername: $readslice_buffername, bufferlength: $readslice_buffer_length"
         EXITCODE_BUFFER=$ERROR_READ_BUFFER
     else
         while [ $readslice_N -le "$readslice_byte_count" ]; do
@@ -228,7 +243,7 @@ readSlice()
 
 readUInt8()
 # read unsigned 8-bit int from space delimited buffer of decimal number
-# $1 buffername, $2 debug info
+# $1 buffername, $2 debug info, $3 start position 0-indexed (optional)
 # set VALUE_UINT8
  {
 
@@ -237,17 +252,18 @@ readUInt8()
     EXITCODE_BUFFER=0
     read_buffername=$1
     read_info=$2
+    read_startpos=$3
 
-    if readSlice "$1" 1 "$2"; then
-    #shellcheck disable=SC2086
+    if readSlice "$1" 1 "$2" "$3"; then
       IFS=' '
+        #shellcheck disable=SC2086
       set -- $VALUE_SLICE
       VALUE_UINT8=$1
     else
       EXITCODE_BUFFER=$?
     fi
 
-    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readUInt8 buffername: "$read_buffername" uint8: "$VALUE_UINT8" info: "$read_info" 
+    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readUInt8 buffername: "$read_buffername" uint8: "$VALUE_UINT8" info: "$read_info" startpos: "$read_startpos"
 
     return $EXITCODE_BUFFER
 

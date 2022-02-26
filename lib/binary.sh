@@ -12,9 +12,11 @@ parseVersion() {
 parseMAC() 
 {
     readSlice OD_BUFFER 6 "MAC"
+    set -x
     setMAC "$VALUE_SLICE"
     C_MAC=$VALUE_MAC
     echo "$C_MAC"
+    set +x
 }
 
 parseResult() {
@@ -47,6 +49,7 @@ printBroadcast() {
 
 setMAC()
 {
+    unset VALUE_MAC
      IFS=' '
     #shellcheck disable=SC2086
     set -- $1
@@ -71,7 +74,7 @@ parseBroadcast() {
     IFS=' '
     #shellcheck disable=SC2086
     set -- $VALUE_SLICE
-    getMAC "$VALUE_SLICE"
+    setMAC "$VALUE_SLICE"
     C_BROADCAST_MAC=$VALUE_MAC
 
    #C_BROADCAST_MAC="$B1HEX:$B2HEX:$B3HEX:$B4HEX:$B5HEX:$B6HEX"
@@ -972,13 +975,15 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 readPacketPreambleCommandLength()
 # verify preamble = ff ff, read command and packet length
 # $1 buffername
-# set PACKET_RX_LENGTH
+# set PACKET_RX_LENGTH, PACKET_RX_CRC (optional if strict packet check)
 # set EXITCODE_PARSEPACKET
 {
     EXITCODE_PARSEPACKET=0
 
     readPacketPreambleCommandLength_buffername=$1
     eval realPacketLength="\$${readPacketPreambleCommandLength_buffername}_LENGTH"
+    #shellcheck disable=SC2154
+    packetCRCPosition=$(( realPacketLength - 1 )) # -1 due to 0-index
 
     readSlice "$1" 4 "packet preamble"
 
@@ -1005,19 +1010,54 @@ readPacketPreambleCommandLength()
         PACKET_RX_LENGTH=$(($4))
     fi
 
-    # verify packet length
-    #shellcheck disable=SC2154
-    if ! [ $(( realPacketLength - 2 )) -eq $PACKET_RX_LENGTH  ]; then # -2 for "255 255" packet header
-        #[ "$DEBUG" -eq 1 ] && 
-        echo >&2 "Warning: name: $COMMAND_NAME dec: $PRX_CMD_UINT8, reported packet length $PACKET_RX_LENGTH not the same as actual packet length $(( realPacketLength - 2 ))"
-        EXITCODE_PARSEPACKET=$ERROR_PARSEPACKET_LENGTH
-    else
-        [ "$DEBUG" -eq 1 ] &&  echo >&2 "RX PACKET LENGTH (byte 3 in packet) $PACKET_RX_LENGTH, actual packet length $(( realPacketLength - 2 )) "
+    eval packetContentPosition="\$${readPacketPreambleCommandLength_buffername}_HEAD" # backup position
+
+    if [ "$DEBUG_OPTION_STRICTPACKET" -eq 1 ]; then
+        # verify packet length
+        #shellcheck disable=SC2154
+        if ! [ $(( realPacketLength - 2 )) -eq $PACKET_RX_LENGTH  ]; then # -2 for "255 255" packet header
+            #[ "$DEBUG" -eq 1 ] && 
+            echo >&2 "Warning: name: $COMMAND_NAME dec: $PRX_CMD_UINT8, reported packet length $PACKET_RX_LENGTH not the same as actual packet length $(( realPacketLength - 2 ))"
+            EXITCODE_PARSEPACKET=$ERROR_PARSEPACKET_LENGTH
+        else
+            [ "$DEBUG" -eq 1 ] &&  echo >&2 "RX PACKET LENGTH (byte 3 in packet) $PACKET_RX_LENGTH, actual packet length $(( realPacketLength - 2 )) "
+        fi
+
+        readUInt8 "$readPacketPreambleCommandLength_buffername" "verify crc" $packetCRCPosition
+        PACKET_RX_CRC=$VALUE_UINT8
+        eval getPacketCRC "\"\$$readPacketPreambleCommandLength_buffername\""
+        if [ "$PACKET_RX_CRC" -ne "$VALUE_CRC" ]; then
+            echo >&2 "Warning: name: $COMMAND_NAME, dec: $PRX_CMD_UINT8, inpacket crc $PACKET_RX_CRC != $VALUE_CRC (calculated), packet CRC index: $packetCRCPosition"
+            EXITCODE_PARSEPACKET=$ERROR_PARSEPACKET_CRC
+        fi
+
+        #shellcheck disable=SC2154
+        moveHEAD "$readPacketPreambleCommandLength_buffername" "$packetContentPosition" #restore position
     fi
 
-    unset realPacketLength
+    unset realPacketLength packetCRCPosition
 
     return "$EXITCODE_PARSEPACKET"
+}
+
+getPacketCRC()
+# calculate packet crc from space delimited decimal buffer
+# $1 buffer
+# set VALUE_CRC
+# https://stackoverflow.com/questions/11670935/comments-in-command-line-zsh#11873793
+# zsh command-line: run setopt shwordsplit, setopt interactivecomments
+{
+    VALUE_CRC=0
+    IFS=' '
+    #shellcheck disable=SC2086
+    set -- $1
+    shift 2 # ignore preamble 255 255
+
+    for BYTE; do
+            #in "$@"
+       VALUE_CRC=$(( VALUE_CRC + BYTE ))
+    done
+    VALUE_CRC=$(( (VALUE_CRC - BYTE) & 255 )) # only 8-bit crc, BYTE is last byte/CRC
 }
 
 parsePacket()
