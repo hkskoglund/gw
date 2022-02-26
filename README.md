@@ -342,6 +342,7 @@ GW1000A_V1.6.8
 'tx-read version-14 20 03 412733378.hex'</pre>
 Allows viewing hex file in Visual Studio Code
 ## append | a - print append format/args for liveview
+## strict - show warning if packet length is not the same as actual packet length and crc fails
 <br><br>
 
 # Standalone execution of livedata view
