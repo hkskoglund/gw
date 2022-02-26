@@ -12,11 +12,9 @@ parseVersion() {
 parseMAC() 
 {
     readSlice OD_BUFFER 6 "MAC"
-    set -x
     setMAC "$VALUE_SLICE"
     C_MAC=$VALUE_MAC
     echo "$C_MAC"
-    set +x
 }
 
 parseResult() {
@@ -1017,7 +1015,7 @@ readPacketPreambleCommandLength()
         #shellcheck disable=SC2154
         if ! [ $(( realPacketLength - 2 )) -eq $PACKET_RX_LENGTH  ]; then # -2 for "255 255" packet header
             #[ "$DEBUG" -eq 1 ] && 
-            echo >&2 "Warning: name: $COMMAND_NAME dec: $PRX_CMD_UINT8, reported packet length $PACKET_RX_LENGTH not the same as actual packet length $(( realPacketLength - 2 ))"
+            printf >&2  "Warning: %s dec: %u hex: %x, reported packet length %u not the same as actual packet length %u\n" "$COMMAND_NAME" "$PRX_CMD_UINT8" "$PRX_CMD_UINT8" "$PACKET_RX_LENGTH" "$(( realPacketLength - 2 ))"
             EXITCODE_PARSEPACKET=$ERROR_PARSEPACKET_LENGTH
         else
             [ "$DEBUG" -eq 1 ] &&  echo >&2 "RX PACKET LENGTH (byte 3 in packet) $PACKET_RX_LENGTH, actual packet length $(( realPacketLength - 2 )) "
@@ -1027,7 +1025,7 @@ readPacketPreambleCommandLength()
         PACKET_RX_CRC=$VALUE_UINT8
         eval getPacketCRC "\"\$$readPacketPreambleCommandLength_buffername\""
         if [ "$PACKET_RX_CRC" -ne "$VALUE_CRC" ]; then
-            echo >&2 "Warning: name: $COMMAND_NAME, dec: $PRX_CMD_UINT8, inpacket crc $PACKET_RX_CRC != $VALUE_CRC (calculated), packet CRC index: $packetCRCPosition"
+            printf >&2 "Warning: %s, dec: %u hex: %x , inpacket crc %u != %u  (calculated), packet CRC index: %u\n" "$COMMAND_NAME" "$PRX_CMD_UINT8"  "$PRX_CMD_UINT8" "$PACKET_RX_CRC" "$VALUE_CRC" "$packetCRCPosition"
             EXITCODE_PARSEPACKET=$ERROR_PARSEPACKET_CRC
         fi
 
@@ -1067,7 +1065,7 @@ parsePacket()
      EXITCODE_PARSEPACKET=0
 
      if [ -z "$1" ]; then
-        [ "$DEBUG" -eq 1 ] && echo >&2 Empty od buffer
+         echo >&2 Warning: parsePacket: Empty buffer/response received
         EXITCODE_PARSEPACKET="$ERROR_OD_BUFFER_EMPTY"
         return "$EXITCODE_PARSEPACKET"
     fi
