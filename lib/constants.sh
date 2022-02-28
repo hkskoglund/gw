@@ -12,6 +12,7 @@ HTTP_WUNDERGROUND=1
 HTTP_ECOWITT=0
 
 MAX_16BIT_UINT=$(((2 << 16) - 1))
+MAX_STRING_LENGTH=64
 TIMEOUT_WIFICONFIG_SERVER=${TIMEOUT_WIFICONFIG_SERVER:=10} # timeout in seconds for wifi-server configuration of GW1000
 
 #https://unicode-table.com/en/emoji/travel-and-places/sky-and-weather/

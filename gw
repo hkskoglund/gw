@@ -314,20 +314,20 @@ parseSystemOption()
 }
 
 processCustomizedOptions() {
-    DEBUG_FUNC="processCustomizedOptions"
+    DEBUG_CUSTOMIZED=${DEBUG_CUSTOMIZED:=$DEBUG}
 
     EXITCODE_CUSTOMIZED=0
 
     #readarray -d ',' -t OPTION_CUSTOMIZED < <(echo -n "$1") # <<< HERE string appends 0x0a -> using process substitution
 
-    [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC $1"
+    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "option expression: $1"
 
     # 1. parse , expressions server=localhost,port=8080,protocol=ecowitt,enabled=yes
 
      IFS=','
      for option in $1; do
         
-        [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC: option $option"
+        [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "option $option"
 
         # 2. parse = expressions
 
@@ -337,25 +337,25 @@ processCustomizedOptions() {
         key=$1
         value=$2
 
-        [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC KEY $key len ${#key} VALUE $value len ${#value}"
+        [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "KEY $key len ${#key} VALUE $value len ${#value}"
 
         case "$key" in
 
             id)
-                [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_id from $C_WS_CUSTOMIZED_ID to $value"
+                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_id from $C_WS_CUSTOMIZED_ID to $value length:${#value}"
                 C_WS_CUSTOMIZED_ID=$value
                 ;;
 
             password | pw)
 
-                [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_password from ${C_WS_CUSTOMIZED_PASSWORD} to $value"
+                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_password from ${C_WS_CUSTOMIZED_PASSWORD} to $value length:${#value}"
                 C_WS_CUSTOMIZED_PASSWORD=$value
                 #observation: gw1000 client will not send wunderground http request unless password and id is specified
                 ;;
 
             server | s)
 
-                [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_server from $C_WS_CUSTOMIZED_SERVER to $value"
+                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_server from $C_WS_CUSTOMIZED_SERVER to $value length:${#value}"
                 C_WS_CUSTOMIZED_SERVER=$value
 
                 ;;
@@ -363,11 +363,11 @@ processCustomizedOptions() {
             port | p)
 
                 if ! isNumber "$value"; then
-                    echo >&2 "$DEBUG_FUNC Error: Not a number -  cannot set customized port to $value from $value"
+                    echo >&2 "Error: Not a number -  cannot set customized port to $value from $value"
                     EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 else
                     C_WS_CUSTOMIZED_PORT=$((value))
-                    [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_port from $C_WS_CUSTOMIZED_PORT to $value"
+                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_port from $C_WS_CUSTOMIZED_PORT to $value"
                 fi
 
                 ;;
@@ -384,11 +384,11 @@ processCustomizedOptions() {
                         value=0
                         ;;
 
-                    *)  echo >&2 "$DEBUG_FUNC Error: Unknown value $value for http protocol, use wunderground|w|1 or ecowitt|e|0"
+                    *)  echo >&2 "Error: Unknown value $value for http protocol, use wunderground|w|1 or ecowitt|e|0"
                         EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 esac
 
-                [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_TYPE from $C_WS_CUSTOMIZED_HTTP to $value"
+                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_TYPE from $C_WS_CUSTOMIZED_HTTP to $value"
                 C_WS_CUSTOMIZED_HTTP=$value
                 ;;
 
@@ -404,11 +404,11 @@ processCustomizedOptions() {
                         value=0
                         ;;
 
-                    *)  echo >&2 "$DEBUG_FUNC Error: Unknown value $value for enabled, use on|1|yes|y, off|0|no|n"
+                    *)  echo >&2 "Error: Unknown value $value for enabled, use on|1|yes|y, off|0|no|n"
                         EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 esac
 
-                [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_enabled from $C_WS_CUSTOMIZED_ENABLED to $value"
+                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_enabled from $C_WS_CUSTOMIZED_ENABLED to $value"
                 C_WS_CUSTOMIZED_ENABLED=$value
 
                 ;;
@@ -416,10 +416,10 @@ processCustomizedOptions() {
             interval | i)
 
                 if ! isNumber "$value"; then
-                    echo >&2 "$DEBUG_FUNC Error: Not a number cannot set customized interval to $value"
+                    echo >&2 "Error: Not a number cannot set customized interval to $value"
                     EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 else
-                    [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_interval from $C_WS_CUSTOMIZED_INTERVAL to $value"
+                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_interval from $C_WS_CUSTOMIZED_INTERVAL to $value"
                     C_WS_CUSTOMIZED_INTERVAL=$((value))
 
                 fi
@@ -428,20 +428,20 @@ processCustomizedOptions() {
 
             path_wunderground | p_w)
 
-                [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_path_wu from $C_WS_CUSTOMIZED_PATH_WU to $value"
+                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_path_wu from $C_WS_CUSTOMIZED_PATH_WU to $value length:${#value}"
                 C_WS_CUSTOMIZED_PATH_WU=$value
 
                 ;;
 
             path_ecowitt | p_e )
 
-                [ $DEBUG -eq 1 ] && echo >&2 "$DEBUG_FUNC Update customized_ecowitt_path from $C_WS_CUSTOMIZED_PATH_ECOWITT to $value"
+                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_ecowitt_path from $C_WS_CUSTOMIZED_PATH_ECOWITT to $value length:${#value}"
                 C_WS_CUSTOMIZED_PATH_ECOWITT=$value
 
                 ;;
 
             help|?|*)
-                echo >&2 "$DEBUG_FUNC Error: Unknown key $key, use id, password|pw, server|s, port|p, http|h, enabled|e, interval|i, path_wunderground|p_w, path_ecowitt|p_e"
+                echo >&2 "Error: Unknown key $key, use id, password|pw, server|s, port|p, http|h, enabled|e, interval|i, path_wunderground|p_w, path_ecowitt|p_e"
                 EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 ;;
         esac
@@ -454,7 +454,12 @@ processCustomizedOptions() {
 
         [ $DEBUG -eq 1 ] && printCustomized >&2
 
-        sendCustomized "$C_HOST"
+        if [ ${#C_WS_CUSTOMIZED_ID} -gt 40 ] || [ ${#C_WS_CUSTOMIZED_PASSWORD} -gt 40 ] || [ ${#C_WS_CUSTOMIZED_SERVER} -gt 64 ] || [ ${#C_WS_CUSTOMIZED_PATH_ECOWITT} -gt 64 ] || [ ${#C_WS_CUSTOMIZED_PATH_WU} -gt 64 ]; then
+            echo >&2 Error: Max string limit execeeded 
+            EXITCODE_CUSTOMIZED=$ERROR_MAX_STRING_LENGTH_EXCEEDED
+        else
+            sendCustomized "$C_HOST"
+        fi
     fi
 
     unset key value option
@@ -1037,8 +1042,72 @@ processOptionsLiveview()
     unset hide_liveview
 }
 
+processWeatherServiceOptions()
+# updates weather service with id and password
+# $1 write command, $2 option (format: id=,password|pw=)
+{
+    EXITCODE_PROCESSWEATHERSERVICE=0
+    DEBUG_WS_OPTIONS=${DEBUG_WS_OPTIONS:=$DEBUG}
+
+    IFS=,
+    processWeatherServiceOptions_command=$1
+
+    unset id password maxStringLengthExceeded
+
+    # init read id and password (in processCommand)
+    if [ "$processWeatherServiceOptions_command" -eq "$CMD_WRITE_WUNDERGROUND" ] ; then
+        id=$C_WS_WUNDERGROUND_ID
+        password=$C_WS_WUNDERGROUND_PASSWORD
+    elif [ "$processWeatherServiceOptions_command" -eq $CMD_WRITE_WEATHERCLOUD ] ; then
+        id=$C_WS_WC_ID
+        password=$C_WS_WC_PASSWORD
+    elif [ "$processWeatherServiceOptions_command" -eq $CMD_WRITE_WOW ]; then
+        id=$C_WS_WOW_ID
+        password=$C_WS_WOW_PASSWORD
+    fi
+
+    [ $DEBUG_WS_OPTIONS -eq 1 ] && echo >&2 "Current settings command: $processWeatherServiceOptions_command, id: $id length:${#id} password: $password length: ${#password}"
+
+    # parse option expr (id=,password=)
+    for option in $2; do
+        IFS='='
+        #shellcheck disable=SC2086
+        set -- $option
+
+        case $1 in
+            id)    id=$2
+                    [ $DEBUG_WS_OPTIONS -eq 1 ] && echo >&2 "Updating weather service id=$id length:${#id}"
+                ;;
+            password | pw| key) password=$2
+                [ $DEBUG_WS_OPTIONS -eq 1 ] && echo >&2 "Updating weather service password=$password length: ${#password}"
+
+                ;;
+            *)  echo >&2 "Error: Unknown option: $option, use id=, password|pw|key="
+                EXITCODE_PROCESSWEATHERSERVICE=$ERROR_WEATHERSERVICE_INVALID_OPTION
+                unset option id password
+                return $EXITCODE_PROCESSWEATHERSERVICE
+                 
+        esac
+    done 
+
+    # validate string length, max 39 (GW1000 fw1.6.8: truncated to 39 characters, device rebooted if too large)
+    if [ ${#id} -gt 39 ] || [ ${#password} -gt 39 ]; then
+        echo >&2 Error: Max string limit of 39 exceeded
+        EXITCODE_PROCESSWEATHERSERVICE=$ERROR_MAX_STRING_LENGTH_EXCEEDED
+    else
+        # write new id and password, length of string is truncated by firmware on device if over max limits
+        # teststring: 
+        sendWeatherservice "$processWeatherServiceOptions_command" "$id" "$password"
+        EXITCODE_PROCESSWEATHERSERVICE=$?
+    fi
+
+    return $EXITCODE_PROCESSWEATHERSERVICE
+
+    unset option id password
+}
+
 processCommand()
-# process -c command
+# process -c command options
 # EXITCODE_PROCESSCOMMAND
  {
    EXITCODE_PROCESSCOMMAND=0
@@ -1046,7 +1115,7 @@ processCommand()
    [ "$DEBUG" -eq 1 ] && >&2 echo ARGS to processCommand "$@" length "$#" COMMAND "$COMMAND"
 
    if [ "$#" -ge 1 ]; then
-      shift # remove {command} (to -c option) -> all args to {command} starts at $1
+      shift # remove {command} (to -c {command}) -> all args to {command} starts at $1
    fi
 
     case $COMMAND in
@@ -1142,6 +1211,8 @@ processCommand()
             fi
             ;;
 
+       
+       
         ecowitt | e)
 
             if argEmptyOrOption "$1"; then
@@ -1155,41 +1226,51 @@ processCommand()
 
         wunderground | wu)
 
-            if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_WUNDERGROUND "$C_HOST"
+            if sendPacket $CMD_READ_WUNDERGROUND "$C_HOST" >/dev/null; then 
+
+                case "$1" in
+                    ""|--*|-*) printWunderground
+                                ;;
+                    
+                    *)          processWeatherServiceOptions "$CMD_WRITE_WUNDERGROUND" "$1"
+                                EXITCODE_PROCESSCOMMAND=$EXITCODE_PROCESSWEATHERSERVICE
+                                ;;
+                esac
             else
-                if [ $# -lt 2 ]; then
-                    echo >&2 "Error: {id} {password} must be specified"
-                else
-                    sendWeatherservice "$CMD_WRITE_WUNDERGROUND" "$1" "$2"
-                fi
+                    EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
             fi
 
             ;;
 
-        wow)
+        wow)    if sendPacket $CMD_READ_WOW "$C_HOST" >/dev/null; then 
 
-            if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_WOW
-            else
-                if [ $# -lt 2 ]; then
-                    echo >&2 "Error: {id} {password} must be specified"
+                    case "$1" in
+                        ""|--*|-*)  printWow
+                                    ;;
+                        
+                        *)  processWeatherServiceOptions "$CMD_WRITE_WOW" "$1"
+                            EXITCODE_PROCESSCOMMAND=$EXITCODE_PROCESSWEATHERSERVICE
+                            ;;
+                    esac
                 else
-                    sendWeatherservice "$CMD_WRITE_WOW" "$1" "$2"
+                        EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
                 fi
-            fi
-            ;;
+                ;;
 
         weathercloud | wc)
 
-            if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_WEATHERCLOUD "$C_HOST"
+              if sendPacket $CMD_READ_WEATHERCLOUD "$C_HOST" >/dev/null; then 
+
+                case "$1" in
+                    ""|--*|-*)   printWeathercloud
+                                ;;
+                    
+                    *)  processWeatherServiceOptions $CMD_WRITE_WEATHERCLOUD "$1"
+                        EXITCODE_PROCESSCOMMAND=$EXITCODE_PROCESSWEATHERSERVICE
+                        ;;
+                esac
             else
-                if [ $# -lt 2 ]; then
-                    echo >&2 "Error: {id} {key} must be specified"
-                else
-                    sendWeatherservice "$CMD_WRITE_WEATHERCLOUD" "$1" "$2"
-                fi
+                    EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
             fi
             ;;
 
@@ -1355,7 +1436,39 @@ while [ $# -gt 0 ]; do
 
     KEY="$1"
 
+    [ "$DEBUG" -eq 1 ] && echo >&2 "main: process option $KEY"
+
     case $KEY in
+
+          -c | --command)
+
+            toLowercase "$2"
+            COMMAND=$LOWERCASE
+
+            shift 1 # remove -c
+
+            processCommand "$@"
+            EXITCODE_MAIN=$?
+
+            for param in "$@"; do #remove params to command (until new - option)
+
+                case "$param" in
+
+                -*)
+                    break
+                    ;;
+
+                *)
+                    [ $DEBUG -eq 1 ] && echo >&2 "main: Shift/remove param all:$* param:$param"
+                    shift
+                    ;;
+                esac
+
+            done
+
+            unset COMMAND param
+            
+            ;;
 
        -b | --backup)   if [ -z "$C_HOST" ]; then
                              echo >&2 Error: No host
@@ -1472,34 +1585,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
 
-        -c | --command)
-
-            toLowercase "$2"
-            COMMAND=$LOWERCASE
-
-            shift 1 # remove -c
-
-            processCommand "$@"
-            EXITCODE_MAIN=$?
-
-            for param in "$@"; do #remove params to command (until new - option)
-
-                case "$param" in
-
-                -*)
-                    break
-                    ;;
-
-                *)
-                    [ $DEBUG -eq 1 ] && echo >&2 Shift param "$@" "$param"
-                    shift
-                    ;;
-                esac
-
-            done
-
-            unset COMMAND param
-            ;;
+      
         
         -u | --unit)
                

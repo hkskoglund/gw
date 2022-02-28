@@ -27,7 +27,8 @@ ERROR_INVALID_FILENAME=25
 ERROR_READ_BUFFER=26 # failed to read from buffer
 ERROR_PARSEPACKET_LENGTH=27 # actual packet length, is not the same as reported packet length inside packet - strict packet debug option
 ERROR_PARSEPACKET_CRC=28 # if crc check fails on received packet -strict packet debug option
-
+ERROR_WEATHERSERVICE_INVALID_OPTION=29 # if option to command is unknown
+ERROR_MAX_STRING_LENGTH_EXCEEDED=30 # if string length is beyond max limit
 
 logErr()
 #$1 - 1=on,0=off

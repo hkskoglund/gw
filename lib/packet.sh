@@ -407,9 +407,10 @@ sendEcowittInterval()
 }
 
 sendWeatherservice() 
-# send id and password to weatherservice (wow/weathercloud)
-# $1 command, $2 id, $3 password, $4 host
+# send id and password to weatherservice (wow/weathercloud/wunderground)
+# $1 command, $2 id, $3 password
 {
+    DEBUG_SENDWEATHERSERVICE=${DEBUG_SENDWEATHERSERVICE:=$DEBUG_PACKET}
 
     newPacket "$1"
     writeString PACKET_TX_BODY "$2" id
@@ -418,17 +419,15 @@ sendWeatherservice()
     case "$1" in
         "$CMD_WRITE_WOW")
             writeUInt8 PACKET_TX_BODY 0 unused # stationnum size - unused
-            writeUInt8 PACKET_TX_BODY 1 wow
-            ;;
-
-        "$CMD_WRITE_WEATHERCLOUD")
-            writeUInt8 PACKET_TX_BODY 1 weathercloud
             ;;
     esac
-    
-    [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 "Sending weather service $1 id $2 password $3, host $4"
 
-    sendPacket "$1" "$4"
+    writeUInt8 PACKET_TX_BODY 1 fixed    # fixed 1 value
+
+    
+    [ "$DEBUG_SENDWEATHERSERVICE" -eq 1 ] && echo >&2 "Sending weather service command: $1 id: $2 length: ${#2} password: $3 length: ${#3}"
+
+    sendPacket "$1" "$C_HOST"
 }
 
 sendCustomized()
