@@ -676,7 +676,7 @@ printWHBatterySignal()
 #$1 - WH?? $2 battery $3 signal
 {
     if [ -n "$2" ]; then
-        if [ "$1" = "WH65" ] && [ "$C_SYSTEM_SENSORTYPE_STATE" = "WH24" ]; then
+        if [ "$1" = "WH65" ] && [ "$GW_SYSTEM_SENSORTYPE_STATE" = "WH24" ]; then
             appendFormat " WH24 %s"
         else
             appendFormat " $1 %s"

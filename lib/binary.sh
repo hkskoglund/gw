@@ -5,23 +5,23 @@ GWDIR=${GWDIR:=.}
 
 parseVersion() {
     readString OD_BUFFER "version"
-    C_VERSION="$VALUE_STRING"
-    echo "$C_VERSION"
+    GW_VERSION="$VALUE_STRING"
+    echo "$GW_VERSION"
 }
 
 parseMAC() 
 {
     readSlice OD_BUFFER 6 "MAC"
     setMAC "$VALUE_SLICE"
-    C_MAC=$VALUE_MAC
-    echo "$C_MAC"
+    export GW_MAC="$VALUE_MAC"
+    echo "$GW_MAC"
 }
 
 parseResult() {
     
     readUInt8 OD_BUFFER 'write result'
     write_result=$VALUE_UINT8
-    VALUE_PACKET_WRITE_RESULT=$write_result
+    export GW_RESULT="$write_result"
 
     if [ "$write_result" -eq 0 ]; then
     :
@@ -38,10 +38,10 @@ parseResult() {
 
 printBroadcast() {
    # if [ "$SHELL_SUPPORT_BULTIN_PRINTF" -eq 1 ]; then
-   #    printf "%-25s %s\n%-25s %s\n%-25s %s\n%-25s %s\n%-25s %s\n" "broadcast mac" "$C_BROADCAST_MAC"\
-   #    "broadcast ip" "$C_BROADCAST_IP" "broadcast port" "$C_BROADCAST_PORT" "broadcast ssid" "$C_BROADCAST_SSID" "broadcast version" "$C_BROADCAST_VERSION"
+   #    printf "%-25s %s\n%-25s %s\n%-25s %s\n%-25s %s\n%-25s %s\n" "broadcast mac" "$GW_BROADCAST_MAC"\
+   #    "broadcast ip" "$GW_BROADCAST_IP" "broadcast port" "$GW_BROADCAST_PORT" "broadcast ssid" "$GW_BROADCAST_SSID" "broadcast version" "$GW_BROADCAST_VERSION"
    # else
-      echo "$C_BROADCAST_MAC $C_BROADCAST_IP $C_BROADCAST_PORT $C_BROADCAST_SSID $C_BROADCAST_VERSION"
+      echo "$GW_BROADCAST_MAC $GW_BROADCAST_IP $GW_BROADCAST_PORT $GW_BROADCAST_SSID $GW_BROADCAST_VERSION"
     #fi
 }
 
@@ -73,19 +73,19 @@ parseBroadcast() {
     #shellcheck disable=SC2086
     set -- $VALUE_SLICE
     setMAC "$VALUE_SLICE"
-    C_BROADCAST_MAC=$VALUE_MAC
+    export GW_BROADCAST_MAC="$VALUE_MAC"
 
-   #C_BROADCAST_MAC="$B1HEX:$B2HEX:$B3HEX:$B4HEX:$B5HEX:$B6HEX"
-    C_BROADCAST_IP="$7.$8.$9.${10}"
-    C_BROADCAST_PORT="$(( (${11} << 8) | ${12} ))"
+   #GW_BROADCAST_MAC="$B1HEX:$B2HEX:$B3HEX:$B4HEX:$B5HEX:$B6HEX"
+    export GW_BROADCAST_IP="$7.$8.$9.${10}"
+    export GW_BROADCAST_PORT="$(( (${11} << 8) | ${12} ))"
 
     readString OD_BUFFER "ssid version"
     #https://stackoverflow.com/questions/1469849/how-to-split-one-string-into-multiple-strings-separated-by-at-least-one-space-in
     #shellcheck disable=SC2086
     
     set -- $VALUE_STRING # -- assign words to positional parameters
-    C_BROADCAST_SSID=$1
-    C_BROADCAST_VERSION=$2
+    export GW_BROADCAST_SSID="$1"
+    export GW_BROADCAST_VERSION="$2"
 
     printBroadcast
 
@@ -94,60 +94,60 @@ parseBroadcast() {
 
 printEcowittInterval() {
 
-    if [ "$C_WS_ECOWITT_INTERVAL" -eq 1 ]; then
-        echo "ecowitt interval              $C_WS_ECOWITT_INTERVAL minute"
-    elif [ "$C_WS_ECOWITT_INTERVAL" -gt 1 ]; then
-        echo "ecowitt interval              $C_WS_ECOWITT_INTERVAL minutes"
+    if [ "$GW_WS_ECOWITT_INTERVAL" -eq 1 ]; then
+        echo "ecowitt interval              $GW_WS_ECOWITT_INTERVAL minute"
+    elif [ "$GW_WS_ECOWITT_INTERVAL" -gt 1 ]; then
+        echo "ecowitt interval              $GW_WS_ECOWITT_INTERVAL minutes"
     fi
 }
 
 parseEcowittInterval() {
 
     readUInt8 OD_BUFFER "ecowitt interval"
-    C_WS_ECOWITT_INTERVAL=$VALUE_UINT8
+    export GW_WS_ECOWITT_INTERVAL="$VALUE_UINT8"
     printEcowittInterval
 }
 
 printWunderground() {
-    echo "wunderground station id       $C_WS_WUNDERGROUND_ID
-wunderground station password $C_WS_WUNDERGROUND_PASSWORD"
+    echo "wunderground station id       $GW_WS_WUNDERGROUND_ID
+wunderground station password $GW_WS_WUNDERGROUND_PASSWORD"
 }
 
 parseWunderground() {
     readString OD_BUFFER "wunderground id"
-    C_WS_WUNDERGROUND_ID=$VALUE_STRING
+    export GW_WS_WUNDERGROUND_ID="$VALUE_STRING"
     readString OD_BUFFER "wunderground password"
-    C_WS_WUNDERGROUND_PASSWORD=$VALUE_STRING
+    GW_WS_WUNDERGROUND_PASSWORD=$VALUE_STRING
 
     printWunderground
 }
 
 printWeathercloud() {
-    echo "weathercloud id               $C_WS_WC_ID
-weathercloud password         $C_WS_WC_PASSWORD"
+    echo "weathercloud id               $GW_WS_WC_ID
+weathercloud password         $GW_WS_WC_PASSWORD"
 }
 
 parseWeathercloud() {
     readString OD_BUFFER "weathercloud id"
-    C_WS_WC_ID=$VALUE_STRING
+    export GW_WS_WC_ID="$VALUE_STRING"
 
     readString OD_BUFFER "weathercloud password"
-    C_WS_WC_PASSWORD=$VALUE_STRING
+    export GW_WS_WC_PASSWORD="$VALUE_STRING"
 
     printWeathercloud
 }
 
 printWow() {
-    echo "wow id                        $C_WS_WOW_ID
-wow password                  $C_WS_WOW_PASSWORD"
+    echo "wow id                        $GW_WS_WOW_ID
+wow password                  $GW_WS_WOW_PASSWORD"
 }
 
 parseWow() {
     readString OD_BUFFER "wow id"
-    C_WS_WOW_ID=$VALUE_STRING
+    export GW_WS_WOW_ID="$VALUE_STRING"
 
     readString OD_BUFFER "wow password"
-    C_WS_WOW_PASSWORD=$VALUE_STRING
+    export GW_WS_WOW_PASSWORD="$VALUE_STRING"
 
     printWow
 }
@@ -155,171 +155,173 @@ parseWow() {
 printCalibration() {
     #if [ "$SHELL_SUPPORT_BULTIN_PRINTF" -eq 1 ]; then
     #   printf "%-40s %7s %-4s\n%-40s %7s %-4s\n%-40s %7s %-4s\n%-40s %7s %-4s\n%-40s %7s %-4s\n%-40s %7s %-4s\n%-40s %7s %-4s\n"\
-    #    "calibration in temperature offset"           "$C_CALIBRATION_INTEMPOFFSET"     "$UNIT_TEMP"\
-    #    "calibration in humidity offset"              "$C_CALIBRATION_INHUMIDITYOFFSET"   "$UNIT_HUMIDITY"\
-    #    "calibration absolute pressure offset"        "$C_CALIBRATION_ABSOFFSET"        "$UNIT_PRESSURE"\
-    #    "calibration relative pressure offset"        "$C_CALIBRATION_RELOFFSET"        "$UNIT_PRESSURE"\
-    #    "calibration out temperature offset"          "$C_CALIBRATION_OUTTEMPOFFSET"    "$UNIT_TEMP"\
-    ##    "calibration out humidity offset"             "$C_CALIBRATION_OUTHUMIDITYOFFSET" "$UNIT_HUMIDITY"\
-    #    "calibration wind direction offset"           "$C_CALIBRATION_WINDDIROFFSET" ""
+    #    "calibration in temperature offset"           "$GW_CALIBRATION_INTEMPOFFSET"     "$UNIT_TEMP"\
+    #    "calibration in humidity offset"              "$GW_CALIBRATION_INHUMIDITYOFFSET"   "$UNIT_HUMIDITY"\
+    #    "calibration absolute pressure offset"        "$GW_CALIBRATION_ABSOFFSET"        "$UNIT_PRESSURE"\
+    #    "calibration relative pressure offset"        "$GW_CALIBRATION_RELOFFSET"        "$UNIT_PRESSURE"\
+    #    "calibration out temperature offset"          "$GW_CALIBRATION_OUTTEMPOFFSET"    "$UNIT_TEMP"\
+    ##    "calibration out humidity offset"             "$GW_CALIBRATION_OUTHUMIDITYOFFSET" "$UNIT_HUMIDITY"\
+    #    "calibration wind direction offset"           "$GW_CALIBRATION_WINDDIROFFSET" ""
     #else
-        echo "calibration in temperature offset           $C_CALIBRATION_INTEMPOFFSET $UNIT_TEMP
-calibration in humidity offset              $C_CALIBRATION_INHUMIDITYOFFSET   %
-calibration absolute pressure offset        $C_CALIBRATION_ABSOFFSET $UNIT_PRESSURE
-calibration relative pressure offset        $C_CALIBRATION_RELOFFSET $UNIT_PRESSURE
-calibration out temperature offset          $C_CALIBRATION_OUTTEMPOFFSET $UNIT_TEMP
-calibration out humidity offset             $C_CALIBRATION_OUTHUMIDITYOFFSET   %
-calibration wind direction offset           $C_CALIBRATION_WINDDIROFFSET $UNIT_DEGREE"
+        echo "calibration in temperature offset           $GW_CALIBRATION_INTEMPOFFSET $UNIT_TEMP
+calibration in humidity offset              $GW_CALIBRATION_INHUMIDITYOFFSET   %
+calibration absolute pressure offset        $GW_CALIBRATION_ABSOFFSET $UNIT_PRESSURE
+calibration relative pressure offset        $GW_CALIBRATION_RELOFFSET $UNIT_PRESSURE
+calibration out temperature offset          $GW_CALIBRATION_OUTTEMPOFFSET $UNIT_TEMP
+calibration out humidity offset             $GW_CALIBRATION_OUTHUMIDITYOFFSET   %
+calibration wind direction offset           $GW_CALIBRATION_WINDDIROFFSET $UNIT_DEGREE"
    # fi
 
 }
+
 
 parseCalibration() {
 
     readInt16BE OD_BUFFER "intemp offset"
     convertScale10ToFloat "$VALUE_INT16BE"
-    C_CALIBRATION_INTEMPOFFSET_INT="$VALUE_INT16BE"
-    C_CALIBRATION_INTEMPOFFSET="$VALUE_SCALE10_FLOAT"
+    export GW_CALIBRATION_INTEMPOFFSET_INT="$VALUE_INT16BE"
+    GW_CALIBRATION_INTEMPOFFSET="$VALUE_SCALE10_FLOAT"
 
     readInt8 OD_BUFFER "inhumidity offset"
-    C_CALIBRATION_INHUMIDITYOFFSET="$VALUE_INT8"
+    export GW_CALIBRATION_INHUMIDITYOFFSET="$VALUE_INT8"
 
     readInt32BE "absolute offset"
-    C_CALIBRATION_ABSOFFSET_INT=$VALUE_INT32BE 
+    export GW_CALIBRATION_ABSOFFSET_INT="$VALUE_INT32BE" 
     convertScale10ToFloat "$VALUE_INT32BE"
-    C_CALIBRATION_ABSOFFSET="$VALUE_SCALE10_FLOAT"
+    GW_CALIBRATION_ABSOFFSET="$VALUE_SCALE10_FLOAT"
 
     readInt32BE "relative offset"
-    C_CALIBRATION_RELOFFSET_INT=$VALUE_INT32BE #used for int comparison [ ... ]
+    export GW_CALIBRATION_RELOFFSET_INT=$VALUE_INT32BE #used for int comparison [ ... ]
     convertScale10ToFloat "$VALUE_INT32BE"
-    C_CALIBRATION_RELOFFSET="$VALUE_SCALE10_FLOAT"
+    GW_CALIBRATION_RELOFFSET="$VALUE_SCALE10_FLOAT"
 
     readInt16BE OD_BUFFER "outtemp offset"
-    C_CALIBRATION_OUTTEMPOFFSET_INT="$VALUE_INT16BE"
+    export GW_CALIBRATION_OUTTEMPOFFSET_INT="$VALUE_INT16BE"
     convertScale10ToFloat "$VALUE_INT16BE"
-    C_CALIBRATION_OUTTEMPOFFSET="$VALUE_SCALE10_FLOAT"
+    GW_CALIBRATION_OUTTEMPOFFSET="$VALUE_SCALE10_FLOAT"
 
     readInt8 OD_BUFFER "out humidity offset"
-    C_CALIBRATION_OUTHUMIDITYOFFSET="$VALUE_INT8"
+    export GW_CALIBRATION_OUTHUMIDITYOFFSET="$VALUE_INT8"
 
     readInt16BE OD_BUFFER "winddirection offset"
-    C_CALIBRATION_WINDDIROFFSET="$VALUE_INT16BE"
+    export GW_CALIBRATION_WINDDIROFFSET="$VALUE_INT16BE"
 
     printCalibration
 }
 
 printCustomized() {
-    if [ "$C_WS_CUSTOMIZED_HTTP" -eq "$HTTP_WUNDERGROUND" ]; then #wunderground
-    echo "id                 $C_WS_CUSTOMIZED_ID
-password           $C_WS_CUSTOMIZED_PASSWORD"
+    if [ "$GW_WS_CUSTOMIZED_HTTP" -eq "$HTTP_WUNDERGROUND" ]; then #wunderground
+    echo "id                 $GW_WS_CUSTOMIZED_ID
+password           $GW_WS_CUSTOMIZED_PASSWORD"
 fi
 
-    echo "server             $C_WS_CUSTOMIZED_SERVER
-port               $C_WS_CUSTOMIZED_PORT
-interval           $C_WS_CUSTOMIZED_INTERVAL
-http               $C_WS_CUSTOMIZED_HTTP $C_WS_CUSTOMIZED_HTTP_STATE 
-enabled            $C_WS_CUSTOMIZED_ENABLED $C_WS_CUSTOMIZED_ENABLED_STATE"
+    echo "server             $GW_WS_CUSTOMIZED_SERVER
+port               $GW_WS_CUSTOMIZED_PORT
+interval           $GW_WS_CUSTOMIZED_INTERVAL
+http               $GW_WS_CUSTOMIZED_HTTP $GW_WS_CUSTOMIZED_HTTP_STATE 
+enabled            $GW_WS_CUSTOMIZED_ENABLED $GW_WS_CUSTOMIZED_ENABLED_STATE"
 
-if [ "$C_WS_CUSTOMIZED_HTTP" -eq "$HTTP_ECOWITT" ]; then
-    echo "path ecowitt       $C_WS_CUSTOMIZED_PATH_ECOWITT"
+if [ "$GW_WS_CUSTOMIZED_HTTP" -eq "$HTTP_ECOWITT" ]; then
+    echo "path ecowitt       $GW_WS_CUSTOMIZED_PATH_ECOWITT"
 else
-    echo "path wunderground  $C_WS_CUSTOMIZED_PATH_WU"
+    echo "path wunderground  $GW_WS_CUSTOMIZED_PATH_WU"
 fi
 }
 
 parseCustomized() {
     readString OD_BUFFER "customized id"
-    C_WS_CUSTOMIZED_ID=$VALUE_STRING
+    export GW_WS_CUSTOMIZED_ID="$VALUE_STRING"
 
     readString OD_BUFFER "customized password"
-    C_WS_CUSTOMIZED_PASSWORD=$VALUE_STRING
+    export GW_WS_CUSTOMIZED_PASSWORD="$VALUE_STRING"
 
     readString OD_BUFFER "customized server"
-    C_WS_CUSTOMIZED_SERVER=$VALUE_STRING
+    export GW_WS_CUSTOMIZED_SERVER="$VALUE_STRING"
 
     readUInt16BE OD_BUFFER "customized port"
-    C_WS_CUSTOMIZED_PORT=$VALUE_UINT16BE
+    export GW_WS_CUSTOMIZED_PORT="$VALUE_UINT16BE"
 
     readUInt16BE OD_BUFFER "customized interval"
-    C_WS_CUSTOMIZED_INTERVAL=$VALUE_UINT16BE
+    export GW_WS_CUSTOMIZED_INTERVAL="$VALUE_UINT16BE"
 
     readUInt8 OD_BUFFER "customized http"
-    C_WS_CUSTOMIZED_HTTP=$VALUE_UINT8
+    export GW_WS_CUSTOMIZED_HTTP="$VALUE_UINT8"
 
-    if [ "$C_WS_CUSTOMIZED_HTTP" -eq 1 ]; then
-        C_WS_CUSTOMIZED_HTTP_STATE="wunderground"
-    elif [ "$C_WS_CUSTOMIZED_HTTP" -eq 0 ]; then
-        C_WS_CUSTOMIZED_HTTP_STATE="ecowitt"
+    if [ "$GW_WS_CUSTOMIZED_HTTP" -eq 1 ]; then
+        export GW_WS_CUSTOMIZED_HTTP_STATE="wunderground"
+    elif [ "$GW_WS_CUSTOMIZED_HTTP" -eq 0 ]; then
+        export GW_WS_CUSTOMIZED_HTTP_STATE="ecowitt"
     fi
 
     readUInt8 OD_BUFFER "customized enabled"
 
-    C_WS_CUSTOMIZED_ENABLED=$VALUE_UINT8
-    if [ "$C_WS_CUSTOMIZED_ENABLED" -eq 1 ]; then
-        C_WS_CUSTOMIZED_ENABLED_STATE="on"
-    elif [ "$C_WS_CUSTOMIZED_ENABLED" -eq 0 ]; then
-        C_WS_CUSTOMIZED_ENABLED_STATE="off"
+    export GW_WS_CUSTOMIZED_ENABLED="$VALUE_UINT8"
+    if [ "$GW_WS_CUSTOMIZED_ENABLED" -eq 1 ]; then
+        export GW_WS_CUSTOMIZED_ENABLED_STATE="on"
+    elif [ "$GW_WS_CUSTOMIZED_ENABLED" -eq 0 ]; then
+        export GW_WS_CUSTOMIZED_ENABLED_STATE="off"
     fi
 
     printCustomized
 }
 
 printPath() {
-    echo "path ecowitt      $C_WS_CUSTOMIZED_PATH_ECOWITT
-path wunderground $C_WS_CUSTOMIZED_PATH_WU"
+    echo "path ecowitt      $GW_WS_CUSTOMIZED_PATH_ECOWITT
+path wunderground $GW_WS_CUSTOMIZED_PATH_WU"
 }
+
+
 
 parsePath() {
     readString OD_BUFFER "path ecowitt"
-    C_WS_CUSTOMIZED_PATH_ECOWITT=$VALUE_STRING
+    export GW_WS_CUSTOMIZED_PATH_ECOWITT="$VALUE_STRING"
     readString OD_BUFFER "path wunderground"
-    C_WS_CUSTOMIZED_PATH_WU=$VALUE_STRING
+    export GW_WS_CUSTOMIZED_PATH_WU="$VALUE_STRING"
 
     printPath
 }
 
 printRaindata() {
-
-    convertScale10ToFloat "$C_RAINRATE"
-    rr="$VALUE_SCALE10_FLOAT"
-
-    convertScale10ToFloat "$C_RAINDAILY"
-    rd="$VALUE_SCALE10_FLOAT"
-    
-    convertScale10ToFloat "$C_RAINWEEK"
-    rw="$VALUE_SCALE10_FLOAT"
-    
-    convertScale10ToFloat "$C_RAINMONTH"
-    rm="$VALUE_SCALE10_FLOAT"
-    
-    convertScale10ToFloat "$C_RAINYEAR"
-    ry="$VALUE_SCALE10_FLOAT"
-    
-    echo "rain rate  $rr $UNIT_RAINRATE
-rain day   $rd $UNIT_RAIN
-rain week  $rw $UNIT_RAIN
-rain month $rm $UNIT_RAIN
-rain year  $ry $UNIT_RAIN"
-   
-    unset rr rd rw rm ry
+    echo "rain rate  $GW_RAINRATE_FLOAT $UNIT_RAINRATE
+rain day   $GW_RAINDAILY_FLOAT $UNIT_RAIN
+rain week  $GW_RAINWEEK_FLOAT $UNIT_RAIN
+rain month $GW_RAINMONTH_FLOAT $UNIT_RAIN
+rain year  $GW_RAINYEAR_FLOAT $UNIT_RAIN"
 }
+
+
 
 parseRaindata() {
 
     readUInt32BE "OD_BUFFER" "rainrate"
-    C_RAINRATE=$VALUE_UINT32BE
+    export GW_RAINRATE="$VALUE_UINT32BE"
 
     readUInt32BE "OD_BUFFER" "raindaily"
-    C_RAINDAILY=$VALUE_UINT32BE
+    export GW_RAINDAILY="$VALUE_UINT32BE"
 
     readUInt32BE "OD_BUFFER" "rainweek"
-    C_RAINWEEK=$VALUE_UINT32BE
+    export GW_RAINWEEK="$VALUE_UINT32BE"
 
     readUInt32BE "OD_BUFFER" "rainmonth"
-    C_RAINMONTH=$VALUE_UINT32BE
+    export GW_RAINMONTH="$VALUE_UINT32BE"
 
     readUInt32BE "OD_BUFFER" "rainyear"
-    C_RAINYEAR=$VALUE_UINT32BE
+    export GW_RAINYEAR="$VALUE_UINT32BE"
+
+    convertScale10ToFloat "$GW_RAINRATE"
+    export GW_RAINRATE_FLOAT="$VALUE_SCALE10_FLOAT"
+
+    convertScale10ToFloat "$GW_RAINDAILY"
+    export GW_RAINDAILY_FLOAT="$VALUE_SCALE10_FLOAT"
+    
+    convertScale10ToFloat "$GW_RAINWEEK"
+    export GW_RAINWEEK_FLOAT="$VALUE_SCALE10_FLOAT"
+    
+    convertScale10ToFloat "$GW_RAINMONTH"
+    export GW_RAINMONTH_FLOAT="$VALUE_SCALE10_FLOAT"
+    
+    convertScale10ToFloat "$GW_RAINYEAR"
+    export GW_RAINYEAR_FLOAT="$VALUE_SCALE10_FLOAT"
 
     printRaindata
 }
@@ -327,8 +329,8 @@ parseRaindata() {
 getSensorNameShort()
 {
     case "$1" in
-        0) if [ -n "$C_SYSTEM_SENSORTYPE" ]; then
-                if [ "$C_SYSTEM_SENSORTYPE" -eq "$SYSTEM_SENSOR_TYPE_WH24" ]; then
+        0) if [ -n "$GW_SYSTEM_SENSORTYPE" ]; then
+                if [ "$GW_SYSTEM_SENSORTYPE" -eq "$SYSTEM_SENSOR_TYPE_WH24" ]; then
                 SENSORNAME_WH='WH24'
                 else
                 SENSORNAME_WH='WH65'
@@ -528,67 +530,74 @@ printSystem()
 %-32.32s%10u\t%.24s\n\
 %-32.32s%10u\t%s\n\
 %-32.32s%10u\t%s\n"\
-            "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$C_SYSTEM_FREQUENCY" "$C_SYSTEM_FREQUENCY_STATE"\
-            "$LIVEDATA_SYSTEM_SENSORTYPE_HEADER"    "$C_SYSTEM_SENSORTYPE" "$C_SYSTEM_SENSORTYPE_STATE"\
-            "$LIVEDATA_SYSTEM_UTC_HEADER" "$C_SYSTEM_UTC" "$C_SYSTEM_UTC_STATE"\
-            "$LIVEDATA_SYSTEM_TIMEZONE_HEADER"  "$C_SYSTEM_TIMEZONE_INDEX" "$C_SYSTEM_TIMEZONE_INDEX_STATE"\
-            "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER" "$C_SYSTEM_TIMEZONE_AUTO_BIT" "$C_SYSTEM_TIMEZONE_AUTO_STATE"\
-            "$LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER" "$C_SYSTEM_TIMEZONE_DST_BIT" "$C_SYSTEM_TIMEZONE_DST_STATUS_STATE"
+            "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$GW_SYSTEM_FREQUENCY" "$GW_SYSTEM_FREQUENCY_STATE"\
+            "$LIVEDATA_SYSTEM_SENSORTYPE_HEADER"    "$GW_SYSTEM_SENSORTYPE" "$GW_SYSTEM_SENSORTYPE_STATE"\
+            "$LIVEDATA_SYSTEM_UTC_HEADER" "$GW_SYSTEM_UTC" "$GW_SYSTEM_UTC_STATE"\
+            "$LIVEDATA_SYSTEM_TIMEZONE_HEADER"  "$GW_SYSTEM_TIMEZONE_INDEX" "$GW_SYSTEM_TIMEZONE_INDEX_STATE"\
+            "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER" "$GW_SYSTEM_TIMEZONE_AUTO_BIT" "$GW_SYSTEM_TIMEZONE_AUTO_STATE"\
+            "$LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER" "$GW_SYSTEM_TIMEZONE_DST_BIT" "$GW_SYSTEM_TIMEZONE_DST_STATUS_STATE"
 }
+
 
 parseSystem() {
     readUInt8 OD_BUFFER "system frequency"
 
-    C_SYSTEM_FREQUENCY=$VALUE_UINT8
-    if [ "$C_SYSTEM_FREQUENCY" -eq "$SYSTEM_FREQUENCY_RFM433M" ]; then
-        C_SYSTEM_FREQUENCY_STATE="433"
-    elif [ "$C_SYSTEM_FREQUENCY" -eq "$SYSTEM_FREQUENCY_RFM868M" ]; then
-        C_SYSTEM_FREQUENCY_STATE="868"
-    elif [ "$C_SYSTEM_FREQUENCY" -eq "$SYSTEM_FREQUENCY_RFM915M" ]; then
-        C_SYSTEM_FREQUENCY_STATE="915"
-    elif [ "$C_SYSTEM_FREQUENCY" -eq "$SYSTEM_FREQUENCY_RFM920M" ]; then
-        C_SYSTEM_FREQUENCY_STATE="920"
+    export GW_SYSTEM_FREQUENCY="$VALUE_UINT8"
+    export GW_SYSTEM_FREQUENCY_STATE
+    if [ "$GW_SYSTEM_FREQUENCY" -eq "$SYSTEM_FREQUENCY_RFM433M" ]; then
+        GW_SYSTEM_FREQUENCY_STATE="433"
+    elif [ "$GW_SYSTEM_FREQUENCY" -eq "$SYSTEM_FREQUENCY_RFM868M" ]; then
+        GW_SYSTEM_FREQUENCY_STATE="868"
+    elif [ "$GW_SYSTEM_FREQUENCY" -eq "$SYSTEM_FREQUENCY_RFM915M" ]; then
+        GW_SYSTEM_FREQUENCY_STATE="915"
+    elif [ "$GW_SYSTEM_FREQUENCY" -eq "$SYSTEM_FREQUENCY_RFM920M" ]; then
+        GW_SYSTEM_FREQUENCY_STATE="920"
     fi
 
     readUInt8 OD_BUFFER "system sensortype"
 
-    C_SYSTEM_SENSORTYPE=$VALUE_UINT8
-    if [ "$C_SYSTEM_SENSORTYPE" -eq "$SYSTEM_SENSOR_TYPE_WH24" ]; then
+    export GW_SYSTEM_SENSORTYPE="$VALUE_UINT8"
+    export GW_SYSTEM_SENSORTYPE_STATE
+    if [ "$GW_SYSTEM_SENSORTYPE" -eq "$SYSTEM_SENSOR_TYPE_WH24" ]; then
         #       SENSOR_TYPE[WH24_TYPE]="WH24:Outdoor Weather Sensor:16.0:" # overwrite default WH65_TYPE=0
-        C_SYSTEM_SENSORTYPE_STATE="WH24"
-    elif [ "$C_SYSTEM_SENSORTYPE" -eq "$SYSTEM_SENSOR_TYPE_WH65" ]; then
-        C_SYSTEM_SENSORTYPE_STATE="WH65"
+        GW_SYSTEM_SENSORTYPE_STATE="WH24"
+    elif [ "$GW_SYSTEM_SENSORTYPE" -eq "$SYSTEM_SENSOR_TYPE_WH65" ]; then
+        GW_SYSTEM_SENSORTYPE_STATE="WH65"
     fi
 
     readUInt32BE "OD_BUFFER" "system utc"
 
-    C_SYSTEM_UTC=$VALUE_UINT32BE
-    C_SYSTEM_UTC_STATE="$(date -u -d @"$VALUE_UINT32BE" +'%F %T')"
+    export GW_SYSTEM_UTC="$VALUE_UINT32BE"
+    GW_SYSTEM_UTC_STATE="$(date -u -d @"$VALUE_UINT32BE" +'%F %T')"
+    export GW_SYSTEM_UTC_STATE
 
     readUInt8 OD_BUFFER "system timezone index"
 
-    C_SYSTEM_TIMEZONE_INDEX=$VALUE_UINT8
+    export GW_SYSTEM_TIMEZONE_INDEX="$VALUE_UINT8"
 
-    eval "C_SYSTEM_TIMEZONE_INDEX_STATE=\$SYSTEM_TIMEZONE_$C_SYSTEM_TIMEZONE_INDEX" # set from SYSTEM_TIMEZONE "array" variable with index
+    eval "GW_SYSTEM_TIMEZONE_INDEX_STATE=\$SYSTEM_TIMEZONE_$GW_SYSTEM_TIMEZONE_INDEX" # set from SYSTEM_TIMEZONE "array" variable with index
+    export GW_SYSTEM_TIMEZONE_INDEX_STATE
 
-    C_SYSTEM_TIMEZONE_OFFSET_HOURS=${C_SYSTEM_TIMEZONE_INDEX_STATE%%\)*} # remove )... 
-    C_SYSTEM_TIMEZONE_OFFSET_HOURS=${C_SYSTEM_TIMEZONE_OFFSET_HOURS#\(UTC} # remove (UTC
+    GW_SYSTEM_TIMEZONE_OFFSET_HOURS=${GW_SYSTEM_TIMEZONE_INDEX_STATE%%\)*} # remove )... 
+    GW_SYSTEM_TIMEZONE_OFFSET_HOURS=${GW_SYSTEM_TIMEZONE_OFFSET_HOURS#\(UTC} # remove (UTC
+    export GW_SYSTEM_TIMEZONE_OFFSET_HOURS
 
     readUInt8 OD_BUFFER "system dst status"
 
-    C_SYSTEM_TIMEZONE_DST_STATUS=$VALUE_UINT8
+    export GW_SYSTEM_TIMEZONE_DST_STATUS="$VALUE_UINT8"
 
-    C_SYSTEM_TIMEZONE_DST_BIT=$((C_SYSTEM_TIMEZONE_DST_STATUS & 0x01))
+    export GW_SYSTEM_TIMEZONE_DST_BIT=$((GW_SYSTEM_TIMEZONE_DST_STATUS & 0x01))
 
-    C_SYSTEM_TIMEZONE_AUTOOFF_BIT=$(((C_SYSTEM_TIMEZONE_DST_STATUS & 0x2) >> 1)) # bit 2 1= off, 0=on ?
+    GW_SYSTEM_TIMEZONE_AUTOOFF_BIT=$(((GW_SYSTEM_TIMEZONE_DST_STATUS & 0x2) >> 1)) # bit 2 1= off, 0=on ?
 
-    if [ $C_SYSTEM_TIMEZONE_AUTOOFF_BIT = 0 ]; then #invert
-       C_SYSTEM_TIMEZONE_AUTO_BIT=1;
+    if [ $GW_SYSTEM_TIMEZONE_AUTOOFF_BIT = 0 ]; then #invert
+       GW_SYSTEM_TIMEZONE_AUTO_BIT=1;
     else
-        C_SYSTEM_TIMEZONE_AUTO_BIT=0
+        GW_SYSTEM_TIMEZONE_AUTO_BIT=0
     fi
+    export GW_SYSTEM_TIMEZONE_AUTO_BIT
 
-     [ -z "$C_NOPRINT" ] && printSystem
+     [ -z "$GW_NOPRINT" ] && printSystem
 
 }
 
@@ -1065,7 +1074,7 @@ parsePacket()
      EXITCODE_PARSEPACKET=0
 
      if [ -z "$1" ]; then
-         echo >&2 Warning: parsePacket: Empty buffer/response received
+         [ "$DEBUG" -eq 1 ] && echo >&2 Warning: parsePacket: Empty buffer/response received
         EXITCODE_PARSEPACKET="$ERROR_OD_BUFFER_EMPTY"
         return "$EXITCODE_PARSEPACKET"
     fi

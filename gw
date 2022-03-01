@@ -222,16 +222,16 @@ initConfigDir() {
 copySystemToLivedata()
 #copies system info to UI variables
 {
-    LIVEDATA_SYSTEM_FREQUENCY=$C_SYSTEM_FREQUENCY_STATE
-    LIVEDATA_SYSTEM_SENSORTYPE=$C_SYSTEM_SENSORTYPE_STATE
-    LIVEDATA_SYSTEM_UTC=$C_SYSTEM_UTC_STATE #local time 
-    LIVEDATA_SYSTEM_TIMEZONE=$C_SYSTEM_TIMEZONE_INDEX_STATE
-    LIVEDATA_SYSTEM_TIMEZONE_DST_BIT=$C_SYSTEM_TIMEZONE_DST_BIT
-    LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT=$C_SYSTEM_TIMEZONE_AUTO_BIT
-    LIVEDATA_SYSTEM_TIMEZONE_OFFSET_HOURS=$C_SYSTEM_TIMEZONE_OFFSET_HOURS
-    LIVEDATA_SYSTEM_HOST=$C_HOST
-    LIVEDATA_SYSTEM_VERSION="$C_VERSION"
-    LIVEDATA_SYSTEM_MAC=$C_MAC
+    LIVEDATA_SYSTEM_FREQUENCY=$GW_SYSTEM_FREQUENCY_STATE
+    LIVEDATA_SYSTEM_SENSORTYPE=$GW_SYSTEM_SENSORTYPE_STATE
+    LIVEDATA_SYSTEM_UTC=$GW_SYSTEM_UTC_STATE #local time 
+    LIVEDATA_SYSTEM_TIMEZONE=$GW_SYSTEM_TIMEZONE_INDEX_STATE
+    LIVEDATA_SYSTEM_TIMEZONE_DST_BIT=$GW_SYSTEM_TIMEZONE_DST_BIT
+    LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT=$GW_SYSTEM_TIMEZONE_AUTO_BIT
+    LIVEDATA_SYSTEM_TIMEZONE_OFFSET_HOURS=$GW_SYSTEM_TIMEZONE_OFFSET_HOURS
+    LIVEDATA_SYSTEM_HOST=$GW_HOST
+    LIVEDATA_SYSTEM_VERSION="$GW_VERSION"
+    LIVEDATA_SYSTEM_MAC=$GW_MAC
 
 }
 
@@ -243,10 +243,10 @@ parseSystemOption()
     EXITCODE_PARSESYSTEMOPTIONS=0
 
     #copy current configuration
-    systemtype=$C_SYSTEM_SENSORTYPE
-    systemtzindex=$C_SYSTEM_TIMEZONE_INDEX
-    systemdst=$C_SYSTEM_TIMEZONE_DST_BIT
-    systemauto=$C_SYSTEM_TIMEZONE_AUTOOFF_BIT
+    systemtype=$GW_SYSTEM_SENSORTYPE
+    systemtzindex=$GW_SYSTEM_TIMEZONE_INDEX
+    systemdst=$GW_SYSTEM_TIMEZONE_DST_BIT
+    systemauto=$GW_SYSTEM_TIMEZONE_AUTOOFF_BIT
 
     IFS=','
     #shellcheck disable=SC2086
@@ -302,7 +302,7 @@ parseSystemOption()
       esac
     done
 
-    if ! sendSystemPacket "$systemtype" "$systemtzindex" "$systemdst" "$systemauto" "$C_HOST"; then
+    if ! sendSystemPacket "$systemtype" "$systemtzindex" "$systemdst" "$systemauto" "$GW_HOST"; then
        EXITCODE_PARSESYSTEMOPTIONS=$?
        echo >&2 Error: Failed to send system packet
     fi
@@ -342,21 +342,21 @@ processCustomizedOptions() {
         case "$key" in
 
             id)
-                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_id from $C_WS_CUSTOMIZED_ID to $value length:${#value}"
-                C_WS_CUSTOMIZED_ID=$value
+                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_id from $GW_WS_CUSTOMIZED_ID to $value length:${#value}"
+                GW_WS_CUSTOMIZED_ID=$value
                 ;;
 
             password | pw)
 
-                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_password from ${C_WS_CUSTOMIZED_PASSWORD} to $value length:${#value}"
-                C_WS_CUSTOMIZED_PASSWORD=$value
+                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_password from ${GW_WS_CUSTOMIZED_PASSWORD} to $value length:${#value}"
+                GW_WS_CUSTOMIZED_PASSWORD=$value
                 #observation: gw1000 client will not send wunderground http request unless password and id is specified
                 ;;
 
             server | s)
 
-                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_server from $C_WS_CUSTOMIZED_SERVER to $value length:${#value}"
-                C_WS_CUSTOMIZED_SERVER=$value
+                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_server from $GW_WS_CUSTOMIZED_SERVER to $value length:${#value}"
+                GW_WS_CUSTOMIZED_SERVER=$value
 
                 ;;
 
@@ -366,8 +366,8 @@ processCustomizedOptions() {
                     echo >&2 "Error: Not a number -  cannot set customized port to $value from $value"
                     EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 else
-                    C_WS_CUSTOMIZED_PORT=$((value))
-                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_port from $C_WS_CUSTOMIZED_PORT to $value"
+                    GW_WS_CUSTOMIZED_PORT=$((value))
+                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_port from $GW_WS_CUSTOMIZED_PORT to $value"
                 fi
 
                 ;;
@@ -388,8 +388,8 @@ processCustomizedOptions() {
                         EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 esac
 
-                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_TYPE from $C_WS_CUSTOMIZED_HTTP to $value"
-                C_WS_CUSTOMIZED_HTTP=$value
+                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_TYPE from $GW_WS_CUSTOMIZED_HTTP to $value"
+                GW_WS_CUSTOMIZED_HTTP=$value
                 ;;
 
             enabled | e)
@@ -408,8 +408,8 @@ processCustomizedOptions() {
                         EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 esac
 
-                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_enabled from $C_WS_CUSTOMIZED_ENABLED to $value"
-                C_WS_CUSTOMIZED_ENABLED=$value
+                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_enabled from $GW_WS_CUSTOMIZED_ENABLED to $value"
+                GW_WS_CUSTOMIZED_ENABLED=$value
 
                 ;;
 
@@ -419,8 +419,8 @@ processCustomizedOptions() {
                     echo >&2 "Error: Not a number cannot set customized interval to $value"
                     EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
                 else
-                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_interval from $C_WS_CUSTOMIZED_INTERVAL to $value"
-                    C_WS_CUSTOMIZED_INTERVAL=$((value))
+                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_interval from $GW_WS_CUSTOMIZED_INTERVAL to $value"
+                    GW_WS_CUSTOMIZED_INTERVAL=$((value))
 
                 fi
 
@@ -428,15 +428,15 @@ processCustomizedOptions() {
 
             path_wunderground | p_w)
 
-                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_path_wu from $C_WS_CUSTOMIZED_PATH_WU to $value length:${#value}"
-                C_WS_CUSTOMIZED_PATH_WU=$value
+                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_path_wu from $GW_WS_CUSTOMIZED_PATH_WU to $value length:${#value}"
+                GW_WS_CUSTOMIZED_PATH_WU=$value
 
                 ;;
 
             path_ecowitt | p_e )
 
-                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_ecowitt_path from $C_WS_CUSTOMIZED_PATH_ECOWITT to $value length:${#value}"
-                C_WS_CUSTOMIZED_PATH_ECOWITT=$value
+                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_ecowitt_path from $GW_WS_CUSTOMIZED_PATH_ECOWITT to $value length:${#value}"
+                GW_WS_CUSTOMIZED_PATH_ECOWITT=$value
 
                 ;;
 
@@ -454,11 +454,11 @@ processCustomizedOptions() {
 
         [ $DEBUG -eq 1 ] && printCustomized >&2
 
-        if [ ${#C_WS_CUSTOMIZED_ID} -gt 40 ] || [ ${#C_WS_CUSTOMIZED_PASSWORD} -gt 40 ] || [ ${#C_WS_CUSTOMIZED_SERVER} -gt 64 ] || [ ${#C_WS_CUSTOMIZED_PATH_ECOWITT} -gt 64 ] || [ ${#C_WS_CUSTOMIZED_PATH_WU} -gt 64 ]; then
+        if [ ${#GW_WS_CUSTOMIZED_ID} -gt 40 ] || [ ${#GW_WS_CUSTOMIZED_PASSWORD} -gt 40 ] || [ ${#GW_WS_CUSTOMIZED_SERVER} -gt 64 ] || [ ${#GW_WS_CUSTOMIZED_PATH_ECOWITT} -gt 64 ] || [ ${#GW_WS_CUSTOMIZED_PATH_WU} -gt 64 ]; then
             echo >&2 Error: Max string limit execeeded 
             EXITCODE_CUSTOMIZED=$ERROR_MAX_STRING_LENGTH_EXCEEDED
         else
-            sendCustomized "$C_HOST"
+            sendCustomized "$GW_HOST"
         fi
     fi
 
@@ -559,7 +559,7 @@ processSensorOptions()
             SPATTERNID_RANGE_LOW=$sensorType_low
             SPATTERNID_RANGE_HIGH=$sensorType_high
             if [ $sentReadSensorIdCommand -eq 0 ]; then 
-                sendPacket $CMD_READ_SENSOR_ID_NEW "$C_HOST" #only sent for first , expression
+                sendPacket $CMD_READ_SENSOR_ID_NEW "$GW_HOST" #only sent for first , expression
                 sentReadSensorIdCommand=1
             else # yet another read (for example -c sensor 1-10,40-47) use in-memory buffer backup 
                IFS=" " parsePacket "$OD_BUFFER_BACKUP" 
@@ -598,7 +598,7 @@ processSensorOptions()
             return $ERROR_INVALID_SENSORID
         fi
 
-       sendSensorId "$sensorType_low" "$sensorType_high" "$sensorid" "$C_HOST"
+       sendSensorId "$sensorType_low" "$sensorType_high" "$sensorid" "$GW_HOST"
           
     done
 
@@ -610,10 +610,10 @@ parseRaindataOptions()
 {
     
     #copy read values
-    rainday=$C_RAINDAILY
-    rainweek=$C_RAINWEEK
-    rainmonth=$C_RAINMONTH
-    rainyear=$C_RAINYEAR
+    rainday=$GW_RAINDAILY
+    rainweek=$GW_RAINWEEK
+    rainmonth=$GW_RAINMONTH
+    rainyear=$GW_RAINYEAR
 
     rain_needsupdate=0
 
@@ -653,7 +653,7 @@ parseRaindataOptions()
     done
 
     if [ $rain_needsupdate -eq 1 ]; then
-        if ! sendRaindata "$rainday" "$rainweek" "$rainmonth" "$rainyear" "$C_HOST"; then
+        if ! sendRaindata "$rainday" "$rainweek" "$rainmonth" "$rainyear" "$GW_HOST"; then
            echo >&2 Failed to send raindata 
         fi
     else
@@ -674,13 +674,13 @@ processCalibrationOptions()
     DEBUG_CALIBRATION_OPTIONS=${DEBUG_CALIBRATION_OPTIONS:=$DEBUG}
     DEBUG_FUNC='processCalibrationOptions'
 
-    calibration_intemp=$C_CALIBRATION_INTEMPOFFSET_INT
-    calibration_inhumi=$C_CALIBRATION_INHUMIDITYOFFSET
-    calibration_outtemp=$C_CALIBRATION_OUTTEMPOFFSET_INT
-    calibration_outhumi=$C_CALIBRATION_OUTHUMIDITYOFFSET
-    calibration_absoffset=$C_CALIBRATION_ABSOFFSET_INT
-    calibration_reloffset=$C_CALIBRATION_RELOFFSET_INT
-    calibration_winddir=$C_CALIBRATION_WINDDIROFFSET
+    calibration_intemp=$GW_CALIBRATION_INTEMPOFFSET_INT
+    calibration_inhumi=$GW_CALIBRATION_INHUMIDITYOFFSET
+    calibration_outtemp=$GW_CALIBRATION_OUTTEMPOFFSET_INT
+    calibration_outhumi=$GW_CALIBRATION_OUTHUMIDITYOFFSET
+    calibration_absoffset=$GW_CALIBRATION_ABSOFFSET_INT
+    calibration_reloffset=$GW_CALIBRATION_RELOFFSET_INT
+    calibration_winddir=$GW_CALIBRATION_WINDDIROFFSET
 
     IFS=,
     calibration_need_update=0
@@ -725,7 +725,7 @@ processCalibrationOptions()
                         ;;
 
             a|absoffset|absolute|abs)  if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10_ABS" -le $CALIBRATION_ABSOFFSET_MAX ]; then
-                             [ "$C_CALIBRATION_ABSOFFSET_INT" -ne "$VALUE_FLOAT_SCALE10" ] && { 
+                             [ "$GW_CALIBRATION_ABSOFFSET_INT" -ne "$VALUE_FLOAT_SCALE10" ] && { 
                                  calibration_absoffset=$VALUE_FLOAT_SCALE10; calibration_need_update=1;  }
                         else
                            echo >&2 "Warning: Invalid value for $expr, min/max -$CALIBRATION_ABSOFFSET_MAX/$CALIBRATION_ABSOFFSET_MAX (scale 10)"
@@ -734,7 +734,7 @@ processCalibrationOptions()
             
             r|reloffset|relative|rel) if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10_ABS" -le $CALIBRATION_RELOFFSET_MAX ]; then
 
-                              [ "$C_CALIBRATION_RELOFFSET_INT" -ne "$VALUE_FLOAT_SCALE10" ] && { calibration_reloffset=$VALUE_FLOAT_SCALE10; calibration_need_update=1; }
+                              [ "$GW_CALIBRATION_RELOFFSET_INT" -ne "$VALUE_FLOAT_SCALE10" ] && { calibration_reloffset=$VALUE_FLOAT_SCALE10; calibration_need_update=1; }
                         else
                            echo >&2 "Warning: Invalid value for $expr, min/max -$CALIBRATION_RELOFFSET_MAX/$CALIBRATION_RELOFFSET_MAX (scale 10)"
                         fi
@@ -766,7 +766,7 @@ processCalibrationOptions()
     done
 
     if [ $calibration_need_update -eq 1 ]; then
-       if ! sendCalibration "$calibration_intemp" "$calibration_inhumi" "$calibration_absoffset" "$calibration_reloffset" "$calibration_outtemp" "$calibration_outhumi" "$calibration_winddir" "$C_HOST" ; then
+       if ! sendCalibration "$calibration_intemp" "$calibration_inhumi" "$calibration_absoffset" "$calibration_reloffset" "$calibration_outtemp" "$calibration_outhumi" "$calibration_winddir" "$GW_HOST" ; then
           echo >&2 "Error: Failed to send calibration to device $?"
        fi
     fi
@@ -1056,14 +1056,14 @@ processWeatherServiceOptions()
 
     # init read id and password (in processCommand)
     if [ "$processWeatherServiceOptions_command" -eq "$CMD_WRITE_WUNDERGROUND" ] ; then
-        id=$C_WS_WUNDERGROUND_ID
-        password=$C_WS_WUNDERGROUND_PASSWORD
+        id=$GW_WS_WUNDERGROUND_ID
+        password=$GW_WS_WUNDERGROUND_PASSWORD
     elif [ "$processWeatherServiceOptions_command" -eq $CMD_WRITE_WEATHERCLOUD ] ; then
-        id=$C_WS_WC_ID
-        password=$C_WS_WC_PASSWORD
+        id=$GW_WS_WC_ID
+        password=$GW_WS_WC_PASSWORD
     elif [ "$processWeatherServiceOptions_command" -eq $CMD_WRITE_WOW ]; then
-        id=$C_WS_WOW_ID
-        password=$C_WS_WOW_PASSWORD
+        id=$GW_WS_WOW_ID
+        password=$GW_WS_WOW_PASSWORD
     fi
 
     [ $DEBUG_WS_OPTIONS -eq 1 ] && echo >&2 "Current settings command: $processWeatherServiceOptions_command, id: $id length:${#id} password: $password length: ${#password}"
@@ -1082,7 +1082,11 @@ processWeatherServiceOptions()
                 [ $DEBUG_WS_OPTIONS -eq 1 ] && echo >&2 "Updating weather service password=$password length: ${#password}"
 
                 ;;
-            *)  echo >&2 "Error: Unknown option: $option, use id=, password|pw|key="
+
+            reset) unset id password # zero-length string
+                ;;
+                   
+            *)  echo >&2 "Error: Unknown option: $option, use id=, password|pw|key=, reset"
                 EXITCODE_PROCESSWEATHERSERVICE=$ERROR_WEATHERSERVICE_INVALID_OPTION
                 unset option id password
                 return $EXITCODE_PROCESSWEATHERSERVICE
@@ -1139,7 +1143,7 @@ processCommand()
                 createPacketTX "$CMD_WRITE_SSID"
                 od_buffer=$(printf %b "$PACKET_TX_ESCAPE" | timeout "$TIMEOUT_WIFICONFIG_SERVER" nc -l "$PORT_WIFICONFIG_SERVER_TCP" | od -A n -t u1 -w$MAX_16BIT_UINT) 
                 if parsePacket "$od_buffer"; then
-                    [ "$VALUE_PACKET_WRITE_RESULT" -eq 1 ] && EXITCODE_PROCESSCOMMAND=$ERROR_WIFICONFIG_SERVER_FAILED
+                    [ "$GW_WRITE_RESULT" -eq 1 ] && EXITCODE_PROCESSCOMMAND=$ERROR_WIFICONFIG_SERVER_FAILED
                 else
                    echo >&2 "Error: No connection received for ${TIMEOUT_WIFICONFIG_SERVER}s on $PORT_WIFICONFIG_SERVER_TCP"
                    EXITCODE_PROCESSCOMMAND=$EXITCODE_PARSEPACKET
@@ -1158,7 +1162,7 @@ processCommand()
                 newWIFIpacket "$1" "$2"
                 if ! sendPacket && [ "$EXITCODE_SENDPACKET" -ne $ERROR_OD_BUFFER_EMPTY ]; then
                     #sometimes OK response from gw is not received -> empty buffer
-                    echo >&2 Error: Failed to send wifi configuration to "$C_HOST", error code "$EXITCODE_SENDPACKET"
+                    echo >&2 Error: Failed to send wifi configuration to "$GW_HOST", error code "$EXITCODE_SENDPACKET"
                     EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
                 fi
                 shift && [ -n "$2" ] && shift
@@ -1167,14 +1171,14 @@ processCommand()
 
         "$CMDOPT_RESET")
 
-            if sendPacket $CMD_BROADCAST "$C_HOST" >/dev/null; then
+            if sendPacket $CMD_BROADCAST "$GW_HOST" >/dev/null; then
 
-                printf "%s" "Reset $C_BROADCAST_MAC $C_BROADCAST_SSID (Y/N)? "
+                printf "%s" "Reset $GW_BROADCAST_MAC $GW_BROADCAST_SSID (Y/N)? "
                 read -r REPLY
 
                 case $REPLY in
                     Y)
-                        sendPacket $CMD_WRITE_RESET "$C_HOST" # 3 blink in red LED
+                        sendPacket $CMD_WRITE_RESET "$GW_HOST" # 3 blink in red LED
                         ;;
                 esac
 
@@ -1186,26 +1190,26 @@ processCommand()
             ;;
 
         reboot) 
-            sendPacket $CMD_REBOOT "$C_HOST"
+            sendPacket $CMD_REBOOT "$GW_HOST"
             ;;
 
         mac)
-            sendPacket $CMD_READ_MAC "$C_HOST"
+            sendPacket $CMD_READ_MAC "$GW_HOST"
             ;;
 
         version|ver)
 
-            sendPacket $CMD_READ_VERSION "$C_HOST"
+            sendPacket $CMD_READ_VERSION "$GW_HOST"
             ;;
 
         system | sys)
 
             if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_SYSTEM "$C_HOST"
+                sendPacket $CMD_READ_SYSTEM "$GW_HOST"
             else
-                C_NOPRINT=1
-                sendPacket $CMD_READ_SYSTEM "$C_HOST"
-                unset C_NOPRINT
+                GW_NOPRINT=1
+                sendPacket $CMD_READ_SYSTEM "$GW_HOST"
+                unset GW_NOPRINT
                 parseSystemOption "$1"
                 EXITCODE_PROCESSCOMMAND=$EXITCODE_PARSESYSTEMOPTIONS
             fi
@@ -1216,9 +1220,9 @@ processCommand()
         ecowitt | e)
 
             if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_ECOWITT_INTERVAL "$C_HOST"
+                sendPacket $CMD_READ_ECOWITT_INTERVAL "$GW_HOST"
             else
-                sendEcowittInterval "$1" "$C_HOST"
+                sendEcowittInterval "$1" "$GW_HOST"
                 EXITCODE_PROCESSCOMMAND=$?
             fi
             
@@ -1226,7 +1230,7 @@ processCommand()
 
         wunderground | wu)
 
-            if sendPacket $CMD_READ_WUNDERGROUND "$C_HOST" >/dev/null; then 
+            if sendPacket $CMD_READ_WUNDERGROUND "$GW_HOST" >/dev/null; then 
 
                 case "$1" in
                     ""|--*|-*) printWunderground
@@ -1242,7 +1246,7 @@ processCommand()
 
             ;;
 
-        wow)    if sendPacket $CMD_READ_WOW "$C_HOST" >/dev/null; then 
+        wow)    if sendPacket $CMD_READ_WOW "$GW_HOST" >/dev/null; then 
 
                     case "$1" in
                         ""|--*|-*)  printWow
@@ -1259,7 +1263,7 @@ processCommand()
 
         weathercloud | wc)
 
-              if sendPacket $CMD_READ_WEATHERCLOUD "$C_HOST" >/dev/null; then 
+              if sendPacket $CMD_READ_WEATHERCLOUD "$GW_HOST" >/dev/null; then 
 
                 case "$1" in
                     ""|--*|-*)   printWeathercloud
@@ -1277,12 +1281,12 @@ processCommand()
         customized | c | cust)
 
             if argEmptyOrOption "$1"; then
-                if ! sendPacket $CMD_READ_PATH  "$C_HOST" >/dev/null || ! sendPacket $CMD_READ_CUSTOMIZED  "$C_HOST"; then
+                if ! sendPacket $CMD_READ_PATH  "$GW_HOST" >/dev/null || ! sendPacket $CMD_READ_CUSTOMIZED  "$GW_HOST"; then
                   >&2 echo Failed to get customized settings
                 fi
             else
                 
-                if sendPacket $CMD_READ_CUSTOMIZED  "$C_HOST" >/dev/null && sendPacket $CMD_READ_PATH "$C_HOST" >/dev/null; then
+                if sendPacket $CMD_READ_CUSTOMIZED  "$GW_HOST" >/dev/null && sendPacket $CMD_READ_PATH "$GW_HOST" >/dev/null; then
                     if ! processCustomizedOptions "$1"; then
                         EXITCODE_PROCESSCOMMAND=$EXITCODE_CUSTOMIZED
                         #echo >&2 "Error: Failed to update customized settings"
@@ -1300,39 +1304,38 @@ processCommand()
        #    ;;
 
         broadcast | b)
-            sendPacket $CMD_BROADCAST "$C_HOST"
+            sendPacket $CMD_BROADCAST "$GW_HOST"
             ;;
 
         rain | r)
 
             if argEmptyOrOption "$1"; then
-                sendPacket $CMD_READ_RAINDATA "$C_HOST"
+                sendPacket $CMD_READ_RAINDATA "$GW_HOST"
             else
-                if sendPacket $CMD_READ_RAINDATA "$C_HOST" >/dev/null ; then #refresh
+                if sendPacket $CMD_READ_RAINDATA "$GW_HOST" >/dev/null ; then #refresh
                     parseRaindataOptions "$1"
                     EXITCODE_PROCESSCOMMAND=$?
 
                 else
-                  EXITCODE_PROCESSCOMMAND=$?
-                  echo >&2 Error: Failed to get raindata from "$C_HOST"
+                  EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
+                  echo >&2 Error: Failed to get raindata from "$GW_HOST"
                 fi
             fi
 
             ;;
 
         livedata | l)
-
             
-           # sendPacket "$CMD_READ_SENSOR_ID_NEW" "$C_HOST" >/dev/null   #get battery and signal info as well
+           # sendPacket "$CMD_READ_SENSOR_ID_NEW" "$GW_HOST" >/dev/null   #get battery and signal info as well
             
             if [ -z "$LOG_CMD" ]; then
 
-                sendPacket $CMD_LIVEDATA "$C_HOST"
+                sendPacket $CMD_LIVEDATA "$GW_HOST"
                 EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
             else
               
                 while true; do
-                  sendPacket $CMD_LIVEDATA "$C_HOST"
+                  sendPacket $CMD_LIVEDATA "$GW_HOST"
                   sleep "$LOG_INTERVAL"
                 done
             fi
@@ -1341,7 +1344,7 @@ processCommand()
 
         sensor_id)
 
-            sendPacket $CMD_READ_SENSOR_ID "$C_HOST"
+            sendPacket $CMD_READ_SENSOR_ID "$GW_HOST"
             ;;
 
         sensor_id_new | sensor | s) # for new SENSOR_TYPE types
@@ -1352,19 +1355,19 @@ processCommand()
                 case "$1" in 
                     connected|c)
                                     SPATTERNID=$SPATTERNID_CONNECTED #matches connected sensors
-                                    sendPacket $CMD_READ_SENSOR_ID_NEW "$C_HOST"
+                                    sendPacket $CMD_READ_SENSOR_ID_NEW "$GW_HOST"
                                     ;;
                     disconnected)
                                     SPATTERNID=$SPATTERNID_DISCONNECTED
-                                    sendPacket $CMD_READ_SENSOR_ID_NEW "$C_HOST"
+                                    sendPacket $CMD_READ_SENSOR_ID_NEW "$GW_HOST"
                                     ;;
                     searching|s)
                                     SPATTERNID=$SPATTERNID_SEARCHING
-                                    sendPacket $CMD_READ_SENSOR_ID_NEW "$C_HOST"
+                                    sendPacket $CMD_READ_SENSOR_ID_NEW "$GW_HOST"
                                     ;;
                     disabled|d)
                                     SPATTERNID=$SPATTERNID_DISABLED
-                                    sendPacket $CMD_READ_SENSOR_ID_NEW "$C_HOST"
+                                    sendPacket $CMD_READ_SENSOR_ID_NEW "$GW_HOST"
                                     ;;
                     
                     *) 
@@ -1373,14 +1376,14 @@ processCommand()
                 esac
 
             else
-                sendPacket $CMD_READ_SENSOR_ID_NEW "$C_HOST"
+                sendPacket $CMD_READ_SENSOR_ID_NEW "$GW_HOST"
             fi
 
             ;;
 
         calibration | calibrate | cal)
    
-            if sendPacket $CMD_READ_CALIBRATION "$C_HOST" >/dev/null; then 
+            if sendPacket $CMD_READ_CALIBRATION "$GW_HOST" >/dev/null; then 
 
                 case "$1" in
                     ""|--*|-*) printCalibration
@@ -1400,7 +1403,9 @@ processCommand()
             ;;
     esac
 
-    [ -z "$EXITCODE_PROCESSCOMMAND" ] && EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
+    if [ "$EXITCODE_PROCESSCOMMAND" -eq 0 ] && [ "$EXITCODE_SENDPACKET" -ne 0 ]; then # catch exit code for sendPacket
+       EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
+    fi
 
     return "$EXITCODE_PROCESSCOMMAND"
 }
@@ -1428,6 +1433,17 @@ initWinddirectionCompass
 
 #https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
 #useful CLI info: https://clig.dev/#arguments-and-flags
+
+if [ -n "$GWOPTIONS" ]; then
+    # reason for using this variable: dash . (source) command does not allow arguments
+    # running . ./gw -g 192.168.3.16 -c version -> allows exported variables in the current/invoking shell -> subsequent commands in script can access exported variables
+    # running ./gw -g 192.168.3.16 -c version -> must create child process inside gw to access exported variables
+    IFS=' '
+    #shellcheck disable=SC2086
+    set -- $GWOPTIONS
+fi
+
+[ "$DEBUG" -eq 1 ] && echo >&2 "main PID $$ arguments $* length: $#"
 
 # parse options
 while [ $# -gt 0 ]; do
@@ -1470,7 +1486,7 @@ while [ $# -gt 0 ]; do
             
             ;;
 
-       -b | --backup)   if [ -z "$C_HOST" ]; then
+       -b | --backup)   if [ -z "$GW_HOST" ]; then
                              echo >&2 Error: No host
                             EXITCODE_MAIN=$ERROR_NO_HOST_SPECIFIED
                             shift
@@ -1481,7 +1497,7 @@ while [ $# -gt 0 ]; do
                             echo >&2 "$(date) Backup started to $FILENAME_BACKUP"
                             for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND ; do
                                 getCommandName "$cmd"
-                                if sendPacket $cmd "$C_HOST" "$FILENAME_BACKUP"; then
+                                if sendPacket $cmd "$GW_HOST" "$FILENAME_BACKUP"; then
                                      # [ $DEBUG -eq 1 ] &&
                                      echo >&2 "OK $COMMAND_NAME"
                                 else
@@ -1503,16 +1519,16 @@ while [ $# -gt 0 ]; do
                             echo >&2 Error: Please provide backup filename to restore
                             shift
                             EXITCODE_MAIN=$ERROR_INVALID_FILENAME
-                        elif [ -z "$C_HOST" ]; then
+                        elif [ -z "$GW_HOST" ]; then
                             echo >&2 Error: No host
                             EXITCODE_MAIN=$ERROR_NO_HOST_SPECIFIED
                             shift
                         else
                             FILENAME_RESTORE="$2"
-                            printf "%s" "Overwrite current configuration for host $C_HOST (Y) ? "
+                            printf "%s" "Overwrite current configuration for host $GW_HOST (Y) ? "
                             read -r RESTORE_OVERWRITE_CURRENT
                             if [ "$RESTORE_OVERWRITE_CURRENT" = "Y" ]; then
-                                restoreBackup "$FILENAME_RESTORE" "$C_HOST"
+                                restoreBackup "$FILENAME_RESTORE" "$GW_HOST"
                             fi 
                             shift
                         fi
@@ -1581,7 +1597,7 @@ while [ $# -gt 0 ]; do
       
         -W | --show-ws)
             
-            printWeatherServices "$C_HOST"
+            printWeatherServices "$GW_HOST"
             shift
             ;;
 
@@ -1626,13 +1642,13 @@ while [ $# -gt 0 ]; do
 
         -g | --gw)
 
-            C_HOST="$2"
-            sendPacket "$CMD_READ_MAC"  "$C_HOST">/dev/null
-            sendPacket "$CMD_READ_VERSION" "$C_HOST" >/dev/null 
+            GW_HOST="$2"
+            sendPacket "$CMD_READ_MAC"  "$GW_HOST">/dev/null
+            sendPacket "$CMD_READ_VERSION" "$GW_HOST" >/dev/null 
 
-            case "$C_VERSION" in
-                GW*)    sendPacket "$CMD_READ_SYSTEM" "$C_HOST" >/dev/null  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
-                        sendPacket "$CMD_READ_SENSOR_ID_NEW" "$C_HOST" >/dev/null
+            case "$GW_VERSION" in
+                GW*)    sendPacket "$CMD_READ_SYSTEM" "$GW_HOST" >/dev/null  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
+                        sendPacket "$CMD_READ_SENSOR_ID_NEW" "$GW_HOST" >/dev/null
             esac
 
             shift 2
@@ -1703,8 +1719,9 @@ done
 #typeset +f - list all function names/ksh93
 #set # list all variables
 
-[ "$DEBUG" -eq 1 ] && echo >&2 Exit code $EXITCODE_MAIN
 
 cleanup
 
-exit $EXITCODE_MAIN
+[ "$DEBUG" -eq 1 ] && echo >&2 "main: Exit/return code $EXITCODE_MAIN"
+
+return $EXITCODE_MAIN # using return instead of exit which terminates shell when sourced from shell prompt 

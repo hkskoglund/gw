@@ -95,11 +95,11 @@ sendPacketnc()
       rxpipecmd="$rxpipecmd | tee -a \"$3\""
     fi
 
-    port=$PORT_GW_TCP
+    port=$GW_PORT_TCP
 
     if [ "$PACKET_TX_CMD" -eq "$CMD_BROADCAST" ]; then
         ncUDPOpt='-u' # udp mode
-        port=$PORT_GW_UDP
+        port=$GW_PORT_UDP
         timeout_nc=$timeout_udp_broadcast
         useTimeout=1
     elif [ "$PACKET_TX_CMD" -eq "$CMD_WRITE_RESET" ] || [ "$PACKET_TX_CMD" -eq "$CMD_WRITE_SSID" ]; then
@@ -286,21 +286,21 @@ newCustomizedPacket()
 # creates a new customized packet
  {
     newPacket       "$CMD_WRITE_CUSTOMIZED"
-    writeString     PACKET_TX_BODY "$C_WS_CUSTOMIZED_ID" "customized id"
-    writeString     PACKET_TX_BODY "$C_WS_CUSTOMIZED_PASSWORD" "customized password"
-    writeString     PACKET_TX_BODY "$C_WS_CUSTOMIZED_SERVER" "customized server"
-    writeUInt16BE   PACKET_TX_BODY "$C_WS_CUSTOMIZED_PORT" "customized port"
-    writeUInt16BE   PACKET_TX_BODY "$C_WS_CUSTOMIZED_INTERVAL" "customized interval"
-    writeUInt8      PACKET_TX_BODY "$C_WS_CUSTOMIZED_HTTP" "customized http"
-    writeUInt8      PACKET_TX_BODY "$C_WS_CUSTOMIZED_ENABLED" "customized enabled"
+    writeString     PACKET_TX_BODY "$GW_WS_CUSTOMIZED_ID" "customized id"
+    writeString     PACKET_TX_BODY "$GW_WS_CUSTOMIZED_PASSWORD" "customized password"
+    writeString     PACKET_TX_BODY "$GW_WS_CUSTOMIZED_SERVER" "customized server"
+    writeUInt16BE   PACKET_TX_BODY "$GW_WS_CUSTOMIZED_PORT" "customized port"
+    writeUInt16BE   PACKET_TX_BODY "$GW_WS_CUSTOMIZED_INTERVAL" "customized interval"
+    writeUInt8      PACKET_TX_BODY "$GW_WS_CUSTOMIZED_HTTP" "customized http"
+    writeUInt8      PACKET_TX_BODY "$GW_WS_CUSTOMIZED_ENABLED" "customized enabled"
 }
 
 newPathPacket()
 # creates a new path packet
 {
     newPacket "$CMD_WRITE_PATH"
-    writeString PACKET_TX_BODY "$C_WS_CUSTOMIZED_PATH_ECOWITT" "customized path ecowitt"
-    writeString PACKET_TX_BODY "$C_WS_CUSTOMIZED_PATH_WU" "customized path wunderground"
+    writeString PACKET_TX_BODY "$GW_WS_CUSTOMIZED_PATH_ECOWITT" "customized path ecowitt"
+    writeString PACKET_TX_BODY "$GW_WS_CUSTOMIZED_PATH_WU" "customized path wunderground"
 }
 
 newWIFIpacket()
@@ -427,7 +427,7 @@ sendWeatherservice()
     
     [ "$DEBUG_SENDWEATHERSERVICE" -eq 1 ] && echo >&2 "Sending weather service command: $1 id: $2 length: ${#2} password: $3 length: ${#3}"
 
-    sendPacket "$1" "$C_HOST"
+    sendPacket "$1" "$GW_HOST"
 }
 
 sendCustomized()
