@@ -17,6 +17,6 @@ if [ "$GW_RAINRATE" -eq 0 ]; then
     echo No rain
     return 1
 else
-    echo "Rain $GW_RAINRATE_FLOAT $UNIT_RAIN"
+    echo "Rain $GW_RAINRATE_FLOAT $LIVEDATA_RAIN_UNIT"
     return 0
 fi

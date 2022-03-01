@@ -25,107 +25,129 @@ UNIT_UNICODE_LIGHT_LUX="㏓"
 UNIT_UNICODE_M2="㎡"
 
 setLightMode()
+# $1 mode
+# export 
 {
     UNIT_LIGHT_MODE=$1
 
     if [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_LUX" ]; then
         if [ "$SHELL_SUPPORT_UNICODE" ]; then
-            UNIT_LIGHT=$UNIT_UNICODE_LIGHT_LUX
+            LIVEDATA_SOLAR_LIGHT_UNIT=$UNIT_UNICODE_LIGHT_LUX
         else
-            UNIT_LIGHT="lux"
+            LIVEDATA_SOLAR_LIGHT_UNIT="lux"
         fi
     elif [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_WATTM2" ]; then
         if [ "$SHELL_SUPPORT_UNICODE" ]; then
-            UNIT_LIGHT="W/"$UNIT_UNICODE_M2
+            LIVEDATA_SOLAR_LIGHT_UNIT="W/"$UNIT_UNICODE_M2
         else
-            UNIT_LIGHT="W/m2"
+            LIVEDATA_SOLAR_LIGHT_UNIT="W/m2"
         fi
     fi
 
+    export LIVEDATA_SOLAR_LIGHT_UNIT
+
     if [ "$SHELL_SUPPORT_UNICODE" ]; then
-        UNIT_UV="µW/$UNIT_UNICODE_M2"
+        LIVEDATA_SOLAR_LIGHT_UV_UNIT="µW/$UNIT_UNICODE_M2"
     else
-        UNIT_UV="µW/m2"
+        LIVEDATA_SOLAR_LIGHT_UV_UNIT="µW/m2"
     fi
 
-    [ "$DEBUG" -eq 1 ] && >&2 echo Unit solar radiation: $UNIT_LIGHT uv: $UNIT_UV
+    export LIVEDATA_SOLAR_LIGHT_UV_UNIT
+
+    [ "$DEBUG" -eq 1 ] && >&2 echo Unit solar radiation: $LIVEDATA_SOLAR_LIGHT_UNIT uv: $LIVEDATA_SOLAR_LIGHT_UV_UNIT
 
 
 }
 
 setWindMode()
+# $1 mode
+# export LIVEDATA_WIND_UNIT
 {
     UNIT_WIND_MODE=$1
 
     if [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_MPH" ]; then 
-          UNIT_WIND="mph"
+          LIVEDATA_WIND_UNIT="mph"
        
     elif [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_MPS" ]; then
-         UNIT_WIND=$UNIT_UNICODE_WIND_MPS
+         LIVEDATA_WIND_UNIT=$UNIT_UNICODE_WIND_MPS
     elif [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_KMH" ]; then
-         UNIT_WIND="km/$UNIT_HOUR"
+         LIVEDATA_WIND_UNIT="km/$UNIT_HOUR"
     fi
+
+    export LIVEDATA_WIND_UNIT
     
-    [ "$DEBUG" -eq 1 ] && >&2 echo Unit wind : "$UNIT_WIND"
+    [ "$DEBUG" -eq 1 ] && >&2 echo Unit wind : "$LIVEDATA_WIND_UNIT"
 
 }
 
 setTemperatureMode()
 #$1 - mode
+# export LIVEDATA_TEMP_UNIT
 {
     UNIT_TEMPERATURE_MODE=$1
 
     if [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_CELCIUS" ]; then 
         if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-            UNIT_TEMP=$UNIT_UNICODE_CELCIUS
+            LIVEDATA_TEMP_UNIT=$UNIT_UNICODE_CELCIUS
         else
-            UNIT_TEMP="C"
+            LIVEDATA_TEMP_UNIT="C"
         fi
        
     elif [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_FARENHEIT" ]; then
         if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-            UNIT_TEMP=$UNIT_UNICODE_FARENHEIT
+            LIVEDATA_TEMP_UNIT=$UNIT_UNICODE_FARENHEIT
         else
-            UNIT_TEMP="F"
+            LIVEDATA_TEMP_UNIT="F"
         fi
     fi
+
+    export LIVEDATA_TEMP_UNIT
     
-    [ "$DEBUG" -eq 1 ] && >&2 echo Unit temperature : $UNIT_TEMP
+    [ "$DEBUG" -eq 1 ] && >&2 echo Unit temperature : $LIVEDATA_TEMP_UNIT
 
 }
 
 setPressureMode()
+# $1 pressure mode
+# export LIVEDATA_PRESSURE_UNIT
 {
     UNIT_PRESSURE_MODE=$1
 
     if  [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_HPA" ]; then
-        UNIT_PRESSURE=$UNIT_UNICODE_PRESSURE_HPA
+        LIVEDATA_PRESSURE_UNIT=$UNIT_UNICODE_PRESSURE_HPA
     elif [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_INHG" ]; then
-        UNIT_PRESSURE="inHg"
+        LIVEDATA_PRESSURE_UNIT="inHg"
     fi
 
-    [ "$DEBUG" -eq 1 ] && >&2 echo Unit pressure : $UNIT_PRESSURE
+    export LIVEDATA_PRESSURE_UNIT
+
+    [ "$DEBUG" -eq 1 ] && >&2 echo Unit pressure : $LIVEDATA_PRESSURE_UNIT
 
 }
 
 setRainMode()
+# $1 rain mode
+# export LIVEDATA_RAIN_UNIT LIVEDATA_RAINRATE_UNIT
 {
     UNIT_RAIN_MODE=$1
 
     if  [ "$UNIT_RAIN_MODE" -eq "$UNIT_RAIN_MM" ]; then
-        UNIT_RAIN=$UNIT_UNICODE_RAIN_MM
+        LIVEDATA_RAIN_UNIT=$UNIT_UNICODE_RAIN_MM
     elif [ "$UNIT_RAIN_MODE" -eq "$UNIT_RAIN_IN" ]; then
-        UNIT_RAIN="in"
+        LIVEDATA_RAIN_UNIT="in"
     fi
 
+    export LIVEDATA_RAIN_UNIT
     UNIT_HOUR=${UNIT_HOUR:="h"}
-    UNIT_RAINRATE=$UNIT_RAIN"/$UNIT_HOUR"
+    export LIVEDATA_RAINRATE_UNIT=$LIVEDATA_RAIN_UNIT"/$UNIT_HOUR"
 
-    [ "$DEBUG" -eq 1 ] && >&2 echo Unit rain rainrate : $UNIT_RAIN "$UNIT_RAINRATE"
+
+    [ "$DEBUG" -eq 1 ] && >&2 echo Unit rain rainrate : $LIVEDATA_RAIN_UNIT "$LIVEDATA_RAINRATE_UNIT"
     
 }
 
 initUnit()
+# export LIVEDATA_PM25_UNIT LIVEDATA_WH45CO2_UNIT="ppm" LIVEDATA_HUMIDITY_UNIT="%" LIVEDATA_WIND_DEGREE_UNIT
 {
     if [ -z "$UNIT_TEMPERATURE_MODE" ]; then 
         setTemperatureMode "$UNIT_TEMPERATURE_CELCIUS" # default
@@ -158,18 +180,17 @@ initUnit()
     fi
 
     if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-        UNIT_PM25="µg/㎥"
+        LIVEDATA_PM25_UNIT="µg/㎥"
     else
-        UNIT_PM25="µg/m3"
+        LIVEDATA_PM25_UNIT="µg/m3"
     fi
 
-    UNIT_CO2="ppm"
-    UNIT_HUMIDITY="%"
+    export LIVEDATA_PM25_UNIT LIVEDATA_WH45CO2_UNIT="ppm" LIVEDATA_HUMIDITY_UNIT="%" LIVEDATA_WIND_DEGREE_UNIT
 
     if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-        UNIT_DEGREE=$UNIT_UNICODE_WINDDIRECTION
+        LIVEDATA_WIND_DEGREE_UNIT=$UNIT_UNICODE_WINDDIRECTION
     else
-        UNIT_DEGREE="deg"
+        LIVEDATA_WIND_DEGREE_UNIT="deg"
     fi
 
 }

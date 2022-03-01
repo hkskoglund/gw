@@ -276,7 +276,7 @@ parseEcowittHttpRequest()
                 ;;
 
             uv)
-                    export LIVEDATA_UVI="$value"
+                    export LIVEDATA_SOLAR_UVI="$value"
                 ;;
 
 
@@ -490,7 +490,7 @@ parseWundergroundHttpReqest()
             UV)
                
                  if [ "$value" != "$WUNDERGROUND_UNDEFINED_VALUE" ]; then
-                     export LIVEDATA_UVI="$value"
+                     export LIVEDATA_SOLAR_UVI="$value"
                  fi
                 ;;
 
