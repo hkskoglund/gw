@@ -154,19 +154,19 @@ printLivedata()
      
      [ -n "$LIVEDATA_INHUMI" ]   && printLivedataLine "$LIVEDATA_INHUMI_HEADER" "$LIVEDATA_INHUMI"  "%6u" "$UNIT_HUMIDITY" "%s" 'ihum'   "%4u"
      [ -n "$LIVEDATA_OUTHUMI" ]  && printLivedataLine "$LIVEDATA_OUTHUMI_HEADER" "$LIVEDATA_OUTHUMI" "%6u" "$UNIT_HUMIDITY" "%s" 'ohum'  "%4u"
-     if [ -n "$LIVEDATA_RELBARO" ]; then
+     if [ -n "$LIVEDATA_PRESSURE_RELBARO" ]; then
             
             printLivedataHeader "" "$LIVEDATA_PRESSURE_HEADER"
-             setLivedataValueStyleLt "$LIVEDATA_RELBARO_UINT16" "$LIVEDATA_RELBARO_LIMIT_LOW"
+             setLivedataValueStyleLt "$LIVEDATA_PRESSURE_RELBARO_UINT16" "$LIVEDATA_PRESSURE_RELBARO_LIMIT_LOW"
          
          if [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_HPA" ]; then
-             printLivedataLine "$LIVEDATA_RELBARO_HEADER" "$LIVEDATA_RELBARO" "%6.1f" "$UNIT_PRESSURE" "%4s" 'rbaro'
-             [ -n "$LIVEDATA_ABSBARO" ] && {
-                 setLivedataValueStyleLt "$LIVEDATA_ABSBARO_UINT16" "$LIVEDATA_ABSBARO_LIMIT_LOW"
-                 printLivedataLine "$LIVEDATA_ABSBARO_HEADER" "$LIVEDATA_ABSBARO" "%6.1f" "$UNIT_PRESSURE" "%4s" 'abaro'; }
+             printLivedataLine "$LIVEDATA_PRESSURE_RELBARO_HEADER" "$LIVEDATA_PRESSURE_RELBARO" "%6.1f" "$UNIT_PRESSURE" "%4s" 'rbaro'
+             [ -n "$LIVEDATA_PRESSURE_ABSBARO" ] && {
+                 setLivedataValueStyleLt "$LIVEDATA_PRESSURE_ABSBARO_UINT16" "$LIVEDATA_PRESSURE_ABSBARO_LIMIT_LOW"
+                 printLivedataLine "$LIVEDATA_PRESSURE_ABSBARO_HEADER" "$LIVEDATA_PRESSURE_ABSBARO" "%6.1f" "$UNIT_PRESSURE" "%4s" 'abaro'; }
          elif [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_INHG" ]; then
-             printLivedataLine "$LIVEDATA_RELBARO_HEADER" "$LIVEDATA_RELBARO" "%6.2f" "$UNIT_PRESSURE" "%4s" 'rbaro'
-             [ -n "$LIVEDATA_ABSBARO" ] && printLivedataLine "$LIVEDATA_ABSBARO_HEADER" "$LIVEDATA_ABSBARO" "%6.2f" "$UNIT_PRESSURE" "%4s" 'abaro'
+             printLivedataLine "$LIVEDATA_PRESSURE_RELBARO_HEADER" "$LIVEDATA_PRESSURE_RELBARO" "%6.2f" "$UNIT_PRESSURE" "%4s" 'rbaro'
+             [ -n "$LIVEDATA_PRESSURE_ABSBARO" ] && printLivedataLine "$LIVEDATA_PRESSURE_ABSBARO_HEADER" "$LIVEDATA_PRESSURE_ABSBARO" "%6.2f" "$UNIT_PRESSURE" "%4s" 'abaro'
          fi
      fi
  
@@ -215,23 +215,23 @@ printLivedata()
         #[ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]    && printLivedataLine "LIVEDATA_WINDDIRECTION_COMPASS_HEADER"   "$LIVEDATA_WINDDIRECTION_COMPASS"  "%6s" "" "%5s" 'wdir' "%4s"
     fi
 
-    if [ -n "$LIVEDATA_LIGHT" ] && [ -n "$LIVEDATA_LIGHT_UINT32" ] && [ "$LIVEDATA_LIGHT_UINT32" -eq 0 ] && [ "$HIDE_LIGHT_LIVEDATA_AUTO" -eq 1 ]; then
+    if [ -n "$LIVEDATA_SOLAR_LIGHT" ] && [ -n "$LIVEDATA_SOLAR_LIGHT_UINT32" ] && [ "$LIVEDATA_SOLAR_LIGHT_UINT32" -eq 0 ] && [ "$HIDE_LIGHT_LIVEDATA_AUTO" -eq 1 ]; then
       LIVEVIEW_HIDE_LIGHT=1 # auto hide_liveview, when dark
     fi
 
     if [ -z "$LIVEVIEW_HIDE_LIGHT" ]; then
 
-        [ -n "$LIVEDATA_LIGHT" ] && printLivedataHeader "" "$LIVEDATA_SOLARRADIATION_HEADER"
+        [ -n "$LIVEDATA_SOLAR_LIGHT" ] && printLivedataHeader "" "$LIVEDATA_UV_HEADER"
 
-        if [ -n "$LIVEDATA_LIGHT" ]; then
+        if [ -n "$LIVEDATA_SOLAR_LIGHT" ]; then
             if [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_WATTM2" ]; then
-                 printLivedataLine "$LIVEDATA_LIGHT_HEADER" "$LIVEDATA_LIGHT"  "%6.2f" "$UNIT_LIGHT" "%4s" 'light'
+                 printLivedataLine "$LIVEDATA_LIGHT_HEADER" "$LIVEDATA_SOLAR_LIGHT"  "%6.2f" "$UNIT_LIGHT" "%4s" 'light'
             elif [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_LUX" ]; then 
-                printLivedataLine "$LIVEDATA_LIGHT_HEADER" "$LIVEDATA_LIGHT"  "%6.0f" "$UNIT_LIGHT" "%4s" 'light'
+                printLivedataLine "$LIVEDATA_LIGHT_HEADER" "$LIVEDATA_SOLAR_LIGHT"  "%6.0f" "$UNIT_LIGHT" "%4s" 'light'
             fi
         fi
             
-        [ -n "$LIVEDATA_UV" ] && printLivedataLine "$LIVEDATA_UV_HEADER" "$LIVEDATA_UV" "%6.1f" "$UNIT_UV" "%5s" 'uv'
+        [ -n "$LIVEDATA_SOLAR_UV" ] && printLivedataLine "$LIVEDATA_UV_HEADER" "$LIVEDATA_SOLAR_UV" "%6.1f" "$UNIT_UV" "%5s" 'uv'
         
         if [ -n "$LIVEDATA_UVI" ]; then
            if [ -z "$LIVEVIEW_HIDE_UVI" ]; then

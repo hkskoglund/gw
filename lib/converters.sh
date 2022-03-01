@@ -457,8 +457,8 @@ convertLightLivedata()
                 #lux 976 -> ecowitt protcol: 7.7 W/m2
                 #https://help.ambientweather.net/help/why-is-the-lux-to-w-m-2-conversion-factor-126-7/
            
-                convertScale10ToFloat "$(( LIVEDATA_LIGHT_UINT32*1075/136000 ))"
-                export LIVEDATA_LIGHT="$VALUE_SCALE10_FLOAT"
+                convertScale10ToFloat "$(( LIVEDATA_SOLAR_LIGHT_UINT32*1075/136000 ))"
+                export LIVEDATA_SOLAR_LIGHT="$VALUE_SCALE10_FLOAT"
             fi
 }
 

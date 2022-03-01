@@ -635,24 +635,24 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:inhumi type: uint8 $LIVEDATA_INHUMI $UNIT_HUMIDITY"
 
 
-        elif [ "$ldf" -eq "$LDF_ABSBARO" ]; then
+        elif [ "$ldf" -eq "$LDF_PRESSURE_ABSBARO" ]; then
 
             readUInt16BE OD_BUFFER "absolute pressure"
             #shellcheck disable=SC2034
-            export LIVEDATA_ABSBARO_UINT16="$VALUE_UINT16BE" #may use for ansi escape coloring beyond limits
+            export LIVEDATA_PRESSURE_ABSBARO_UINT16="$VALUE_UINT16BE" #may use for ansi escape coloring beyond limits
             convertPressureLivedata "$VALUE_UINT16BE"
-            export LIVEDATA_ABSBARO="$VALUE_SCALE10_FLOAT"
+            export LIVEDATA_PRESSURE_ABSBARO="$VALUE_SCALE10_FLOAT"
             
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:absbaro type: uint16be $LIVEDATA_ABSBARO_UINT16 $LIVEDATA_ABSBARO $UNIT_UNICODE_PRESSURE_HPA"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:absbaro type: uint16be $LIVEDATA_PRESSURE_ABSBARO_UINT16 $LIVEDATA_PRESSURE_ABSBARO $UNIT_UNICODE_PRESSURE_HPA"
 
 
-        elif [ "$ldf" -eq "$LDF_RELBARO" ]; then
+        elif [ "$ldf" -eq "$LDF_PRESSURE_RELBARO" ]; then
 
             readUInt16BE OD_BUFFER "relative pressure"
-            export LIVEDATA_RELBARO_UINT16="$VALUE_UINT16BE"
+            export LIVEDATA_PRESSURE_RELBARO_UINT16="$VALUE_UINT16BE"
             convertPressureLivedata "$VALUE_UINT16BE"
-            export LIVEDATA_RELBARO="$VALUE_SCALE10_FLOAT"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:relbaro type: uint16be $LIVEDATA_RELBARO_UINT16 $LIVEDATA_RELBARO  $UNIT_UNICODE_PRESSURE_HPA"
+            export LIVEDATA_PRESSURE_RELBARO="$VALUE_SCALE10_FLOAT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:relbaro type: uint16be $LIVEDATA_PRESSURE_RELBARO_UINT16 $LIVEDATA_PRESSURE_RELBARO  $UNIT_UNICODE_PRESSURE_HPA"
 
 
         elif [ "$ldf" -eq "$LDF_OUTTEMP" ]; then
@@ -712,11 +712,11 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         elif [ "$ldf" -eq "$LDF_LIGHT" ]; then
 
             readUInt32BE OD_BUFFER "light"
-            export LIVEDATA_LIGHT_UINT32="$VALUE_UINT32BE"
-            convertLightLivedata "$LIVEDATA_LIGHT_UINT32"
-            export LIVEDATA_LIGHT="$VALUE_SCALE10_FLOAT"
+            export LIVEDATA_SOLAR_LIGHT_UINT32="$VALUE_UINT32BE"
+            convertLightLivedata "$LIVEDATA_SOLAR_LIGHT_UINT32"
+            export LIVEDATA_SOLAR_LIGHT="$VALUE_SCALE10_FLOAT"
 
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:light type: uint32be $LIVEDATA_LIGHT_UINT32 lux $LIVEDATA_LIGHT  $UNIT_LIGHT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:light type: uint32be $LIVEDATA_SOLAR_LIGHT_UINT32 lux $LIVEDATA_SOLAR_LIGHT  $UNIT_LIGHT"
 
 
         elif [ "$ldf" -eq "$LDF_UV" ]; then
@@ -724,13 +724,13 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             readUInt16BE OD_BUFFER "uv"
             export LIVEDATA_UV_UINT16="$VALUE_UINT16BE"
             convertScale10ToFloat "$VALUE_UINT16BE" # assume its scale 10?
-            export LIVEDATA_UV="$VALUE_SCALE10_FLOAT"
+            export LIVEDATA_SOLAR_UV="$VALUE_SCALE10_FLOAT"
             # uv gain can be used to calibrate value
             #is it µW/m^2? is it scale 10 ? scale 10 gives best resolution
             #scale 10: 0.1 µW/m2 = 0.1/(100*cm*100cm) = 0.1/(10000cm^2) = 1000 µW/cm^2 = 1mW/cm^2, resolution: 1mW/cm2
             #not scale 10: 1 µW/m2 = 10mW/cm2, resolution: 10mW/cm2
             #conversion info: https://www.linshangtech.com/tech/tech508.html
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:uv type: uint16be $LIVEDATA_UV_UINT16 $LIVEDATA_UV $UNIT_UV = $LIVEDATA_UV_UINT16 mW/㎠"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:uv type: uint16be $LIVEDATA_UV_UINT16 $LIVEDATA_SOLAR_UV $UNIT_UV = $LIVEDATA_UV_UINT16 mW/㎠"
 
         elif [ "$ldf" -eq "$LDF_UVI" ]; then
 

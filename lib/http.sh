@@ -162,12 +162,12 @@ parseEcowittHttpRequest()
 
             baromrelin)
                 
-                setPressureHttpLivedata LIVEDATA_RELBARO "$value"
+                setPressureHttpLivedata LIVEDATA_PRESSURE_RELBARO "$value"
                 ;;
 
             baromabsin)
 
-                setPressureHttpLivedata LIVEDATA_ABSBARO "$value"
+                setPressureHttpLivedata LIVEDATA_PRESSURE_ABSBARO "$value"
                     ;;
 
             temp?f)
@@ -272,7 +272,7 @@ parseEcowittHttpRequest()
 
             solarradiation)
             
-                   setLightHttpLivedata LIVEDATA_LIGHT "$value"
+                   setLightHttpLivedata LIVEDATA_SOLAR_LIGHT "$value"
                 ;;
 
             uv)
@@ -432,11 +432,11 @@ parseWundergroundHttpReqest()
             
             baromin)
                 
-                setPressureHttpLivedata LIVEDATA_RELBARO "$value"
+                setPressureHttpLivedata LIVEDATA_PRESSURE_RELBARO "$value"
                 ;;
 
             absbaromin)
-               setPressureHttpLivedata LIVEDATA_ABSBARO "$value"
+               setPressureHttpLivedata LIVEDATA_PRESSURE_ABSBARO "$value"
                ;;
 
             rainin)
@@ -483,7 +483,7 @@ parseWundergroundHttpReqest()
             solarradiation)
                 
                  if [ "$value" != "$WUNDERGROUND_UNDEFINED_VALUE" ]; then
-                   setLightHttpLivedata LIVEDATA_LIGHT "$value"
+                   setLightHttpLivedata LIVEDATA_SOLAR_LIGHT "$value"
                 fi
                 ;;
 
