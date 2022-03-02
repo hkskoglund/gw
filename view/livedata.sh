@@ -247,7 +247,8 @@ printLivedata()
             else
               unset LV_DELIMITER
             fi
-            printLivedataLine "$LIVEDATA_SOLAR_UVI_HEADER $LV_DELIMITER $VALUE_UV_RISK" "$LIVEDATA_SOLAR_UVI"      "%6u" "    " "%4s" 'uvi' "%3u"
+            padSpaceRight "$VALUE_UV_RISK" 10
+            printLivedataLine "$LIVEDATA_SOLAR_UVI_HEADER $LV_DELIMITER $VALUE_PADSPACERIGHT" "$LIVEDATA_SOLAR_UVI"      "%6u" "    " "%4s" 'uvi' "%3u"
         fi
     fi
 
