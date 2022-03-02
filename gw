@@ -1441,7 +1441,9 @@ if [ -n "$GWOPTIONS" ]; then
     set -- $GWOPTIONS
 fi
 
-[ "$DEBUG" -eq 1 ] && echo >&2 "main PID $$ arguments $* length: $#"
+DEBUG_MAIN=${DEBUG_MAIN:=$DEBUG}
+
+[ "$DEBUG_MAIN" -eq 1 ] && echo >&2 "main PID $$ arguments $* length: $#"
 
 # parse options
 while [ $# -gt 0 ]; do
@@ -1450,7 +1452,7 @@ while [ $# -gt 0 ]; do
 
     KEY="$1"
 
-    [ "$DEBUG" -eq 1 ] && echo >&2 "main: process option $KEY"
+    [ "$DEBUG_MAIN" -eq 1 ] && echo >&2 "main: process option $KEY"
 
     case $KEY in
 
@@ -1473,7 +1475,7 @@ while [ $# -gt 0 ]; do
                     ;;
 
                 *)
-                    [ $DEBUG -eq 1 ] && echo >&2 "main: Shift/remove param all:$* param:$param"
+                    [ "$DEBUG_MAIN" -eq 1 ] && echo >&2 "main: Shift/remove param all:$* param:$param"
                     shift
                     ;;
                 esac
@@ -1580,7 +1582,7 @@ while [ $# -gt 0 ]; do
                 shift
             fi
           
-            [ "$DEBUG" -eq 1 ] &&  echo >&2 Logging each "$LOG_INTERVAL" seconds
+            [ "$DEBUG_MAIN" -eq 1 ] &&  echo >&2 Logging each "$LOG_INTERVAL" seconds
             ;;
 
        -L | --log)
@@ -1649,6 +1651,8 @@ while [ $# -gt 0 ]; do
                         sendPacket "$CMD_READ_SENSOR_ID_NEW" "$GW_HOST" >/dev/null
             esac
 
+            EXITCODE_MAIN=$EXITCODE_SENDPACKET
+
             shift 2
             ;;
 
@@ -1683,7 +1687,7 @@ while [ $# -gt 0 ]; do
             else
                while true; do
                   if ! httpServer "$2"; then
-                    [ $DEBUG -eq 1 ] && >&2 echo Failed http server listen $EXITCODE_HTTPSERVER
+                    [ "$DEBUG_MAIN" -eq 1 ] && >&2 echo Failed http server listen $EXITCODE_HTTPSERVER
                     #EXITCODE_MAIN=$EXITCODE_HTTPSERVER
                     #break
                   fi
@@ -1717,9 +1721,12 @@ done
 #typeset +f - list all function names/ksh93
 #set # list all variables
 
-
 cleanup
 
-[ "$DEBUG" -eq 1 ] && echo >&2 "main: Exit/return code $EXITCODE_MAIN"
+[ "$DEBUG_MAIN" -eq 1 ] && echo >&2 "main: Exit/return code $EXITCODE_MAIN"
 
-return $EXITCODE_MAIN # using return instead of exit which terminates shell when sourced from shell prompt 
+# bash problem with directly executing script in shell process: return: can only `return' from a function or sourced script
+
+if ! return $EXITCODE_MAIN 2>/dev/null; then # using return instead of exit which terminates shell when sourced from shell prompt 
+    exit $EXITCODE_MAIN # for bash
+fi
