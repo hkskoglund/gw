@@ -388,10 +388,11 @@ printLivedata()
                                 setStyleAQI \"\$LIVEDATA_PM25${n}_UINT16\"
                                 STYLE_LIVE_VALUE=\$STYLE_AQI
                             else
-                              unset LV_PM25_AQI_DELIMITER
+                              unset LV_DELIMITER
                             fi
                             export LIVEDATA_PM25_AQI$n=\"\$VALUE_PM25_AQI\"
-                            printLivedataLine \"\$LIVEDATA_PM25_HEADER$n  \$LV_PM25_AQI_DELIMITER \$VALUE_PM25_AQI\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$LIVEDATA_PM25_UNIT\" \"%6s\" \"pm25$n\" '' \"\$LIVEDATA_PM25${n}_BATTERY\" \"\$LIVEDATA_PM25${n}_BATTERY_STATE\" '' \"\$LIVEDATA_PM25${n}_SIGNAL\" \"\$LIVEDATA_PM25${n}_SIGNAL_STATE\"
+                            padSpaceRight \"\$VALUE_PM25_AQI\" 
+                            printLivedataLine \"\$LIVEDATA_PM25_HEADER$n  \$LV_DELIMITER \$VALUE_PADSPACERIGHT\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$LIVEDATA_PM25_UNIT\" \"%6s\" \"pm25$n\" '' \"\$LIVEDATA_PM25${n}_BATTERY\" \"\$LIVEDATA_PM25${n}_BATTERY_STATE\" '' \"\$LIVEDATA_PM25${n}_SIGNAL\" \"\$LIVEDATA_PM25${n}_SIGNAL_STATE\"
                  fi"
             n=$((n + 1))
         done
@@ -404,10 +405,10 @@ printLivedata()
                             setStyleAQI \"\$LIVEDATA_PM25_24HAVG${n}_UINT16\"
                             STYLE_LIVE_VALUE=\$STYLE_AQI
                         else
-                            unset LV_PM25_AQI_DELIMITER
+                            unset LV_DELIMITER
                         fi
                         export LIVEDATA_PM25_24AVG_AQI$n=\"\$VALUE_PM25_AQI\"
-                        printLivedataLine \"\$LIVEDATA_PM25_24HAVG_HEADER$n \$LV_PM25_AQI_DELIMITER \$VALUE_PM25_AQI\" \"\$LIVEDATA_PM25_24HAVG$n\" \"%6.1f\" \"\$LIVEDATA_PM25_UNIT\" \"%6s\" \"pm25a$n\" \"%6.1f\"
+                        printLivedataLine \"\$LIVEDATA_PM25_24HAVG_HEADER$n \$LV_DELIMITER \$VALUE_PM25_AQI\" \"\$LIVEDATA_PM25_24HAVG$n\" \"%6.1f\" \"\$LIVEDATA_PM25_UNIT\" \"%6s\" \"pm25a$n\" \"%6.1f\"
              fi"
             n=$((n + 1))
         done
@@ -429,14 +430,14 @@ printLivedata()
             setAQI "$LIVEDATA_WH45CO2_PM25_UINT16"
             setStyleAQI "$LIVEDATA_WH45CO2_PM25_UINT16"
             STYLE_LIVE_VALUE=$STYLE_AQI
-            LIVEDATA_WH45CO2_PM25_HEADER="$LIVEDATA_WH45CO2_PM25_HEADER $LV_PM25_AQI_DELIMITER $VALUE_PM25_AQI"
+            LIVEDATA_WH45CO2_PM25_HEADER="$LIVEDATA_WH45CO2_PM25_HEADER $LV_DELIMITER $VALUE_PM25_AQI"
             printLivedataLine "$LIVEDATA_WH45CO2_PM25_HEADER" "$LIVEDATA_WH45CO2_PM25"                "%6.1f" "$LIVEDATA_PM25_UNIT" "%7s" 'pm25'
         fi
         if [ -n "$LIVEDATA_WH45CO2_PM25_24HAVG" ]; then
             setAQI "$LIVEDATA_WH45CO2_PM25_24HAVG_UINT16"
             setStyleAQI "$LIVEDATA_WH45CO2_PM25_24HAVG_UINT16"
             STYLE_LIVE_VALUE=$STYLE_AQI
-            LIVEDATA_WH45CO2_PM25_24HAVG_HEADER="$LIVEDATA_WH45CO2_PM25_24HAVG_HEADER $LV_PM25_AQI_DELIMITER $VALUE_PM25_AQI"
+            LIVEDATA_WH45CO2_PM25_24HAVG_HEADER="$LIVEDATA_WH45CO2_PM25_24HAVG_HEADER $LV_DELIMITER $VALUE_PM25_AQI"
             printLivedataLine "$LIVEDATA_WH45CO2_PM25_24HAVG_HEADER" "$LIVEDATA_WH45CO2_PM25_24HAVG"  "%6.1f" "$LIVEDATA_PM25_UNIT" "%7s" 'pm25a'
         fi
         [ -n "$LIVEDATA_WH45CO2_CO2" ]          && printLivedataLine "$LIVEDATA_WH45CO2_CO2_HEADER" "$LIVEDATA_WH45CO2_CO2"                  "%6u" "$LIVEDATA_WH45CO2_UNIT" "%6s" 'co2'

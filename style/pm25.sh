@@ -7,13 +7,12 @@ export STYLE_PM25_AQI_VERY_UNHEALTHY="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKG
 export STYLE_PM25_AQI_HAZARDOUS="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;${SGI_BACKGC}88m" #approximate #88000
 
 # https://www.airnow.gov/aqi/aqi-basics/
-#added space at end when doing when refreshing screen with printf \e[H, otherwise status is merged if changed
-                              PM25_AQI_GOOD=${PM25_AQI_GOOD:="GOOD         "}
-                      PM25_AQI_MODERATE=${PM25_AQI_MODERATE:="MODERATE     "}
-PM25_AQI_UNHEALTHY_SENSITIVE=${PM25_AQI_UNHEALTHY_SENSITIVE:="UNHEALTHY S. "}
-                    PM25_AQI_UNHEALTHY=${PM25_AQI_UNHEALTHY:="UNHEALTY     "}
+                              PM25_AQI_GOOD=${PM25_AQI_GOOD:="GOOD"}
+                      PM25_AQI_MODERATE=${PM25_AQI_MODERATE:="MODERATE"}
+PM25_AQI_UNHEALTHY_SENSITIVE=${PM25_AQI_UNHEALTHY_SENSITIVE:="UNHEALTHY S."}
+                    PM25_AQI_UNHEALTHY=${PM25_AQI_UNHEALTHY:="UNHEALTY"}
           PM25_AQI_VERY_UNHEALTHY=${PM25_AQI_VERY_UNHEALTHY:="VERY UNHEALTY"}
-                    PM25_AQI_HAZARDOUS=${PM25_AQI_HAZARDOUS:="HAZARDOUS    "}
+                    PM25_AQI_HAZARDOUS=${PM25_AQI_HAZARDOUS:="HAZARDOUS"}
 
                PM25_AQI_GOOD_LIMIT=121
            PM25_AQI_MODERATE_LIMIT=355
