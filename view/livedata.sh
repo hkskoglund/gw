@@ -129,7 +129,7 @@ printLivedata()
 
     #resetAppendBuffer
     
-   printLivedataHeader "" "$LIVEDATA_TEMPERATURE_HEADER"
+   printLivedataHeader "" "$LIVEDATA_TEMPERATURE_GROUPHEADER"
  
      if [ -n "$LIVEDATA_INTEMP" ]; then
          
@@ -156,7 +156,7 @@ printLivedata()
      [ -n "$LIVEDATA_OUTHUMI" ]  && printLivedataLine "$LIVEDATA_OUTHUMI_HEADER" "$LIVEDATA_OUTHUMI" "%6u" "$LIVEDATA_HUMIDITY_UNIT" "%s" 'ohum'  "%4u"
      if [ -n "$LIVEDATA_PRESSURE_RELBARO" ]; then
             
-            printLivedataHeader "" "$LIVEDATA_PRESSURE_HEADER"
+            printLivedataHeader "" "$LIVEDATA_PRESSURE_GROUPHEADER"
              setLivedataValueStyleLt "$LIVEDATA_PRESSURE_RELBARO_UINT16" "$LIVEDATA_PRESSURE_RELBARO_LIMIT_LOW"
          
          if [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_HPA" ]; then
@@ -172,7 +172,7 @@ printLivedata()
  
     if [ -z "$LIVEVIEW_HIDE_WIND" ]; then
       
-       [ -n "$LIVEDATA_WINDSPEED" ] && printLivedataHeader "" "$LIVEDATA_WIND_HEADER"
+       [ -n "$LIVEDATA_WINDSPEED" ] && printLivedataHeader "" "$LIVEDATA_WIND_GROUPHEADER"
 
        [ -z "$LIVEVIEW_HIDE_COMPASS" ] && [ -n "$LIVEDATA_WINDSPEED" ] && [ -n "$LIVEDATA_WINDGUSTSPEED" ] && [ -n "$LIVEDATA_WINDDIRECTION_UINT16" ] && newLivedataCompass "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE" "$VALUE_COMPASS"
          
@@ -226,7 +226,7 @@ printLivedata()
 
     if [ -z "$LIVEVIEW_HIDE_LIGHT" ]; then
 
-        [ -n "$LIVEDATA_SOLAR_LIGHT" ] && printLivedataHeader "" "$LIVEDATA_SOLAR_UV_HEADER"
+        [ -n "$LIVEDATA_SOLAR_LIGHT" ] && printLivedataHeader "" "$LIVEDATA_SOLAR_GROUPHEADER"
 
         if [ -n "$LIVEDATA_SOLAR_LIGHT" ]; then
             if [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_WATTM2" ]; then
@@ -260,7 +260,7 @@ printLivedata()
         setRainValueFormat # 2 decimals for inch or 1 decimals for mm
        
         if [ -n "$LIVEDATA_RAINRATE" ]; then
-              printLivedataHeader "" "$LIVEDATA_RAIN_HEADER"
+              printLivedataHeader "" "$LIVEDATA_RAIN_GROUPHEADER"
 
                setRainIntensity "$LIVEDATA_RAINRATE_UINT16"
                export LIVEDATA_RAINRATE_STATE_DESCRIPTION="$VALUE_RAININTENSITY"
@@ -292,7 +292,7 @@ printLivedata()
     fi
 
      if [ -z "$LIVEVIEW_HIDE_TEMP" ]; then 
-        [ -n "$LIVEDATA_TEMP1" ] && printLivedataHeader "" "$LIVEDATA_TEMPERATURE_HEADER"
+        [ -n "$LIVEDATA_TEMP1" ] && printLivedataHeader "" "$LIVEDATA_TEMPERATURE_GROUPHEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
         #shellcheck disable=SC2153
@@ -320,12 +320,12 @@ printLivedata()
      fi
 
     if [ -z "$LIVEVIEW_HIDE_SOILMOISTURE" ]; then
-        [ -n "$LIVEDATA_SOILMOISTURE1" ] && printLivedataHeader "" "$LIVEDATA_SOILMOISTURE_HEADER"
+        [ -n "$LIVEDATA_SOILMOISTURE1" ] && printLivedataHeader "" "$LIVEDATA_SOILMOISTURE_GROUPHEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH51SOILMOISTURE_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_SOILMOISTURE$n" ]; then
                     #setSGIBatteryVoltage \"\$LIVEDATA_SOILMOISTURE${n}_BATTERY_UINT8\"
-                    printLivedataLine  \"\$LIVEDATA_SOILMOISTURE_HEADER$n\" \"\$LIVEDATA_SOILMOISTURE$n\" \"%6u\" \"%\" \"%4s\" \"sm$n\" \"%3u\" \"\$LIVEDATA_SOILMOISTURE${n}_BATTERY\" \"\$LIVEDATA_SOILMOISTURE${n}_BATTERY_STATE\" '' \"\$LIVEDATA_SOILMOISTURE${n}_SIGNAL\" \"\$LIVEDATA_SOILMOISTURE${n}_SIGNAL_STATE\"
+                    printLivedataLine  \"\$LIVEDATA_SOILMOISTURE_GROUPHEADER$n\" \"\$LIVEDATA_SOILMOISTURE$n\" \"%6u\" \"%\" \"%4s\" \"sm$n\" \"%3u\" \"\$LIVEDATA_SOILMOISTURE${n}_BATTERY\" \"\$LIVEDATA_SOILMOISTURE${n}_BATTERY_STATE\" '' \"\$LIVEDATA_SOILMOISTURE${n}_SIGNAL\" \"\$LIVEDATA_SOILMOISTURE${n}_SIGNAL_STATE\"
                   fi "
             n=$((n + 1))
         done
@@ -333,12 +333,12 @@ printLivedata()
 
     if [ -z "$LIVEVIEW_HIDE_SOILTEMPERATURE" ]; then
 
-        [ -n "$LIVEDATA_SOILTEMP1" ] && printLivedataHeader "" "$LIVEDATA_SOILTEMP_HEADER"
+        [ -n "$LIVEDATA_SOILTEMP1" ] && printLivedataHeader "" "$LIVEDATA_SOILTEMP_GROUPHEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH34SOILTEMP_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_SOILTEMP$n" ]; then
                     #setSGIBatteryVoltage \"\$LIVEDATA_SOILTEMP${n}_BATTERY_UINT8\"
-                    printLivedataLine \"\$LIVEDATA_SOILTEMP_HEADER$n\" \"\$LIVEDATA_SOILTEMP$n\" \"%6.1f\" \"$LIVEDATA_TEMP_UNIT\" \"%2s\" \"st$n\" '' \"\$LIVEDATA_SOILTEMP${n}_BATTERY\" \"\$LIVEDATA_SOILTEMP${n}_BATTERY_STATE\" '' \"\$LIVEDATA_SOILMOISTURE${n}_SIGNAL\" \"\$LIVEDATA_SOILMOISTURE${n}_SIGNAL_STATE\"
+                    printLivedataLine \"\$LIVEDATA_SOILTEMP_GROUPHEADER$n\" \"\$LIVEDATA_SOILTEMP$n\" \"%6.1f\" \"$LIVEDATA_TEMP_UNIT\" \"%2s\" \"st$n\" '' \"\$LIVEDATA_SOILTEMP${n}_BATTERY\" \"\$LIVEDATA_SOILTEMP${n}_BATTERY_STATE\" '' \"\$LIVEDATA_SOILMOISTURE${n}_SIGNAL\" \"\$LIVEDATA_SOILMOISTURE${n}_SIGNAL_STATE\"
                   fi"
             n=$((n + 1))
         done
@@ -346,7 +346,7 @@ printLivedata()
    
     if [ -z "$LIVEVIEW_HIDE_TEMPUSR" ]; then
        
-       [ -n "$LIVEDATA_TF_USR1" ] && printLivedataHeader "" "$LIVEDATA_TEMPUSR_HEADER"
+       [ -n "$LIVEDATA_TF_USR1" ] && printLivedataHeader "" "$LIVEDATA_TEMPUSR_GROUPHEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_TF_USR$n" ]; then
@@ -359,7 +359,7 @@ printLivedata()
 
     if [ -z "$LIVEVIEW_HIDE_LEAK" ]; then
 
-        [ -n "$LIVEDATA_LEAK1" ] && printLivedataHeader "" "$LIVEDATA_LEAK_HEADER"
+        [ -n "$LIVEDATA_LEAK1" ] && printLivedataHeader "" "$LIVEDATA_LEAK_GROUPHEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH55LEAK_MAXCH" ]; do
             #TEST eval LIVEDATA_LEAK$n=1
@@ -368,8 +368,8 @@ printLivedata()
             eval "if [ -n ''"\$LIVEDATA_LEAK$n" ]; then
                         #setSGIBatteryLowNormal \"\$LIVEDATA_LEAK${n}_BATTERY\"
                         [ \"\$LIVEDATA_LEAK$n\" -ne 0 ] && STYLE_LIVE_VALUE=\"$STYLE_LEAK\" && VALUE_LEAK=$LIVEDATA_LEAK_YES
-                        LIVEDATA_LEAK_HEADER$n=\"\$LIVEDATA_LEAK_HEADER$n \$LV_DELIMITER \$VALUE_LEAK\"
-                        printLivedataLine \"\$LIVEDATA_LEAK_HEADER$n\" \"\$LIVEDATA_LEAK$n\" \"%6u\" \"\" \"%4s\" \"leak$n\" '' \"\$LIVEDATA_LEAK${n}_BATTERY\" \"\$LIVEDATA_LEAK${n}_BATTERY_STATE\" '' \"\$LIVEDATA_LEAK${n}_SIGNAL\" \"\$LIVEDATA_LEAK${n}_SIGNAL_STATE\"
+                        LIVEDATA_LEAK_GROUPHEADER$n=\"\$LIVEDATA_LEAK_GROUPHEADER$n \$LV_DELIMITER \$VALUE_LEAK\"
+                        printLivedataLine \"\$LIVEDATA_LEAK_GROUPHEADER$n\" \"\$LIVEDATA_LEAK$n\" \"%6u\" \"\" \"%4s\" \"leak$n\" '' \"\$LIVEDATA_LEAK${n}_BATTERY\" \"\$LIVEDATA_LEAK${n}_BATTERY_STATE\" '' \"\$LIVEDATA_LEAK${n}_SIGNAL\" \"\$LIVEDATA_LEAK${n}_SIGNAL_STATE\"
                 fi"
             n=$((n + 1))
         done
@@ -377,7 +377,7 @@ printLivedata()
 
     if [ -z "$LIVEVIEW_HIDE_PM25" ]; then
 
-        [ -n "$LIVEDATA_PM251" ] && printLivedataHeader "" "$LIVEDATA_PM25_HEADER"
+        [ -n "$LIVEDATA_PM251" ] && printLivedataHeader "" "$LIVEDATA_PM25_GROUPHEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH43PM25_MAXCH" ]; do
             #shellcheck disable=SC2153
@@ -391,8 +391,8 @@ printLivedata()
                               unset LV_DELIMITER
                             fi
                             export LIVEDATA_PM25_AQI$n=\"\$VALUE_PM25_AQI\"
-                            padSpaceRight \"\$VALUE_PM25_AQI\" 
-                            printLivedataLine \"\$LIVEDATA_PM25_HEADER$n  \$LV_DELIMITER \$VALUE_PADSPACERIGHT\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$LIVEDATA_PM25_UNIT\" \"%6s\" \"pm25$n\" '' \"\$LIVEDATA_PM25${n}_BATTERY\" \"\$LIVEDATA_PM25${n}_BATTERY_STATE\" '' \"\$LIVEDATA_PM25${n}_SIGNAL\" \"\$LIVEDATA_PM25${n}_SIGNAL_STATE\"
+                            padSpaceRight \"\$VALUE_PM25_AQI\" 13
+                            printLivedataLine \"\$LIVEDATA_PM25_GROUPHEADER$n  \$LV_DELIMITER \$VALUE_PADSPACERIGHT\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$LIVEDATA_PM25_UNIT\" \"%6s\" \"pm25$n\" '' \"\$LIVEDATA_PM25${n}_BATTERY\" \"\$LIVEDATA_PM25${n}_BATTERY_STATE\" '' \"\$LIVEDATA_PM25${n}_SIGNAL\" \"\$LIVEDATA_PM25${n}_SIGNAL_STATE\"
                  fi"
             n=$((n + 1))
         done
@@ -419,7 +419,7 @@ printLivedata()
         #WH45
         if [ -n "$LIVEDATA_WH45CO2_TEMPF" ]; then
              #setSGIBatteryLowNormal "$LIVEDATA_WH45CO2_BATTERY"
-             printLivedataHeader "" "$LIVEDATA_WH45CO2_HEADER"
+             printLivedataHeader "" "$LIVEDATA_WH45CO2_GROUPHEADER"
              printLivedataLine "$LIVEDATA_WH45CO2_TEMPF_HEADER" "$LIVEDATA_WH45CO2_TEMPF"  "%6.1f" "$LIVEDATA_TEMP_UNIT" "%2s" 'temp' '' "$LIVEDATA_WH45CO2_BATTERY" "$LIVEDATA_WH45CO2_BATTERY_STATE" "" "$LIVEDATA_WH45CO2_SIGNAL" "$LIVEDATA_WH45CO2_SIGNAL_STATE"
         fi
 
@@ -447,7 +447,7 @@ printLivedata()
     if [ -z "$LIVEVIEW_HIDE_LIGHTNING" ]; then
 
         if [ -n "$LIVEDATA_LIGHTNING_DISTANCE" ]; then
-            printLivedataHeader "" "$LIVEDATA_LIGHTNING_HEADER"
+            printLivedataHeader "" "$LIVEDATA_LIGHTNING_GROUPHEADER"
             printLivedataLine "$LIVEDATA_LIGHTNING_DISTANCE_HEADER" "$LIVEDATA_LIGHTNING_DISTANCE"    "%6u" "km" "%5s" 'ldist' '' "$LIVEDATA_WH57_LIGHTNING_BATTERY" "$LIVEDATA_WH57_LIGHTNING_BATTERY_STATE" '' "$LIVEDATA_WH57_LIGHTNING_SIGNAL" "$LIVEDATA_WH57_LIGHTNING_SIGNAL_STATE" 
         fi
         [ -n "$LIVEDATA_LIGHTNING_TIME" ]       && printLivedataLine "$LIVEDATA_LIGHTNING_TIME_UTC_HEADER" "$LIVEDATA_LIGHTNING_TIME_UTC"    "%19s" "" "%5s" "lightningutc" 
@@ -456,12 +456,12 @@ printLivedata()
     fi
 
     if [ -z "$LIVEVIEW_HIDE_LEAFWETNESS" ]; then
-        [ -n "$LIVEDATA_LEAFWETNESS1" ] && printLivedataHeader "" "$LIVEDATA_LEAFWETNESS_HEADER"
+        [ -n "$LIVEDATA_LEAFWETNESS1" ] && printLivedataHeader "" "$LIVEDATA_LEAFWETNESS_GROUPHEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH35LEAFWETNESS_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_LEAFWETNESS$n" ]; then
                     #setSGIBatteryVoltage \"\$LIVEDATA_LEAFWETNESS${n}_BATTERY_UINT8\"
-                    printLivedataLine \"\$LIVEDATA_LEAFWETNESS_HEADER$n\" \"\$LIVEDATA_LEAFWETNESS$n\" \"%6u\" \"%\" \"%4s\"  \"leaf$n\" '' \"\$LIVEDATA_LEAFWETNESS${n}_BATTERY\" \"\$LIVEDATA_LEAFWETNESS${n}_BATTERY_STATE\" '' \"\$LIVEDATA_LEAFWETNESS${n}_SIGNAL\" \"\$LIVEDATA_LEAFWETNESS${n}_SIGNAL_STATE\"
+                    printLivedataLine \"\$LIVEDATA_LEAFWETNESS_GROUPHEADER$n\" \"\$LIVEDATA_LEAFWETNESS$n\" \"%6u\" \"%\" \"%4s\"  \"leaf$n\" '' \"\$LIVEDATA_LEAFWETNESS${n}_BATTERY\" \"\$LIVEDATA_LEAFWETNESS${n}_BATTERY_STATE\" '' \"\$LIVEDATA_LEAFWETNESS${n}_SIGNAL\" \"\$LIVEDATA_LEAFWETNESS${n}_SIGNAL_STATE\"
             fi"
             n=$((n + 1))
         done
@@ -484,7 +484,7 @@ printLivedata()
     
     if [ -z "$LIVEVIEW_HIDE_SYSTEM" ]; then
         
-       [ -n "$LIVEDATA_SYSTEM_HOST" ] &&  printLivedataHeader "" "$LIVEDATA_SYSTEM_HEADER" # -g host option
+       [ -n "$LIVEDATA_SYSTEM_HOST" ] &&  printLivedataHeader "" "$LIVEDATA_SYSTEM_GROUPHEADER" # -g host option
 
         [ -n "$LIVEDATA_SYSTEM_HOST" ] && printLivedataLine "$LIVEDATA_SYSTEM_HOST_HEADER"   "$LIVEDATA_SYSTEM_HOST"   "%-14s" "" "%5s" 'host'
         [ -n "$LIVEDATA_SYSTEM_MAC" ] && printLivedataLine "$LIVEDATA_SYSTEM_MAC_HEADER"   "$LIVEDATA_SYSTEM_MAC"   "%-14s" "" "%5s" 'mac'

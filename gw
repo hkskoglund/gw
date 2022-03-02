@@ -235,8 +235,6 @@ copySystemToLivedata()
 
 }
 
-
-
 parseSystemOption()
 #format : t=wh65,tz=3,dst=1|on,auto=on|1'
 {
