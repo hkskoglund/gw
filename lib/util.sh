@@ -138,5 +138,25 @@ parseRangeExpression()
     VALUE_RANGE_HIGH=$2
 }
 
+padSpaceRight()
+# insert trailing spaces
+# $1 string $2 width
+# set VALUE_PADSPACERIGHT
+{
+    VALUE_PADSPACERIGHT="$1"
+    padspacenum=$(( $2 - ${#1} ))
+    if [ $padspacenum -le 0 ]; then
+      return 1
+    fi
+
+    padspace_n=1
+    while  [ $padspace_n -le $padspacenum ]; do
+        VALUE_PADSPACERIGHT="$VALUE_PADSPACERIGHT "
+        padspace_n=$(( padspace_n + 1 ))
+    done
+
+    unset padspace_n padspacenum
+}
+
 
 

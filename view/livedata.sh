@@ -196,7 +196,9 @@ printLivedata()
             export LIVEDATA_WINDGUSTSPEED_BEUFORT_VALUE="$VALUE_BEUFORT"
             export LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION="$VALUE_BEUFORT_DESCRIPTION"
 
-            printLivedataLine  "$LIVEDATA_WINDGUSTSPEED_HEADER $LV_DELIMITER $VALUE_BEUFORT $VALUE_BEUFORT_DESCRIPTION " "$LIVEDATA_WINDGUSTSPEED" "%6.1f" "$LIVEDATA_WIND_UNIT" "%4s" 'wgspd' "%6.1f" "" "" "\t%s$LIVEDATA_WINDDIRECTION_COMPASS_WE_FMT"
+            padSpaceRight "$LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION" 15
+
+            printLivedataLine  "$LIVEDATA_WINDGUSTSPEED_HEADER $LV_DELIMITER $VALUE_BEUFORT $VALUE_PADSPACERIGHT" "$LIVEDATA_WINDGUSTSPEED" "%6.1f" "$LIVEDATA_WIND_UNIT" "%4s" 'wgspd' "%6.1f" "" "" "\t%s$LIVEDATA_WINDDIRECTION_COMPASS_WE_FMT"
         fi
 
         [ -n "$LIVEDATA_WINDDIRECTION_UINT16" ] && printLivedataLine "$LIVEDATA_WINDDIRECTION_HEADER $LV_DELIMITER $LIVEDATA_WINDDIRECTION_COMPASS" "$LIVEDATA_WINDDIRECTION_UINT16"   "%6u" "$LIVEDATA_WIND_DEGREE_UNIT"\
@@ -272,8 +274,11 @@ printLivedata()
                 else
                     delimiter=" "
                 fi
+            
+            #added space at end when doing when refreshing screen with printf \e[H, otherwise status is merged with previous value if changed
+               padSpaceRight "$VALUE_RAININTENSITY" 8 
                
-               printLivedataLine "$LIVEDATA_RAINRATE_HEADER $delimiter $VALUE_RAININTENSITY"  "$LIVEDATA_RAINRATE" "$VALUE_RAIN_FMT"  "$LIVEDATA_RAINRATE_UNIT" "%4s" 'rrate'  '' '' "$VALUE_RAININTENSITY_STATUS" 
+               printLivedataLine "$LIVEDATA_RAINRATE_HEADER $delimiter $VALUE_PADSPACERIGHT"  "$LIVEDATA_RAINRATE" "$VALUE_RAIN_FMT"  "$LIVEDATA_RAINRATE_UNIT" "%4s" 'rrate'  '' '' "$VALUE_RAININTENSITY_STATUS" 
             fi
         # rainhour available in Ecowitt http request
         [ -n "$LIVEDATA_RAINHOUR" ]     && printLivedataRainLine "$LIVEDATA_RAINHOUR_UINT16"  "$LIVEDATA_RAINHOUR_LIMIT"  "$LIVEDATA_RAINHOUR_HEADER"  "$LIVEDATA_RAINHOUR" "$LIVEDATA_RAIN_UNIT" 'rhour' "" "$STYLE_LIMIT_LIVEDATA_RAINHOUR"
