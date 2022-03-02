@@ -13,6 +13,9 @@ fi
 
 export -p | grep -E "GW_|LIVEDATA_"
 
+# compass widget
+printf "$LIVEDATA_WINDDIRECTION_COMPASS_N_FMT\n$LIVEDATA_WINDDIRECTION_COMPASS_WE_FMT\n$LIVEDATA_WINDDIRECTION_COMPASS_S_FMT\n"
+
 if [ "$GW_RAINRATE" -eq 0 ]; then
     echo No rain
     return 1

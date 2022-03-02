@@ -174,14 +174,14 @@ printLivedata()
       
        [ -n "$LIVEDATA_WINDSPEED" ] && printLivedataHeader "" "$LIVEDATA_WIND_HEADER"
 
-       [ -z "$LIVEVIEW_HIDE_COMPASS" ] && [ -n "$LIVEDATA_WINDSPEED" ] && [ -n "$LIVEDATA_WINDGUSTSPEED" ] && [ -n "$LIVEDATA_WINDDIRECTION_UINT16" ] && newLivedataCompass "$LIVEDATA_WINDDIRECTION_COMPASS_UNICODE" "$VALUE_COMPASS"
+       [ -z "$LIVEVIEW_HIDE_COMPASS" ] && [ -n "$LIVEDATA_WINDSPEED" ] && [ -n "$LIVEDATA_WINDGUSTSPEED" ] && [ -n "$LIVEDATA_WINDDIRECTION_UINT16" ] && newLivedataCompass "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE" "$VALUE_COMPASS"
          
         if [ -n "$LIVEDATA_WINDSPEED" ]; then
             if [ -z "$LIVEVIEW_HIDE_BEUFORT" ]; then
                 setStyleBeufort "$LIVEDATA_WINDSPEED_UINT16"
                 STYLE_LIVE_VALUE=$STYLE_BEUFORT
             fi
-            printLivedataLine "$LIVEDATA_WINDSPEED_HEADER" "$LIVEDATA_WINDSPEED" "%6.1f" "$LIVEDATA_WIND_UNIT"  "%4s" 'wspd' "%6.1f" '' '' "\t%s$LIVEVIEW_COMPASS_N_FMT" 
+            printLivedataLine "$LIVEDATA_WINDSPEED_HEADER" "$LIVEDATA_WINDSPEED" "%6.1f" "$LIVEDATA_WIND_UNIT"  "%4s" 'wspd' "%6.1f" '' '' "\t%s$LIVEDATA_WINDDIRECTION_COMPASS_N_FMT" 
            
         fi
 
@@ -196,11 +196,11 @@ printLivedata()
             export LIVEDATA_WINDGUSTSPEED_BEUFORT_VALUE="$VALUE_BEUFORT"
             export LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION="$VALUE_BEUFORT_DESCRIPTION"
 
-            printLivedataLine  "$LIVEDATA_WINDGUSTSPEED_HEADER $LV_DELIMITER $VALUE_BEUFORT $VALUE_BEUFORT_DESCRIPTION " "$LIVEDATA_WINDGUSTSPEED" "%6.1f" "$LIVEDATA_WIND_UNIT" "%4s" 'wgspd' "%6.1f" "" "" "\t%s$LIVEVIEW_COMPASS_WE_FMT"
+            printLivedataLine  "$LIVEDATA_WINDGUSTSPEED_HEADER $LV_DELIMITER $VALUE_BEUFORT $VALUE_BEUFORT_DESCRIPTION " "$LIVEDATA_WINDGUSTSPEED" "%6.1f" "$LIVEDATA_WIND_UNIT" "%4s" 'wgspd' "%6.1f" "" "" "\t%s$LIVEDATA_WINDDIRECTION_COMPASS_WE_FMT"
         fi
 
         [ -n "$LIVEDATA_WINDDIRECTION_UINT16" ] && printLivedataLine "$LIVEDATA_WINDDIRECTION_HEADER $LV_DELIMITER $LIVEDATA_WINDDIRECTION_COMPASS" "$LIVEDATA_WINDDIRECTION_UINT16"   "%6u" "$LIVEDATA_WIND_DEGREE_UNIT"\
-         "%5s" 'wdeg' "%4u" "$LIVEDATA_WINDDIRECTION_UINT16" "" "\t%s$LIVEVIEW_COMPASS_S_FMT"
+         "%5s" 'wdeg' "%4u" "$LIVEDATA_WINDDIRECTION_UINT16" "" "\t%s$LIVEDATA_WINDDIRECTION_COMPASS_S_FMT"
         
         if [ -n "$LIVEDATA_WINDDAILYMAX" ]; then
             if [ -z "$LIVEVIEW_HIDE_BEUFORT" ]; then
@@ -261,8 +261,10 @@ printLivedata()
               printLivedataHeader "" "$LIVEDATA_RAIN_HEADER"
 
                setRainIntensity "$LIVEDATA_RAINRATE_UINT16"
+               export LIVEDATA_RAINRATE_STATE_DESCRIPTION="$VALUE_RAININTENSITY"
                setStyleRainIntensity "$LIVEDATA_RAINRATE_UINT16"
                setRainIntensityStatus "$LIVEDATA_RAINRATE_UINT16"
+               export LIVEDATA_RAINRATE_STATE="$VALUE_RAININTENSITY_STATUS"
                STYLE_LIVE_VALUE=$STYLE_RAININTENSITY
               
                if [ "$LIVEDATA_RAINRATE_UINT16" -gt 0 ]; then
@@ -535,18 +537,20 @@ newLivedataCompass()
     style_needle=$STYLE_COMPASS_WIND$1$STYLE_RESET
     
     if [ -z "$KSH_VERSION" ]; then
-       LIVEVIEW_COMPASS_N_FMT="╭─$STYLE_COMPASS_NORTH$WIND_DIRECTION_N$STYLE_RESET─╮" #styling must be in the format of printf
+       LIVEDATA_WINDDIRECTION_COMPASS_N_FMT="╭─$STYLE_COMPASS_NORTH$WIND_DIRECTION_N$STYLE_RESET─╮" #styling must be in the format of printf
     else
-        LIVEVIEW_COMPASS_N_FMT="╭─$STYLE_COMPASS_NORTH$WIND_DIRECTION_N$STYLE_RESET\u2500╮" #ksh Version AJM 93u+ 2012-08-01 insert \x80 instead of unicode 2500 ?! bug?
+        LIVEDATA_WINDDIRECTION_COMPASS_N_FMT="╭─$STYLE_COMPASS_NORTH$WIND_DIRECTION_N$STYLE_RESET\u2500╮" #ksh Version AJM 93u+ 2012-08-01 insert \x80 instead of unicode 2500 ?! bug?
     fi
        
-    LIVEVIEW_COMPASS_WE_FMT="$WIND_DIRECTION_W $style_needle $WIND_DIRECTION_E"
+    LIVEDATA_WINDDIRECTION_COMPASS_WE_FMT="$WIND_DIRECTION_W $style_needle $WIND_DIRECTION_E"
 
     if [ -z "$KSH_VERSION" ]; then
-        LIVEVIEW_COMPASS_S_FMT="╰─$WIND_DIRECTION_S─╯"
+        LIVEDATA_WINDDIRECTION_COMPASS_S_FMT="╰─$WIND_DIRECTION_S─╯"
     else
-        LIVEVIEW_COMPASS_S_FMT="╰─$WIND_DIRECTION_S\u2500╯"
+        LIVEDATA_WINDDIRECTION_COMPASS_S_FMT="╰─$WIND_DIRECTION_S\u2500╯"
     fi
+
+    export LIVEDATA_WINDDIRECTION_COMPASS_N_FMT LIVEDATA_WINDDIRECTION_COMPASS_WE_FMT LIVEDATA_WINDDIRECTION_COMPASS_S_FMT
 
     unset style_needle
 }
@@ -707,6 +711,7 @@ setLivedataProtocolStyle()
 }
 
 setRainIntensityStatus()
+# sets rainintensity unicode status
 {
     if [ "$1" -eq 0 ]; then
         unset VALUE_RAININTENSITY_STATUS
