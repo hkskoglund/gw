@@ -309,7 +309,7 @@ parseEcowittHttpRequest()
                 getFloatAsIntDecmial "$value"
                 getBatteryVoltageLevelState "$FLOAT_AS_INT"
                 
-                eval "export LIVEDATA_SOILMOISTURE${channel}_BATTERY_RAW=$FLOAT_AS_INT"  
+                eval "export LIVEDATA_SOILMOISTURE${channel}_BATTERY_UINT8=$FLOAT_AS_INT"  
                 eval "export LIVEDATA_SOILMOISTURE${channel}_BATTERY=$value"
                 eval "export LIVEDATA_SOILMOISTURE${channel}_BATTERY_STATE=\"$SBATTERY_STATE\""  
                 ;;

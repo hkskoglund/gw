@@ -141,7 +141,6 @@ setRainMode()
     UNIT_HOUR=${UNIT_HOUR:="h"}
     export LIVEDATA_RAINRATE_UNIT=$LIVEDATA_RAIN_UNIT"/$UNIT_HOUR"
 
-
     [ "$DEBUG" -eq 1 ] && >&2 echo Unit rain rainrate : $LIVEDATA_RAIN_UNIT "$LIVEDATA_RAINRATE_UNIT"
     
 }

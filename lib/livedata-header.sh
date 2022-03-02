@@ -24,7 +24,7 @@ export LIVEDATA_WINDDIRECTION_COMPASS_HEADER="${LIVEDATA_WINDDIRECTION_COMPASS_H
 export LIVEDATA_WINDGUSTSPEED_HEADER="${LIVEDATA_WINDGUSTSPEED_HEADER:="Wind gust"}"
 export LIVEDATA_WINDSPEED_HEADER="${LIVEDATA_WINDSPEED_HEADER:="Wind"}"
 
-export LIVEDATA_LIGHT_HEADER="${LIVEDATA_LIGHT_HEADER:="Solar radiation"}"
+export LIVEDATA_SOLAR_LIGHT_HEADER="${LIVEDATA_SOLAR_LIGHT_HEADER:="Solar radiation"}"
 export LIVEDATA_SOLAR_UV_HEADER="${LIVEDATA_SOLAR_UV_HEADER:="Solar UV radiation"}" # available in binary data
 export LIVEDATA_SOLAR_UVI_HEADER="${LIVEDATA_SOLAR_UVI_HEADER:="Solar UV index"}"
 
@@ -53,7 +53,7 @@ export LIVEDATA_SOILMOISTURE_HEADER="${LIVEDATA_SOILMOISTURE_HEADER:="ＳＯＩ�
                 export LIVEDATA_WIND_HEADER="${LIVEDATA_WIND_HEADER:="ＷＩＮＤ"}"
         export LIVEDATA_PRESSURE_HEADER="${LIVEDATA_PRESSURE_HEADER:="ＰＲＥＳＳＵＲＥ"}"
                 export LIVEDATA_TEMP_HEADER="${LIVEDATA_TEMP_HEADER:="ＴＥＭＰＥＲＡＴＵＲＥ"}"
-                    export LIVEDATA_HEADER="${LIVEDATA_HEADER:="ＴＥＭＰＥＲＡＴＵＲＥ"}"
+                    export LIVEDATA_TEMPERATURE_HEADER="${LIVEDATA_TEMPERATURE_HEADER:="ＴＥＭＰＥＲＡＴＵＲＥ"}"
                     export LIVEDATA_SYSTEM_HEADER="${LIVEDATA_SYSTEM_HEADER:="ＳＹＳＴＥＭ"}"
                     export LIVEDATA_SENSOR_HEADER="${LIVEDATA_SENSOR_HEADER:="ＳＥＮＳＯＲ"}"
 

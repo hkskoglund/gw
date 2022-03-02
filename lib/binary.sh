@@ -1299,7 +1299,7 @@ setBatteryLowNormal()
 setBatteryVoltageLevel()
 {
     getBatteryVoltageLevelState "$2"
-    eval "LIVEDATA_${1}_BATTERY_RAW=$2"
+    eval "LIVEDATA_${1}_BATTERY_UINT8=$2"
     eval "LIVEDATA_${1}_BATTERY=$VALUE_BATTERY_VOLTAGE"
     eval "LIVEDATA_${1}_BATTERY_STATE='$SBATTERY_STATE'"
 }
@@ -1332,6 +1332,8 @@ appendLowBatteryState()
 
 getBatteryVoltageLevelState()
 #$1 - volatage scaled *10
+# set VALUE_BATTERY_VOLTAGE
+# set SBATTERY_STATE
 {
      if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044

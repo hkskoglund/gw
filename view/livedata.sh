@@ -129,7 +129,7 @@ printLivedata()
 
     #resetAppendBuffer
     
-   printLivedataHeader "" "$LIVEDATA_HEADER"
+   printLivedataHeader "" "$LIVEDATA_TEMPERATURE_HEADER"
  
      if [ -n "$LIVEDATA_INTEMP" ]; then
          
@@ -193,12 +193,13 @@ printLivedata()
            else
              unset LV_DELIMITER
             fi
+            export LIVEDATA_WINDGUSTSPEED_BEUFORT_VALUE="$VALUE_BEUFORT"
+            export LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION="$VALUE_BEUFORT_DESCRIPTION"
+
             printLivedataLine  "$LIVEDATA_WINDGUSTSPEED_HEADER $LV_DELIMITER $VALUE_BEUFORT $VALUE_BEUFORT_DESCRIPTION " "$LIVEDATA_WINDGUSTSPEED" "%6.1f" "$LIVEDATA_WIND_UNIT" "%4s" 'wgspd' "%6.1f" "" "" "\t%s$LIVEVIEW_COMPASS_WE_FMT"
         fi
 
-        LIVEDATA_WINDDIRECTION_HEADER="$LIVEDATA_WINDDIRECTION_HEADER $LV_DELIMITER $LIVEDATA_WINDDIRECTION_COMPASS" #integrate direction in header
-        
-        [ -n "$LIVEDATA_WINDDIRECTION_UINT16" ] && printLivedataLine "$LIVEDATA_WINDDIRECTION_HEADER" "$LIVEDATA_WINDDIRECTION_UINT16"   "%6u" "$LIVEDATA_WIND_DEGREE_UNIT"\
+        [ -n "$LIVEDATA_WINDDIRECTION_UINT16" ] && printLivedataLine "$LIVEDATA_WINDDIRECTION_HEADER $LV_DELIMITER $LIVEDATA_WINDDIRECTION_COMPASS" "$LIVEDATA_WINDDIRECTION_UINT16"   "%6u" "$LIVEDATA_WIND_DEGREE_UNIT"\
          "%5s" 'wdeg' "%4u" "$LIVEDATA_WINDDIRECTION_UINT16" "" "\t%s$LIVEVIEW_COMPASS_S_FMT"
         
         if [ -n "$LIVEDATA_WINDDAILYMAX" ]; then
@@ -209,6 +210,8 @@ printLivedata()
             else
                 unset LV_DELIMITER
             fi
+            export LIVEDATA_WINDDAILYMAX_BEUFORT_VALUE="$VALUE_BEUFORT"
+            export LIVEDATA_WINDDAILYMAX_BEUFORT_DESCRIPTION="$VALUE_BEUFORT_DESCRIPTION"
             printLivedataLine  "$LIVEDATA_WINDDAILYMAX_HEADER $LV_DELIMITER $VALUE_BEUFORT $VALUE_BEUFORT_DESCRIPTION"   "$LIVEDATA_WINDDAILYMAX"  "%6.1f" "$LIVEDATA_WIND_UNIT" "%4s" 'wdmax' "%6.1f" 
          fi 
       
@@ -225,9 +228,9 @@ printLivedata()
 
         if [ -n "$LIVEDATA_SOLAR_LIGHT" ]; then
             if [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_WATTM2" ]; then
-                 printLivedataLine "$LIVEDATA_LIGHT_HEADER" "$LIVEDATA_SOLAR_LIGHT"  "%6.2f" "$LIVEDATA_SOLAR_LIGHT_UNIT" "%4s" 'light'
+                 printLivedataLine "$LIVEDATA_SOLAR_LIGHT_HEADER" "$LIVEDATA_SOLAR_LIGHT"  "%6.2f" "$LIVEDATA_SOLAR_LIGHT_UNIT" "%4s" 'light'
             elif [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_LUX" ]; then 
-                printLivedataLine "$LIVEDATA_LIGHT_HEADER" "$LIVEDATA_SOLAR_LIGHT"  "%6.0f" "$LIVEDATA_SOLAR_LIGHT_UNIT" "%4s" 'light'
+                printLivedataLine "$LIVEDATA_SOLAR_LIGHT_HEADER" "$LIVEDATA_SOLAR_LIGHT"  "%6.0f" "$LIVEDATA_SOLAR_LIGHT_UNIT" "%4s" 'light'
             fi
         fi
             
@@ -282,7 +285,7 @@ printLivedata()
     fi
 
      if [ -z "$LIVEVIEW_HIDE_TEMP" ]; then 
-        [ -n "$LIVEDATA_TEMP1" ] && printLivedataHeader "" "$LIVEDATA_TEMP_HEADER"
+        [ -n "$LIVEDATA_TEMP1" ] && printLivedataHeader "" "$LIVEDATA_TEMPERATURE_HEADER"
         n=1
         while [ "$n" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
         #shellcheck disable=SC2153
@@ -314,7 +317,7 @@ printLivedata()
         n=1
         while [ "$n" -le "$SENSORTYPE_WH51SOILMOISTURE_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_SOILMOISTURE$n" ]; then
-                    #setSGIBatteryVoltage \"\$LIVEDATA_SOILMOISTURE${n}_BATTERY_RAW\"
+                    #setSGIBatteryVoltage \"\$LIVEDATA_SOILMOISTURE${n}_BATTERY_UINT8\"
                     printLivedataLine  \"\$LIVEDATA_SOILMOISTURE_HEADER$n\" \"\$LIVEDATA_SOILMOISTURE$n\" \"%6u\" \"%\" \"%4s\" \"sm$n\" \"%3u\" \"\$LIVEDATA_SOILMOISTURE${n}_BATTERY\" \"\$LIVEDATA_SOILMOISTURE${n}_BATTERY_STATE\" '' \"\$LIVEDATA_SOILMOISTURE${n}_SIGNAL\" \"\$LIVEDATA_SOILMOISTURE${n}_SIGNAL_STATE\"
                   fi "
             n=$((n + 1))
@@ -327,7 +330,7 @@ printLivedata()
         n=1
         while [ "$n" -le "$SENSORTYPE_WH34SOILTEMP_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_SOILTEMP$n" ]; then
-                    #setSGIBatteryVoltage \"\$LIVEDATA_SOILTEMP${n}_BATTERY_RAW\"
+                    #setSGIBatteryVoltage \"\$LIVEDATA_SOILTEMP${n}_BATTERY_UINT8\"
                     printLivedataLine \"\$LIVEDATA_SOILTEMP_HEADER$n\" \"\$LIVEDATA_SOILTEMP$n\" \"%6.1f\" \"$LIVEDATA_TEMP_UNIT\" \"%2s\" \"st$n\" '' \"\$LIVEDATA_SOILTEMP${n}_BATTERY\" \"\$LIVEDATA_SOILTEMP${n}_BATTERY_STATE\" '' \"\$LIVEDATA_SOILMOISTURE${n}_SIGNAL\" \"\$LIVEDATA_SOILMOISTURE${n}_SIGNAL_STATE\"
                   fi"
             n=$((n + 1))
@@ -380,8 +383,8 @@ printLivedata()
                             else
                               unset LV_PM25_AQI_DELIMITER
                             fi
-                            LIVEDATA_PM25_HEADER$n=\"\$LIVEDATA_PM25_HEADER$n \$LV_PM25_AQI_DELIMITER \$VALUE_PM25_AQI\"
-                            printLivedataLine \"\$LIVEDATA_PM25_HEADER$n\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$LIVEDATA_PM25_UNIT\" \"%6s\" \"pm25$n\" '' \"\$LIVEDATA_PM25${n}_BATTERY\" \"\$LIVEDATA_PM25${n}_BATTERY_STATE\" '' \"\$LIVEDATA_PM25${n}_SIGNAL\" \"\$LIVEDATA_PM25${n}_SIGNAL_STATE\"
+                            export LIVEDATA_PM25_AQI$n=\"\$VALUE_PM25_AQI\"
+                            printLivedataLine \"\$LIVEDATA_PM25_HEADER$n  \$LV_PM25_AQI_DELIMITER \$VALUE_PM25_AQI\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$LIVEDATA_PM25_UNIT\" \"%6s\" \"pm25$n\" '' \"\$LIVEDATA_PM25${n}_BATTERY\" \"\$LIVEDATA_PM25${n}_BATTERY_STATE\" '' \"\$LIVEDATA_PM25${n}_SIGNAL\" \"\$LIVEDATA_PM25${n}_SIGNAL_STATE\"
                  fi"
             n=$((n + 1))
         done
@@ -396,8 +399,8 @@ printLivedata()
                         else
                             unset LV_PM25_AQI_DELIMITER
                         fi
-                        LIVEDATA_PM25_24HAVG_HEADER$n=\"\$LIVEDATA_PM25_24HAVG_HEADER$n \$LV_PM25_AQI_DELIMITER \$VALUE_PM25_AQI\"
-                        printLivedataLine \"\$LIVEDATA_PM25_24HAVG_HEADER$n\" \"\$LIVEDATA_PM25_24HAVG$n\" \"%6.1f\" \"\$LIVEDATA_PM25_UNIT\" \"%6s\" \"pm25a$n\" \"%6.1f\"
+                        export LIVEDATA_PM25_24AVG_AQI$n=\"\$VALUE_PM25_AQI\"
+                        printLivedataLine \"\$LIVEDATA_PM25_24HAVG_HEADER$n \$LV_PM25_AQI_DELIMITER \$VALUE_PM25_AQI\" \"\$LIVEDATA_PM25_24HAVG$n\" \"%6.1f\" \"\$LIVEDATA_PM25_UNIT\" \"%6s\" \"pm25a$n\" \"%6.1f\"
              fi"
             n=$((n + 1))
         done
@@ -449,7 +452,7 @@ printLivedata()
         n=1
         while [ "$n" -le "$SENSORTYPE_WH35LEAFWETNESS_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_LEAFWETNESS$n" ]; then
-                    #setSGIBatteryVoltage \"\$LIVEDATA_LEAFWETNESS${n}_BATTERY_RAW\"
+                    #setSGIBatteryVoltage \"\$LIVEDATA_LEAFWETNESS${n}_BATTERY_UINT8\"
                     printLivedataLine \"\$LIVEDATA_LEAFWETNESS_HEADER$n\" \"\$LIVEDATA_LEAFWETNESS$n\" \"%6u\" \"%\" \"%4s\"  \"leaf$n\" '' \"\$LIVEDATA_LEAFWETNESS${n}_BATTERY\" \"\$LIVEDATA_LEAFWETNESS${n}_BATTERY_STATE\" '' \"\$LIVEDATA_LEAFWETNESS${n}_SIGNAL\" \"\$LIVEDATA_LEAFWETNESS${n}_SIGNAL_STATE\"
             fi"
             n=$((n + 1))
