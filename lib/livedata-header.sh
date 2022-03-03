@@ -103,7 +103,7 @@ done
 
 N=1
 while [ "$N" -le "$SENSORTYPE_WH55LEAK_MAXCH" ]; do 
-    eval export LIVEDATA_LEAK_GROUPHEADER$N=\"\$\{LIVEDATA_LEAK_GROUPHEADER$N:="Leak $N"\}\"
+    eval export LIVEDATA_LEAK_HEADER$N=\"\$\{LIVEDATA_LEAK_HEADER$N:="Leak $N"\}\"
     eval export LIVEDATA_LEAK_BATTERY_HEADER$N=\"\$\{LIVEDATA_LEAK_BATTERY_HEADER$N:="Leak $N battery"\}\"
     N=$(( N + 1 ))
 done
@@ -111,7 +111,7 @@ done
 
 N=1
 while [ "$N" -le "$SENSORTYPE_WH43PM25_MAXCH" ]; do 
-    eval export LIVEDATA_PM25_GROUPHEADER$N=\"\$\{LIVEDATA_PM25_GROUPHEADER$N:="PM 2.5 $N"\}\"
+    eval export LIVEDATA_PM25_HEADER$N=\"\$\{LIVEDATA_PM25_HEADER$N:="PM 2.5 $N"\}\"
     eval export LIVEDATA_PM25_24HAVG_HEADER$N=\"\$\{LIVEDATA_PM25_24HAVG_HEADER$N:="PM 2.5 24h avg. $N"\}\"
     eval export LIVEDATA_PM25_BATTERY_HEADER$N=\"\$\{LIVEDATA_PM25_BATTERY_HEADER$N:="PM 2.5 $N battery"\}\"
     N=$(( N + 1 ))
@@ -119,7 +119,7 @@ done
 
 N=1
 while [ "$N" -le "$SENSORTYPE_WH51SOILMOISTURE_MAXCH" ]; do 
-    eval export LIVEDATA_SOILMOISTURE_GROUPHEADER$N=\"\$\{LIVEDATA_SOILMOISTURE_GROUPHEADER$N:="Soilmoisture $N"\}\"
+    eval export LIVEDATA_SOILMOISTURE_HEADER$N=\"\$\{LIVEDATA_SOILMOISTURE_HEADER$N:="Soilmoisture $N"\}\"
     eval export LIVEDATA_SOILMOISTURE_BATTERY_HEADER$N=\"\$\{LIVEDATA_SOILMOISTURE_BATTERY_HEADER$N:="Soilmoisture $N battery"\}\"
     N=$(( N + 1 ))
 done
@@ -133,7 +133,7 @@ done
 
 N=1
 while [ "$N" -le "$SENSORTYPE_WH35LEAFWETNESS_MAXCH" ]; do 
-    eval export LIVEDATA_LEAFWETNESS_GROUPHEADER$N=\"\$\{LIVEDATA_LEAFWETNESS_GROUPHEADER$N:="Leafwetness $N"\}\"
+    eval export LIVEDATA_LEAFWETNESS_HEADER$N=\"\$\{LIVEDATA_LEAFWETNESS_HEADER$N:="Leafwetness $N"\}\"
     eval export LIVEDATA_LEAFWETNESS_BATTERY_HEADER$N=\"\$\{LIVEDATA_LEAFWETNESS_BATTERY_HEADER$N:="Leafwetness $N battery"\}\"
     N=$(( N + 1 ))
 done
