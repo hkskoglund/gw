@@ -154,6 +154,35 @@ printLivedata()
      
      [ -n "$LIVEDATA_INHUMI" ]   && printLivedataLine "$LIVEDATA_INHUMI_HEADER" "$LIVEDATA_INHUMI"  "%6u" "$LIVEDATA_HUMIDITY_UNIT" "%s" 'ihum'   "%4u"
      [ -n "$LIVEDATA_OUTHUMI" ]  && printLivedataLine "$LIVEDATA_OUTHUMI_HEADER" "$LIVEDATA_OUTHUMI" "%6u" "$LIVEDATA_HUMIDITY_UNIT" "%s" 'ohum'  "%4u"
+     
+     if [ -z "$LIVEVIEW_HIDE_TEMP" ]; then 
+       # [ -n "$LIVEDATA_TEMP1" ] && printLivedataHeader "" "$LIVEDATA_TEMPERATURE_GROUPHEADER"
+        n=1
+        while [ "$n" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
+        #shellcheck disable=SC2153
+        {
+            #eval echo !!!!!!!!!!!!!!!!! \"\$LIVEDATA_TEMP${n}_SIGNAL_STATE\" n=$n
+            #set -x
+            eval " if [ -n ''"\$LIVEDATA_TEMP$n" ]; then
+                       # setSGIBatteryLowNormal "\$LIVEDATA_TEMP${n}_BATTERY"
+                        printLivedataLine \"\$LIVEDATA_TEMP_HEADER$n\" \"\$LIVEDATA_TEMP$n\" '%6.1f'  \"\$LIVEDATA_TEMP_UNIT\" '%2s' 'temp$n' '' \"\$LIVEDATA_TEMP${n}_BATTERY\" \"\$LIVEDATA_TEMP${n}_BATTERY_STATE\" '' \"\$LIVEDATA_TEMP${n}_SIGNAL\" \"\$LIVEDATA_TEMP${n}_SIGNAL_STATE\"
+                   fi "
+            #set +x
+        }
+            n=$((n + 1))
+        done
+
+        n=1
+        while [ "$n" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
+        #shellcheck disable=SC2153
+        {
+            eval "[ -n ''"\$LIVEDATA_HUMI$n" ] && printLivedataLine \"\$LIVEDATA_HUMIDITY_HEADER$n\" \"\$LIVEDATA_HUMI$n\" \"%6u\" \"%\" \"%4s\" \"hum$n\" \"%4u\""
+        }
+            n=$((n + 1))
+        done
+
+     fi
+     
      if [ -n "$LIVEDATA_PRESSURE_RELBARO" ]; then
             
             printLivedataHeader "" "$LIVEDATA_PRESSURE_GROUPHEADER"
@@ -292,33 +321,7 @@ printLivedata()
         [ -n "$LIVEDATA_RAINTOTAL" ]    && printLivedataLine "$LIVEDATA_RAINTOTAL_HEADER" "$LIVEDATA_RAINTOTAL"  "$VALUE_RAIN_FMT" "$LIVEDATA_RAIN_UNIT" "%3s" 'rtotal' "$VALUE_RAIN_FMT"
     fi
 
-     if [ -z "$LIVEVIEW_HIDE_TEMP" ]; then 
-        [ -n "$LIVEDATA_TEMP1" ] && printLivedataHeader "" "$LIVEDATA_TEMPERATURE_GROUPHEADER"
-        n=1
-        while [ "$n" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
-        #shellcheck disable=SC2153
-        {
-            #eval echo !!!!!!!!!!!!!!!!! \"\$LIVEDATA_TEMP${n}_SIGNAL_STATE\" n=$n
-            #set -x
-            eval " if [ -n ''"\$LIVEDATA_TEMP$n" ]; then
-                       # setSGIBatteryLowNormal "\$LIVEDATA_TEMP${n}_BATTERY"
-                        printLivedataLine \"\$LIVEDATA_TEMP_HEADER$n\" \"\$LIVEDATA_TEMP$n\" '%6.1f'  \"\$LIVEDATA_TEMP_UNIT\" '%2s' 'temp$n' '' \"\$LIVEDATA_TEMP${n}_BATTERY\" \"\$LIVEDATA_TEMP${n}_BATTERY_STATE\" '' \"\$LIVEDATA_TEMP${n}_SIGNAL\" \"\$LIVEDATA_TEMP${n}_SIGNAL_STATE\"
-                   fi "
-            #set +x
-        }
-            n=$((n + 1))
-        done
-
-        n=1
-        while [ "$n" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
-        #shellcheck disable=SC2153
-        {
-            eval "[ -n ''"\$LIVEDATA_HUMI$n" ] && printLivedataLine \"\$LIVEDATA_HUMIDITY_HEADER$n\" \"\$LIVEDATA_HUMI$n\" \"%6u\" \"%\" \"%4s\" \"hum$n\" \"%4u\""
-        }
-            n=$((n + 1))
-        done
-
-     fi
+     
 
     if [ -z "$LIVEVIEW_HIDE_SOILMOISTURE" ]; then
         [ -n "$LIVEDATA_SOILMOISTURE1" ] && printLivedataHeader "" "$LIVEDATA_SOILMOISTURE_GROUPHEADER"

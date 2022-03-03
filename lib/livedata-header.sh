@@ -126,7 +126,7 @@ done
 
 N=1
 while [ "$N" -le "$SENSORTYPE_WH34SOILTEMP_MAXCH" ]; do 
-    eval export LIVEDATA_SOILTEMP_GROUPHEADER$N=\"\$\{LIVEDATA_SOILTEMP_GROUPHEADER$N:="Soiltemperature $N"\}\"
+    eval export LIVEDATA_SOILTEMP_HEADER$N=\"\$\{LIVEDATA_SOILTEMP_HEADER$N:="Soiltemperature $N"\}\"
     eval export LIVEDATA_SOILTEMP_BATTERY_HEADER$N=\"\$\{LIVEDATA_SOILTEMP_BATTERY_HEADER$N:="Soiltemperatur $N battery"\}\"
     N=$(( N + 1 ))
 done
