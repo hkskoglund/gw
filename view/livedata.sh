@@ -321,8 +321,6 @@ printLivedata()
         [ -n "$LIVEDATA_RAINTOTAL" ]    && printLivedataLine "$LIVEDATA_RAINTOTAL_HEADER" "$LIVEDATA_RAINTOTAL"  "$VALUE_RAIN_FMT" "$LIVEDATA_RAIN_UNIT" "%3s" 'rtotal' "$VALUE_RAIN_FMT"
     fi
 
-     
-
     if [ -z "$LIVEVIEW_HIDE_SOILMOISTURE" ]; then
         [ -n "$LIVEDATA_SOILMOISTURE1" ] && printLivedataHeader "" "$LIVEDATA_SOILMOISTURE_GROUPHEADER"
         n=1
@@ -388,14 +386,16 @@ printLivedata()
             eval "if [ -n ''"\$LIVEDATA_PM25$n" ]; then
                             #setSGIBatteryLowNormal \"\$LIVEDATA_PM25${n}_BATTERY\"
                             if [ -z \"\$LIVEVIEW_HIDE_PM25AQI\" ]; then
-                                setAQI \"\$LIVEDATA_PM25${n}_UINT16\"
-                                setStyleAQI \"\$LIVEDATA_PM25${n}_UINT16\"
+                                setAQI \"\$LIVEDATA_PM25${n}_INTS10\"
+                                setStyleAQI \"\$LIVEDATA_PM25${n}_INTS10\"
                                 STYLE_LIVE_VALUE=\$STYLE_AQI
                             else
                               unset LV_DELIMITER
                             fi
                             export LIVEDATA_PM25_AQI$n=\"\$VALUE_PM25_AQI\"
+                            set -x
                             padSpaceRight \"\$VALUE_PM25_AQI\" 13
+                            set +x
                             printLivedataLine \"\$LIVEDATA_PM25_GROUPHEADER$n  \$LV_DELIMITER \$VALUE_PADSPACERIGHT\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$LIVEDATA_PM25_UNIT\" \"%6s\" \"pm25$n\" '' \"\$LIVEDATA_PM25${n}_BATTERY\" \"\$LIVEDATA_PM25${n}_BATTERY_STATE\" '' \"\$LIVEDATA_PM25${n}_SIGNAL\" \"\$LIVEDATA_PM25${n}_SIGNAL_STATE\"
                  fi"
             n=$((n + 1))
@@ -405,8 +405,8 @@ printLivedata()
         while [ "$n" -le "$SENSORTYPE_WH43PM25_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_PM25_24HAVG$n" ]; then
                         if [ -z \"\$LIVEVIEW_HIDE_PM25AQI\" ]; then
-                            setAQI \"\$LIVEDATA_PM25_24HAVG${n}_UINT16\"
-                            setStyleAQI \"\$LIVEDATA_PM25_24HAVG${n}_UINT16\"
+                            setAQI \"\$LIVEDATA_PM25_24HAVG${n}_INTS10\"
+                            setStyleAQI \"\$LIVEDATA_PM25_24HAVG${n}_INTS10\"
                             STYLE_LIVE_VALUE=\$STYLE_AQI
                         else
                             unset LV_DELIMITER
