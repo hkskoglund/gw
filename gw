@@ -1734,7 +1734,7 @@ cleanup
 # bash problem with directly executing script in shell process: return: can only `return' from a function or sourced script
 # info: https://stackoverflow.com/questions/2683279/how-to-detect-if-a-script-is-being-sourced
 
-if return $EXITCODE_MAIN ; then # using return instead of exit which terminates shell when sourced from shell prompt 
+if return $EXITCODE_MAIN 2>/dev/null ; then # using return instead of exit which terminates shell when sourced from shell prompt 
     : # never gets executed if return works
 else
      [ "$DEBUG_MAIN" -eq 1 ] && echo >&2 "main: return failed, using exit"
