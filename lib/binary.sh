@@ -5,7 +5,9 @@ GWDIR=${GWDIR:=.}
 
 parseVersion() {
     readString OD_BUFFER "version"
-    GW_VERSION="$VALUE_STRING"
+    export GW_VERSION="$VALUE_STRING"
+    getVersionInt "$GW_VERSION"
+    export GW_VERSION_INT="$VALUE_VERSION"
     echo "$GW_VERSION"
 }
 
@@ -1402,4 +1404,21 @@ getBatteryLowOrNormal() {
     elif [ "$1" -eq "$BATTERY_LOW" ]; then
         appendLowBatteryState
     fi
+}
+
+getSensorIdCommand()
+# get sensor id command based on firmware version
+# $1 integer - firmware version 
+# set VALUE_SENSOR_COMMAND
+{
+    unset VALUE_SENSORID_READ_COMMAND
+      if [ "$1" -ge 154 ]; then # Added in fw v 1.5.4 
+         VALUE_SENSORID_READ_COMMAND="$CMD_READ_SENSOR_ID_NEW"  #support soiltemp, co2, leafwetness
+      elif [ "$1" -ge 146 ]; then # Added in fw v 1.4.6
+         VALUE_SENSORID_READ_COMMAND="$CMD_READ_SENSOR"
+      else
+        return "$ERROR_SENSORID_COMMAND_NOT_SUPPORTED"
+      fi
+      
+      return 0
 }

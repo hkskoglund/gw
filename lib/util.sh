@@ -158,5 +158,18 @@ padSpaceRight()
     unset padspace_n padspacenum
 }
 
+getVersionInt()
+# get version integer from GW1000A_V1.6.8 -> 168
+# $1 version
+# set VALUE_VERSION
+{
+    VALUE_VERSION=$1
+    VALUE_VERSION=${VALUE_VERSION#*_V}
+    IFS=.
+    #shellcheck disable=SC2086
+    set -- $VALUE_VERSION
+    VALUE_VERSION="$1$2$3"
+
+}
 
 

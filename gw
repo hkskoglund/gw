@@ -1218,8 +1218,6 @@ processCommand()
                 EXITCODE_PROCESSCOMMAND=$EXITCODE_PARSESYSTEMOPTIONS
             fi
             ;;
-
-       
        
         ecowitt | e)
 
@@ -1330,7 +1328,12 @@ processCommand()
 
         livedata | l)
             
-           # sendPacket "$CMD_READ_SENSOR_ID_NEW" "$GW_HOST" >/dev/null   #get battery and signal info as well
+            #get battery/signal info to merge into livedata view
+            if getSensorIdCommand "$GW_VERSION_INT"; then
+                sendPacket "$VALUE_SENSORID_READ_COMMAND" "$GW_HOST" >/dev/null
+            else
+                echo >&2 "Warning: $GW_VERSION does not support command sensor id (dec $CMD_READ_SENSOR)/sensor id new (dec $CMD_READ_SENSOR_ID_NEW)"
+            fi
             
             if [ -z "$LOG_CMD" ]; then
 
@@ -1346,41 +1349,41 @@ processCommand()
 
             ;;
 
-        sensor_id)
+        sensor_id | sensor | s) 
 
-            sendPacket $CMD_READ_SENSOR_ID "$GW_HOST"
-            ;;
+           if  getSensorIdCommand "$GW_VERSION_INT"; then
 
-        sensor_id_new | sensor | s) # for new SENSOR_TYPE types
+                if ! argEmptyOrOption "$1"; then
+                #filter for senorid; -c sensor connected|-c s co
 
-            if ! argEmptyOrOption "$1"; then
-             #filter for senorid; -c sensor connected|-c s co
+                    case "$1" in 
+                        connected|c)
+                                        SPATTERNID=$SPATTERNID_CONNECTED #matches connected sensors
+                                        sendPacket "$VALUE_SENSORID_READ_COMMAND" "$GW_HOST"
+                                        ;;
+                        disconnected)
+                                        SPATTERNID=$SPATTERNID_DISCONNECTED
+                                        sendPacket "$VALUE_SENSORID_READ_COMMAND" "$GW_HOST"
+                                        ;;
+                        searching|s)
+                                        SPATTERNID=$SPATTERNID_SEARCHING
+                                        sendPacket "$VALUE_SENSORID_READ_COMMAND" "$GW_HOST"
+                                        ;;
+                        disabled|d)
+                                        SPATTERNID=$SPATTERNID_DISABLED
+                                        sendPacket "$VALUE_SENSORID_READ_COMMAND" "$GW_HOST"
+                                        ;;
+                        
+                        *) 
+                                        processSensorOptions "$1"
+                        ;;
+                    esac
 
-                case "$1" in 
-                    connected|c)
-                                    SPATTERNID=$SPATTERNID_CONNECTED #matches connected sensors
-                                    sendPacket $CMD_READ_SENSOR_ID_NEW "$GW_HOST"
-                                    ;;
-                    disconnected)
-                                    SPATTERNID=$SPATTERNID_DISCONNECTED
-                                    sendPacket $CMD_READ_SENSOR_ID_NEW "$GW_HOST"
-                                    ;;
-                    searching|s)
-                                    SPATTERNID=$SPATTERNID_SEARCHING
-                                    sendPacket $CMD_READ_SENSOR_ID_NEW "$GW_HOST"
-                                    ;;
-                    disabled|d)
-                                    SPATTERNID=$SPATTERNID_DISABLED
-                                    sendPacket $CMD_READ_SENSOR_ID_NEW "$GW_HOST"
-                                    ;;
-                    
-                    *) 
-                                    processSensorOptions "$1"
-                    ;;
-                esac
-
+                else
+                    sendPacket "$VALUE_SENSORID_READ_COMMAND" "$GW_HOST"
+                fi
             else
-                sendPacket $CMD_READ_SENSOR_ID_NEW "$GW_HOST"
+               echo >&2 "Warning: firmware $GW_VERSION does not support sensor id/sensor id new command"
             fi
 
             ;;
@@ -1654,7 +1657,7 @@ while [ $# -gt 0 ]; do
 
             case "$GW_VERSION" in
                 GW*)    sendPacket "$CMD_READ_SYSTEM" "$GW_HOST" >/dev/null  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
-                        sendPacket "$CMD_READ_SENSOR_ID_NEW" "$GW_HOST" >/dev/null
+                       ;;
             esac
 
             EXITCODE_MAIN=$EXITCODE_SENDPACKET
