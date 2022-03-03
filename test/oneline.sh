@@ -9,18 +9,22 @@ if [ -z "$1" ]; then
   return 1
 fi
 
-GWOPTIONS="-g $1 -c livedata" . ./gw 
+#https://github.com/koalaman/shellcheck/wiki/SC2240 The dot command does not support arguments in sh/dash. Set them as variables.
+GWOPTIONS="-g $1 -c livedata" . ./gw >/dev/null
 EXITCODE_GW=$?
 if [ $EXITCODE_GW -ne 0 ]; then
   echo >&2 "Failed livedata $GW_VERSION $GW_HOST, exitcode $EXITCODE_GW"
   return 2
 fi
 
-export -p | grep -E "LIVEDATA_"
+GWEXPORTSHOW=${GWEXPORTSHOW:=0}
+if [ $GWEXPORTSHOW -eq 1 ] ; then
+  export -p | grep -E "LIVEDATA_"
+fi
 
 # oneliner
-printf "Ｔ: %s %u %s %u Ｗ: %s %s %s %s Ｐ: %s %s Ｒ: %s %s %s %s Ｓ: %s %s\n" "$LIVEDATA_INTEMP" "$LIVEDATA_INHUMI" "$LIVEDATA_OUTTEMP" "$LIVEDATA_OUTHUMI"\
- "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE" "$LIVEDATA_WINDDIRECTION_COMPASS" "$LIVEDATA_WINDSPEED" "$LIVEDATA_WINDGUSTSPEED"\
+printf "in %s %u out %s %u | Ｗ: %s %s %s %s %s %u | Ｐ: r %s a %s | Ｒ: %s %s %s %s | Ｓ: %s %s\n" "$LIVEDATA_INTEMP" "$LIVEDATA_INHUMI" "$LIVEDATA_OUTTEMP" "$LIVEDATA_OUTHUMI"\
+ "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE" "$LIVEDATA_WINDDIRECTION_COMPASS" "$LIVEDATA_WINDSPEED" "$LIVEDATA_WINDGUSTSPEED" "$LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION" "$LIVEDATA_WINDGUSTSPEED_BEUFORT"\
  "$LIVEDATA_PRESSURE_RELBARO" "$LIVEDATA_PRESSURE_ABSBARO"\
  "$LIVEDATA_RAINRATE" "$LIVEDATA_RAINRATE_STATE" "$LIVEDATA_RAINDAY" "$LIVEDATA_RAINEVENT"\
  "$LIVEDATA_SOLAR_LIGHT" "$LIVEDATA_SOLAR_UVI"
