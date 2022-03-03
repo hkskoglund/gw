@@ -4,7 +4,12 @@
  # source arguments to dash shell
 # . | source - run in current shell
 # shellcheck disable=SC1091
-GWOPTIONS="-g $1 -c version -c livedata" . ./gw >/dev/null
+if [ -z "$1" ]; then
+  echo >&2 Error: no host ip
+  return 1
+fi
+
+GWOPTIONS="-g $1 -c livedata" . ./gw 
 EXITCODE_GW=$?
 if [ $EXITCODE_GW -ne 0 ]; then
   echo >&2 "Failed livedata $GW_VERSION $GW_HOST, exitcode $EXITCODE_GW"

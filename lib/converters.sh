@@ -271,7 +271,7 @@ convertScale10ToFloatInt() {
     unset VALUE_SCALE10_FLOAT
 
     if [ -z "$1" ]; then
-        echo >&2 Error convertScale10ToFloat empty arg "$1"
+        echo >&2 "Error convertScale10ToFloat no number to convert (scale 10 value)"
         return "$ERROR_CONVERT"
     fi
 
@@ -290,7 +290,6 @@ convertScale10ToFloatInt() {
     fi
 
     unset int frac number sign
-  
 }
 
 convertFloatToScale10()
@@ -439,8 +438,8 @@ convert_wattm2_to_lux()
        VALUE_SCALE10_FLOAT=$(( $1 * 136000/1075 ))
     else
         getFloatAsIntDecmial "$1"
-        
-        convertScale10ToFloat "$(( FLOAT_AS_INT*13600/1075 ))"
+        VALUE_LUX_SCALE10=$(( FLOAT_AS_INT*13600/1075 ))
+        convertScale10ToFloat "$VALUE_LUX_SCALE10"
     fi
 
     [ "$DEBUG" -eq 1 ] && echo >&2 "Convert $1 $UNIT_LIGHT_WATTM2 to $VALUE_SCALE10_FLOAT lux, shell floating point support: $SHELL_SUPPORT_FLOATINGPOINT"
@@ -449,23 +448,26 @@ convert_wattm2_to_lux()
 convertLightLivedata()
 {
      if [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_LUX" ]; then
-
-                convertScale10ToFloat "$VALUE_UINT32BE"
+                VALUE_LUX_SCALE10=$1
+                convertScale10ToFloat "$VALUE_LUX_SCALE10"
              
             elif [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_WATTM2" ]; then
 
                 #lux 976 -> ecowitt protcol: 7.7 W/m2
                 #https://help.ambientweather.net/help/why-is-the-lux-to-w-m-2-conversion-factor-126-7/
-           
-                convertScale10ToFloat "$(( LIVEDATA_SOLAR_LIGHT_UINT32*1075/136000 ))"
+                VALUE_WATTM2_SCALE10=$(( LIVEDATA_SOLAR_LIGHT_INTS10*1075/136000 ))
+                convertScale10ToFloat "$VALUE_WATTM2_SCALE10"
                 export LIVEDATA_SOLAR_LIGHT="$VALUE_SCALE10_FLOAT"
             fi
 }
 
 convertTemperatureLivedata()
+# convert temperature scale 10 to float
+# $1 temp x 10
 {
     if [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_CELCIUS" ]; then
-        convertScale10ToFloat "$1"
+        VALUE_CELCIUS_SCALE10=$1
+        convertScale10ToFloat "$VALUE_CELCIUS_SCALE10"
     elif [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_FARENHEIT" ]; then
         convert_celciusScale10_to_farenheitScale10 "$1"
         convertScale10ToFloat "$VALUE_FARENHEIT_SCALE10"
@@ -475,7 +477,8 @@ convertTemperatureLivedata()
 convertPressureLivedata()
 {
     if [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_HPA" ]; then
-        convertScale10ToFloat "$1"
+        VALUE_HPA_SCALE10=$1
+        convertScale10ToFloat "$VALUE_HPA_SCALE10"
     elif [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_INHG" ]; then
         convert_hpaScale10_To_inhgScale10 "$1"
         convertScale10ToFloat "$VALUE_INHG_SCALE10"
@@ -485,7 +488,8 @@ convertPressureLivedata()
 convertWindLivedata()
 {
     if [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_MPS" ]; then
-        convertScale10ToFloat "$1"
+        VALUE_MPS_SCALE10=$1
+        convertScale10ToFloat "$VALUE_MPS_SCALE10"
     elif [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_MPH" ]; then
         convcert_mpsScale10_to_mphScale10 "$1"
         convertScale10ToFloat "$VALUE_MPH_SCALE10"

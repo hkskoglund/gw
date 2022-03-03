@@ -128,17 +128,17 @@ printLivedata()
     #DEBUG_LIVEDATA_LINE=1
 
     #resetAppendBuffer
-    
-   printLivedataHeader "" "$LIVEDATA_TEMPERATURE_GROUPHEADER"
  
      if [ -n "$LIVEDATA_INTEMP" ]; then
+
+         printLivedataHeader "" "$LIVEDATA_TEMPERATURE_GROUPHEADER"
          
-         setLivedataValueStyleLtGt "$LIVEDATA_INTEMP_INT16" "$LIVEDATA_INTEMP_LIMIT_LOW" "$LIVEDATA_INTEMP_LIMIT_HIGH" "$STYLE_LIVEDATA_INTEMP_LIMIT_LOW" "$STYLE_LIVEDATA_INTEMP_LIMIT_HIGH"
+         setLivedataValueStyleLtGt "$LIVEDATA_INTEMP_INTS10" "$LIVEDATA_INTEMP_LIMIT_LOW" "$LIVEDATA_INTEMP_LIMIT_HIGH" "$STYLE_LIVEDATA_INTEMP_LIMIT_LOW" "$STYLE_LIVEDATA_INTEMP_LIMIT_HIGH"
          printLivedataLine "$LIVEDATA_INTEMP_HEADER"  "$LIVEDATA_INTEMP" "%6.1f" "$LIVEDATA_TEMP_UNIT" "%s" 'in' "%s" 
      fi
     
      if [ -n "$LIVEDATA_OUTTEMP" ]; then
-         setLivedataValueStyleLtGt "$LIVEDATA_OUTTEMP_INT16" "$LIVEDATA_OUTTEMP_LIMIT_LOW" "$LIVEDATA_OUTTEMP_LIMIT_HIGH" "$STYLE_LIMIT_LIVEDATA_OUTTEMP" "$STYLE_LIVEDATA_OUTTEMP_LIMIT_HIGH"
+         setLivedataValueStyleLtGt "$LIVEDATA_OUTTEMP_INTS10" "$LIVEDATA_OUTTEMP_LIMIT_LOW" "$LIVEDATA_OUTTEMP_LIMIT_HIGH" "$STYLE_LIMIT_LIVEDATA_OUTTEMP" "$STYLE_LIVEDATA_OUTTEMP_LIMIT_HIGH"
          #WH32 battery and state may be set by injectWH32 testdata or if available
          #shellcheck disable=SC2153
          printLivedataLine "$LIVEDATA_OUTTEMP_HEADER" "$LIVEDATA_OUTTEMP" "%6.1f" "$LIVEDATA_TEMP_UNIT" "%s" 'out' '' "$LIVEDATA_WH32_BATTERY"  "$LIVEDATA_WH32_BATTERY_STATE" "" "$LIVEDATA_WH32_SIGNAL" "$LIVEDATA_WH32_SIGNAL_STATE"
@@ -157,12 +157,12 @@ printLivedata()
      if [ -n "$LIVEDATA_PRESSURE_RELBARO" ]; then
             
             printLivedataHeader "" "$LIVEDATA_PRESSURE_GROUPHEADER"
-             setLivedataValueStyleLt "$LIVEDATA_PRESSURE_RELBARO_UINT16" "$LIVEDATA_PRESSURE_RELBARO_LIMIT_LOW"
+             setLivedataValueStyleLt "$LIVEDATA_PRESSURE_RELBARO_INTS10" "$LIVEDATA_PRESSURE_RELBARO_LIMIT_LOW"
          
          if [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_HPA" ]; then
              printLivedataLine "$LIVEDATA_PRESSURE_RELBARO_HEADER" "$LIVEDATA_PRESSURE_RELBARO" "%6.1f" "$LIVEDATA_PRESSURE_UNIT" "%4s" 'rbaro'
              [ -n "$LIVEDATA_PRESSURE_ABSBARO" ] && {
-                 setLivedataValueStyleLt "$LIVEDATA_PRESSURE_ABSBARO_UINT16" "$LIVEDATA_PRESSURE_ABSBARO_LIMIT_LOW"
+                 setLivedataValueStyleLt "$LIVEDATA_PRESSURE_ABSBARO_INTS10" "$LIVEDATA_PRESSURE_ABSBARO_LIMIT_LOW"
                  printLivedataLine "$LIVEDATA_PRESSURE_ABSBARO_HEADER" "$LIVEDATA_PRESSURE_ABSBARO" "%6.1f" "$LIVEDATA_PRESSURE_UNIT" "%4s" 'abaro'; }
          elif [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_INHG" ]; then
              printLivedataLine "$LIVEDATA_PRESSURE_RELBARO_HEADER" "$LIVEDATA_PRESSURE_RELBARO" "%6.2f" "$LIVEDATA_PRESSURE_UNIT" "%4s" 'rbaro'
@@ -174,11 +174,11 @@ printLivedata()
       
        [ -n "$LIVEDATA_WINDSPEED" ] && printLivedataHeader "" "$LIVEDATA_WIND_GROUPHEADER"
 
-       [ -z "$LIVEVIEW_HIDE_COMPASS" ] && [ -n "$LIVEDATA_WINDSPEED" ] && [ -n "$LIVEDATA_WINDGUSTSPEED" ] && [ -n "$LIVEDATA_WINDDIRECTION_UINT16" ] && newLivedataCompass "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE" "$VALUE_COMPASS"
+       [ -z "$LIVEVIEW_HIDE_COMPASS" ] && [ -n "$LIVEDATA_WINDSPEED" ] && [ -n "$LIVEDATA_WINDGUSTSPEED" ] && [ -n "$LIVEDATA_WINDDIRECTION" ] && newLivedataCompass "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE" "$VALUE_COMPASS"
          
         if [ -n "$LIVEDATA_WINDSPEED" ]; then
             if [ -z "$LIVEVIEW_HIDE_BEUFORT" ]; then
-                setStyleBeufort "$LIVEDATA_WINDSPEED_UINT16"
+                setStyleBeufort "$LIVEDATA_WINDSPEED_INTS10"
                 STYLE_LIVE_VALUE=$STYLE_BEUFORT
             fi
             printLivedataLine "$LIVEDATA_WINDSPEED_HEADER" "$LIVEDATA_WINDSPEED" "%6.1f" "$LIVEDATA_WIND_UNIT"  "%4s" 'wspd' "%6.1f" '' '' "\t%s$LIVEDATA_WINDDIRECTION_COMPASS_N_FMT" 
@@ -187,8 +187,8 @@ printLivedata()
 
         if [ -n "$LIVEDATA_WINDGUSTSPEED" ]; then
            if [ -z "$LIVEVIEW_HIDE_BEUFORT" ]; then
-                setBeufort "$LIVEDATA_WINDGUSTSPEED_UINT16"
-                setStyleBeufort "$LIVEDATA_WINDGUSTSPEED_UINT16"
+                setBeufort "$LIVEDATA_WINDGUSTSPEED_INTS10"
+                setStyleBeufort "$LIVEDATA_WINDGUSTSPEED_INTS10"
                 STYLE_LIVE_VALUE=$STYLE_BEUFORT
            else
              unset LV_DELIMITER
@@ -201,13 +201,13 @@ printLivedata()
             printLivedataLine  "$LIVEDATA_WINDGUSTSPEED_HEADER $LV_DELIMITER $VALUE_BEUFORT $VALUE_PADSPACERIGHT" "$LIVEDATA_WINDGUSTSPEED" "%6.1f" "$LIVEDATA_WIND_UNIT" "%4s" 'wgspd' "%6.1f" "" "" "\t%s$LIVEDATA_WINDDIRECTION_COMPASS_WE_FMT"
         fi
 
-        [ -n "$LIVEDATA_WINDDIRECTION_UINT16" ] && printLivedataLine "$LIVEDATA_WINDDIRECTION_HEADER $LV_DELIMITER $LIVEDATA_WINDDIRECTION_COMPASS" "$LIVEDATA_WINDDIRECTION_UINT16"   "%6u" "$LIVEDATA_WIND_DEGREE_UNIT"\
-         "%5s" 'wdeg' "%4u" "$LIVEDATA_WINDDIRECTION_UINT16" "" "\t%s$LIVEDATA_WINDDIRECTION_COMPASS_S_FMT"
+        [ -n "$LIVEDATA_WINDDIRECTION" ] && printLivedataLine "$LIVEDATA_WINDDIRECTION_HEADER $LV_DELIMITER $LIVEDATA_WINDDIRECTION_COMPASS" "$LIVEDATA_WINDDIRECTION"   "%6u" "$LIVEDATA_WIND_DEGREE_UNIT"\
+         "%5s" 'wdeg' "%4u" "$LIVEDATA_WINDDIRECTION" "" "\t%s$LIVEDATA_WINDDIRECTION_COMPASS_S_FMT"
         
         if [ -n "$LIVEDATA_WINDDAILYMAX" ]; then
             if [ -z "$LIVEVIEW_HIDE_BEUFORT" ]; then
-                setBeufort "$LIVEDATA_WINDDAILYMAX_UINT16"
-                setStyleBeufort "$LIVEDATA_WINDDAILYMAX_UINT16"
+                setBeufort "$LIVEDATA_WINDDAILYMAX_INTS10"
+                setStyleBeufort "$LIVEDATA_WINDDAILYMAX_INTS10"
                 STYLE_LIVE_VALUE=$STYLE_BEUFORT
             else
                 unset LV_DELIMITER
@@ -220,7 +220,7 @@ printLivedata()
         #[ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]    && printLivedataLine "LIVEDATA_WINDDIRECTION_COMPASS_HEADER"   "$LIVEDATA_WINDDIRECTION_COMPASS"  "%6s" "" "%5s" 'wdir' "%4s"
     fi
 
-    if [ -n "$LIVEDATA_SOLAR_LIGHT" ] && [ -n "$LIVEDATA_SOLAR_LIGHT_UINT32" ] && [ "$LIVEDATA_SOLAR_LIGHT_UINT32" -eq 0 ] && [ "$HIDE_LIGHT_LIVEDATA_AUTO" -eq 1 ]; then
+    if [ -n "$LIVEDATA_SOLAR_LIGHT" ] && [ -n "$LIVEDATA_SOLAR_LIGHT_INTS10" ] && [ "$LIVEDATA_SOLAR_LIGHT_INTS10" -eq 0 ] && [ "$HIDE_LIGHT_LIVEDATA_AUTO" -eq 1 ]; then
       LIVEVIEW_HIDE_LIGHT=1 # auto hide_liveview, when dark
     fi
 
@@ -252,7 +252,7 @@ printLivedata()
         fi
     fi
 
-    if [ -n "$LIVEDATA_RAINDAY_UINT16" ] && [ "$LIVEDATA_RAINDAY_UINT16" -eq 0 ] && [ "$HIDE_RAIN_LIVEDATA_AUTO" -eq 1 ]; then
+    if [ -n "$LIVEDATA_RAINDAY_INTS10" ] && [ "$LIVEDATA_RAINDAY_INTS10" -eq 0 ] && [ "$HIDE_RAIN_LIVEDATA_AUTO" -eq 1 ]; then
        LIVEVIEW_HIDE_RAIN=1 #auto hide_liveview, if no rain today
     fi
 
@@ -263,14 +263,14 @@ printLivedata()
         if [ -n "$LIVEDATA_RAINRATE" ]; then
               printLivedataHeader "" "$LIVEDATA_RAIN_GROUPHEADER"
 
-               setRainIntensity "$LIVEDATA_RAINRATE_UINT16"
+               setRainIntensity "$LIVEDATA_RAINRATE_INTS10"
                export LIVEDATA_RAINRATE_STATE_DESCRIPTION="$VALUE_RAININTENSITY"
-               setStyleRainIntensity "$LIVEDATA_RAINRATE_UINT16"
-               setRainIntensityStatus "$LIVEDATA_RAINRATE_UINT16"
+               setStyleRainIntensity "$LIVEDATA_RAINRATE_INTS10"
+               setRainIntensityStatus "$LIVEDATA_RAINRATE_INTS10"
                export LIVEDATA_RAINRATE_STATE="$VALUE_RAININTENSITY_STATUS"
                STYLE_LIVE_VALUE=$STYLE_RAININTENSITY
               
-               if [ "$LIVEDATA_RAINRATE_UINT16" -gt 0 ]; then
+               if [ "$LIVEDATA_RAINRATE_INTS10" -gt 0 ]; then
                     delimiter=$LV_DELIMITER 
                 else
                     delimiter=" "
@@ -283,8 +283,8 @@ printLivedata()
             fi
         # rainhour available in Ecowitt http request
         [ -n "$LIVEDATA_RAINHOUR" ]     && printLivedataRainLine "$LIVEDATA_RAINHOUR_UINT16"  "$LIVEDATA_RAINHOUR_LIMIT"  "$LIVEDATA_RAINHOUR_HEADER"  "$LIVEDATA_RAINHOUR" "$LIVEDATA_RAIN_UNIT" 'rhour' "" "$STYLE_LIMIT_LIVEDATA_RAINHOUR"
-        [ -n "$LIVEDATA_RAINDAY" ]      && printLivedataRainLine "$LIVEDATA_RAINDAY_UINT16"   "$LIVEDATA_RAINDAY_LIMIT"   "$LIVEDATA_RAINDAY_HEADER"   "$LIVEDATA_RAINDAY"  "$LIVEDATA_RAIN_UNIT" 'rday' "" "$STYLE_LIMIT_LIVEDATA_RAINDAY"
-        [ -n "$LIVEDATA_RAINEVENT" ]    && printLivedataRainLine "$LIVEDATA_RAINEVENT_UINT16" "$LIVEDATA_RAINEVENT_LIMIT" "$LIVEDATA_RAINEVENT_HEADER" "$LIVEDATA_RAINEVENT" "$LIVEDATA_RAIN_UNIT" 'revent' "" "$STYLE_LIMIT_LIVEDATA_RAINEVENT"
+        [ -n "$LIVEDATA_RAINDAY" ]      && printLivedataRainLine "$LIVEDATA_RAINDAY_INTS10"   "$LIVEDATA_RAINDAY_LIMIT"   "$LIVEDATA_RAINDAY_HEADER"   "$LIVEDATA_RAINDAY"  "$LIVEDATA_RAIN_UNIT" 'rday' "" "$STYLE_LIMIT_LIVEDATA_RAINDAY"
+        [ -n "$LIVEDATA_RAINEVENT" ]    && printLivedataRainLine "$LIVEDATA_RAINEVENT_INTS10" "$LIVEDATA_RAINEVENT_LIMIT" "$LIVEDATA_RAINEVENT_HEADER" "$LIVEDATA_RAINEVENT" "$LIVEDATA_RAIN_UNIT" 'revent' "" "$STYLE_LIMIT_LIVEDATA_RAINEVENT"
 
         [ -n "$LIVEDATA_RAINWEEK" ]     && printLivedataLine "$LIVEDATA_RAINWEEK_HEADER" "$LIVEDATA_RAINWEEK"    "$VALUE_RAIN_FMT" "$LIVEDATA_RAIN_UNIT" "%3s" 'rweek' ''  "$LIVEDATA_WH40_RAINFALL_BATTERY" "$LIVEDATA_WH40_RAINFALL_BATTERY_STATE" "" "$LIVEDATA_WH40_RAINFALL_SIGNAL" "$LIVEDATA_WH40_RAINFALL_SIGNAL_STATE"
         [ -n "$LIVEDATA_RAINMONTH" ]    && printLivedataLine "$LIVEDATA_RAINMONTH_HEADER" "$LIVEDATA_RAINMONTH"  "$VALUE_RAIN_FMT" "$LIVEDATA_RAIN_UNIT" "%3s" 'rmonth' "$VALUE_RAIN_FMT"
@@ -428,15 +428,15 @@ printLivedata()
         [ -n "$LIVEDATA_WH45CO2_PM10" ]         && printLivedataLine "$LIVEDATA_WH45CO2_PM10_HEADER" "$LIVEDATA_WH45CO2_PM10"                "%6.1f" "$LIVEDATA_PM25_UNIT" "%7s" 'pm10'
         [ -n "$LIVEDATA_WH45CO2_PM10_24HAVG" ]  && printLivedataLine "$LIVEDATA_WH45CO2_PM10_24HAVG_HEADER" "$LIVEDATA_WH45CO2_PM10_24HAVG"  "%6.1f" "$LIVEDATA_PM25_UNIT" "%7s" 'pm10a'
         if [ -n "$LIVEDATA_WH45CO2_PM25" ]; then
-            setAQI "$LIVEDATA_WH45CO2_PM25_UINT16"
-            setStyleAQI "$LIVEDATA_WH45CO2_PM25_UINT16"
+            setAQI "$LIVEDATA_WH45CO2_PM25_INTS10"
+            setStyleAQI "$LIVEDATA_WH45CO2_PM25_INTS10"
             STYLE_LIVE_VALUE=$STYLE_AQI
             LIVEDATA_WH45CO2_PM25_HEADER="$LIVEDATA_WH45CO2_PM25_HEADER $LV_DELIMITER $VALUE_PM25_AQI"
             printLivedataLine "$LIVEDATA_WH45CO2_PM25_HEADER" "$LIVEDATA_WH45CO2_PM25"                "%6.1f" "$LIVEDATA_PM25_UNIT" "%7s" 'pm25'
         fi
         if [ -n "$LIVEDATA_WH45CO2_PM25_24HAVG" ]; then
-            setAQI "$LIVEDATA_WH45CO2_PM25_24HAVG_UINT16"
-            setStyleAQI "$LIVEDATA_WH45CO2_PM25_24HAVG_UINT16"
+            setAQI "$LIVEDATA_WH45CO2_PM25_24HAVG_INTS10"
+            setStyleAQI "$LIVEDATA_WH45CO2_PM25_24HAVG_INTS10"
             STYLE_LIVE_VALUE=$STYLE_AQI
             LIVEDATA_WH45CO2_PM25_24HAVG_HEADER="$LIVEDATA_WH45CO2_PM25_24HAVG_HEADER $LV_DELIMITER $VALUE_PM25_AQI"
             printLivedataLine "$LIVEDATA_WH45CO2_PM25_24HAVG_HEADER" "$LIVEDATA_WH45CO2_PM25_24HAVG"  "%6.1f" "$LIVEDATA_PM25_UNIT" "%7s" 'pm25a'

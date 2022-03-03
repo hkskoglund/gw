@@ -3,6 +3,9 @@
 # Supports binary and http Ecowitt/Wunderground protocol
 # Only for firmware v1.6.5 or later - for intepretation of battery levels/sensor id new command
 
+# WSL2: change shell from dash->bash : sudo dpkg-reconfigure dash, ls -l /bin/sh
+# info: https://unix.stackexchange.com/questions/442510/how-to-use-bash-for-sh-in-ubuntu
+
 GWDIR=${GWDIR:="."}
 
 . $GWDIR/lib/constants.sh
@@ -25,6 +28,7 @@ GWDIR=${GWDIR:="."}
 . $GWDIR/view/livedata.sh
 
 initShell() {
+    DEBUG_INITSHELL=${DEBUG_INITSHELL:=$DEBUG}
     #shellcheck disable=SC3010,SC2050
     eval "if 2>/dev/null 1>/dev/null type '[['  && 2>/dev/null [[ a =~ a ]] ; then
         SHELL_SUPPORT_TILDE_REGEX=1
@@ -110,6 +114,8 @@ initShell() {
    if ! SHELL_DECIMAL_POINT=$(locale decimal_point) 2>/dev/null; then
       SHELL_DECIMAL_POINT="."
    fi
+
+   [ "$DEBUG_INITSHELL" -eq 1 ] && { echo >&2 "initShell: bash $BASH_VERSION zsh $ZSH_VERSION ksh $KSH_VERSION"; ls >&2 -l /bin/sh; ps >&2 -fp $$; }
     
     unset type_res
    
@@ -608,10 +614,10 @@ parseRaindataOptions()
 {
     
     #copy read values
-    rainday=$GW_RAINDAILY
-    rainweek=$GW_RAINWEEK
-    rainmonth=$GW_RAINMONTH
-    rainyear=$GW_RAINYEAR
+    rainday=$GW_RAINDAILY_INTS10
+    rainweek=$GW_RAINWEEK_INTS10
+    rainmonth=$GW_RAINMONTH_INTS10
+    rainyear=$GW_RAINYEAR_INTS10
 
     rain_needsupdate=0
 
@@ -672,12 +678,12 @@ processCalibrationOptions()
     DEBUG_CALIBRATION_OPTIONS=${DEBUG_CALIBRATION_OPTIONS:=$DEBUG}
     DEBUG_FUNC='processCalibrationOptions'
 
-    calibration_intemp=$GW_CALIBRATION_INTEMPOFFSET_INT
+    calibration_intemp=$GW_CALIBRATION_INTEMPOFFSET_INTS10
     calibration_inhumi=$GW_CALIBRATION_INHUMIDITYOFFSET
-    calibration_outtemp=$GW_CALIBRATION_OUTTEMPOFFSET_INT
+    calibration_outtemp=$GW_CALIBRATION_OUTTEMPOFFSET_INTS10
     calibration_outhumi=$GW_CALIBRATION_OUTHUMIDITYOFFSET
-    calibration_absoffset=$GW_CALIBRATION_ABSOFFSET_INT
-    calibration_reloffset=$GW_CALIBRATION_RELOFFSET_INT
+    calibration_absoffset=$GW_CALIBRATION_ABSOFFSET_INTS10
+    calibration_reloffset=$GW_CALIBRATION_RELOFFSET_INTS10
     calibration_winddir=$GW_CALIBRATION_WINDDIROFFSET
 
     IFS=,
@@ -723,7 +729,7 @@ processCalibrationOptions()
                         ;;
 
             a|absoffset|absolute|abs)  if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10_ABS" -le $CALIBRATION_ABSOFFSET_MAX ]; then
-                             [ "$GW_CALIBRATION_ABSOFFSET_INT" -ne "$VALUE_FLOAT_SCALE10" ] && { 
+                             [ "$GW_CALIBRATION_ABSOFFSET_INTS10" -ne "$VALUE_FLOAT_SCALE10" ] && { 
                                  calibration_absoffset=$VALUE_FLOAT_SCALE10; calibration_need_update=1;  }
                         else
                            echo >&2 "Warning: Invalid value for $expr, min/max -$CALIBRATION_ABSOFFSET_MAX/$CALIBRATION_ABSOFFSET_MAX (scale 10)"
@@ -732,7 +738,7 @@ processCalibrationOptions()
             
             r|reloffset|relative|rel) if [ -n "$2" ] && convertFloatToScale10 "$2" && [ "$VALUE_FLOAT_SCALE10_ABS" -le $CALIBRATION_RELOFFSET_MAX ]; then
 
-                              [ "$GW_CALIBRATION_RELOFFSET_INT" -ne "$VALUE_FLOAT_SCALE10" ] && { calibration_reloffset=$VALUE_FLOAT_SCALE10; calibration_need_update=1; }
+                              [ "$GW_CALIBRATION_RELOFFSET_INTS10" -ne "$VALUE_FLOAT_SCALE10" ] && { calibration_reloffset=$VALUE_FLOAT_SCALE10; calibration_need_update=1; }
                         else
                            echo >&2 "Warning: Invalid value for $expr, min/max -$CALIBRATION_RELOFFSET_MAX/$CALIBRATION_RELOFFSET_MAX (scale 10)"
                         fi
@@ -1443,7 +1449,7 @@ fi
 
 DEBUG_MAIN=${DEBUG_MAIN:=$DEBUG}
 
-[ "$DEBUG_MAIN" -eq 1 ] && echo >&2 "main PID $$ arguments $* length: $#"
+[ "$DEBUG_MAIN" -eq 1 ] && echo >&2 "main: PID $$ arguments $* length: $#"
 
 # parse options
 while [ $# -gt 0 ]; do
@@ -1726,7 +1732,12 @@ cleanup
 [ "$DEBUG_MAIN" -eq 1 ] && echo >&2 "main: Exit/return code $EXITCODE_MAIN"
 
 # bash problem with directly executing script in shell process: return: can only `return' from a function or sourced script
+# info: https://stackoverflow.com/questions/2683279/how-to-detect-if-a-script-is-being-sourced
 
-if ! return $EXITCODE_MAIN 2>/dev/null; then # using return instead of exit which terminates shell when sourced from shell prompt 
+if return $EXITCODE_MAIN ; then # using return instead of exit which terminates shell when sourced from shell prompt 
+    : # never gets executed if return works
+else
+     [ "$DEBUG_MAIN" -eq 1 ] && echo >&2 "main: return failed, using exit"
     exit $EXITCODE_MAIN # for bash
+
 fi

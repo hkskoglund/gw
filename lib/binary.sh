@@ -178,26 +178,26 @@ calibration wind direction offset           $GW_CALIBRATION_WINDDIROFFSET $LIVED
 parseCalibration() {
 
     readInt16BE OD_BUFFER "intemp offset"
-    convertScale10ToFloat "$VALUE_INT16BE"
-    export GW_CALIBRATION_INTEMPOFFSET_INT="$VALUE_INT16BE"
+    export GW_CALIBRATION_INTEMPOFFSET_INTS10="$VALUE_INT16BE"
+    convertScale10ToFloat "$GW_CALIBRATION_INTEMPOFFSET_INTS10"
     GW_CALIBRATION_INTEMPOFFSET="$VALUE_SCALE10_FLOAT"
 
     readInt8 OD_BUFFER "inhumidity offset"
     export GW_CALIBRATION_INHUMIDITYOFFSET="$VALUE_INT8"
 
     readInt32BE "absolute offset"
-    export GW_CALIBRATION_ABSOFFSET_INT="$VALUE_INT32BE" 
-    convertScale10ToFloat "$VALUE_INT32BE"
+    export GW_CALIBRATION_ABSOFFSET_INTS10="$VALUE_INT32BE" 
+    convertScale10ToFloat "$GW_CALIBRATION_ABSOFFSET_INTS10"
     GW_CALIBRATION_ABSOFFSET="$VALUE_SCALE10_FLOAT"
 
     readInt32BE "relative offset"
-    export GW_CALIBRATION_RELOFFSET_INT=$VALUE_INT32BE #used for int comparison [ ... ]
-    convertScale10ToFloat "$VALUE_INT32BE"
+    export GW_CALIBRATION_RELOFFSET_INTS10="$VALUE_INT32BE" #used for int comparison [ ... ]
+    convertScale10ToFloat "$GW_CALIBRATION_RELOFFSET_INTS10"
     GW_CALIBRATION_RELOFFSET="$VALUE_SCALE10_FLOAT"
 
     readInt16BE OD_BUFFER "outtemp offset"
-    export GW_CALIBRATION_OUTTEMPOFFSET_INT="$VALUE_INT16BE"
-    convertScale10ToFloat "$VALUE_INT16BE"
+    export GW_CALIBRATION_OUTTEMPOFFSET_INTS10="$VALUE_INT16BE"
+    convertScale10ToFloat "$GW_CALIBRATION_OUTTEMPOFFSET_INTS10"
     GW_CALIBRATION_OUTTEMPOFFSET="$VALUE_SCALE10_FLOAT"
 
     readInt8 OD_BUFFER "out humidity offset"
@@ -282,11 +282,11 @@ parsePath() {
 }
 
 printRaindata() {
-    echo "rain rate  $GW_RAINRATE_FLOAT $LIVEDATA_RAINRATE_UNIT
-rain day   $GW_RAINDAILY_FLOAT $LIVEDATA_RAIN_UNIT
-rain week  $GW_RAINWEEK_FLOAT $LIVEDATA_RAIN_UNIT
-rain month $GW_RAINMONTH_FLOAT $LIVEDATA_RAIN_UNIT
-rain year  $GW_RAINYEAR_FLOAT $LIVEDATA_RAIN_UNIT"
+    echo "rain rate  $GW_RAINRATE $LIVEDATA_RAINRATE_UNIT
+rain day   $GW_RAINDAILY $LIVEDATA_RAIN_UNIT
+rain week  $GW_RAINWEEK $LIVEDATA_RAIN_UNIT
+rain month $GW_RAINMONTH $LIVEDATA_RAIN_UNIT
+rain year  $GW_RAINYEAR $LIVEDATA_RAIN_UNIT"
 }
 
 
@@ -294,34 +294,34 @@ rain year  $GW_RAINYEAR_FLOAT $LIVEDATA_RAIN_UNIT"
 parseRaindata() {
 
     readUInt32BE "OD_BUFFER" "rainrate"
-    export GW_RAINRATE="$VALUE_UINT32BE"
+    export GW_RAINRATE_INTS10="$VALUE_UINT32BE"
 
     readUInt32BE "OD_BUFFER" "raindaily"
-    export GW_RAINDAILY="$VALUE_UINT32BE"
+    export GW_RAINDAILY_INTS10="$VALUE_UINT32BE"
 
     readUInt32BE "OD_BUFFER" "rainweek"
-    export GW_RAINWEEK="$VALUE_UINT32BE"
+    export GW_RAINWEEK_INTS10="$VALUE_UINT32BE"
 
     readUInt32BE "OD_BUFFER" "rainmonth"
-    export GW_RAINMONTH="$VALUE_UINT32BE"
+    export GW_RAINMONTH_INTS10="$VALUE_UINT32BE"
 
     readUInt32BE "OD_BUFFER" "rainyear"
-    export GW_RAINYEAR="$VALUE_UINT32BE"
+    export GW_RAINYEAR_INTS10="$VALUE_UINT32BE"
 
-    convertScale10ToFloat "$GW_RAINRATE"
-    export GW_RAINRATE_FLOAT="$VALUE_SCALE10_FLOAT"
+    convertScale10ToFloat "$GW_RAINRATE_INTS10"
+    export GW_RAINRATE="$VALUE_SCALE10_FLOAT"
 
-    convertScale10ToFloat "$GW_RAINDAILY"
-    export GW_RAINDAILY_FLOAT="$VALUE_SCALE10_FLOAT"
+    convertScale10ToFloat "$GW_RAINDAILY_INTS10"
+    export GW_RAINDAILY="$VALUE_SCALE10_FLOAT"
     
-    convertScale10ToFloat "$GW_RAINWEEK"
-    export GW_RAINWEEK_FLOAT="$VALUE_SCALE10_FLOAT"
+    convertScale10ToFloat "$GW_RAINWEEK_INTS10"
+    export GW_RAINWEEK="$VALUE_SCALE10_FLOAT"
     
-    convertScale10ToFloat "$GW_RAINMONTH"
-    export GW_RAINMONTH_FLOAT="$VALUE_SCALE10_FLOAT"
+    convertScale10ToFloat "$GW_RAINMONTH_INTS10"
+    export GW_RAINMONTH="$VALUE_SCALE10_FLOAT"
     
-    convertScale10ToFloat "$GW_RAINYEAR"
-    export GW_RAINYEAR_FLOAT="$VALUE_SCALE10_FLOAT"
+    convertScale10ToFloat "$GW_RAINYEAR_INTS10"
+    export GW_RAINYEAR="$VALUE_SCALE10_FLOAT"
 
     printRaindata
 }
@@ -623,10 +623,10 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         if [ "$ldf" -eq "$LDF_INTEMP" ]; then
 
             readInt16BE OD_BUFFER "intemp"
-            export LIVEDATA_INTEMP_INT16="$VALUE_INT16BE"
-            convertTemperatureLivedata "$VALUE_INT16BE"
+            export LIVEDATA_INTEMP_INTS10="$VALUE_INT16BE"
+            convertTemperatureLivedata "$LIVEDATA_INTEMP_INTS10"
             export LIVEDATA_INTEMP="$VALUE_SCALE10_FLOAT" 
-             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:intemp type: int16be $LIVEDATA_INTEMP_INT16 $LIVEDATA_INTEMP $UNIT_UNICODE_CELCIUS"
+             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:intemp type: int16be $LIVEDATA_INTEMP_INTS10 $LIVEDATA_INTEMP $UNIT_UNICODE_CELCIUS"
 
         elif [ "$ldf" -eq "$LDF_INHUMI" ]; then
 
@@ -639,30 +639,30 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
             readUInt16BE OD_BUFFER "absolute pressure"
             #shellcheck disable=SC2034
-            export LIVEDATA_PRESSURE_ABSBARO_UINT16="$VALUE_UINT16BE" #may use for ansi escape coloring beyond limits
-            convertPressureLivedata "$VALUE_UINT16BE"
+            export LIVEDATA_PRESSURE_ABSBARO_INTS10="$VALUE_UINT16BE" #may use for ansi escape coloring beyond limits
+            convertPressureLivedata "$LIVEDATA_PRESSURE_ABSBARO_INTS10"
             export LIVEDATA_PRESSURE_ABSBARO="$VALUE_SCALE10_FLOAT"
             
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:absbaro type: uint16be $LIVEDATA_PRESSURE_ABSBARO_UINT16 $LIVEDATA_PRESSURE_ABSBARO $UNIT_UNICODE_PRESSURE_HPA"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:absbaro type: uint16be $LIVEDATA_PRESSURE_ABSBARO_INTS10 $LIVEDATA_PRESSURE_ABSBARO $UNIT_UNICODE_PRESSURE_HPA"
 
 
         elif [ "$ldf" -eq "$LDF_PRESSURE_RELBARO" ]; then
 
             readUInt16BE OD_BUFFER "relative pressure"
-            export LIVEDATA_PRESSURE_RELBARO_UINT16="$VALUE_UINT16BE"
-            convertPressureLivedata "$VALUE_UINT16BE"
+            export LIVEDATA_PRESSURE_RELBARO_INTS10="$VALUE_UINT16BE"
+            convertPressureLivedata "$LIVEDATA_PRESSURE_RELBARO_INTS10"
             export LIVEDATA_PRESSURE_RELBARO="$VALUE_SCALE10_FLOAT"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:relbaro type: uint16be $LIVEDATA_PRESSURE_RELBARO_UINT16 $LIVEDATA_PRESSURE_RELBARO  $UNIT_UNICODE_PRESSURE_HPA"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:relbaro type: uint16be $LIVEDATA_PRESSURE_RELBARO_INTS10 $LIVEDATA_PRESSURE_RELBARO  $UNIT_UNICODE_PRESSURE_HPA"
 
 
         elif [ "$ldf" -eq "$LDF_OUTTEMP" ]; then
 
             readInt16BE OD_BUFFER "outtemp"
-            export LIVEDATA_OUTTEMP_INT16="$VALUE_INT16BE"
-            convertTemperatureLivedata "$VALUE_INT16BE" 
+            export LIVEDATA_OUTTEMP_INTS10="$VALUE_INT16BE"
+            convertTemperatureLivedata "$LIVEDATA_OUTTEMP_INTS10" 
             export LIVEDATA_OUTTEMP="$VALUE_SCALE10_FLOAT"
             
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:outtemp type: int16be $LIVEDATA_OUTTEMP_INT16 $LIVEDATA_OUTTEMP $UNIT_UNICODE_CELCIUS"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:outtemp type: int16be $LIVEDATA_OUTTEMP_INTS10 $LIVEDATA_OUTTEMP $UNIT_UNICODE_CELCIUS"
 
 
         elif [ "$ldf" -eq "$LDF_OUTHUMI" ]; then
@@ -675,62 +675,62 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         elif [ "$ldf" -eq "$LDF_WINDDIRECTION" ]; then
 
             readUInt16BE OD_BUFFER "winddirection"
-            export LIVEDATA_WINDDIRECTION_UINT16="$VALUE_UINT16BE"
-            convertWindDirectionToCompassDirection "$LIVEDATA_WINDDIRECTION_UINT16"
+            export LIVEDATA_WINDDIRECTION="$VALUE_UINT16BE"
+            convertWindDirectionToCompassDirection "$LIVEDATA_WINDDIRECTION"
             export LIVEDATA_WINDDIRECTION_COMPASS="$VALUE_COMPASS_DIRECTION"
             export LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE="$VALUE_COMPASS_DIRECTION_UNICODE"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:winddirection type: uint16be $LIVEDATA_WINDDIRECTION_UINT16 $LIVEDATA_WIND_DEGREE_UNIT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:winddirection type: uint16be $LIVEDATA_WINDDIRECTION $LIVEDATA_WIND_DEGREE_UNIT"
 
 
         elif [ "$ldf" -eq "$LDF_WINDSPEED" ]; then
 
             readUInt16BE OD_BUFFER "windspeed"
-            export LIVEDATA_WINDSPEED_UINT16="$VALUE_UINT16BE"
-            convertWindLivedata "$VALUE_UINT16BE"
+            export LIVEDATA_WINDSPEED_INTS10="$VALUE_UINT16BE"
+            convertWindLivedata "$LIVEDATA_WINDSPEED_INTS10"
             export LIVEDATA_WINDSPEED="$VALUE_SCALE10_FLOAT"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:windspeed type: uint16be $LIVEDATA_WINDSPEED_UINT16 $LIVEDATA_WINDSPEED $UNIT_UNICODE_WIND_MPS"  
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:windspeed type: uint16be $LIVEDATA_WINDSPEED_INTS10 $LIVEDATA_WINDSPEED $UNIT_UNICODE_WIND_MPS"  
 
 
         elif [ "$ldf" -eq "$LDF_WINDGUSTSPPED" ]; then
 
             readUInt16BE OD_BUFFER "wingustspeed"
-            export LIVEDATA_WINDGUSTSPEED_UINT16="$VALUE_UINT16BE"
+            export LIVEDATA_WINDGUSTSPEED_INTS10="$VALUE_UINT16BE"
             convertWindLivedata "$VALUE_UINT16BE"
             export LIVEDATA_WINDGUSTSPEED="$VALUE_SCALE10_FLOAT"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:windgustspeed type: uint16be $LIVEDATA_WINDGUSTSPEED_UINT16 $LIVEDATA_WINDGUSTSPEED $UNIT_UNICODE_WIND_MPS"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:windgustspeed type: uint16be $LIVEDATA_WINDGUSTSPEED_INTS10 $LIVEDATA_WINDGUSTSPEED $UNIT_UNICODE_WIND_MPS"
 
 
         elif [ "$ldf" -eq "$LDF_DAYLWINDMAX" ]; then
 
             readUInt16BE OD_BUFFER "winddailymax"
-            export LIVEDATA_WINDDAILYMAX_UINT16="$VALUE_UINT16BE"
+            export LIVEDATA_WINDDAILYMAX_INTS10="$VALUE_UINT16BE"
             convertWindLivedata "$VALUE_UINT16BE"
             export LIVEDATA_WINDDAILYMAX="$VALUE_SCALE10_FLOAT"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:winddailymax type: uint16be $LIVEDATA_WINDDAILYMAX_UINT16 $LIVEDATA_WINDDAILYMAX $UNIT_UNICODE_WIND_MPS"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:winddailymax type: uint16be $LIVEDATA_WINDDAILYMAX_INTS10 $LIVEDATA_WINDDAILYMAX $UNIT_UNICODE_WIND_MPS"
 
 
         elif [ "$ldf" -eq "$LDF_LIGHT" ]; then
 
             readUInt32BE OD_BUFFER "light"
-            export LIVEDATA_SOLAR_LIGHT_UINT32="$VALUE_UINT32BE"
-            convertLightLivedata "$LIVEDATA_SOLAR_LIGHT_UINT32"
+            export LIVEDATA_SOLAR_LIGHT_INTS10="$VALUE_UINT32BE"
+            convertLightLivedata "$LIVEDATA_SOLAR_LIGHT_INTS10"
             export LIVEDATA_SOLAR_LIGHT="$VALUE_SCALE10_FLOAT"
 
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:light type: uint32be $LIVEDATA_SOLAR_LIGHT_UINT32 lux $LIVEDATA_SOLAR_LIGHT  $LIVEDATA_SOLAR_LIGHT_UNIT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:light type: uint32be $LIVEDATA_SOLAR_LIGHT_INTS10 lux $LIVEDATA_SOLAR_LIGHT  $LIVEDATA_SOLAR_LIGHT_UNIT"
 
 
         elif [ "$ldf" -eq "$LDF_UV" ]; then
 
             readUInt16BE OD_BUFFER "uv"
-            export LIVEDATA_SOLAR_UV_UINT16="$VALUE_UINT16BE"
-            convertScale10ToFloat "$VALUE_UINT16BE" # assume its scale 10?
+            export LIVEDATA_SOLAR_UV_INTS10="$VALUE_UINT16BE"
+            convertScale10ToFloat "$LIVEDATA_SOLAR_UV_INTS10" # assume its scale 10?
             export LIVEDATA_SOLAR_UV="$VALUE_SCALE10_FLOAT"
             # uv gain can be used to calibrate value
             #is it µW/m^2? is it scale 10 ? scale 10 gives best resolution
             #scale 10: 0.1 µW/m2 = 0.1/(100*cm*100cm) = 0.1/(10000cm^2) = 1000 µW/cm^2 = 1mW/cm^2, resolution: 1mW/cm2
             #not scale 10: 1 µW/m2 = 10mW/cm2, resolution: 10mW/cm2
             #conversion info: https://www.linshangtech.com/tech/tech508.html
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:uv type: uint16be $LIVEDATA_SOLAR_UV_UINT16 $LIVEDATA_SOLAR_UV $LIVEDATA_SOLAR_LIGHT_UV_UNIT = $LIVEDATA_SOLAR_UV_UINT16 mW/㎠"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:uv type: uint16be $LIVEDATA_SOLAR_UV_INTS10 $LIVEDATA_SOLAR_UV $LIVEDATA_SOLAR_LIGHT_UV_UNIT = $LIVEDATA_SOLAR_UV_INTS10 mW/㎠"
 
         elif [ "$ldf" -eq "$LDF_UVI" ]; then
 
@@ -758,7 +758,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             readInt16
             convertTemperatureLivedata "$VALUE_INT16BE"
             channel=$((((ldf - LDF_SOILTEMP1) / 2) + 1))
-            eval "export LIVEDATA_SOILTEMP${channel}_INT16=$VALUE_INT16BE"
+            eval "export LIVEDATA_SOILTEMP${channel}_INTS10=$VALUE_INT16BE"
             eval "export LIVEDATA_SOILTEMP$channel=$VALUE_SCALE10_FLOAT"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:soiltemperature$channel type: int16be $VALUE_INT16BE $VALUE_SCALE10_FLOAT $UNIT_UNICODE_CELCIUS"
 
@@ -769,7 +769,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             readInt16BE OD_BUFFER "temp $channel"
             convertTemperatureLivedata "$VALUE_INT16BE"
 
-            eval "export LIVEDATA_TEMP${channel}_INT16BE=$VALUE_INT16BE"
+            eval "export LIVEDATA_TEMP${channel}_INTS10=$VALUE_INT16BE"
             eval "export LIVEDATA_TEMP$channel=$VALUE_SCALE10_FLOAT"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:temperature$channel type: int16be $VALUE_INT16BE $VALUE_SCALE10_FLOAT $UNIT_UNICODE_CELCIUS"
 
@@ -786,24 +786,24 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         elif [ "$ldf" -eq "$LDF_RAINMONTH" ]; then
 
             readUInt32BE "OD_BUFFER" "rainmonth"
-            export LIVEDATA_RAINMONTH_UINT32="$VALUE_UINT32BE"
-            convertScale10ToFloat "$VALUE_UINT32BE"
+            export LIVEDATA_RAINMONTH_INTS10="$VALUE_UINT32BE"
+            convertScale10ToFloat "$LIVEDATA_RAINMONTH_INTS10"
             export LIVEDATA_RAINMONTH="$VALUE_SCALE10_FLOAT"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:rainmonth type: uint32be $VALUE_UINT32BE rainmonth: $LIVEDATA_RAINMONTH"
 
         elif [ "$ldf" -eq "$LDF_RAINYEAR" ]; then
 
             readUInt32BE "OD_BUFFER" "rainyear"
-            export LIVEDATA_RAINYEAR_UINT32="$VALUE_UINT32BE"
-            convertScale10ToFloat "$VALUE_UINT32BE"
+            export LIVEDATA_RAINYEAR_INTS10="$VALUE_UINT32BE"
+            convertScale10ToFloat "$LIVEDATA_RAINYEAR_INTS10"
             export LIVEDATA_RAINYEAR="$VALUE_SCALE10_FLOAT"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:rainyear type: uint32be $VALUE_UINT32BE rainyear: $LIVEDATA_RAINYEAR"
 
         elif [ "$ldf" -eq "$LDF_RAINWEEK" ]; then
 
             readUInt16BE OD_BUFFER "rainweek"
-            export LIVEDATA_RAINWEEK_UINT16="$VALUE_UINT16BE"
-            convertScale10ToFloat "$VALUE_UINT16BE"
+            export LIVEDATA_RAINWEEK_INTS10="$VALUE_UINT16BE"
+            convertScale10ToFloat "$LIVEDATA_RAINWEEK_INTS10"
             export LIVEDATA_RAINWEEK="$VALUE_SCALE10_FLOAT"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:rainweek type: uint16be $VALUE_UINT16BE rainyear: $LIVEDATA_RAINWEEK"
 
@@ -811,8 +811,8 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         elif [ "$ldf" -eq "$LDF_RAINDAY" ]; then
 
             readUInt16BE OD_BUFFER "rainday"
-            export LIVEDATA_RAINDAY_UINT16="$VALUE_UINT16BE"
-            convertScale10ToFloat "$VALUE_UINT16BE"
+            export LIVEDATA_RAINDAY_INTS10="$VALUE_UINT16BE"
+            convertScale10ToFloat "$LIVEDATA_RAINDAY_INTS10"
             export LIVEDATA_RAINDAY="$VALUE_SCALE10_FLOAT"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:rainday type: uint16be $VALUE_UINT16BE rainday: $LIVEDATA_RAINDAY"
 
@@ -820,8 +820,8 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         elif [ "$ldf" -eq "$LDF_RAINEVENT" ]; then
 
             readUInt16BE OD_BUFFER "rainevent"
-            export LIVEDATA_RAINEVENT_UINT16="$VALUE_UINT16BE"
-            convertScale10ToFloat "$VALUE_UINT16BE"
+            export LIVEDATA_RAINEVENT_INTS10="$VALUE_UINT16BE"
+            convertScale10ToFloat "$LIVEDATA_RAINEVENT_INTS10"
             export LIVEDATA_RAINEVENT="$VALUE_SCALE10_FLOAT"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:rainevent type: uint16be $VALUE_UINT16BE rainevent: $LIVEDATA_RAINWEEK"
 
@@ -829,8 +829,8 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         elif [ "$ldf" -eq "$LDF_RAINRATE" ]; then
 
             readUInt16BE OD_BUFFER "rainrate"
-            export LIVEDATA_RAINRATE_UINT16="$VALUE_UINT16BE"
-            convertScale10ToFloat "$VALUE_UINT16BE"
+            export LIVEDATA_RAINRATE_INTS10="$VALUE_UINT16BE"
+            convertScale10ToFloat "$LIVEDATA_RAINRATE_INTS10"
             export LIVEDATA_RAINRATE="$VALUE_SCALE10_FLOAT"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:rainrate type: uint16be $VALUE_UINT16BE rainerate: $LIVEDATA_RAINRATE"
 
@@ -843,26 +843,24 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         elif [ "$ldf" -eq "$LDF_PM25_CH1" ]; then
 
             readUInt16BE OD_BUFFER "PM25 1"
-            convertScale10ToFloat "$VALUE_UINT16BE"
-            export LIVEDATA_PM251_UINT16="$VALUE_UINT16BE"
+            export LIVEDATA_PM251_INTS10="$VALUE_UINT16BE"
+            convertScale10ToFloat "$LIVEDATA_PM251_INTS10"
             export LIVEDATA_PM251="$VALUE_SCALE10_FLOAT"
 
         elif [ "$ldf" -ge "$LDF_PM25_CH2" ] && [ "$ldf" -le "$LDF_PM25_CH4" ]; then
 
             channel=$((ldf - LDF_PM25_CH1 + 1))
             readUInt16BE OD_BUFFER "PM25 $channel"
-            convertScale10ToFloat "$VALUE_UINT16BE"
-
-            eval "export LIVEDATA_PM25${channel}_UINT16=$VALUE_UINT16BE"
+            eval "export LIVEDATA_PM25${channel}_INTS10=$VALUE_UINT16BE"
+            eval "convertScale10ToFloat \$LIVEDATA_PM25${channel}_INTS10"
             eval "export LIVEDATA_PM25$channel=$VALUE_SCALE10_FLOAT"
 
         elif [ "$ldf" -ge "$LDF_PM25_24HAVG1" ] && [ "$ldf" -le "$LDF_PM25_24HAVG4" ]; then
 
             channel=$((ldf - LDF_PM25_24HAVG1 + 1))
             readUInt16BE OD_BUFFER "PM25 24h avg $channel"
-            convertScale10ToFloat "$VALUE_UINT16BE"
-
-            eval "export LIVEDATA_PM25_24HAVG${channel}_UINT16=$VALUE_UINT16BE"
+            eval "export LIVEDATA_PM25_24HAVG${channel}_INTS10=$VALUE_UINT16BE"
+            eval "convertScale10ToFloat \$LIVEDATA_PM25_24HAVG${channel}_INTS10"
             eval "export LIVEDATA_PM25_24HAVG$channel=$VALUE_SCALE10_FLOAT"
 
         elif [ "$ldf" -eq "$LDF_SENSOR_CO2" ]; then
@@ -879,31 +877,31 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             # 9 co2_batt      u8 (0~5)
 
             readInt16BE OD_BUFFER "CO2 tempf"
-            convertScale10ToFloat "$VALUE_INT16BE"
-             export LIVEDATA_WH45CO2_TEMPF_INT16="$VALUE_INT16BE"
+            export LIVEDATA_WH45CO2_TEMPF_INTS10="$VALUE_INT16BE"
+            convertScale10ToFloat "$LIVEDATA_WH45CO2_TEMPF_INTS10"
             export LIVEDATA_WH45CO2_TEMPF="$VALUE_SCALE10_FLOAT"
 
             readUInt8 OD_BUFFER "CO2 humidity"
             export LIVEDATA_WH45CO2_HUMI="$VALUE_UINT8"
 
             readUInt16BE OD_BUFFER "CO2 PM10"
-            export LIVEDATA_WH45CO2_PM10_UINT16="$VALUE_UINT16BE"
-            convertScale10ToFloat "$VALUE_UINT16BE"
+            export LIVEDATA_WH45CO2_PM10_INTS10="$VALUE_UINT16BE"
+            convertScale10ToFloat "$LIVEDATA_WH45CO2_PM10_INTS10"
             export LIVEDATA_WH45CO2_PM10="$VALUE_SCALE10_FLOAT"
 
             readUInt16BE OD_BUFFER "CO2 PM10 24h avg"
-            export LIVEDATA_WH45CO2_PM10_24HAVG_UINT16="$VALUE_UINT16BE"
-            convertScale10ToFloat "$VALUE_UINT16BE"
+            export LIVEDATA_WH45CO2_PM10_24HAVG_INTS10="$VALUE_UINT16BE"
+            convertScale10ToFloat "$LIVEDATA_WH45CO2_PM10_24HAVG_INTS10"
             export LIVEDATA_WH45CO2_PM10_24HAVG="$VALUE_SCALE10_FLOAT"
 
             readUInt16BE OD_BUFFER "CO2 PM25"
-            convertScale10ToFloat "$VALUE_UINT16BE"
-            export LIVEDATA_WH45CO2_PM25_UINT16="$VALUE_UINT16BE"
+            export LIVEDATA_WH45CO2_PM25_INTS10="$VALUE_UINT16BE"
+            convertScale10ToFloat "$LIVEDATA_WH45CO2_PM25_INTS10"
             export LIVEDATA_WH45CO2_PM25="$VALUE_SCALE10_FLOAT"
 
             readUInt16BE OD_BUFFER "CO2 PM25 24h avg"
-            convertScale10ToFloat "$VALUE_UINT16BE"
-            export LIVEDATA_WH45CO2_PM25_24HAVG_UINT16="$VALUE_UINT16BE"
+            export LIVEDATA_WH45CO2_PM25_24HAVG_INTS10="$VALUE_UINT16BE"
+            convertScale10ToFloat "$LIVEDATA_WH45CO2_PM25_24HAVG_INTS10"
             export LIVEDATA_WH45CO2_PM25_24HAVG="$VALUE_SCALE10_FLOAT"
 
             readUInt16BE OD_BUFFER "CO2"
@@ -924,8 +922,8 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             eval "export LIVEDATA_TF_USR$channel=$VALUE_SCALE10_FLOAT"
 
             readUInt8 OD_BUFFER "tf_usr$channel battery"
-            convertScale10ToFloat "$VALUE_UINT8"
-            eval "export LIVEDATA_TF_USR${channel}_BATTERY_UINT8=$VALUE_UINT8"
+            eval "export LIVEDATA_TF_USR${channel}_BATTERY_INTS10=$VALUE_UINT8"
+            eval "convertScale10ToFloat \$LIVEDATA_TF_USR${channel}_BATTERY_INTS10"
             eval "export LIVEDATA_TF_USR${channel}_BATTERY=$VALUE_SCALE10_FLOAT"
             getBatteryVoltageLevelState "$VALUE_UINT8"
             eval "export LIVEDATA_TF_USR${channel}_BATTERY_STATE=$SBATTERY_STATE"
@@ -1355,7 +1353,8 @@ getBatteryVoltageLevelState()
     #   i=$(( i + 1 ))
     # done
    fi
-   convertScale10ToFloat "$1"
+   VALUE_VOLTAGE_SCALE10=$1
+   convertScale10ToFloat "$VALUE_VOLTAGE_SCALE10"
    VALUE_BATTERY_VOLTAGE="$VALUE_SCALE10_FLOAT"
    SBATTERY_STATE=$SBATTERY_STATE" ${VALUE_BATTERY_VOLTAGE}V"
 
