@@ -393,9 +393,7 @@ printLivedata()
                               unset LV_DELIMITER
                             fi
                             export LIVEDATA_PM25_AQI$n=\"\$VALUE_PM25_AQI\"
-                            set -x
                             padSpaceRight \"\$VALUE_PM25_AQI\" 13
-                            set +x
                             printLivedataLine \"\$LIVEDATA_PM25_GROUPHEADER$n  \$LV_DELIMITER \$VALUE_PADSPACERIGHT\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$LIVEDATA_PM25_UNIT\" \"%6s\" \"pm25$n\" '' \"\$LIVEDATA_PM25${n}_BATTERY\" \"\$LIVEDATA_PM25${n}_BATTERY_STATE\" '' \"\$LIVEDATA_PM25${n}_SIGNAL\" \"\$LIVEDATA_PM25${n}_SIGNAL_STATE\"
                  fi"
             n=$((n + 1))
