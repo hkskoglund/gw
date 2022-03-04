@@ -446,6 +446,7 @@ parseSensorIdNew()
     resetAppendBuffer
 
     printSensorHeader=0
+
     if [ -z "$SENSORVIEW_HIDE_HEADER" ];  then 
        printSensorHeader=1
     elif [ "$SENSORVIEW_HIDE_HEADER" -eq 0 ]; then

@@ -1314,11 +1314,6 @@ processCommand()
 
             ;;
 
-       # path | p) # deprecate?
-
-       #    sendPacket $CMD_READ_PATH
-       #    ;;
-
         broadcast | b)
             sendPacket $CMD_BROADCAST "$GW_HOST"
             ;;
