@@ -1,7 +1,7 @@
 #!/bin/sh
 
 GWDIR=${GWDIR:=.}
-. $GWDIR/lib/binary-fields.sh
+. "$GWDIR/lib/binary-fields.sh"
 
 parseVersion() {
     readString OD_BUFFER "version"
@@ -1069,9 +1069,10 @@ parsePacket()
 # $1 od buffer
 {
      EXITCODE_PARSEPACKET=0
+     DEBUG_PARSEPACKET=${DEBUG_PARSEPACKET:=$DEBUG}
 
      if [ -z "$1" ]; then
-         [ "$DEBUG" -eq 1 ] && echo >&2 Warning: parsePacket: Empty buffer/response received
+         [ "$DEBUG_PARSEPACKET" -eq 1 ] && echo >&2 Warning: parsePacket: Empty buffer/response received
         EXITCODE_PARSEPACKET="$ERROR_OD_BUFFER_EMPTY"
         return "$EXITCODE_PARSEPACKET"
     fi
@@ -1413,6 +1414,11 @@ getSensorIdCommand()
 # set VALUE_SENSOR_COMMAND
 {
     unset VALUE_SENSORID_READ_COMMAND
+
+    if [ -z "$1" ]; then # if version not available, fallback to read sensor
+       VALUE_SENSORID_READ_COMMAND="$CMD_READ_SENSOR"
+       return 0
+    fi
 
     if [ "$1" -ge "$FW_CMD_READ_SENSOR_ID_NEW" ]; then # Added in fw v 1.5.4 
         VALUE_SENSORID_READ_COMMAND="$CMD_READ_SENSOR_ID_NEW"  #support soiltemp, co2, leafwetness

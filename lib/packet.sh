@@ -166,9 +166,7 @@ sendPacketnc()
             echo >&2 "Sending packet $COMMAND_NAME to $2:$port"
        fi 
 
-       #set -x
        od_buffer=$(eval "$cmdstr" )
-       #set +x
        #maybe use: https://stackoverflow.com/questions/1550933/catching-error-codes-in-a-shell-pipe
        if [ -z "$3" ]; then
             parsePacket "$od_buffer"

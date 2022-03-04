@@ -9,28 +9,28 @@ HIDE_LIGHT_LIVEDATA_AUTO=${HIDE_LIGHT_LIVEDATA_AUTO:=0} # auto hide_liveview whe
 LV_DELIMITER='-'
  
  if  ! type appendBuffer >/dev/null 2>/dev/null; then 
-   . $GWDIR/lib/appendBuffer.sh
+   . "$GWDIR/lib/appendBuffer.sh"
 fi
 
 if ! type initUnit >/dev/null 2>/dev/null; then
-  . $GWDIR/lib/mode.sh
+  . "$GWDIR/lib/mode.sh"
   initUnit
 fi
 
 if [ -z "$LIVEDATAHEADER_INTEMP" ]; then # assume lib not loaded
-  . $GWDIR/lib/livedata-header.sh
+  . "$GWDIR/lib/livedata-header.sh"
 fi
 
 if [ -z "$CSI" ]; then 
-    . $GWDIR/style/ansiesc.sh
+    . "$GWDIR/style/ansiesc.sh"
 fi
 
 if [ -z "$LIVEDATA_RAINHOUR_LIMIT" ]; then
-    . $GWDIR/lib/limits.sh
+    . "$GWDIR/lib/limits.sh"
 fi
 
 if [ -z "$WIND_DIRECTION_N" ]; then
-    . $GWDIR/lib/wind.sh
+    . "$GWDIR/lib/wind.sh"
 fi
 
 printLivedataLine()

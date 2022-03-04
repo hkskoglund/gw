@@ -6,26 +6,26 @@
 # WSL2: change shell from dash->bash : sudo dpkg-reconfigure dash, ls -l /bin/sh
 # info: https://unix.stackexchange.com/questions/442510/how-to-use-bash-for-sh-in-ubuntu
 
-GWDIR=${GWDIR:="."}
+GWDIR=${GWDIR:='.'}
 
-. $GWDIR/lib/constants.sh
-. $GWDIR/lib/sensortype.sh
-. $GWDIR/lib/error.sh
-. $GWDIR/lib/util.sh
-. $GWDIR/lib/command.sh
-. $GWDIR/lib/appendBuffer.sh
-. $GWDIR/lib/buffer.sh
-. $GWDIR/lib/binary.sh
-. $GWDIR/lib/http.sh
-. $GWDIR/lib/packet.sh
-. $GWDIR/lib/converters.sh
-. $GWDIR/lib/timezone.sh
-. $GWDIR/lib/mode.sh
-. $GWDIR/lib/fullwidth-number.sh
-. $GWDIR/lib/limits.sh
-. $GWDIR/lib/livedata-header.sh
-. $GWDIR/lib/wind.sh
-. $GWDIR/view/livedata.sh
+. "$GWDIR/lib/constants.sh"
+. "$GWDIR/lib/sensortype.sh"
+. "$GWDIR/lib/error.sh"
+. "$GWDIR/lib/util.sh"
+. "$GWDIR/lib/command.sh"
+. "$GWDIR/lib/appendBuffer.sh"
+. "$GWDIR/lib/buffer.sh"
+. "$GWDIR/lib/binary.sh"
+. "$GWDIR/lib/http.sh"
+. "$GWDIR/lib/packet.sh"
+. "$GWDIR/lib/converters.sh"
+. "$GWDIR/lib/timezone.sh"
+. "$GWDIR/lib/mode.sh"
+. "$GWDIR/lib/fullwidth-number.sh"
+. "$GWDIR/lib/limits.sh"
+. "$GWDIR/lib/livedata-header.sh"
+. "$GWDIR/lib/wind.sh"
+. "$GWDIR/view/livedata.sh"
 
 initShell() {
     DEBUG_INITSHELL=${DEBUG_INITSHELL:=$DEBUG}

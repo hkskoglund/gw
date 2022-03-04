@@ -3,7 +3,7 @@
 GWDIR=${GWDIR:='.'}
 
 if [ -z "$SENSORTYPE_WH31TEMP_MAXCH" ]; then
-    . $GWDIR/lib/sensortype.sh
+    . "$GWDIR/lib/sensortype.sh"
 fi
 
 #default livedata headers, may be overridden by -A language file or environment variables on cmd line
