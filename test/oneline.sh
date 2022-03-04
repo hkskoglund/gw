@@ -19,7 +19,7 @@ fi
 
 GWEXPORTSHOW=${GWEXPORTSHOW:=0}
 if [ $GWEXPORTSHOW -eq 1 ] ; then
-  export -p | grep -E "LIVEDATA_|LIVEDATAHEADER_"
+  export -p 
 fi
 
 # oneliner

@@ -92,9 +92,9 @@ export LIVEDATAHEADER_SYSTEM_TIMEZONE="${LIVEDATAHEADER_SYSTEM_TIMEZONE:="System
 
 N=1
 while [ "$N" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do 
-    eval export LIVEDATAHEADER_TEMP$N=\"\$\{LIVEDATAHEADER_TEMP$N:=\"Temperature $N\"\}\"
-    eval export LIVEDATAHEADER_TEMP_BATTERY$N=\"\$\{LIVEDATAHEADER_TEMP_BATTERY$N:=\"Temperature $N battery\"\}\"
-    eval export LIVEDATAHEADER_HUMIDITY$N=\"\$\{LIVEDATAHEADER_HUMIDITY$N:=\"Humidity $N\"\}\"
+    eval export LIVEDATAHEADER_WH31TEMP$N=\"\$\{LIVEDATAHEADER_WH31TEMP$N:=\"Temperature $N\"\}\"
+    eval export LIVEDATAHEADER_WH31TEMP_BATTERY$N=\"\$\{LIVEDATAHEADER_WH31TEMP_BATTERY$N:=\"Temperature $N battery\"\}\"
+    eval export LIVEDATAHEADER_WH31HUMIDITY$N=\"\$\{LIVEDATAHEADER_WH31HUMIDITY$N:=\"Humidity $N\"\}\"
     N=$(( N + 1 ))
 done
 

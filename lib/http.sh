@@ -174,13 +174,13 @@ parseEcowittHttpRequest()
             
                 channel=${key##temp}
                 channel=${channel%f}
-                setTemperatureHttpLivedata LIVEDATA_TEMP"$channel" "$value" 
+                setTemperatureHttpLivedata LIVEDATA_WH31TEMP"$channel" "$value" 
                 ;;
 
             humidity?)
 
                 channel=${key##humidity}
-                eval export LIVEDATA_HUMI"$channel"="$value"
+                eval export LIVEDATA_WH31HUMI"$channel"="$value"
                 ;;
             
             winddir)
@@ -291,8 +291,8 @@ parseEcowittHttpRequest()
 
                 channel=${key##batt}
                 getBatteryLowOrNormal "$value"
-                eval "export LIVEDATA_TEMP${channel}_BATTERY=$value"
-                eval "export LIVEDATA_TEMP${channel}_BATTERY_STATE=$SBATTERY_STATE"
+                eval "export LIVEDATA_WH31TEMP${channel}_BATTERY=$value"
+                eval "export LIVEDATA_WH31TEMP${channel}_BATTERY_STATE=$SBATTERY_STATE"
                 ;;
 
             pm25batt?)

@@ -160,11 +160,11 @@ printLivedata()
         while [ "$n" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
         #shellcheck disable=SC2153
         {
-            #eval echo !!!!!!!!!!!!!!!!! \"\$LIVEDATA_TEMP${n}_SIGNAL_STATE\" n=$n
+            #eval echo !!!!!!!!!!!!!!!!! \"\$LIVEDATA_WH31TEMP${n}_SIGNAL_STATE\" n=$n
             #set -x
-            eval " if [ -n ''"\$LIVEDATA_TEMP$n" ]; then
-                       # setSGIBatteryLowNormal "\$LIVEDATA_TEMP${n}_BATTERY"
-                        printLivedataLine \"\$LIVEDATAHEADER_TEMP$n\" \"\$LIVEDATA_TEMP$n\" '%6.1f'  \"\$LIVEDATAUNIT_TEMP\" '%2s' 'temp$n' '' \"\$LIVEDATA_TEMP${n}_BATTERY\" \"\$LIVEDATA_TEMP${n}_BATTERY_STATE\" '' \"\$LIVEDATA_TEMP${n}_SIGNAL\" \"\$LIVEDATA_TEMP${n}_SIGNAL_STATE\"
+            eval " if [ -n ''"\$LIVEDATA_WH31TEMP$n" ]; then
+                       # setSGIBatteryLowNormal "\$LIVEDATA_WH31TEMP${n}_BATTERY"
+                        printLivedataLine \"\$LIVEDATAHEADER_WH31TEMP$n\" \"\$LIVEDATA_WH31TEMP$n\" '%6.1f'  \"\$LIVEDATAUNIT_TEMP\" '%2s' 'temp$n' '' \"\$LIVEDATA_WH31TEMP${n}_BATTERY\" \"\$LIVEDATA_WH31TEMP${n}_BATTERY_STATE\" '' \"\$LIVEDATA_WH31TEMP${n}_SIGNAL\" \"\$LIVEDATA_WH31TEMP${n}_SIGNAL_STATE\"
                    fi "
             #set +x
         }
@@ -175,7 +175,7 @@ printLivedata()
         while [ "$n" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
         #shellcheck disable=SC2153
         {
-            eval "[ -n ''"\$LIVEDATA_HUMI$n" ] && printLivedataLine \"\$LIVEDATAHEADER_HUMIDITY$n\" \"\$LIVEDATA_HUMI$n\" \"%6u\" \"%\" \"%4s\" \"hum$n\" \"%4u\""
+            eval "[ -n ''"\$LIVEDATA_WH31HUMI$n" ] && printLivedataLine \"\$LIVEDATAHEADER_WH31HUMIDITY$n\" \"\$LIVEDATA_WH31HUMI$n\" \"%6u\" \"%\" \"%4s\" \"hum$n\" \"%4u\""
         }
             n=$((n + 1))
         done

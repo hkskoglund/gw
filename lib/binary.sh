@@ -768,8 +768,8 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             readInt16BE OD_BUFFER "temp $channel"
             convertTemperatureLivedata "$VALUE_INT16BE"
 
-            eval "export LIVEDATA_TEMP${channel}_INTS10=$VALUE_INT16BE"
-            eval "export LIVEDATA_TEMP$channel=$VALUE_SCALE10_FLOAT"
+            eval "export LIVEDATA_WH31TEMP${channel}_INTS10=$VALUE_INT16BE"
+            eval "export LIVEDATA_WH31TEMP$channel=$VALUE_SCALE10_FLOAT"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:temperature$channel type: int16be $VALUE_INT16BE $VALUE_SCALE10_FLOAT $UNIT_UNICODE_CELCIUS"
 
 
@@ -778,7 +778,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             channel=$((ldf - LDF_HUMI1 + 1))
             readUInt8 OD_BUFFER "humidity$channel"
 
-            eval "export LIVEDATA_HUMI$channel=$VALUE_UINT8"
+            eval "export LIVEDATA_WH31HUMI$channel=$VALUE_UINT8"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:humidity$channel type: uint8 $VALUE_UINT8 $LIVEDATAUNIT_HUMIDITY"
 
 
@@ -1289,23 +1289,23 @@ getSensorBatteryState()
 setBatteryLowNormal()
 {
      getBatteryLowOrNormal "$2" 
-    eval "LIVEDATA_${1}_BATTERY=$2"
-    eval "LIVEDATA_${1}_BATTERY_STATE='$SBATTERY_STATE'"
+    eval "export LIVEDATA_${1}_BATTERY=$2"
+    eval "export LIVEDATA_${1}_BATTERY_STATE='$SBATTERY_STATE'"
 }
 
 setBatteryVoltageLevel()
 {
     getBatteryVoltageLevelState "$2"
-    eval "LIVEDATA_${1}_BATTERY_UINT8=$2"
-    eval "LIVEDATA_${1}_BATTERY=$VALUE_BATTERY_VOLTAGE"
-    eval "LIVEDATA_${1}_BATTERY_STATE='$SBATTERY_STATE'"
+    eval "export LIVEDATA_${1}_BATTERY_UINT8=$2"
+    eval "export LIVEDATA_${1}_BATTERY=$VALUE_BATTERY_VOLTAGE"
+    eval "export LIVEDATA_${1}_BATTERY_STATE='$SBATTERY_STATE'"
 }
 
 setBatteryLevel()
 {
     getBatteryLevelState "$2"
-    eval "LIVEDATA_${1}_BATTERY=$2"
-    eval "LIVEDATA_${1}_BATTERY_STATE='$SBATTERY_STATE'"
+    eval "export LIVEDATA_${1}_BATTERY=$2"
+    eval "export LIVEDATA_${1}_BATTERY_STATE='$SBATTERY_STATE'"
 }
 
 appendBatteryState()
