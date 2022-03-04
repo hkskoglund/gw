@@ -93,7 +93,7 @@ export LIVEDATAHEADER_SYSTEM_TIMEZONE="${LIVEDATAHEADER_SYSTEM_TIMEZONE:="System
 N=1
 while [ "$N" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do 
     eval export LIVEDATAHEADER_WH31TEMP$N=\"\$\{LIVEDATAHEADER_WH31TEMP$N:=\"Temperature $N\"\}\"
-    eval export LIVEDATAHEADER_WH31TEMP_BATTERY$N=\"\$\{LIVEDATAHEADER_WH31TEMP_BATTERY$N:=\"Temperature $N battery\"\}\"
+    eval export LIVEDATAHEADER_WH31TEMP${N}_BATTERY=\"\$\{LIVEDATAHEADER_WH31TEMP${N}_BATTERY:=\"Temperature $N battery\"\}\"
     eval export LIVEDATAHEADER_WH31HUMIDITY$N=\"\$\{LIVEDATAHEADER_WH31HUMIDITY$N:=\"Humidity $N\"\}\"
     N=$(( N + 1 ))
 done
@@ -101,7 +101,7 @@ done
 N=1
 while [ "$N" -le "$SENSORTYPE_WH55LEAK_MAXCH" ]; do 
     eval export LIVEDATAHEADER_LEAK$N=\"\$\{LIVEDATAHEADER_LEAK$N:="Leak $N"\}\"
-    eval export LIVEDATAHEADER_LEAK_BATTERY$N=\"\$\{LIVEDATAHEADER_LEAK_BATTERY$N:="Leak $N battery"\}\"
+    eval export LIVEDATAHEADER_LEAK${N}_BATTERY=\"\$\{LIVEDATAHEADER_LEAK${N}_BATTERY:="Leak $N battery"\}\"
     N=$(( N + 1 ))
 done
 
@@ -109,36 +109,36 @@ done
 N=1
 while [ "$N" -le "$SENSORTYPE_WH43PM25_MAXCH" ]; do 
     eval export LIVEDATAHEADER_PM25$N=\"\$\{LIVEDATAHEADER_PM25$N:="PM 2.5 $N"\}\"
-    eval export LIVEDATAHEADER_PM25_24HAVG$N=\"\$\{LIVEDATAHEADER_PM25_24HAVG$N:="PM 2.5 24h avg. $N"\}\"
-    eval export LIVEDATAHEADER_PM25_BATTERY$N=\"\$\{LIVEDATAHEADER_PM25_BATTERY$N:="PM 2.5 $N battery"\}\"
+    eval export LIVEDATAHEADER_PM25${N}_24HAVG=\"\$\{LIVEDATAHEADER_PM25${N}_24HAVG:="PM 2.5 24h avg. $N"\}\"
+    eval export LIVEDATAHEADER_PM25${N}_BATTERY=\"\$\{LIVEDATAHEADER_PM25${N}_BATTERY:="PM 2.5 $N battery"\}\"
     N=$(( N + 1 ))
 done
 
 N=1
 while [ "$N" -le "$SENSORTYPE_WH51SOILMOISTURE_MAXCH" ]; do 
     eval export LIVEDATAHEADER_SOILMOISTURE$N=\"\$\{LIVEDATAHEADER_SOILMOISTURE$N:="Soilmoisture $N"\}\"
-    eval export LIVEDATAHEADER_SOILMOISTURE_BATTERY$N=\"\$\{LIVEDATAHEADER_SOILMOISTURE_BATTERY$N:="Soilmoisture $N battery"\}\"
+    eval export LIVEDATAHEADER_SOILMOISTURE${N}_BATTERY=\"\$\{LIVEDATAHEADER_SOILMOISTURE${N}_BATTERY:="Soilmoisture $N battery"\}\"
     N=$(( N + 1 ))
 done
 
 N=1
 while [ "$N" -le "$SENSORTYPE_WH34SOILTEMP_MAXCH" ]; do 
     eval export LIVEDATAHEADER_SOILTEMP$N=\"\$\{LIVEDATAHEADER_SOILTEMP$N:="Soiltemperature $N"\}\"
-    eval export LIVEDATAHEADER_SOILTEMP_BATTERY$N=\"\$\{LIVEDATAHEADER_SOILTEMP_BATTERY$N:="Soiltemperatur $N battery"\}\"
+    eval export LIVEDATAHEADER_SOILTEMP${N}_BATTERY=\"\$\{LIVEDATAHEADER_SOILTEMP${N}_BATTERY:="Soiltemperatur $N battery"\}\"
     N=$(( N + 1 ))
 done
 
 N=1
 while [ "$N" -le "$SENSORTYPE_WH35LEAFWETNESS_MAXCH" ]; do 
     eval export LIVEDATAHEADER_LEAFWETNESS$N=\"\$\{LIVEDATAHEADER_LEAFWETNESS$N:="Leafwetness $N"\}\"
-    eval export LIVEDATAHEADER_LEAFWETNESS_BATTERY$N=\"\$\{LIVEDATAHEADER_LEAFWETNESS_BATTERY$N:="Leafwetness $N battery"\}\"
+    eval export LIVEDATAHEADER_LEAFWETNESS${N}_BATTERY=\"\$\{LIVEDATAHEADER_LEAFWETNESS${N}_BATTERY:="Leafwetness $N battery"\}\"
     N=$(( N + 1 ))
 done
 
 N=1
 while [ "$N" -le "$SENSORTYPE_TF_USR_MAXCH" ]; do 
     eval export LIVEDATAHEADER_TEMPF_USR$N=\"\$\{LIVEDATAHEADER_TEMPF_USR$N:="Temperature USR $N"\}\"
-    eval export LIVEDATAHEADER_TEMPF_USR_BATTERY$N=\"\$\{LIVEDATAHEADER_TEMPF_USR_BATTERY$N:="Temperature USR $N battery"\}\"
+    eval export LIVEDATAHEADER_TEMPF_USR${N}_BATTERY=\"\$\{LIVEDATAHEADER_TEMPF_USR${N}_BATTERY:="Temperature USR $N battery"\}\"
     N=$(( N + 1 ))
 done
 

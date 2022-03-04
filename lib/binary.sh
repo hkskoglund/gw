@@ -860,7 +860,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             readUInt16BE OD_BUFFER "PM25 24h avg $channel"
             eval "export LIVEDATA_PM25${channel}_24HAVG_INTS10=$VALUE_UINT16BE"
             eval "convertScale10ToFloat \$LIVEDATA_PM25${channel}_24HAVG_INTS10"
-            eval "export LIVEDATA_PM25{$channel}_24HAVG=$VALUE_SCALE10_FLOAT"
+            eval "export LIVEDATA_PM25${channel}_24HAVG=$VALUE_SCALE10_FLOAT"
 
         elif [ "$ldf" -eq "$LDF_SENSOR_CO2" ]; then
 

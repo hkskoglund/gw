@@ -409,7 +409,7 @@ printLivedata()
                             unset LV_DELIMITER
                         fi
                         export LIVEDATA_PM25${n}_AQI_24HAVG=\"\$VALUE_PM25_AQI\"
-                        printLivedataLine \"\$LIVEDATAHEADER_PM25_24HAVG$n \$LV_DELIMITER \$VALUE_PM25_AQI\" \"\$LIVEDATA_PM25${n}_24HAVG\" \"%6.1f\" \"\$LIVEDATAUNIT_PM25\" \"%6s\" \"pm25a$n\" \"%6.1f\"
+                        printLivedataLine \"\$LIVEDATAHEADER_PM25${n}_24HAVG\$LV_DELIMITER \$VALUE_PM25_AQI\" \"\$LIVEDATA_PM25${n}_24HAVG\" \"%6.1f\" \"\$LIVEDATAUNIT_PM25\" \"%6s\" \"pm25a$n\" \"%6.1f\"
              fi"
             n=$((n + 1))
         done
