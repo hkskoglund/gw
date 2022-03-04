@@ -34,6 +34,13 @@ CMD_WRITE_SYSTEM=$((0x31))
 CMD_READ_CALIBRATION=$((0x38))
 CMD_WRITE_CALIBRATION=$((0x39))
 
+#firmware version when command has introduced
+FW_CMD_READ_SENSOR_ID=146
+FW_CMD_READ_PATH=150
+FW_CMD_READ_SENSOR_ID_NEW=154
+
+
+
 getCommandName()
 # get command name, set COMMAND_NAME
 # $1 decimal command

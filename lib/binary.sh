@@ -7,7 +7,7 @@ parseVersion() {
     readString OD_BUFFER "version"
     export GW_VERSION="$VALUE_STRING"
     getVersionInt "$GW_VERSION"
-    export GW_VERSION_INT="$VALUE_VERSION"
+    export GW_VERSION_INT="${GW_VERSION_INT:=$VALUE_VERSION}"
     echo "$GW_VERSION"
 }
 
@@ -1412,13 +1412,15 @@ getSensorIdCommand()
 # set VALUE_SENSOR_COMMAND
 {
     unset VALUE_SENSORID_READ_COMMAND
-      if [ "$1" -ge 154 ]; then # Added in fw v 1.5.4 
-         VALUE_SENSORID_READ_COMMAND="$CMD_READ_SENSOR_ID_NEW"  #support soiltemp, co2, leafwetness
-      elif [ "$1" -ge 146 ]; then # Added in fw v 1.4.6
-         VALUE_SENSORID_READ_COMMAND="$CMD_READ_SENSOR"
-      else
+
+    if [ "$1" -ge "$FW_CMD_READ_SENSOR_ID_NEW" ]; then # Added in fw v 1.5.4 
+        VALUE_SENSORID_READ_COMMAND="$CMD_READ_SENSOR_ID_NEW"  #support soiltemp, co2, leafwetness
+    elif [ "$1" -ge "$FW_CMD_READ_SENSOR_ID" ]; then # Added in fw v 1.4.6
+        VALUE_SENSORID_READ_COMMAND="$CMD_READ_SENSOR"
+    else
+        echo >&2 "Warning: Firmware $1 does not support command sensor id (dec $CMD_READ_SENSOR)/sensor id new (dec $CMD_READ_SENSOR_ID_NEW)"
         return "$ERROR_SENSORID_COMMAND_NOT_SUPPORTED"
-      fi
-      
-      return 0
+    fi
+    
+    return 0
 }

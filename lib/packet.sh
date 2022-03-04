@@ -435,11 +435,19 @@ sendCustomized()
 # $1 host
 
  {
+     EXITCODE_SENDCUSTOMIZED=0
+
     newCustomizedPacket
     sendPacket "$CMD_WRITE_CUSTOMIZED" "$1"
+    EXITCODE_SENDCUSTOMIZED=$?
 
-    newPathPacket
-    sendPacket "$CMD_WRITE_PATH" "$1"
+    if [ "$GW_VERSION_INT" -ge "$FW_CMD_READ_PATH" ]; then
+        newPathPacket
+        sendPacket "$CMD_WRITE_PATH" "$1"
+        EXITCODE_SENDCUSTOMIZED=$?
+    fi
+
+    return $EXITCODE_SENDCUSTOMIZED
 }
 
 sendSensorId()

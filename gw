@@ -320,7 +320,7 @@ parseSystemOption()
 processCustomizedOptions() {
     DEBUG_CUSTOMIZED=${DEBUG_CUSTOMIZED:=$DEBUG}
 
-    EXITCODE_CUSTOMIZED=0
+    EXITCODE_CUSTOMIZED_OPTION=0
 
     #readarray -d ',' -t OPTION_CUSTOMIZED < <(echo -n "$1") # <<< HERE string appends 0x0a -> using process substitution
 
@@ -368,7 +368,7 @@ processCustomizedOptions() {
 
                 if ! isNumber "$value"; then
                     echo >&2 "Error: Not a number -  cannot set customized port to $value from $value"
-                    EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
+                    EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED"
                 else
                     GW_WS_CUSTOMIZED_PORT=$((value))
                     [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_port from $GW_WS_CUSTOMIZED_PORT to $value"
@@ -389,7 +389,7 @@ processCustomizedOptions() {
                         ;;
 
                     *)  echo >&2 "Error: Unknown value $value for http protocol, use wunderground|w|1 or ecowitt|e|0"
-                        EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
+                        EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED"
                 esac
 
                 [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_TYPE from $GW_WS_CUSTOMIZED_HTTP to $value"
@@ -409,7 +409,7 @@ processCustomizedOptions() {
                         ;;
 
                     *)  echo >&2 "Error: Unknown value $value for enabled, use on|1|yes|y, off|0|no|n"
-                        EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
+                        EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED"
                 esac
 
                 [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_enabled from $GW_WS_CUSTOMIZED_ENABLED to $value"
@@ -421,7 +421,7 @@ processCustomizedOptions() {
 
                 if ! isNumber "$value"; then
                     echo >&2 "Error: Not a number cannot set customized interval to $value"
-                    EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
+                    EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED"
                 else
                     [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_interval from $GW_WS_CUSTOMIZED_INTERVAL to $value"
                     GW_WS_CUSTOMIZED_INTERVAL=$((value))
@@ -432,21 +432,29 @@ processCustomizedOptions() {
 
             path_wunderground | p_w)
 
-                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_path_wu from $GW_WS_CUSTOMIZED_PATH_WU to $value length:${#value}"
-                GW_WS_CUSTOMIZED_PATH_WU=$value
+                if [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PATH ]; then
+                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_path_wu from $GW_WS_CUSTOMIZED_PATH_WU to $value length:${#value}"
+                    GW_WS_CUSTOMIZED_PATH_WU=$value
+                else
+                  echo >&2 "Warning: fw $GW_VERSION does not support read/write path"
+                fi
 
                 ;;
 
             path_ecowitt | p_e )
 
-                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_ecowitt_path from $GW_WS_CUSTOMIZED_PATH_ECOWITT to $value length:${#value}"
-                GW_WS_CUSTOMIZED_PATH_ECOWITT=$value
+                if [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PATH ]; then
+                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_ecowitt_path from $GW_WS_CUSTOMIZED_PATH_ECOWITT to $value length:${#value}"
+                    GW_WS_CUSTOMIZED_PATH_ECOWITT=$value
+                else
+                  echo >&2 "Warning: fw $GW_VERSION does not support read/write path"
+                fi
 
                 ;;
 
             help|?|*)
                 echo >&2 "Error: Unknown key $key, use id, password|pw, server|s, port|p, http|h, enabled|e, interval|i, path_wunderground|p_w, path_ecowitt|p_e"
-                EXITCODE_CUSTOMIZED="$ERROR_CUSTOMIZED"
+                EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED"
                 ;;
         esac
 
@@ -454,13 +462,13 @@ processCustomizedOptions() {
 
     #https://stackoverflow.com/questions/18668556/how-can-i-compare-numbers-in-bash
 
-    if [ $EXITCODE_CUSTOMIZED -eq 0 ]; then
+    if [ $EXITCODE_CUSTOMIZED_OPTION -eq 0 ]; then
 
         [ $DEBUG -eq 1 ] && printCustomized >&2
 
         if [ ${#GW_WS_CUSTOMIZED_ID} -gt 40 ] || [ ${#GW_WS_CUSTOMIZED_PASSWORD} -gt 40 ] || [ ${#GW_WS_CUSTOMIZED_SERVER} -gt 64 ] || [ ${#GW_WS_CUSTOMIZED_PATH_ECOWITT} -gt 64 ] || [ ${#GW_WS_CUSTOMIZED_PATH_WU} -gt 64 ]; then
             echo >&2 Error: Max string limit execeeded 
-            EXITCODE_CUSTOMIZED=$ERROR_MAX_STRING_LENGTH_EXCEEDED
+            EXITCODE_CUSTOMIZED_OPTION=$ERROR_MAX_STRING_LENGTH_EXCEEDED
         else
             sendCustomized "$GW_HOST"
         fi
@@ -468,7 +476,7 @@ processCustomizedOptions() {
 
     unset key value option
 
-    return $EXITCODE_CUSTOMIZED
+    return $EXITCODE_CUSTOMIZED_OPTION
 }
 
 printCommands() {
@@ -1283,14 +1291,20 @@ processCommand()
         customized | c | cust)
 
             if argEmptyOrOption "$1"; then
-                if ! sendPacket $CMD_READ_PATH  "$GW_HOST" >/dev/null || ! sendPacket $CMD_READ_CUSTOMIZED  "$GW_HOST"; then
-                  >&2 echo Failed to get customized settings
+                if [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PATH ]; then
+                        sendPacket $CMD_READ_PATH  "$GW_HOST" >/dev/null
+                else
+                    echo >&2 "Warning: Command read path not supported by fw $GW_VERSION_INT"
+                fi
+
+                if ! sendPacket $CMD_READ_CUSTOMIZED  "$GW_HOST"; then
+                    >&2 echo Error: Failed to get customized settings
                 fi
             else
                 
                 if sendPacket $CMD_READ_CUSTOMIZED  "$GW_HOST" >/dev/null && sendPacket $CMD_READ_PATH "$GW_HOST" >/dev/null; then
                     if ! processCustomizedOptions "$1"; then
-                        EXITCODE_PROCESSCOMMAND=$EXITCODE_CUSTOMIZED
+                        EXITCODE_PROCESSCOMMAND=$EXITCODE_CUSTOMIZED_OPTION
                         #echo >&2 "Error: Failed to update customized settings"
                     fi
                 else
@@ -1331,8 +1345,6 @@ processCommand()
             #get battery/signal info to merge into livedata view
             if getSensorIdCommand "$GW_VERSION_INT"; then
                 sendPacket "$VALUE_SENSORID_READ_COMMAND" "$GW_HOST" >/dev/null
-            else
-                echo >&2 "Warning: $GW_VERSION does not support command sensor id (dec $CMD_READ_SENSOR)/sensor id new (dec $CMD_READ_SENSOR_ID_NEW)"
             fi
             
             if [ -z "$LOG_CMD" ]; then
@@ -1382,8 +1394,6 @@ processCommand()
                 else
                     sendPacket "$VALUE_SENSORID_READ_COMMAND" "$GW_HOST"
                 fi
-            else
-               echo >&2 "Warning: firmware $GW_VERSION does not support sensor id/sensor id new command"
             fi
 
             ;;
