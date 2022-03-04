@@ -20,6 +20,6 @@ if [ "$GW_RAINRATE_INTS10" -eq 0 ]; then
     echo No rain
     return 1
 else
-    echo "Rain $GW_RAINRATE $LIVEDATA_RAIN_UNIT"
+    echo "Rain $GW_RAINRATE $LIVEDATAUNIT_RAIN"
     return 0
 fi

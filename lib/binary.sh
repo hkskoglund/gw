@@ -157,21 +157,21 @@ parseWow() {
 printCalibration() {
     #if [ "$SHELL_SUPPORT_BULTIN_PRINTF" -eq 1 ]; then
     #   printf "%-40s %7s %-4s\n%-40s %7s %-4s\n%-40s %7s %-4s\n%-40s %7s %-4s\n%-40s %7s %-4s\n%-40s %7s %-4s\n%-40s %7s %-4s\n"\
-    #    "calibration in temperature offset"           "$GW_CALIBRATION_INTEMPOFFSET"     "$LIVEDATA_TEMP_UNIT"\
-    #    "calibration in humidity offset"              "$GW_CALIBRATION_INHUMIDITYOFFSET"   "$LIVEDATA_HUMIDITY_UNIT"\
-    #    "calibration absolute pressure offset"        "$GW_CALIBRATION_ABSOFFSET"        "$LIVEDATA_PRESSURE_UNIT"\
-    #    "calibration relative pressure offset"        "$GW_CALIBRATION_RELOFFSET"        "$LIVEDATA_PRESSURE_UNIT"\
-    #    "calibration out temperature offset"          "$GW_CALIBRATION_OUTTEMPOFFSET"    "$LIVEDATA_TEMP_UNIT"\
-    ##    "calibration out humidity offset"             "$GW_CALIBRATION_OUTHUMIDITYOFFSET" "$LIVEDATA_HUMIDITY_UNIT"\
+    #    "calibration in temperature offset"           "$GW_CALIBRATION_INTEMPOFFSET"     "$LIVEDATAUNIT_TEMP"\
+    #    "calibration in humidity offset"              "$GW_CALIBRATION_INHUMIDITYOFFSET"   "$LIVEDATAUNIT_HUMIDITY"\
+    #    "calibration absolute pressure offset"        "$GW_CALIBRATION_ABSOFFSET"        "$LIVEDATAUNIT_PRESSURE"\
+    #    "calibration relative pressure offset"        "$GW_CALIBRATION_RELOFFSET"        "$LIVEDATAUNIT_PRESSURE"\
+    #    "calibration out temperature offset"          "$GW_CALIBRATION_OUTTEMPOFFSET"    "$LIVEDATAUNIT_TEMP"\
+    ##    "calibration out humidity offset"             "$GW_CALIBRATION_OUTHUMIDITYOFFSET" "$LIVEDATAUNIT_HUMIDITY"\
     #    "calibration wind direction offset"           "$GW_CALIBRATION_WINDDIROFFSET" ""
     #else
-        echo "calibration in temperature offset           $GW_CALIBRATION_INTEMPOFFSET $LIVEDATA_TEMP_UNIT
+        echo "calibration in temperature offset           $GW_CALIBRATION_INTEMPOFFSET $LIVEDATAUNIT_TEMP
 calibration in humidity offset              $GW_CALIBRATION_INHUMIDITYOFFSET   %
-calibration absolute pressure offset        $GW_CALIBRATION_ABSOFFSET $LIVEDATA_PRESSURE_UNIT
-calibration relative pressure offset        $GW_CALIBRATION_RELOFFSET $LIVEDATA_PRESSURE_UNIT
-calibration out temperature offset          $GW_CALIBRATION_OUTTEMPOFFSET $LIVEDATA_TEMP_UNIT
+calibration absolute pressure offset        $GW_CALIBRATION_ABSOFFSET $LIVEDATAUNIT_PRESSURE
+calibration relative pressure offset        $GW_CALIBRATION_RELOFFSET $LIVEDATAUNIT_PRESSURE
+calibration out temperature offset          $GW_CALIBRATION_OUTTEMPOFFSET $LIVEDATAUNIT_TEMP
 calibration out humidity offset             $GW_CALIBRATION_OUTHUMIDITYOFFSET   %
-calibration wind direction offset           $GW_CALIBRATION_WINDDIROFFSET $LIVEDATA_WIND_DEGREE_UNIT"
+calibration wind direction offset           $GW_CALIBRATION_WINDDIROFFSET $LIVEDATAUNIT_WIND_DEGREE_UNIT"
    # fi
 
 }
@@ -282,11 +282,11 @@ parsePath() {
 }
 
 printRaindata() {
-    echo "rain rate  $GW_RAINRATE $LIVEDATA_RAINRATE_UNIT
-rain day   $GW_RAINDAILY $LIVEDATA_RAIN_UNIT
-rain week  $GW_RAINWEEK $LIVEDATA_RAIN_UNIT
-rain month $GW_RAINMONTH $LIVEDATA_RAIN_UNIT
-rain year  $GW_RAINYEAR $LIVEDATA_RAIN_UNIT"
+    echo "rain rate  $GW_RAINRATE $LIVEDATAUNIT_RAINRATE
+rain day   $GW_RAINDAILY $LIVEDATAUNIT_RAIN
+rain week  $GW_RAINWEEK $LIVEDATAUNIT_RAIN
+rain month $GW_RAINMONTH $LIVEDATAUNIT_RAIN
+rain year  $GW_RAINYEAR $LIVEDATAUNIT_RAIN"
 }
 
 parseRaindata() {
@@ -529,12 +529,12 @@ printSystem()
 %-32.32s%10u\t%.24s\n\
 %-32.32s%10u\t%s\n\
 %-32.32s%10u\t%s\n"\
-            "$LIVEDATA_SYSTEM_FREQUENCY_HEADER" "$GW_SYSTEM_FREQUENCY" "$GW_SYSTEM_FREQUENCY_STATE"\
-            "$LIVEDATA_SYSTEM_SENSORTYPE_HEADER"    "$GW_SYSTEM_SENSORTYPE" "$GW_SYSTEM_SENSORTYPE_STATE"\
-            "$LIVEDATA_SYSTEM_UTC_HEADER" "$GW_SYSTEM_UTC" "$GW_SYSTEM_UTC_STATE"\
-            "$LIVEDATA_SYSTEM_TIMEZONE_HEADER"  "$GW_SYSTEM_TIMEZONE_INDEX" "$GW_SYSTEM_TIMEZONE_INDEX_STATE"\
-            "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_HEADER" "$GW_SYSTEM_TIMEZONE_AUTO_BIT" "$GW_SYSTEM_TIMEZONE_AUTO_STATE"\
-            "$LIVEDATA_SYSTEM_TIMEZONE_DST_HEADER" "$GW_SYSTEM_TIMEZONE_DST_BIT" "$GW_SYSTEM_TIMEZONE_DST_STATUS_STATE"
+            "$LIVEDATAHEADER_SYSTEM_FREQUENCY" "$GW_SYSTEM_FREQUENCY" "$GW_SYSTEM_FREQUENCY_STATE"\
+            "$LIVEDATAHEADER_SYSTEM_SENSORTYPE"    "$GW_SYSTEM_SENSORTYPE" "$GW_SYSTEM_SENSORTYPE_STATE"\
+            "$LIVEDATAHEADER_SYSTEM_UTC" "$GW_SYSTEM_UTC" "$GW_SYSTEM_UTC_STATE"\
+            "$LIVEDATAHEADER_SYSTEM_TIMEZONE"  "$GW_SYSTEM_TIMEZONE_INDEX" "$GW_SYSTEM_TIMEZONE_INDEX_STATE"\
+            "$LIVEDATAHEADER_SYSTEM_TIMEZONE_AUTO" "$GW_SYSTEM_TIMEZONE_AUTO_BIT" "$GW_SYSTEM_TIMEZONE_AUTO_STATE"\
+            "$LIVEDATAHEADER_SYSTEM_TIMEZONE_DST" "$GW_SYSTEM_TIMEZONE_DST_BIT" "$GW_SYSTEM_TIMEZONE_DST_STATUS_STATE"
 }
 
 
@@ -631,7 +631,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
             readUInt8 OD_BUFFER "inhumidity"
             export LIVEDATA_INHUMI="$VALUE_UINT8"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:inhumi type: uint8 $LIVEDATA_INHUMI $LIVEDATA_HUMIDITY_UNIT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:inhumi type: uint8 $LIVEDATA_INHUMI $LIVEDATAUNIT_HUMIDITY"
 
 
         elif [ "$ldf" -eq "$LDF_PRESSURE_ABSBARO" ]; then
@@ -668,7 +668,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
             readUInt8 OD_BUFFER "outhumidity"
             export LIVEDATA_OUTHUMI="$VALUE_UINT8"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:outhumi type: uint8 $LIVEDATA_OUTHUMI $LIVEDATA_HUMIDITY_UNIT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:outhumi type: uint8 $LIVEDATA_OUTHUMI $LIVEDATAUNIT_HUMIDITY"
 
 
         elif [ "$ldf" -eq "$LDF_WINDDIRECTION" ]; then
@@ -678,7 +678,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             convertWindDirectionToCompassDirection "$LIVEDATA_WINDDIRECTION"
             export LIVEDATA_WINDDIRECTION_COMPASS="$VALUE_COMPASS_DIRECTION"
             export LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE="$VALUE_COMPASS_DIRECTION_UNICODE"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:winddirection type: uint16be $LIVEDATA_WINDDIRECTION $LIVEDATA_WIND_DEGREE_UNIT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:winddirection type: uint16be $LIVEDATA_WINDDIRECTION $LIVEDATAUNIT_WIND_DEGREE_UNIT"
 
 
         elif [ "$ldf" -eq "$LDF_WINDSPEED" ]; then
@@ -715,7 +715,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             convertLightLivedata "$LIVEDATA_SOLAR_LIGHT_INTS10"
             export LIVEDATA_SOLAR_LIGHT="$VALUE_SCALE10_FLOAT"
 
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:light type: uint32be $LIVEDATA_SOLAR_LIGHT_INTS10 lux $LIVEDATA_SOLAR_LIGHT  $LIVEDATA_SOLAR_LIGHT_UNIT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:light type: uint32be $LIVEDATA_SOLAR_LIGHT_INTS10 lux $LIVEDATA_SOLAR_LIGHT  $LIVEDATAUNIT_SOLAR_LIGHT"
 
 
         elif [ "$ldf" -eq "$LDF_UV" ]; then
@@ -729,7 +729,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             #scale 10: 0.1 µW/m2 = 0.1/(100*cm*100cm) = 0.1/(10000cm^2) = 1000 µW/cm^2 = 1mW/cm^2, resolution: 1mW/cm2
             #not scale 10: 1 µW/m2 = 10mW/cm2, resolution: 10mW/cm2
             #conversion info: https://www.linshangtech.com/tech/tech508.html
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:uv type: uint16be $LIVEDATA_SOLAR_UV_INTS10 $LIVEDATA_SOLAR_UV $LIVEDATA_SOLAR_LIGHT_UV_UNIT = $LIVEDATA_SOLAR_UV_INTS10 mW/㎠"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:uv type: uint16be $LIVEDATA_SOLAR_UV_INTS10 $LIVEDATA_SOLAR_UV $LIVEDATAUNIT_SOLAR_LIGHT_UV = $LIVEDATA_SOLAR_UV_INTS10 mW/㎠"
 
         elif [ "$ldf" -eq "$LDF_UVI" ]; then
 
@@ -746,7 +746,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             channel=$((((ldf - LDF_SOILMOISTURE1) / 2) + 1))
             readUInt8 OD_BUFFER "soilmoisture$channel"
             eval "export LIVEDATA_SOILMOISTURE$channel=$VALUE_UINT8"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:soilmoisture$channel type: uint8 $VALUE_UINT8 $LIVEDATA_HUMIDITY_UNIT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:soilmoisture$channel type: uint8 $VALUE_UINT8 $LIVEDATAUNIT_HUMIDITY"
 
  
         elif [ "$ldf" -eq "$LDF_SOILTEMP1" ] || [ "$ldf" -eq "$LDF_SOILTEMP2" ] ||
@@ -779,7 +779,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             readUInt8 OD_BUFFER "humidity$channel"
 
             eval "export LIVEDATA_HUMI$channel=$VALUE_UINT8"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:humidity$channel type: uint8 $VALUE_UINT8 $LIVEDATA_HUMIDITY_UNIT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:humidity$channel type: uint8 $VALUE_UINT8 $LIVEDATAUNIT_HUMIDITY"
 
 
         elif [ "$ldf" -eq "$LDF_RAINMONTH" ]; then
