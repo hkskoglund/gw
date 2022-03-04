@@ -259,8 +259,8 @@ parseEcowittHttpRequest()
             pm25_avg_24h_ch?)
 
                 channel=${key##pm25_avg_24h_ch}
-                eval export "LIVEDATA_PM25_24HAVG$channel=$value"
-                eval export "LIVEDATA_PM25_24HAVG${channel}_INTS10=${value%%.?}${value##*.}"
+                eval export "LIVEDATA_PM25${channel}_24HAVG=$value"
+                eval export "LIVEDATA_PM25${channel}_24HAVG_INTS10=${value%%.?}${value##*.}"
 
                 ;;
 

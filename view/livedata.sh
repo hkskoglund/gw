@@ -391,7 +391,7 @@ printLivedata()
                             else
                               unset LV_DELIMITER
                             fi
-                            export LIVEDATA_PM25_AQI$n=\"\$VALUE_PM25_AQI\"
+                            export LIVEDATA_PM25${n}_AQI=\"\$VALUE_PM25_AQI\"
                             padSpaceRight \"\$VALUE_PM25_AQI\" 13
                             printLivedataLine \"\$LIVEDATAHEADER_PM25$n  \$LV_DELIMITER \$VALUE_PADSPACERIGHT\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$LIVEDATAUNIT_PM25\" \"%6s\" \"pm25$n\" '' \"\$LIVEDATA_PM25${n}_BATTERY\" \"\$LIVEDATA_PM25${n}_BATTERY_STATE\" '' \"\$LIVEDATA_PM25${n}_SIGNAL\" \"\$LIVEDATA_PM25${n}_SIGNAL_STATE\"
                  fi"
@@ -400,16 +400,16 @@ printLivedata()
 
         n=1
         while [ "$n" -le "$SENSORTYPE_WH43PM25_MAXCH" ]; do
-            eval "if [ -n ''"\$LIVEDATA_PM25_24HAVG$n" ]; then
+            eval "if [ -n ''"\$LIVEDATA_PM25${n}_24HAVG" ]; then
                         if [ -z \"\$LIVEVIEW_HIDE_PM25AQI\" ]; then
-                            setAQI \"\$LIVEDATA_PM25_24HAVG${n}_INTS10\"
-                            setStyleAQI \"\$LIVEDATA_PM25_24HAVG${n}_INTS10\"
+                            setAQI \"\$LIVEDATA_PM2${n}5_24HAVG_INTS10\"
+                            setStyleAQI \"\$LIVEDATA_PM25${n}_24HAVG_INTS10\"
                             STYLE_LIVE_VALUE=\$STYLE_AQI
                         else
                             unset LV_DELIMITER
                         fi
-                        export LIVEDATA_PM25_24AVG_AQI$n=\"\$VALUE_PM25_AQI\"
-                        printLivedataLine \"\$LIVEDATAHEADER_PM25_24HAVG$n \$LV_DELIMITER \$VALUE_PM25_AQI\" \"\$LIVEDATA_PM25_24HAVG$n\" \"%6.1f\" \"\$LIVEDATAUNIT_PM25\" \"%6s\" \"pm25a$n\" \"%6.1f\"
+                        export LIVEDATA_PM25${n}_AQI_24HAVG=\"\$VALUE_PM25_AQI\"
+                        printLivedataLine \"\$LIVEDATAHEADER_PM25_24HAVG$n \$LV_DELIMITER \$VALUE_PM25_AQI\" \"\$LIVEDATA_PM25${n}_24HAVG\" \"%6.1f\" \"\$LIVEDATAUNIT_PM25\" \"%6s\" \"pm25a$n\" \"%6.1f\"
              fi"
             n=$((n + 1))
         done

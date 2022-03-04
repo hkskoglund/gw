@@ -858,9 +858,9 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
             channel=$((ldf - LDF_PM25_24HAVG1 + 1))
             readUInt16BE OD_BUFFER "PM25 24h avg $channel"
-            eval "export LIVEDATA_PM25_24HAVG${channel}_INTS10=$VALUE_UINT16BE"
-            eval "convertScale10ToFloat \$LIVEDATA_PM25_24HAVG${channel}_INTS10"
-            eval "export LIVEDATA_PM25_24HAVG$channel=$VALUE_SCALE10_FLOAT"
+            eval "export LIVEDATA_PM25${channel}_24HAVG_INTS10=$VALUE_UINT16BE"
+            eval "convertScale10ToFloat \$LIVEDATA_PM25${channel}_24HAVG_INTS10"
+            eval "export LIVEDATA_PM25{$channel}_24HAVG=$VALUE_SCALE10_FLOAT"
 
         elif [ "$ldf" -eq "$LDF_SENSOR_CO2" ]; then
 
@@ -1206,7 +1206,7 @@ setLivedataSignal()
 {
     
     if [ "$1" -ge "$SENSORTYPE_WH31TEMP" ] && [ "$1" -lt $(( SENSORTYPE_WH31TEMP + SENSORTYPE_WH31TEMP_MAXCH )) ]; then
-        setSignal "TEMP$(( $1 - SENSORTYPE_WH31TEMP + 1))" "$2"
+        setSignal "WH31TEMP$(( $1 - SENSORTYPE_WH31TEMP + 1))" "$2"
     elif [ "$1" -eq "$SYSTEM_SENSOR_TYPE_WH24" ]; then
         setSignal "WH65" "$2"
     elif [ "$1" -eq "$SENSORTYPE_WH68" ]; then
@@ -1252,7 +1252,7 @@ getSensorBatteryState()
             ;;
         6|7|8|9|10|11|12|13)
            channel=$(($1 - 5))
-           setBatteryLowNormal "TEMP$channel" "$2"
+           setBatteryLowNormal "WH31TEMP$channel" "$2"
            ;;
         14|15|16|17|18|19|20|21)
            channel=$(( $1 - 13))
