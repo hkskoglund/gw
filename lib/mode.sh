@@ -88,14 +88,14 @@ setTemperatureMode()
 
     if [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_CELCIUS" ]; then 
         if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-            LIVEDATAUNIT_TEMP=$UNIT_UNICODE_CELCIUS
+            LIVEDATAUNIT_TEMP="$UNIT_UNICODE_CELCIUS " # append 1 space -> otherwise styling is only on the first byte of unicode character; unicode : \xe2\x84\x83
         else
             LIVEDATAUNIT_TEMP="C"
         fi
        
     elif [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_FARENHEIT" ]; then
         if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-            LIVEDATAUNIT_TEMP=$UNIT_UNICODE_FARENHEIT
+            LIVEDATAUNIT_TEMP="$UNIT_UNICODE_FARENHEIT "
         else
             LIVEDATAUNIT_TEMP="F"
         fi
