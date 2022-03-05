@@ -1139,6 +1139,21 @@ processWeatherServiceOptions()
     unset option id password
 }
 
+processEcowittOptions()
+# $1 interval in minutes 0-5
+{
+    EXITCODE_PROCESS_ECOWITTOPTIONS=0
+    if isNumber "$1" && [ "$1" -ge 0 ] && [ "$1" -le 5 ]; then
+        sendEcowittInterval "$1" "$GW_HOST"
+        EXITCODE_PROCESS_ECOWITTOPTIONS=$?
+    else
+        echo >&2 "Error: ecowitt interval $1 invalid, specify 0-5 minutes"
+        EXITCODE_PROCESS_ECOWITTOPTIONS=$ERROR_INVALID_ECOWITT_INTERVAL
+    fi
+
+    return "$EXITCODE_PROCESS_ECOWITTOPTIONS"
+}
+
 processCommand()
 # process -c command options
 # EXITCODE_PROCESSCOMMAND
@@ -1249,8 +1264,8 @@ processCommand()
             if argEmptyOrOption "$1"; then
                 sendPacket $CMD_READ_ECOWITT_INTERVAL "$GW_HOST"
             else
-                sendEcowittInterval "$1" "$GW_HOST"
-                EXITCODE_PROCESSCOMMAND=$?
+               processEcowittOptions "$1"
+               EXITCODE_PROCESSCOMMAND=$?
             fi
             
             ;;

@@ -30,6 +30,7 @@ ERROR_PARSEPACKET_CRC=28 # if crc check fails on received packet -strict packet 
 ERROR_WEATHERSERVICE_INVALID_OPTION=29 # if option to command is unknown
 ERROR_MAX_STRING_LENGTH_EXCEEDED=30 # if string length is beyond max limit
 ERROR_SENSORID_COMMAND_NOT_SUPPORTED=31 # if sensor id + sensor id new command not supported in old firmware
+ERROR_INVALID_ECOWITT_INTERVAL=32 # not a number, or outside 0-5
 
 logErr()
 #$1 - 1=on,0=off

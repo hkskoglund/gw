@@ -392,16 +392,10 @@ sendEcowittInterval()
 # send ecowitt interval to host
 # $1 interval 0-5, $2 host
 {
-    # observation: GW1000 red-wifi led blinks slowly if not sending data to ecowitt when 0=off
-    if [ "$1" -ge 0 ] && [ "$1" -le 5 ]; then
-        newPacket "$CMD_WRITE_ECOWITT_INTERVAL"
-        writeUInt8 PACKET_TX_BODY "$1" interval #interval
-        [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 Sending ecowitt interval "$1"
-        sendPacket "$CMD_WRITE_ECOWITT_INTERVAL" "$2"
-    else
-        echo >&2 Error: Not a valid ecowitt interval, range 0-5 minutes
-        return "$ERROR_INVALID_VALUE"
-    fi
+    newPacket "$CMD_WRITE_ECOWITT_INTERVAL"
+    writeUInt8 PACKET_TX_BODY "$1" interval #interval
+    [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 Sending ecowitt interval "$1"
+    sendPacket "$CMD_WRITE_ECOWITT_INTERVAL" "$2"
 }
 
 sendWeatherservice() 
