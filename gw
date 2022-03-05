@@ -346,21 +346,37 @@ processCustomizedOptions() {
         case "$key" in
 
             id)
-                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_id from $GW_WS_CUSTOMIZED_ID to $value length:${#value}"
-                GW_WS_CUSTOMIZED_ID=$value
+                if [ ${#GW_WS_CUSTOMIZED_ID} -le 40 ]; then
+                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_id from $GW_WS_CUSTOMIZED_ID to $value length:${#value}"
+                    GW_WS_CUSTOMIZED_ID=$value
+                else
+                    echo >&2 "Error: id Max string limit execeeded (max 40)"
+                    EXITCODE_CUSTOMIZED_OPTION=$ERROR_MAX_STRING_LENGTH_EXCEEDED
+                fi
+
                 ;;
 
             password | pw)
 
-                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_password from ${GW_WS_CUSTOMIZED_PASSWORD} to $value length:${#value}"
-                GW_WS_CUSTOMIZED_PASSWORD=$value
-                #observation: gw1000 client will not send wunderground http request unless password and id is specified
+                if [ ${#GW_WS_CUSTOMIZED_PASSWORD} -le 40 ]; then
+                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_password from ${GW_WS_CUSTOMIZED_PASSWORD} to $value length:${#value}"
+                    GW_WS_CUSTOMIZED_PASSWORD=$value
+                    #observation: gw1000 client will not send wunderground http request unless password and id is specified
+                else
+                    echo >&2 "Error: password Max string limit execeeded (max 40)"
+                   EXITCODE_CUSTOMIZED_OPTION=$ERROR_MAX_STRING_LENGTH_EXCEEDED
+                fi
                 ;;
 
             server | s)
 
-                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_server from $GW_WS_CUSTOMIZED_SERVER to $value length:${#value}"
-                GW_WS_CUSTOMIZED_SERVER=$value
+                if [ ${#GW_WS_CUSTOMIZED_SERVER} -le 64 ]; then
+
+                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_server from $GW_WS_CUSTOMIZED_SERVER to $value length:${#value}"
+                    GW_WS_CUSTOMIZED_SERVER=$value
+                else
+                    EXITCODE_CUSTOMIZED_OPTION=$ERROR_MAX_STRING_LENGTH_EXCEEDED
+                fi 
 
                 ;;
 
@@ -432,41 +448,51 @@ processCustomizedOptions() {
 
             path_wunderground | p_w)
 
-                if isGWdevice "$GW_VERSION" && [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PATH ]; then
-                   update_path_wu=1
-                elif ! isGWdevice "$GW_VERSION"; then
+                if ${#GW_WS_CUSTOMIZED_PATH_WU} -le 64 ]; then
+
+                    if isGWdevice "$GW_VERSION" && [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PATH ]; then
                     update_path_wu=1
+                    elif ! isGWdevice "$GW_VERSION"; then
+                        update_path_wu=1
+                    else
+                        update_path_wu=0
+                    echo >&2 "Warning: fw $GW_VERSION does not support read/write path"
+                    fi
+
+                    if [ $update_path_wu -eq 1 ]; then
+                        [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_path_wu from $GW_WS_CUSTOMIZED_PATH_WU to $value length:${#value}"
+                        GW_WS_CUSTOMIZED_PATH_WU=$value
+                    fi
+
+                    unset update_path_wu
                 else
-                    update_path_wu=0
-                  echo >&2 "Warning: fw $GW_VERSION does not support read/write path"
+                    echo >&2 "Error: path_wunderground Max string limit execeeded (max 64)"
                 fi
-
-                if [ $update_path_wu -eq 1 ]; then
-                      [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_path_wu from $GW_WS_CUSTOMIZED_PATH_WU to $value length:${#value}"
-                    GW_WS_CUSTOMIZED_PATH_WU=$value
-                fi
-
-                unset update_path_wu
 
                 ;;
 
             path_ecowitt | p_e )
 
-                if isGWdevice "$GW_VERSION" && [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PATH ]; then
-                    update_path_ecowitt=1
-                elif ! isGWdevice; then
-                    update_path_ecowitt=1
+                if [ ${#GW_WS_CUSTOMIZED_PATH_ECOWITT} -le 64 ]; then
+
+                    if isGWdevice "$GW_VERSION" && [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PATH ]; then
+                        update_path_ecowitt=1
+                    elif ! isGWdevice; then
+                        update_path_ecowitt=1
+                    else
+                        update_path_ecowitt=0
+                    echo >&2 "Warning: fw $GW_VERSION does not support read/write path"
+                    fi
+
+                    if [ $update_path_ecowitt -eq 1 ]; then
+                        [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_ecowitt_path from $GW_WS_CUSTOMIZED_PATH_ECOWITT to $value length:${#value}"
+                        GW_WS_CUSTOMIZED_PATH_ECOWITT=$value
+                    fi
+
+                    unset update_path_ecowitt
                 else
-                    update_path_ecowitt=0
-                  echo >&2 "Warning: fw $GW_VERSION does not support read/write path"
+                    echo >&2 "Error: path_ecowitt Max string limit execeeded (max 64)"
                 fi
-
-                if [ $update_path_ecowitt -eq 1 ]; then
-                     [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_ecowitt_path from $GW_WS_CUSTOMIZED_PATH_ECOWITT to $value length:${#value}"
-                    GW_WS_CUSTOMIZED_PATH_ECOWITT=$value
-                fi
-
-                unset update_path_ecowitt
                 ;;
 
             help|?|*)
@@ -479,17 +505,9 @@ processCustomizedOptions() {
 
     #https://stackoverflow.com/questions/18668556/how-can-i-compare-numbers-in-bash
 
-    if [ $EXITCODE_CUSTOMIZED_OPTION -eq 0 ]; then
+    [ $DEBUG -eq 1 ] && printCustomized >&2
 
-        [ $DEBUG -eq 1 ] && printCustomized >&2
-
-        if [ ${#GW_WS_CUSTOMIZED_ID} -gt 40 ] || [ ${#GW_WS_CUSTOMIZED_PASSWORD} -gt 40 ] || [ ${#GW_WS_CUSTOMIZED_SERVER} -gt 64 ] || [ ${#GW_WS_CUSTOMIZED_PATH_ECOWITT} -gt 64 ] || [ ${#GW_WS_CUSTOMIZED_PATH_WU} -gt 64 ]; then
-            echo >&2 Error: Max string limit execeeded 
-            EXITCODE_CUSTOMIZED_OPTION=$ERROR_MAX_STRING_LENGTH_EXCEEDED
-        else
-            sendCustomized "$GW_HOST"
-        fi
-    fi
+    sendCustomized "$GW_HOST" 
 
     unset key value option
 
