@@ -439,11 +439,21 @@ sendCustomized()
     sendPacket "$CMD_WRITE_CUSTOMIZED" "$1"
     EXITCODE_SENDCUSTOMIZED=$?
 
-    if [ "$GW_VERSION_INT" -ge "$FW_CMD_READ_PATH" ]; then
+    if isGWdevice "$GW_VERSION" &&  [ "$GW_VERSION_INT" -ge "$FW_CMD_READ_PATH" ]; then
+        sendpathpacket=1
+    elif ! isGWdevice "$GW_VERSION"; then
+        sendpathpacket=1
+    else
+        sendpathpacket=0
+    fi
+
+    if [ $sendpathpacket -eq 1 ]; then
         newPathPacket
         sendPacket "$CMD_WRITE_PATH" "$1"
         EXITCODE_SENDCUSTOMIZED=$?
     fi
+
+    unset sendpathpacket
 
     return $EXITCODE_SENDCUSTOMIZED
 }

@@ -432,24 +432,41 @@ processCustomizedOptions() {
 
             path_wunderground | p_w)
 
-                if [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PATH ]; then
-                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_path_wu from $GW_WS_CUSTOMIZED_PATH_WU to $value length:${#value}"
-                    GW_WS_CUSTOMIZED_PATH_WU=$value
+                if isGWdevice "$GW_VERSION" && [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PATH ]; then
+                   update_path_wu=1
+                elif ! isGWdevice "$GW_VERSION"; then
+                    update_path_wu=1
                 else
+                    update_path_wu=0
                   echo >&2 "Warning: fw $GW_VERSION does not support read/write path"
                 fi
+
+                if [ $update_path_wu -eq 1 ]; then
+                      [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_path_wu from $GW_WS_CUSTOMIZED_PATH_WU to $value length:${#value}"
+                    GW_WS_CUSTOMIZED_PATH_WU=$value
+                fi
+
+                unset update_path_wu
 
                 ;;
 
             path_ecowitt | p_e )
 
-                if [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PATH ]; then
-                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_ecowitt_path from $GW_WS_CUSTOMIZED_PATH_ECOWITT to $value length:${#value}"
-                    GW_WS_CUSTOMIZED_PATH_ECOWITT=$value
+                if isGWdevice "$GW_VERSION" && [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PATH ]; then
+                    update_path_ecowitt=1
+                elif ! isGWdevice; then
+                    update_path_ecowitt=1
                 else
+                    update_path_ecowitt=0
                   echo >&2 "Warning: fw $GW_VERSION does not support read/write path"
                 fi
 
+                if [ $update_path_ecowitt -eq 1 ]; then
+                     [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_ecowitt_path from $GW_WS_CUSTOMIZED_PATH_ECOWITT to $value length:${#value}"
+                    GW_WS_CUSTOMIZED_PATH_ECOWITT=$value
+                fi
+
+                unset update_path_ecowitt
                 ;;
 
             help|?|*)
@@ -1291,8 +1308,10 @@ processCommand()
         customized | c | cust)
 
             if argEmptyOrOption "$1"; then
-                if [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PATH ]; then
+                if isGWdevice "$GW_VERSION" && [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PATH ]; then
                         sendPacket $CMD_READ_PATH  "$GW_HOST" >/dev/null
+                elif ! isGWdevice "$GW_VERSION"; then
+                     sendPacket $CMD_READ_PATH  "$GW_HOST" >/dev/null # try packet, on for example EasyWeatherV1.6.1
                 else
                     echo >&2 "Warning: Command read path not supported by fw $GW_VERSION_INT"
                 fi
@@ -1338,7 +1357,7 @@ processCommand()
         livedata | l)
             
             #get battery/signal info to merge into livedata view
-            if getSensorIdCommand "$GW_VERSION_INT"; then
+            if isGWdevice "$GW_VERSION" && getSensorIdCommand "$GW_VERSION_INT"; then
                 sendPacket "$VALUE_SENSORID_READ_COMMAND" "$GW_HOST" >/dev/null
             fi
             
@@ -1358,7 +1377,7 @@ processCommand()
 
         sensor_id | sensor | s) 
 
-           if  getSensorIdCommand "$GW_VERSION_INT"; then
+           if  isGWdevice "$GW_VERSION" && getSensorIdCommand "$GW_VERSION_INT"; then
 
                 if ! argEmptyOrOption "$1"; then
                 #filter for senorid; -c sensor connected|-c s co

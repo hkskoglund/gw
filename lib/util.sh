@@ -172,4 +172,13 @@ getVersionInt()
 
 }
 
+isGWdevice()
+# device firmware version
+{
+    case "$1" in
+      GW*) return 0 ;;
+      *) return 1 ;;
+    esac
+}
+
 
