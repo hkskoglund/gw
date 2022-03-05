@@ -71,33 +71,6 @@ System sensors searching         <span style="color:green">29</span>
 System sensors disabled          <span style="color: red">11</span>
 </pre>
 
-## Weather service configuration
-### Ecowitt interval 1 minute (https://www.ecowitt.net/)
-<code>./gw -g 192.168.3.16 -c ecowitt 1</code>
-### Weathercloud (https://weathercloud.net/en)
-<code>./gw -g 192.168.3.16 -c weathercloud id='id',password='passwd'</code>
-### Weather Observations Website  (https://wow.metoffice.gov.uk/)
-<code>./gw -g 192.168.3.16 -c wow id='id',password='passwd' </code>
-### Wundergrodund (https://www.wunderground.com/)
-<code>./gw -g 192.168.3.16 -c wunderground id='id',password='passwd'</code>
-### Customized ecowitt (http://192.168.3.4:8082/)
-<code>./gw -g 192.168.3.16 -c customized id=id,password=passwd,server=192.168.3.4,port=8082,http=ecowitt,enabled=on,interval=16 -c customized</code>
-<pre>
-server             192.168.3.4
-port               8082
-interval           16
-http               0 ecowitt
-enabled            1 on
-path ecowitt  /
-</pre>
-
-## Continous monitoring each 1 minute -H option to hide groups (rain, system, temperature and leak)
-<code> while true; do clear;./gw -g 192.168.3.16 -H rain,system,t,leak  -c l; sleep 60; done</code>
-
-## Listen for Ecowitt/Wunderground http request on port 8080
-
-<code>./gw -l 8080</code>
-
 ## Viewing current sensor configuration
 
 <code>./gw -g 192.168.3.16 -c sensor</code>
@@ -152,6 +125,34 @@ Sensor        ID   B S Type Name              State             Battery Signal
     46  ffffffff 255 0 WH35 Leafwetness7      <span style="color: green">searching</span>
     47  ffffffff 255 0 WH35 Leafwetness8      <span style="color: green">searching</span>
 </pre>
+
+## Weather service configuration
+### Ecowitt interval 1 minute (https://www.ecowitt.net/)
+<code>./gw -g 192.168.3.16 -c ecowitt 1</code>
+### Weathercloud (https://weathercloud.net/en)
+<code>./gw -g 192.168.3.16 -c weathercloud id='id',password='passwd'</code>
+### Weather Observations Website  (https://wow.metoffice.gov.uk/)
+<code>./gw -g 192.168.3.16 -c wow id='id',password='passwd' </code>
+### Wundergrodund (https://www.wunderground.com/)
+<code>./gw -g 192.168.3.16 -c wunderground id='id',password='passwd'</code>
+### Customized ecowitt (http://192.168.3.4:8082/)
+<code>./gw -g 192.168.3.16 -c customized id=id,password=passwd,server=192.168.3.4,port=8082,http=ecowitt,enabled=on,interval=16 -c customized</code>
+<pre>
+server             192.168.3.4
+port               8082
+interval           16
+http               0 ecowitt
+enabled            1 on
+path ecowitt  /
+</pre>
+
+## Continous monitoring each 1 minute -H option to hide groups (rain, system, temperature and leak)
+<code> while true; do clear;./gw -g 192.168.3.16 -H rain,system,t,leak  -c l; sleep 60; done</code>
+
+## Listen for Ecowitt/Wunderground http request on port 8080
+
+<code>./gw -l 8080</code>
+
 
 ## Setting all leafwetness sensors to disabled and disable temperature sensor 6, next reset temp sensor 6 to id 'ba'.
 
