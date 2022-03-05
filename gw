@@ -267,7 +267,7 @@ parseSystemOption()
                 1|wh65)     systemtype=1
                         ;;
                 *)  echo >&2 "type=0 | wh24 or 1 | wh65"
-                            EXITCODE_PARSESYSTEMOPTIONS=$ERROR_SYSTEMPARAM_NOTSPECIFIED
+                            EXITCODE_PARSESYSTEMOPTIONS=$ERROR_SYSTEM_OPTION
                             ;;
             esac
             ;;
@@ -276,7 +276,7 @@ parseSystemOption()
             else
                 echo >&2 "tz=0-$SYSTEM_TIMEZONE_MAX_INDEX"
                 printTimezones
-                EXITCODE_PARSESYSTEMOPTIONS=$ERROR_SYSTEMPARAM_NOTSPECIFIED
+                EXITCODE_PARSESYSTEMOPTIONS=$ERROR_SYSTEM_OPTION
             fi
             ;;
         dst|d) case "$2" in
@@ -285,7 +285,7 @@ parseSystemOption()
                 1|on)   systemdst=1
                         ;;
                 *)      echo >&2 "dst=0 | off | 1 | on"
-                        EXITCODE_PARSESYSTEMOPTIONS=$ERROR_SYSTEMPARAM_NOTSPECIFIED
+                        EXITCODE_PARSESYSTEMOPTIONS=$ERROR_SYSTEM_OPTION
                         ;;
                 esac
                 ;;
@@ -295,13 +295,13 @@ parseSystemOption()
                 1|on)   systemauto=1
                         ;;
                  *)     echo >&2 "auto=0 | off | 1 | on"
-                        EXITCODE_PARSESYSTEMOPTIONS=$ERROR_SYSTEMPARAM_NOTSPECIFIED
+                        EXITCODE_PARSESYSTEMOPTIONS=$ERROR_SYSTEM_OPTION
                         ;;
                 esac
                 ;; 
             
         *) echo >&2 "Unknown key '$1', use type,tz,dst,auto"
-           EXITCODE_PARSESYSTEMOPTIONS=$ERROR_SYSTEMPARAM_NOTSPECIFIED
+           EXITCODE_PARSESYSTEMOPTIONS=$ERROR_SYSTEM_OPTION
         ;;
       esac
     done
@@ -368,7 +368,7 @@ processCustomizedOptions() {
 
                 if ! isNumber "$value"; then
                     echo >&2 "Error: Not a number -  cannot set customized port to $value from $value"
-                    EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED"
+                    EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED_OPTION"
                 else
                     GW_WS_CUSTOMIZED_PORT=$((value))
                     [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_port from $GW_WS_CUSTOMIZED_PORT to $value"
@@ -389,7 +389,7 @@ processCustomizedOptions() {
                         ;;
 
                     *)  echo >&2 "Error: Unknown value $value for http protocol, use wunderground|w|1 or ecowitt|e|0"
-                        EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED"
+                        EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED_OPTION"
                 esac
 
                 [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_TYPE from $GW_WS_CUSTOMIZED_HTTP to $value"
@@ -409,7 +409,7 @@ processCustomizedOptions() {
                         ;;
 
                     *)  echo >&2 "Error: Unknown value $value for enabled, use on|1|yes|y, off|0|no|n"
-                        EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED"
+                        EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED_OPTION"
                 esac
 
                 [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_enabled from $GW_WS_CUSTOMIZED_ENABLED to $value"
@@ -421,7 +421,7 @@ processCustomizedOptions() {
 
                 if ! isNumber "$value"; then
                     echo >&2 "Error: Not a number cannot set customized interval to $value"
-                    EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED"
+                    EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED_OPTION"
                 else
                     [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_interval from $GW_WS_CUSTOMIZED_INTERVAL to $value"
                     GW_WS_CUSTOMIZED_INTERVAL=$((value))
@@ -471,7 +471,7 @@ processCustomizedOptions() {
 
             help|?|*)
                 echo >&2 "Error: Unknown key $key, use id, password|pw, server|s, port|p, http|h, enabled|e, interval|i, path_wunderground|p_w, path_ecowitt|p_e"
-                EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED"
+                EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED_OPTION"
                 ;;
         esac
 
