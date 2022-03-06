@@ -4,7 +4,7 @@ GWDIR=${GWDIR:=.}
 . "$GWDIR/lib/binary-fields.sh"
 
 parseVersion() {
-    readString OD_BUFFER "version"
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "version"
     export GW_VERSION="$VALUE_STRING"
     getVersionInt "$GW_VERSION"
     export GW_VERSION_INT="${GW_VERSION_INT:=$VALUE_VERSION}"
@@ -13,7 +13,7 @@ parseVersion() {
 
 parseMAC() 
 {
-    readSlice OD_BUFFER 6 "MAC"
+    readSlice "$VALUE_PARSEPACKET_BUFFERNAME" 6 "MAC"
     setMAC "$VALUE_SLICE"
     export GW_MAC="$VALUE_MAC"
     echo "$GW_MAC"
@@ -21,7 +21,7 @@ parseMAC()
 
 parseResult() {
     
-    readUInt8 OD_BUFFER 'write result'
+    readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" 'write result'
     write_result=$VALUE_UINT8
     export GW_RESULT="$write_result"
 
@@ -68,7 +68,7 @@ setMAC()
 
 parseBroadcast() {
 
-    readSlice OD_BUFFER 12 "broadcast"
+    readSlice "$VALUE_PARSEPACKET_BUFFERNAME" 12 "broadcast"
     #this is the station MAC/ip on local network.
     #Observation: when device is reset its annoncing hotspot accesspoint/AP with first byte of MAC changed
     IFS=' '
@@ -81,7 +81,7 @@ parseBroadcast() {
     export GW_BROADCAST_IP="$7.$8.$9.${10}"
     export GW_BROADCAST_PORT="$(( (${11} << 8) | ${12} ))"
 
-    readString OD_BUFFER "ssid version"
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "ssid version"
     #https://stackoverflow.com/questions/1469849/how-to-split-one-string-into-multiple-strings-separated-by-at-least-one-space-in
     #shellcheck disable=SC2086
     
@@ -105,7 +105,7 @@ printEcowittInterval() {
 
 parseEcowittInterval() {
 
-    readUInt8 OD_BUFFER "ecowitt interval"
+    readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "ecowitt interval"
     export GW_WS_ECOWITT_INTERVAL="$VALUE_UINT8"
     printEcowittInterval
 }
@@ -116,9 +116,9 @@ wunderground station password $GW_WS_WUNDERGROUND_PASSWORD"
 }
 
 parseWunderground() {
-    readString OD_BUFFER "wunderground id"
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "wunderground id"
     export GW_WS_WUNDERGROUND_ID="$VALUE_STRING"
-    readString OD_BUFFER "wunderground password"
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "wunderground password"
     GW_WS_WUNDERGROUND_PASSWORD=$VALUE_STRING
 
     printWunderground
@@ -130,10 +130,10 @@ weathercloud password         $GW_WS_WC_PASSWORD"
 }
 
 parseWeathercloud() {
-    readString OD_BUFFER "weathercloud id"
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "weathercloud id"
     export GW_WS_WC_ID="$VALUE_STRING"
 
-    readString OD_BUFFER "weathercloud password"
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "weathercloud password"
     export GW_WS_WC_PASSWORD="$VALUE_STRING"
 
     printWeathercloud
@@ -145,10 +145,10 @@ wow password                  $GW_WS_WOW_PASSWORD"
 }
 
 parseWow() {
-    readString OD_BUFFER "wow id"
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "wow id"
     export GW_WS_WOW_ID="$VALUE_STRING"
 
-    readString OD_BUFFER "wow password"
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "wow password"
     export GW_WS_WOW_PASSWORD="$VALUE_STRING"
 
     printWow
@@ -179,12 +179,12 @@ calibration wind direction offset           $GW_CALIBRATION_WINDDIROFFSET $LIVED
 
 parseCalibration() {
 
-    readInt16BE OD_BUFFER "intemp offset"
+    readInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "intemp offset"
     export GW_CALIBRATION_INTEMPOFFSET_INTS10="$VALUE_INT16BE"
     convertScale10ToFloat "$GW_CALIBRATION_INTEMPOFFSET_INTS10"
     GW_CALIBRATION_INTEMPOFFSET="$VALUE_SCALE10_FLOAT"
 
-    readInt8 OD_BUFFER "inhumidity offset"
+    readInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "inhumidity offset"
     export GW_CALIBRATION_INHUMIDITYOFFSET="$VALUE_INT8"
 
     readInt32BE "absolute offset"
@@ -197,15 +197,15 @@ parseCalibration() {
     convertScale10ToFloat "$GW_CALIBRATION_RELOFFSET_INTS10"
     GW_CALIBRATION_RELOFFSET="$VALUE_SCALE10_FLOAT"
 
-    readInt16BE OD_BUFFER "outtemp offset"
+    readInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "outtemp offset"
     export GW_CALIBRATION_OUTTEMPOFFSET_INTS10="$VALUE_INT16BE"
     convertScale10ToFloat "$GW_CALIBRATION_OUTTEMPOFFSET_INTS10"
     GW_CALIBRATION_OUTTEMPOFFSET="$VALUE_SCALE10_FLOAT"
 
-    readInt8 OD_BUFFER "out humidity offset"
+    readInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "out humidity offset"
     export GW_CALIBRATION_OUTHUMIDITYOFFSET="$VALUE_INT8"
 
-    readInt16BE OD_BUFFER "winddirection offset"
+    readInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "winddirection offset"
     export GW_CALIBRATION_WINDDIROFFSET="$VALUE_INT16BE"
 
     printCalibration
@@ -231,22 +231,22 @@ fi
 }
 
 parseCustomized() {
-    readString OD_BUFFER "customized id"
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "customized id"
     export GW_WS_CUSTOMIZED_ID="$VALUE_STRING"
 
-    readString OD_BUFFER "customized password"
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "customized password"
     export GW_WS_CUSTOMIZED_PASSWORD="$VALUE_STRING"
 
-    readString OD_BUFFER "customized server"
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "customized server"
     export GW_WS_CUSTOMIZED_SERVER="$VALUE_STRING"
 
-    readUInt16BE OD_BUFFER "customized port"
+    readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "customized port"
     export GW_WS_CUSTOMIZED_PORT="$VALUE_UINT16BE"
 
-    readUInt16BE OD_BUFFER "customized interval"
+    readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "customized interval"
     export GW_WS_CUSTOMIZED_INTERVAL="$VALUE_UINT16BE"
 
-    readUInt8 OD_BUFFER "customized http"
+    readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "customized http"
     export GW_WS_CUSTOMIZED_HTTP="$VALUE_UINT8"
 
     if [ "$GW_WS_CUSTOMIZED_HTTP" -eq 1 ]; then
@@ -255,7 +255,7 @@ parseCustomized() {
         export GW_WS_CUSTOMIZED_HTTP_STATE="ecowitt"
     fi
 
-    readUInt8 OD_BUFFER "customized enabled"
+    readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "customized enabled"
 
     export GW_WS_CUSTOMIZED_ENABLED="$VALUE_UINT8"
     if [ "$GW_WS_CUSTOMIZED_ENABLED" -eq 1 ]; then
@@ -273,9 +273,9 @@ path wunderground $GW_WS_CUSTOMIZED_PATH_WU"
 }
 
 parsePath() {
-    readString OD_BUFFER "path ecowitt"
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "path ecowitt"
     export GW_WS_CUSTOMIZED_PATH_ECOWITT="$VALUE_STRING"
-    readString OD_BUFFER "path wunderground"
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "path wunderground"
     export GW_WS_CUSTOMIZED_PATH_WU="$VALUE_STRING"
 
     printPath
@@ -291,19 +291,19 @@ rain year  $GW_RAINYEAR $LIVEDATAUNIT_RAIN"
 
 parseRaindata() {
 
-    readUInt32BE "OD_BUFFER" "rainrate"
+    readUInt32BE "$VALUE_PARSEPACKET_BUFFERNAME" "rainrate"
     export GW_RAINRATE_INTS10="$VALUE_UINT32BE"
 
-    readUInt32BE "OD_BUFFER" "raindaily"
+    readUInt32BE "$VALUE_PARSEPACKET_BUFFERNAME" "raindaily"
     export GW_RAINDAILY_INTS10="$VALUE_UINT32BE"
 
-    readUInt32BE "OD_BUFFER" "rainweek"
+    readUInt32BE "$VALUE_PARSEPACKET_BUFFERNAME" "rainweek"
     export GW_RAINWEEK_INTS10="$VALUE_UINT32BE"
 
-    readUInt32BE "OD_BUFFER" "rainmonth"
+    readUInt32BE "$VALUE_PARSEPACKET_BUFFERNAME" "rainmonth"
     export GW_RAINMONTH_INTS10="$VALUE_UINT32BE"
 
-    readUInt32BE "OD_BUFFER" "rainyear"
+    readUInt32BE "$VALUE_PARSEPACKET_BUFFERNAME" "rainyear"
     export GW_RAINYEAR_INTS10="$VALUE_UINT32BE"
 
     convertScale10ToFloat "$GW_RAINRATE_INTS10"
@@ -458,7 +458,7 @@ parseSensorIdNew()
         appendBuffer "%6s %9s %3s %1s %-4s %-17s %-12s\t%s\t%s\n%s\n" "$SENSORID_HEADER ───────────────────────────────────────────────────────────────────────────────"
     fi
 
-    [ "$DEBUG" -eq  1 ] && >&2 echo "parseSensorIdNew SPATTERNID $SPATTERNID length od buffer ${#OD_BUFFER}"
+    [ "$DEBUG" -eq  1 ] &&  >&2 echo "parseSensorIdNew SPATTERNID $SPATTERNID"
     
      export LIVEDATA_SENSOR_COUNT_SEARCHING=0
      export LIVEDATA_SENSOR_COUNT_CONNECTED=0
@@ -469,16 +469,16 @@ parseSensorIdNew()
 
     while [ "$OD_BUFFER_HEAD" -lt $parseSensorIdNew_max_length ]; do
        
-        readUInt8  OD_BUFFER "sensor type"          #type
+        readUInt8  "$VALUE_PARSEPACKET_BUFFERNAME" "sensor type"          #type
         stype=$VALUE_UINT8
        
-        readUInt32BE OD_BUFFER "sensor id"        #id
+        readUInt32BE "$VALUE_PARSEPACKET_BUFFERNAME" "sensor id"        #id
         SID=$VALUE_UINT32BE
 
-        readUInt8  OD_BUFFER "sensor battery"
+        readUInt8  "$VALUE_PARSEPACKET_BUFFERNAME" "sensor battery"
         battery=$VALUE_UINT8
         
-        readUInt8 OD_BUFFER "sensor signal"
+        readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "sensor signal"
         signal=$VALUE_UINT8
 
         if [ "$SID" -eq "$SENSORID_SEARCH" ]; then
@@ -513,7 +513,7 @@ parseSensorIdNew()
             printSensorLine "$stype" "$SID" "$battery" "$signal"
         fi
         
-        [ "$DEBUG" -eq 1 ] && >&2 echo "type $stype id $SID battery $battery signal $signal od_buffer length ${#OD_BUFFER}"
+        [ "$DEBUG" -eq 1 ] && >&2 echo "type $stype id $SID battery $battery signal $signal"
     done
 
     printAppendBuffer
@@ -539,7 +539,7 @@ printSystem()
 
 
 parseSystem() {
-    readUInt8 OD_BUFFER "system frequency"
+    readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "system frequency"
 
     export GW_SYSTEM_FREQUENCY="$VALUE_UINT8"
     export GW_SYSTEM_FREQUENCY_STATE
@@ -553,7 +553,7 @@ parseSystem() {
         GW_SYSTEM_FREQUENCY_STATE="920"
     fi
 
-    readUInt8 OD_BUFFER "system sensortype"
+    readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "system sensortype"
 
     export GW_SYSTEM_SENSORTYPE="$VALUE_UINT8"
     export GW_SYSTEM_SENSORTYPE_STATE
@@ -564,13 +564,13 @@ parseSystem() {
         GW_SYSTEM_SENSORTYPE_STATE="WH65"
     fi
 
-    readUInt32BE "OD_BUFFER" "system utc"
+    readUInt32BE "$VALUE_PARSEPACKET_BUFFERNAME" "system utc"
 
     export GW_SYSTEM_UTC="$VALUE_UINT32BE"
     GW_SYSTEM_UTC_STATE="$(date -u -d @"$VALUE_UINT32BE" +'%F %T')"
     export GW_SYSTEM_UTC_STATE
 
-    readUInt8 OD_BUFFER "system timezone index"
+    readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "system timezone index"
 
     export GW_SYSTEM_TIMEZONE_INDEX="$VALUE_UINT8"
 
@@ -581,7 +581,7 @@ parseSystem() {
     GW_SYSTEM_TIMEZONE_OFFSET_HOURS=${GW_SYSTEM_TIMEZONE_OFFSET_HOURS#\(UTC} # remove (UTC
     export GW_SYSTEM_TIMEZONE_OFFSET_HOURS
 
-    readUInt8 OD_BUFFER "system dst status"
+    readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "system dst status"
 
     export GW_SYSTEM_TIMEZONE_DST_STATUS="$VALUE_UINT8"
 
@@ -600,7 +600,9 @@ parseSystem() {
 
 }
 
-parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 5d 0a 01 59 0b 00 00 0c 00 00 15 00 00 93 bc 16 00 20 17 00 2c 12 1a 00 87 22 32 1b 00 b0 23 27 1c 00 dd 24 31 58 00 19 00 47 0e 00 00 10 00 08 11 00 42 12 00 00 02 9a 13 00 00 0f 8b 0d 00 42 63
+parseLivedata()
+# parse livedata fields
+ {
     DEBUG_FUNC="parseLivedata"
     DEBUG_PARSE_LIVEDATA=${DEBUG_PARSE_LIVEDATA:=$DEBUG}
    
@@ -613,7 +615,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "OD_BUFFER_HEAD $OD_BUFFER_HEAD OD_BUFFER_LENTTH $OD_BUFFER_LENGTH"
 
-        readUInt8 OD_BUFFER "livedata field id"
+        readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "livedata field id"
         ldf=$VALUE_UINT8
 
         convertUInt8ToHex "$ldf"
@@ -621,7 +623,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
      
         if [ "$ldf" -eq "$LDF_INTEMP" ]; then
 
-            readInt16BE OD_BUFFER "intemp"
+            readInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "intemp"
             export LIVEDATA_INTEMP_INTS10="$VALUE_INT16BE"
             convertTemperatureLivedata "$LIVEDATA_INTEMP_INTS10"
             export LIVEDATA_INTEMP="$VALUE_SCALE10_FLOAT" 
@@ -629,14 +631,14 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_INHUMI" ]; then
 
-            readUInt8 OD_BUFFER "inhumidity"
+            readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "inhumidity"
             export LIVEDATA_INHUMI="$VALUE_UINT8"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:inhumi type: uint8 $LIVEDATA_INHUMI $LIVEDATAUNIT_HUMIDITY"
 
 
         elif [ "$ldf" -eq "$LDF_PRESSURE_ABSBARO" ]; then
 
-            readUInt16BE OD_BUFFER "absolute pressure"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "absolute pressure"
             #shellcheck disable=SC2034
             export LIVEDATA_PRESSURE_ABSBARO_INTS10="$VALUE_UINT16BE" #may use for ansi escape coloring beyond limits
             convertPressureLivedata "$LIVEDATA_PRESSURE_ABSBARO_INTS10"
@@ -647,7 +649,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_PRESSURE_RELBARO" ]; then
 
-            readUInt16BE OD_BUFFER "relative pressure"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "relative pressure"
             export LIVEDATA_PRESSURE_RELBARO_INTS10="$VALUE_UINT16BE"
             convertPressureLivedata "$LIVEDATA_PRESSURE_RELBARO_INTS10"
             export LIVEDATA_PRESSURE_RELBARO="$VALUE_SCALE10_FLOAT"
@@ -656,7 +658,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_OUTTEMP" ]; then
 
-            readInt16BE OD_BUFFER "outtemp"
+            readInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "outtemp"
             export LIVEDATA_OUTTEMP_INTS10="$VALUE_INT16BE"
             convertTemperatureLivedata "$LIVEDATA_OUTTEMP_INTS10" 
             export LIVEDATA_OUTTEMP="$VALUE_SCALE10_FLOAT"
@@ -666,14 +668,14 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_OUTHUMI" ]; then
 
-            readUInt8 OD_BUFFER "outhumidity"
+            readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "outhumidity"
             export LIVEDATA_OUTHUMI="$VALUE_UINT8"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:outhumi type: uint8 $LIVEDATA_OUTHUMI $LIVEDATAUNIT_HUMIDITY"
 
 
         elif [ "$ldf" -eq "$LDF_WINDDIRECTION" ]; then
 
-            readUInt16BE OD_BUFFER "winddirection"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "winddirection"
             export LIVEDATA_WINDDIRECTION="$VALUE_UINT16BE"
             convertWindDirectionToCompassDirection "$LIVEDATA_WINDDIRECTION"
             export LIVEDATA_WINDDIRECTION_COMPASS="$VALUE_COMPASS_DIRECTION"
@@ -683,7 +685,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_WINDSPEED" ]; then
 
-            readUInt16BE OD_BUFFER "windspeed"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "windspeed"
             export LIVEDATA_WINDSPEED_INTS10="$VALUE_UINT16BE"
             convertWindLivedata "$LIVEDATA_WINDSPEED_INTS10"
             export LIVEDATA_WINDSPEED="$VALUE_SCALE10_FLOAT"
@@ -692,7 +694,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_WINDGUSTSPPED" ]; then
 
-            readUInt16BE OD_BUFFER "wingustspeed"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "wingustspeed"
             export LIVEDATA_WINDGUSTSPEED_INTS10="$VALUE_UINT16BE"
             convertWindLivedata "$VALUE_UINT16BE"
             export LIVEDATA_WINDGUSTSPEED="$VALUE_SCALE10_FLOAT"
@@ -701,7 +703,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_DAYLWINDMAX" ]; then
 
-            readUInt16BE OD_BUFFER "winddailymax"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "winddailymax"
             export LIVEDATA_WINDDAILYMAX_INTS10="$VALUE_UINT16BE"
             convertWindLivedata "$VALUE_UINT16BE"
             export LIVEDATA_WINDDAILYMAX="$VALUE_SCALE10_FLOAT"
@@ -710,7 +712,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_LIGHT" ]; then
 
-            readUInt32BE OD_BUFFER "light"
+            readUInt32BE "$VALUE_PARSEPACKET_BUFFERNAME" "light"
             export LIVEDATA_SOLAR_LIGHT_INTS10="$VALUE_UINT32BE"
             convertLightLivedata "$LIVEDATA_SOLAR_LIGHT_INTS10"
             export LIVEDATA_SOLAR_LIGHT="$VALUE_SCALE10_FLOAT"
@@ -720,7 +722,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_UV" ]; then
 
-            readUInt16BE OD_BUFFER "uv"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "uv"
             export LIVEDATA_SOLAR_UV_INTS10="$VALUE_UINT16BE"
             convertScale10ToFloat "$LIVEDATA_SOLAR_UV_INTS10" # assume its scale 10?
             export LIVEDATA_SOLAR_UV="$VALUE_SCALE10_FLOAT"
@@ -733,7 +735,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_UVI" ]; then
 
-            readUInt8 OD_BUFFER "uvi"
+            readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "uvi"
             export LIVEDATA_SOLAR_UVI="$VALUE_UINT8"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:uvi type: uint8 $LIVEDATA_SOLAR_UVI"
 
@@ -744,7 +746,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
              [ "$ldf" -eq "$LDF_SOILMOISTURE7" ] || [ "$ldf" -eq "$LDF_SOILMOISTURE8" ]; then #is 16 channels supported?
 
             channel=$((((ldf - LDF_SOILMOISTURE1) / 2) + 1))
-            readUInt8 OD_BUFFER "soilmoisture$channel"
+            readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "soilmoisture$channel"
             eval "export LIVEDATA_SOILMOISTURE$channel=$VALUE_UINT8"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:soilmoisture$channel type: uint8 $VALUE_UINT8 $LIVEDATAUNIT_HUMIDITY"
 
@@ -765,7 +767,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         elif [ "$ldf" -ge "$LDF_TEMP1" ] && [ "$ldf" -le "$LDF_TEMP8" ]; then
             channel=$((ldf - LDF_TEMP1 + 1))
 
-            readInt16BE OD_BUFFER "temp $channel"
+            readInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "temp $channel"
             convertTemperatureLivedata "$VALUE_INT16BE"
 
             eval "export LIVEDATA_WH31TEMP${channel}_INTS10=$VALUE_INT16BE"
@@ -776,7 +778,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         elif [ "$ldf" -ge "$LDF_HUMI1" ] && [ "$ldf" -le "$LDF_HUMI8" ]; then
 
             channel=$((ldf - LDF_HUMI1 + 1))
-            readUInt8 OD_BUFFER "humidity$channel"
+            readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "humidity$channel"
 
             eval "export LIVEDATA_WH31HUMI$channel=$VALUE_UINT8"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC f:$ldf_hex name:humidity$channel type: uint8 $VALUE_UINT8 $LIVEDATAUNIT_HUMIDITY"
@@ -784,7 +786,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_RAINMONTH" ]; then
 
-            readUInt32BE "OD_BUFFER" "rainmonth"
+            readUInt32BE "$VALUE_PARSEPACKET_BUFFERNAME" "rainmonth"
             export LIVEDATA_RAINMONTH_INTS10="$VALUE_UINT32BE"
             convertScale10ToFloat "$LIVEDATA_RAINMONTH_INTS10"
             export LIVEDATA_RAINMONTH="$VALUE_SCALE10_FLOAT"
@@ -792,7 +794,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_RAINYEAR" ]; then
 
-            readUInt32BE "OD_BUFFER" "rainyear"
+            readUInt32BE "$VALUE_PARSEPACKET_BUFFERNAME" "rainyear"
             export LIVEDATA_RAINYEAR_INTS10="$VALUE_UINT32BE"
             convertScale10ToFloat "$LIVEDATA_RAINYEAR_INTS10"
             export LIVEDATA_RAINYEAR="$VALUE_SCALE10_FLOAT"
@@ -800,7 +802,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_RAINWEEK" ]; then
 
-            readUInt16BE OD_BUFFER "rainweek"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "rainweek"
             export LIVEDATA_RAINWEEK_INTS10="$VALUE_UINT16BE"
             convertScale10ToFloat "$LIVEDATA_RAINWEEK_INTS10"
             export LIVEDATA_RAINWEEK="$VALUE_SCALE10_FLOAT"
@@ -809,7 +811,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_RAINDAY" ]; then
 
-            readUInt16BE OD_BUFFER "rainday"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "rainday"
             export LIVEDATA_RAINDAY_INTS10="$VALUE_UINT16BE"
             convertScale10ToFloat "$LIVEDATA_RAINDAY_INTS10"
             export LIVEDATA_RAINDAY="$VALUE_SCALE10_FLOAT"
@@ -818,7 +820,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_RAINEVENT" ]; then
 
-            readUInt16BE OD_BUFFER "rainevent"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "rainevent"
             export LIVEDATA_RAINEVENT_INTS10="$VALUE_UINT16BE"
             convertScale10ToFloat "$LIVEDATA_RAINEVENT_INTS10"
             export LIVEDATA_RAINEVENT="$VALUE_SCALE10_FLOAT"
@@ -827,7 +829,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -eq "$LDF_RAINRATE" ]; then
 
-            readUInt16BE OD_BUFFER "rainrate"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "rainrate"
             export LIVEDATA_RAINRATE_INTS10="$VALUE_UINT16BE"
             convertScale10ToFloat "$LIVEDATA_RAINRATE_INTS10"
             export LIVEDATA_RAINRATE="$VALUE_SCALE10_FLOAT"
@@ -836,12 +838,12 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -ge "$LDF_LEAK_CH1" ] && [ "$ldf" -le "$LDF_LEAK_CH4" ]; then
             channel=$((ldf - LDF_LEAK_CH1 + 1))
-            readUInt8 OD_BUFFER "leak$channel"
+            readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "leak$channel"
             eval "export LIVEDATA_LEAK$channel=$VALUE_UINT8"
 
         elif [ "$ldf" -eq "$LDF_PM25_CH1" ]; then
 
-            readUInt16BE OD_BUFFER "PM25 1"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "PM25 1"
             export LIVEDATA_PM251_INTS10="$VALUE_UINT16BE"
             convertScale10ToFloat "$LIVEDATA_PM251_INTS10"
             export LIVEDATA_PM251="$VALUE_SCALE10_FLOAT"
@@ -849,7 +851,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         elif [ "$ldf" -ge "$LDF_PM25_CH2" ] && [ "$ldf" -le "$LDF_PM25_CH4" ]; then
 
             channel=$((ldf - LDF_PM25_CH1 + 1))
-            readUInt16BE OD_BUFFER "PM25 $channel"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "PM25 $channel"
             eval "export LIVEDATA_PM25${channel}_INTS10=$VALUE_UINT16BE"
             eval "convertScale10ToFloat \$LIVEDATA_PM25${channel}_INTS10"
             eval "export LIVEDATA_PM25$channel=$VALUE_SCALE10_FLOAT"
@@ -857,7 +859,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
         elif [ "$ldf" -ge "$LDF_PM25_24HAVG1" ] && [ "$ldf" -le "$LDF_PM25_24HAVG4" ]; then
 
             channel=$((ldf - LDF_PM25_24HAVG1 + 1))
-            readUInt16BE OD_BUFFER "PM25 24h avg $channel"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "PM25 24h avg $channel"
             eval "export LIVEDATA_PM25${channel}_24HAVG_INTS10=$VALUE_UINT16BE"
             eval "convertScale10ToFloat \$LIVEDATA_PM25${channel}_24HAVG_INTS10"
             eval "export LIVEDATA_PM25${channel}_24HAVG=$VALUE_SCALE10_FLOAT"
@@ -875,52 +877,52 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
             # 8 co2_24h       unsigned short ppm
             # 9 co2_batt      u8 (0~5)
 
-            readInt16BE OD_BUFFER "CO2 tempf"
+            readInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 tempf"
             export LIVEDATA_WH45CO2_TEMPF_INTS10="$VALUE_INT16BE"
             convertScale10ToFloat "$LIVEDATA_WH45CO2_TEMPF_INTS10"
             export LIVEDATA_WH45CO2_TEMPF="$VALUE_SCALE10_FLOAT"
 
-            readUInt8 OD_BUFFER "CO2 humidity"
+            readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 humidity"
             export LIVEDATA_WH45CO2_HUMI="$VALUE_UINT8"
 
-            readUInt16BE OD_BUFFER "CO2 PM10"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 PM10"
             export LIVEDATA_WH45CO2_PM10_INTS10="$VALUE_UINT16BE"
             convertScale10ToFloat "$LIVEDATA_WH45CO2_PM10_INTS10"
             export LIVEDATA_WH45CO2_PM10="$VALUE_SCALE10_FLOAT"
 
-            readUInt16BE OD_BUFFER "CO2 PM10 24h avg"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 PM10 24h avg"
             export LIVEDATA_WH45CO2_PM10_24HAVG_INTS10="$VALUE_UINT16BE"
             convertScale10ToFloat "$LIVEDATA_WH45CO2_PM10_24HAVG_INTS10"
             export LIVEDATA_WH45CO2_PM10_24HAVG="$VALUE_SCALE10_FLOAT"
 
-            readUInt16BE OD_BUFFER "CO2 PM25"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 PM25"
             export LIVEDATA_WH45CO2_PM25_INTS10="$VALUE_UINT16BE"
             convertScale10ToFloat "$LIVEDATA_WH45CO2_PM25_INTS10"
             export LIVEDATA_WH45CO2_PM25="$VALUE_SCALE10_FLOAT"
 
-            readUInt16BE OD_BUFFER "CO2 PM25 24h avg"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 PM25 24h avg"
             export LIVEDATA_WH45CO2_PM25_24HAVG_INTS10="$VALUE_UINT16BE"
             convertScale10ToFloat "$LIVEDATA_WH45CO2_PM25_24HAVG_INTS10"
             export LIVEDATA_WH45CO2_PM25_24HAVG="$VALUE_SCALE10_FLOAT"
 
-            readUInt16BE OD_BUFFER "CO2"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "CO2"
             export LIVEDATA_WH45CO2_CO2="$VALUE_UINT16BE"
 
-            readUInt16BE OD_BUFFER "CO2 24g avg"
+            readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 24g avg"
             export LIVEDATA_WH45CO2_CO2_24HAVG="$VALUE_UINT16BE"
 
-            readUInt8 OD_BUFFER "CO2 battery"
+            readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 battery"
             export LIVEDATA_WH45CO2_BATTERY="$VALUE_UINT8"
 
         elif [ "$ldf" -ge "$LDF_TF_USR1" ] && [ "$ldf" -le "$LDF_TF_USR8" ]; then
             channel=$((ldf - LDF_TF_USR1 + 1))
-            readInt16BE OD_BUFFER "tf_usr$channel"
+            readInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "tf_usr$channel"
             convertTemperatureLivedata "$VALUE_INT16BE"
 
             eval "export LIVEDATA_TF_USR${channel}_INT16=$VALUE_INT16"
             eval "export LIVEDATA_TF_USR$channel=$VALUE_SCALE10_FLOAT"
 
-            readUInt8 OD_BUFFER "tf_usr$channel battery"
+            readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "tf_usr$channel battery"
             eval "export LIVEDATA_TF_USR${channel}_BATTERY_INTS10=$VALUE_UINT8"
             eval "convertScale10ToFloat \$LIVEDATA_TF_USR${channel}_BATTERY_INTS10"
             eval "export LIVEDATA_TF_USR${channel}_BATTERY=$VALUE_SCALE10_FLOAT"
@@ -930,12 +932,12 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -ge "$LDF_LIGHTNING" ]; then
 
-            readUInt8 OD_BUFFER "lightning distance"
+            readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "lightning distance"
             export LIVEDATA_LIGHTNING_DISTANCE="$VALUE_UINT8" # 1-40km
 
         elif [ "$ldf" -ge "$LDF_LIGHTNING_TIME" ]; then
 
-            readUInt32BE "OD_BUFFER" "lightning type"
+            readUInt32BE "$VALUE_PARSEPACKET_BUFFERNAME" "lightning type"
             export LIVEDATA_LIGHTNING_TIME="$VALUE_UINT32BE"
             getDateUTC "$LIVEDATA_LIGHTNING_TIME"
             export LIVEDATA_LIGHTNING_TIME_UTC="$VALUE_DATE_UTC"
@@ -943,13 +945,13 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
         elif [ "$ldf" -ge "$LDF_LIGHTNING_POWER" ]; then
 
-            readUInt32BE "OD_BUFFER" "lightning power"
+            readUInt32BE ""$VALUE_PARSEPACKET_BUFFERNAME"" "lightning power"
             export LIVEDATA_LIGHTNING_POWER="$VALUE_UINT32BE"
 
         elif [ "$ldf" -ge "$LDF_LEAF_WETNESS_CH1" ] && [ "$ldf" -le "$LDF_LEAF_WETNESS_CH8" ]; then
 
             channel=$((ldf - LDF_LEAF_WETNESS_CH1 + 1))
-            readUInt8 OD_BUFFER "leafwetness$channel"
+            readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "leafwetness$channel"
 
             eval "export LIVEDATA_LEAFWETNESS${channel}=$VALUE_UINT8"
 
@@ -960,7 +962,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
     done
 
     if [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ]; then
-        readUInt8 OD_BUFFER "checksum"
+        readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "checksum"
         checksum=$VALUE_UINT8
         echo >&2 checksum "$(printf "%02x dec:%02u" "$checksum" "$checksum")"
     fi
@@ -972,7 +974,7 @@ parseLivedata() { # ff ff 27 00 53 01 00 e1 06 25 08 27 b3 09 27 c2 02 00 05 07 
 
     printOrLogLivedata
 
-    unset ldf channel checksum DEBUG_FUNC parselivedata_max_length
+    unset ldf ldf_hex channel checksum DEBUG_FUNC parselivedata_max_length
     
 }
 
@@ -1039,7 +1041,7 @@ readPacketPreambleCommandLength()
         moveHEAD "$readPacketPreambleCommandLength_buffername" "$packetContentPosition" #restore position
     fi
 
-    unset realPacketLength packetCRCPosition
+    unset realPacketLength packetCRCPosition readPacketPreambleCommandLength_buffername packetContentPosition
 
     return "$EXITCODE_PARSEPACKET"
 }
@@ -1070,6 +1072,7 @@ parsePacket()
 {
      EXITCODE_PARSEPACKET=0
      DEBUG_PARSEPACKET=${DEBUG_PARSEPACKET:=$DEBUG}
+     VALUE_PARSEPACKET_BUFFERNAME="OD_BUFFER"
 
      if [ -z "$1" ]; then
          [ "$DEBUG_PARSEPACKET" -eq 1 ] && echo >&2 Warning: parsePacket: Empty buffer/response received
@@ -1077,10 +1080,10 @@ parsePacket()
         return "$EXITCODE_PARSEPACKET"
     fi
 
-    newBuffer "OD_BUFFER" "$1"
+    newBuffer "$VALUE_PARSEPACKET_BUFFERNAME" "$1"
     OD_BUFFER_BACKUP="$1"
 
-   if ! readPacketPreambleCommandLength "OD_BUFFER"; then
+   if ! readPacketPreambleCommandLength "$VALUE_PARSEPACKET_BUFFERNAME"; then
       echo >&2 "Warning: Packet preamble failure, errorcode: $EXITCODE_PARSEPACKET"
 
       #return "$EXITCODE_PARSEPACKET"
@@ -1127,6 +1130,10 @@ parsePacket()
     fi
 
     [ "$DEBUG" -eq 1 ] && echo >&2 "Received command $PRX_CMD integer cmd $PRX_CMD_UINT8"
+
+    destroyBuffer "$VALUE_PARSEPACKET_BUFFERNAME"
+
+    unset VALUE_PARSEPACKET_BUFFERNAME
 
     return "$EXITCODE_PARSEPACKET"
 }

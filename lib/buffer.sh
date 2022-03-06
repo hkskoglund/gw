@@ -17,34 +17,34 @@ newBuffer()
 {
     EXITCODE_BUFFER=0
 
-    read_buffername=$1 # every buffer start with GWBUFFER
-    read_buffervalue=$2
+    newbuffer_name=$1
+    newbuffer_value=$2
 
     unset buffer_index
 
     case $GWBUFFER_NAMES in
-        *$read_buffername*) [ $DEBUG_BUFFER -eq 1 ] && echo >&2 echo "newBuffer: overwrite $read_buffername"
-                             destroyBuffer "$read_buffername" #overwrite
+        *$newbuffer_name*) [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "newBuffer: overwrite $newbuffer_name"
+                             destroyBuffer "$newbuffer_name" #overwrite
                             ;;
     esac
 
-    eval "$read_buffername=\"$read_buffervalue\" ${read_buffername}_HEAD=0"
+    eval "$newbuffer_name=\"$newbuffer_value\" ${newbuffer_name}_HEAD=0"
 
-    GWBUFFER_NAMES="$GWBUFFER_NAMES$read_buffername " #keep track of buffernames
+    GWBUFFER_NAMES="$GWBUFFER_NAMES$newbuffer_name " #keep track of buffernames
 
     IFS=' '
-    eval set -- "$read_buffervalue"
-    eval "${read_buffername}_LENGTH=$#"
+    eval set -- "$newbuffer_value"
+    eval "${newbuffer_name}_LENGTH=$#"
     buffer_index=0
     while [ $buffer_index -lt $# ]; do
-        eval "${read_buffername}_$buffer_index=\${$(( buffer_index +1 ))}"
+        eval "${newbuffer_name}_$buffer_index=\${$(( buffer_index + 1 ))}"
         buffer_index=$(( buffer_index + 1 ))
     done
 
-    [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "new buffer; buffername: $read_buffername, value: $read_buffervalue, length: $#"
+    [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "new buffer; buffername: $newbuffer_name, value: $newbuffer_value, length: $#"
    
 
-    unset read_buffername read_buffervalue buffer_index
+    unset newbuffer_name newbuffer_value buffer_index
 
     return "$EXITCODE_BUFFER"
 
@@ -54,10 +54,10 @@ destroyBuffer()
 # unset buffer
 # $1 buffername
 {
-
     EXITCODE_BUFFER=0
+
     read_buffername=$1
-    [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "Destroying buffer $read_buffername"
+    [ $DEBUG_BUFFER -eq 1 ] && eval echo >&2 "Destroying buffer $read_buffername , LENGTH \$${read_buffername}_LENGTH"
 
     case $GWBUFFER_NAMES in
       *$1*)
@@ -67,7 +67,7 @@ destroyBuffer()
             #shellcheck disable=SC2154
             while [ $N -lt "$buflen" ]; do
                 unset "${read_buffername}_$N"
-                N=$(( N + 1))
+                N=$(( N + 1 ))
             done 
             unset "${read_buffername}" "${read_buffername}_LENGTH" "${read_buffername}_HEAD" 
 
@@ -78,7 +78,7 @@ destroyBuffer()
             ;;
     esac
 
-    unset N buflen
+    unset N buflen read_buffername
 
     return $EXITCODE_BUFFER
 }
@@ -234,9 +234,9 @@ readSlice()
         eval "${readslice_buffername}_HEAD=$readslice_head_index"
     fi
     
-    [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "readSlice buffername: $read_buffername, bytes: $readslice_byte_count, info: $readslice_info"
+    [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "readSlice buffername: $readslice_buffername, bytes: $readslice_byte_count, info: $readslice_info"
 
-    unset readslice_N readslice_head_index readslice_byte_count readslice_buffername readslice_info readslice_bufferlength 
+    unset readslice_N readslice_head_index readslice_byte_count readslice_buffername readslice_info readslice_buffer_length readslice_startpos
 
     return "$EXITCODE_BUFFER"
 }
@@ -264,6 +264,8 @@ readUInt8()
     fi
 
     [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readUInt8 buffername: "$read_buffername" uint8: "$VALUE_UINT8" info: "$read_info" startpos: "$read_startpos"
+
+    unset read_buffername read_info read_startpos
 
     return $EXITCODE_BUFFER
 
@@ -362,7 +364,7 @@ readUInt32BE()
         EXITCODE_BUFFER=$?
     fi
   
-    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 echo >&2 readUInt32BE buffername: "$read_buffername"  uint32: "$VALUE_UINT32BE" info: "$read_info" 
+    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readUInt32BE buffername: "$read_buffername"  uint32: "$VALUE_UINT32BE" info: "$read_info" 
 
     return "$EXITCODE_BUFFER"
 

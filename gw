@@ -228,16 +228,16 @@ initConfigDir() {
 copySystemToLivedata()
 #copies system info to UI variables
 {
-    LIVEDATA_SYSTEM_FREQUENCY=$GW_SYSTEM_FREQUENCY_STATE
-    LIVEDATA_SYSTEM_SENSORTYPE=$GW_SYSTEM_SENSORTYPE_STATE
-    LIVEDATA_SYSTEM_UTC=$GW_SYSTEM_UTC_STATE #local time 
-    LIVEDATA_SYSTEM_TIMEZONE=$GW_SYSTEM_TIMEZONE_INDEX_STATE
-    LIVEDATA_SYSTEM_TIMEZONE_DST_BIT=$GW_SYSTEM_TIMEZONE_DST_BIT
-    LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT=$GW_SYSTEM_TIMEZONE_AUTO_BIT
-    LIVEDATA_SYSTEM_TIMEZONE_OFFSET_HOURS=$GW_SYSTEM_TIMEZONE_OFFSET_HOURS
-    LIVEDATA_SYSTEM_HOST=$GW_HOST
-    LIVEDATA_SYSTEM_VERSION="$GW_VERSION"
-    LIVEDATA_SYSTEM_MAC=$GW_MAC
+    export LIVEDATA_SYSTEM_FREQUENCY=$GW_SYSTEM_FREQUENCY_STATE
+    export LIVEDATA_SYSTEM_SENSORTYPE=$GW_SYSTEM_SENSORTYPE_STATE
+    export LIVEDATA_SYSTEM_UTC="$GW_SYSTEM_UTC_STATE" #local time 
+    export LIVEDATA_SYSTEM_TIMEZONE="$GW_SYSTEM_TIMEZONE_INDEX_STATE"
+    export LIVEDATA_SYSTEM_TIMEZONE_DST_BIT=$GW_SYSTEM_TIMEZONE_DST_BIT
+    export LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT=$GW_SYSTEM_TIMEZONE_AUTO_BIT
+    export LIVEDATA_SYSTEM_TIMEZONE_OFFSET_HOURS="$GW_SYSTEM_TIMEZONE_OFFSET_HOURS"
+    export LIVEDATA_SYSTEM_HOST="$GW_HOST"
+    export LIVEDATA_SYSTEM_VERSION="$GW_VERSION"
+    export LIVEDATA_SYSTEM_MAC="$GW_MAC"
 
 }
 
@@ -655,7 +655,6 @@ processSensorOptions()
 parseRaindataOptions()
 #parse options to -c rain command
 {
-    
     #copy read values
     rainday=$GW_RAINDAILY_INTS10
     rainweek=$GW_RAINWEEK_INTS10
@@ -928,6 +927,10 @@ processDebugOptions()
         
             ""|--*|-*)  DEBUG=1
                         ;;
+            set)        DEBUG_OPTION_SET=1 # show all variables
+                        ;;
+            export)     DEBUG_OPTION_EXPORT=1 # show exported variables
+                        ;;
             strict)     DEBUG_OPTION_STRICTPACKET=1 # check packet length and crc of received packets
                         ;;
             t|trace)    DEBUG_OPTION_TRACEPACKET=1 # trace tx/rx packets in hex format during sendpacketnc
@@ -978,7 +981,7 @@ processDebugOptions()
                       done
                       unset uvi
                       ;;
-                    *)  echo >&2 "Error: Unknown debug option $opt, use append | a, buffer | b, command | c, http | h, sensor | s, t | trace"
+                    *)  echo >&2 "Error: Unknown debug option $opt, use append | a, buffer | b, command | c, http | h, sensor | s, t | trace, export, set"
                         echo >&2  "Styling: beufort | wind, pm25, rainintensity | ri, uvi"
                         ;;
         esac
@@ -1786,7 +1789,9 @@ while [ $# -gt 0 ]; do
 done
 
 #typeset +f - list all function names/ksh93
-#set # list all variables
+
+[ $DEBUG_OPTION_SET -eq 1 ] && set # list all variables
+[ $DEBUG_OPTION_EXPORT -eq 1 ] && export 
 
 cleanup
 
