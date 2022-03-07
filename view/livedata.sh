@@ -410,7 +410,7 @@ printLivedata()
         while [ "$n" -le "$SENSORTYPE_WH43PM25_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_PM25${n}_24HAVG" ]; then
                         if [ -z \"\$LIVEVIEW_HIDE_PM25AQI\" ]; then
-                            setAQI \"\$LIVEDATA_PM2${n}5_24HAVG_INTS10\"
+                            setAQI \"\$LIVEDATA_PM25${n}_24HAVG_INTS10\"
                             setStyleAQI \"\$LIVEDATA_PM25${n}_24HAVG_INTS10\"
                             STYLE_LIVE_VALUE=\$STYLE_AQI
                         else
