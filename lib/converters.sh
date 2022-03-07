@@ -612,7 +612,7 @@ setPressureHttpLivedata()
        VALUE_INHG_HPA_SCALE10=$VALUE_FLOAT_TO_INT
     fi
 
-    eval export "$1"_UINT16="$VALUE_INHG_HPA_SCALE10"
+    eval export "$1"_INTS10="$VALUE_INHG_HPA_SCALE10"
     
     if [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_HPA" ]; then
         convertScale10ToFloat "$VALUE_INHG_HPA_SCALE10"
@@ -635,7 +635,7 @@ setWindHttpLivedata()
         VALUE_MPS_SCALE10=$VALUE_FLOAT_TO_INT
     fi
     
-    eval export "$1_UINT16=$VALUE_MPS_SCALE10"
+    eval export "$1_INTS10=$VALUE_MPS_SCALE10"
     
     if [ "$UNIT_WIND_MODE" -eq "$UNIT_WIND_MPS" ]; then
        convertScale10ToFloat "$VALUE_MPS_SCALE10"
@@ -655,7 +655,7 @@ setWindDirHttpLivedata()
       return
     fi
  
-    eval export "$1"_"$3"="$2" 
+    eval export "$1_INTS10"="$2" 
     convertWindDirectionToCompassDirection "$2"
     eval export "$1"_COMPASS="$VALUE_COMPASS_DIRECTION"
     eval export "$1"_COMPASS_UNICODE="$VALUE_COMPASS_DIRECTION_UNICODE"
@@ -665,7 +665,6 @@ setWindDirHttpLivedata()
 setRainHttpLivedata()
 #$1 - field name
 #$2 - value
-#$3 - raw type
 {
     convert_in_to_mm "$2"
 
@@ -674,7 +673,7 @@ setRainHttpLivedata()
         VALUE_IN_MM_SCALE10=$VALUE_FLOAT_TO_INT
     fi
     
-    eval export "$1_$3"="$VALUE_IN_MM_SCALE10"
+    eval export "$1_INTS10"="$VALUE_IN_MM_SCALE10"
     
     if [ "$UNIT_RAIN_MODE" -eq "$UNIT_RAIN_MM" ]; then
         convertScale10ToFloat "$VALUE_IN_MM_SCALE10"
@@ -683,7 +682,6 @@ setRainHttpLivedata()
         eval export "$1"="$2"
     fi
 }
-
 
 setTemperatureHttpLivedata()
 {
@@ -697,7 +695,7 @@ setTemperatureHttpLivedata()
        roundFloat "$VALUE_CELCIUS_SCALE10"
        VALUE_CELCIUS_SCALE10=$VALUE_FLOAT_TO_INT
     fi
-    eval export "$1_INT16=$VALUE_CELCIUS_SCALE10"
+    eval export "$1_INTS10=$VALUE_CELCIUS_SCALE10"
     if [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_CELCIUS" ]; then
         convertScale10ToFloat "$VALUE_CELCIUS_SCALE10"
         eval export "$1"="$VALUE_SCALE10_FLOAT"

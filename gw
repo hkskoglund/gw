@@ -507,6 +507,10 @@ processCustomizedOptions() {
 
     [ $DEBUG -eq 1 ] && printCustomized >&2
 
+    if [ $GW_WS_CUSTOMIZED_HTTP -eq 1 ] && [ ${#GW_WS_CUSTOMIZED_ID} -eq 0 ] && [ ${#GW_WS_CUSTOMIZED_PASSWORD} -eq 0 ];  then
+      echo >&2 Warning: "Using zero length id and password wont send data to port $GW_WS_CUSTOMIZED_PORT with wunderground protocol"
+    fi
+
     sendCustomized "$GW_HOST" 
 
     unset key value option

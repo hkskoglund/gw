@@ -121,6 +121,7 @@ EOL
 parseEcowittHttpRequest()
 #$1 - http request message (entire)
 {
+    DEBUG_HTTP=${DEBUG_HTTP:=$DEBUG}
 
     parseHttpLines "$1"
 
@@ -128,14 +129,14 @@ parseEcowittHttpRequest()
     export LIVEDATA_SYSTEM_PROTOCOL_LONG="$LIVEDATA_PROTOCOL_ECOWITT_HTTP_LONG"
     export LIVEDATA_SYSTEM_PROTOCOL_VERSION="$HTTP_VERSION"
     
-    [ "$DEBUG" -eq 1 ] && printf "HTTP BODY\n%s\n" "$HTTP_BODY"
+    [ "$DEBUG_HTTP" -eq 1 ] && printf "HTTP BODY\n%s\n" "$HTTP_BODY"
     IFS='&'
     
     for f in $HTTP_BODY; do
         
-        [ "$DEBUG" -eq  1 ] && echo >&2 Parsing field "$f" 
         value=${f##*=}  # remove largest prefix pattern
         key=${f%%=*}    # remove largest suffix pattern
+        [ "$DEBUG_HTTP" -eq  1 ] && echo >&2 "Parsing ecowitt http key: $key value: $value" 
         
         case "$key" in
 
@@ -185,12 +186,13 @@ parseEcowittHttpRequest()
             
             winddir)
 
-                    setWindDirHttpLivedata LIVEDATA_WINDDIRECTION "$value" UINT16
+                    setWindDirHttpLivedata LIVEDATA_WINDDIRECTION "$value"
                 ;;
 
             windspeedmph)
 
                 setWindHttpLivedata LIVEDATA_WINDSPEED "$value"
+
                 ;;
 
             windgustmph)
@@ -205,37 +207,37 @@ parseEcowittHttpRequest()
         
             rainratein)
 
-                setRainHttpLivedata LIVEDATA_RAINRATE "$value" UINT16
+                setRainHttpLivedata LIVEDATA_RAINRATE "$value"
                 ;;
 
             eventrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINEVENT "$value" UINT16
+                setRainHttpLivedata LIVEDATA_RAINEVENT "$value"
                 ;;
 
-                hourlyrainin)
+            hourlyrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINHOUR "$value" UINT16
+                setRainHttpLivedata LIVEDATA_RAINHOUR "$value"
                 ;;
 
-                dailyrainin)
+            dailyrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINDAY "$value" UINT16
+                setRainHttpLivedata LIVEDATA_RAINDAY "$value"
                 ;;
 
             weeklyrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINWEEK "$value" UINT16
+                setRainHttpLivedata LIVEDATA_RAINWEEK "$value"
                 ;;
 
             monthlyrainin)
                 
-                setRainHttpLivedata LIVEDATA_RAINMONTH "$value" UINT32
+                setRainHttpLivedata LIVEDATA_RAINMONTH "$value" 
                 ;;
 
             yearlyrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINYEAR "$value" UINT32
+                setRainHttpLivedata LIVEDATA_RAINYEAR "$value"
                 ;;
 
             totalrainin)
@@ -278,7 +280,6 @@ parseEcowittHttpRequest()
             uv)
                     export LIVEDATA_SOLAR_UVI="$value"
                 ;;
-
 
             wh65batt)
 
@@ -349,7 +350,7 @@ parseEcowittHttpRequest()
                ;; 
 
             *) echo >&2 "Warning: Unsupported key $key length ${#key} in ecowitt http request"
-               [ "$DEBUG" -eq 1 ] && printf >&2 "%s" "$key" | od -A n -t x1
+               [ "$DEBUG_HTTP" -eq 1 ] && printf >&2 "%s" "$key" | od -A n -t x1
                ;;
                 
         esac
@@ -365,6 +366,7 @@ parseEcowittHttpRequest()
 parseWundergroundHttpReqest()
 #gw doesnt send request unless station id and station password are set
 {
+    DEBUG_HTTP=${DEBUG_HTTP:=$DEBUG}
    parseHttpLines "$1"
 
    LIVEDATA_SYSTEM_PROTOCOL=$LIVEDATA_PROTOCOL_WUNDERGROUND_HTTP
@@ -387,11 +389,11 @@ parseWundergroundHttpReqest()
     #for f in $http_request; do
     for f in ${HTTP_URL#*\?}; do #\? remove everything in front up to ?-> start at ID=
 
-        [ "$DEBUG" -eq  1 ] && echo >&2 Parsing field "$f" 
-
         value=${f##*=}
         key=${f%%=*}
-    
+
+       [ "$DEBUG_HTTP" -eq  1 ] && echo >&2 "Parsing wunderground http key: $key value: $value" 
+
             #password is url encoded, for example space=%20 https://stackoverflow.com/questions/6250698/how-to-decode-url-encoded-string-in-shell
         #TEST echo "$key=$value"
 
@@ -441,27 +443,27 @@ parseWundergroundHttpReqest()
 
             rainin)
                 #or pr hour?
-                setRainHttpLivedata LIVEDATA_RAINRATE "$value" UINT16
+                setRainHttpLivedata LIVEDATA_RAINRATE "$value" 
                 ;;
 
             dailyrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINDAY "$value" UINT16
+                setRainHttpLivedata LIVEDATA_RAINDAY "$value"
                 ;;
 
             weeklyrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINWEEK "$value" UINT16
+                setRainHttpLivedata LIVEDATA_RAINWEEK "$value"
                 ;;
 
             monthlyrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINMONTH "$value" UINT32
+                setRainHttpLivedata LIVEDATA_RAINMONTH "$value"
                 ;;
 
             yearlyrainin)
 
-                setRainHttpLivedata LIVEDATA_RAINYEAR "$value" UINT32
+                setRainHttpLivedata LIVEDATA_RAINYEAR "$value"
                 ;;
 
             winddir)
