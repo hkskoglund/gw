@@ -41,12 +41,12 @@ case "$ONELINE_FORMAT" in
      toLowercase "$LIVEDATA_SOLAR_UVI_DESCRIPTION"
      solar_uvi_description="$VALUE_LOWERCASE"
      
-     printf "%s %s | %s %s | %s %s %s %s %s | rain %s %s %s %s %s %s | UV index $LIVEDATASTYLE_SOLAR_UVI%s %s$STYLE_RESET\n"\
-      "$LIVEDATA_OUTTEMP" "$LIVEDATAUNIT_TEMP"\
+     printf "%s %s %s %s | %s %s | %s %s %s %s %s | rain %s %s %s %s %s %s | %s %s $LIVEDATASTYLE_SOLAR_UVI%s %s$STYLE_RESET\n"\
+      "$LIVEDATA_OUTTEMP" "$LIVEDATAUNIT_TEMP" "$LIVEDATA_OUTHUMI" "$LIVEDATAUNIT_HUMIDITY"\
       "$LIVEDATA_PRESSURE_RELBARO" "$LIVEDATAUNIT_PRESSURE"\
       "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE" "$LIVEDATA_WINDDIRECTION_COMPASS" "$LIVEDATA_WINDSPEED-$LIVEDATA_WINDGUSTSPEED" "$LIVEDATAUNIT_WIND" "$beufort_wingustspeed_description"\
       "$LIVEDATA_RAINDAY" "$LIVEDATAUNIT_RAIN" "$LIVEDATA_RAINRATE" "$LIVEDATAUNIT_RAINRATE" "$LIVEDATA_RAINRATE_STATE" "$rainrate_state_description"\
-       "$LIVEDATA_SOLAR_UVI" "$solar_uvi_description"
+       "$LIVEDATA_SOLAR_LIGHT" "$LIVEDATAUNIT_SOLAR_LIGHT" "$LIVEDATA_SOLAR_UVI" "$solar_uvi_description"
 
   ;;
   *)
