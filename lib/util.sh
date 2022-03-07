@@ -28,23 +28,27 @@ isHex()
     esac
 }
 
-toLowercase() {
+toLowercase()
+# convert string to lowercase
+# $1 string
+# set VALUE_LOWERCASE
+ {
     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
         #shellcheck disable=SC3044
         typeset -l lowcasestr # -l option -> lowercase on assignment/or ignored
     fi
 
     if [ -n "$BASH_VERSION" ]; then
-        eval 'LOWERCASE=${1,,}' #eval prevents ksh from stopping parsing on syntax error
+        eval 'VALUE_LOWERCASE=${1,,}' #eval prevents ksh from stopping parsing on syntax error
     elif [ -n "$ZSH_VERSION" ]; then
         #shellcheck disable=SC3057
-        LOWERCASE=${1:l}
+        VALUE_LOWERCASE=${1:l}
     elif [ -n "$KSH_VERSION" ]; then
         # Android 11 runds mir bsd korn shell http://www.mirbsd.org/mksh.htm
         lowcasestr=$1
-        LOWERCASE=$lowcasestr
+        VALUE_LOWERCASE=$lowcasestr
     else
-        LOWERCASE=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+        VALUE_LOWERCASE=$(echo "$1" | tr '[:upper:]' '[:lower:]')
     fi
 
     if [ -n "$KSH_VERSION" ]; then

@@ -71,14 +71,14 @@ EOH
                 set -- $HTTP_KEY
                 #echo KEY PART1 "$1" KEY PART2 "$2"
                 toLowercase "$1"
-                HTTP_KEY_PART1=$LOWERCASE
+                HTTP_KEY_PART1=$VALUE_LOWERCASE
                 toLowercase "$2"
-                HTTP_KEY_PART2=$LOWERCASE
+                HTTP_KEY_PART2=$VALUE_LOWERCASE
                 eval "HTTP_HEADER_${HTTP_KEY_PART1}_$HTTP_KEY_PART2=${HTTP_VALUE# }"
                 ;;
         *)         
                 toLowercase "$HTTP_KEY"
-                HTTP_KEY=$LOWERCASE
+                HTTP_KEY=$VALUE_LOWERCASE
                 eval "HTTP_HEADER_$HTTP_KEY=${HTTP_VALUE# }" # trim 1 leading space
                ;;
     esac

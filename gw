@@ -1529,7 +1529,7 @@ while [ $# -gt 0 ]; do
           -c | --command)
 
             toLowercase "$2"
-            COMMAND=$LOWERCASE
+            COMMAND=$VALUE_LOWERCASE
 
             shift 1 # remove -c
 
