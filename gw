@@ -609,7 +609,7 @@ processSensorOptions()
                 sendPacket $CMD_READ_SENSOR_ID_NEW "$GW_HOST" #only sent for first , expression
                 sentReadSensorIdCommand=1
             else # yet another read (for example -c sensor 1-10,40-47) use in-memory buffer backup 
-               IFS=" " parsePacket "$OD_BUFFER_BACKUP" 
+               IFS=" " eval parsePacket \$"$VALUE_PARSEPACKET_BUFFERNAME" 
             fi
             SENSORVIEW_HIDE_HEADER=1 #disabled header for next , expression
             continue

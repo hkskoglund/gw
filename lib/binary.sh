@@ -1081,7 +1081,6 @@ parsePacket()
     fi
 
     newBuffer "$VALUE_PARSEPACKET_BUFFERNAME" "$1"
-    OD_BUFFER_BACKUP="$1"
 
    if ! readPacketPreambleCommandLength "$VALUE_PARSEPACKET_BUFFERNAME"; then
       echo >&2 "Warning: Packet preamble failure, errorcode: $EXITCODE_PARSEPACKET"
@@ -1091,7 +1090,7 @@ parsePacket()
 
      { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" ] ; } && {
        printf >&2 "< %-20s" "$COMMAND_NAME"
-       printBuffer >&2 "$OD_BUFFER_BACKUP" 
+       eval printBuffer >&2 \$"$VALUE_PARSEPACKET_BUFFERNAME" 
     }
 
     if isWriteCommand "$PRX_CMD_UINT8"; then
