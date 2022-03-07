@@ -9,7 +9,7 @@ ERROR_READ_BUFFER=${ERROR_READ_BUFFER:=1}
 # https://unix.stackexchange.com/questions/3510/how-to-print-only-defined-variables-shell-and-or-environment-variables-in-bash
 
 newBuffer() 
-# initialize new buffer with space delimited decimal uint8 string
+# initialize new buffer with a space delimited decimal uint8 string
 # $1 buffername, $2 value
 # set $1_HEAD index of current read position (zero index)
 # set $1_LENGTH number of bytes
@@ -43,11 +43,9 @@ newBuffer()
 
     [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "new buffer; buffername: $newbuffer_name, value: $newbuffer_value, length: $#"
    
-
     unset newbuffer_name newbuffer_value buffer_index
 
     return "$EXITCODE_BUFFER"
-
 }
 
 destroyBuffer()

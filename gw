@@ -448,7 +448,7 @@ processCustomizedOptions() {
 
             path_wunderground | p_w)
 
-                if ${#GW_WS_CUSTOMIZED_PATH_WU} -le 64 ]; then
+                if [ ${#GW_WS_CUSTOMIZED_PATH_WU} -le 64 ]; then
 
                     if isGWdevice "$GW_VERSION" && [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PATH ]; then
                     update_path_wu=1

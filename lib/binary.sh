@@ -945,7 +945,7 @@ parseLivedata()
 
         elif [ "$ldf" -ge "$LDF_LIGHTNING_POWER" ]; then
 
-            readUInt32BE ""$VALUE_PARSEPACKET_BUFFERNAME"" "lightning power"
+            readUInt32BE "$VALUE_PARSEPACKET_BUFFERNAME" "lightning power"
             export LIVEDATA_LIGHTNING_POWER="$VALUE_UINT32BE"
 
         elif [ "$ldf" -ge "$LDF_LEAF_WETNESS_CH1" ] && [ "$ldf" -le "$LDF_LEAF_WETNESS_CH8" ]; then
