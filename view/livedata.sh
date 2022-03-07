@@ -211,6 +211,7 @@ printLivedata()
             if [ -z "$LIVEVIEW_HIDE_BEUFORT" ]; then
                 setStyleBeufort "$LIVEDATA_WINDSPEED_INTS10"
                 STYLE_LIVE_VALUE=$STYLE_BEUFORT
+                export LIVEDATASTYLE_WINDSPEED="$STYLE_BEUFORT"
             fi
             printLivedataLine "$LIVEDATAHEADER_WINDSPEED" "$LIVEDATA_WINDSPEED" "%6.1f" "$LIVEDATAUNIT_WIND"  "%4s" 'wspd' "%6.1f" '' '' "\t%s$LIVEDATA_WINDDIRECTION_COMPASS_N_FMT" 
            
@@ -221,6 +222,7 @@ printLivedata()
                 setBeufort "$LIVEDATA_WINDGUSTSPEED_INTS10"
                 setStyleBeufort "$LIVEDATA_WINDGUSTSPEED_INTS10"
                 STYLE_LIVE_VALUE=$STYLE_BEUFORT
+                export LIVEDATASTYLE_WINDGUSTSPEED="$STYLE_BEUFORT"
            else
              unset LV_DELIMITER
             fi
@@ -240,6 +242,7 @@ printLivedata()
                 setBeufort "$LIVEDATA_WINDDAILYMAX_INTS10"
                 setStyleBeufort "$LIVEDATA_WINDDAILYMAX_INTS10"
                 STYLE_LIVE_VALUE=$STYLE_BEUFORT
+                export LIVEDATASTYLE_WINDDAILYMAX="$STYLE_BEUFORT"
             else
                 unset LV_DELIMITER
             fi
@@ -413,7 +416,7 @@ printLivedata()
                         fi
                         export LIVEDATA_PM25${n}_AQI_24HAVG=\"\$VALUE_PM25_AQI\"
                         padSpaceRight \"\$VALUE_PM25_AQI\" 13
-                        printLivedataLine \"\$LIVEDATAHEADER_PM25${n}_24HAVG \$LV_DELIMITER \$VALUE_PM25_AQI\" \"\$LIVEDATA_PM25${n}_24HAVG\" \"%6.1f\" \"\$LIVEDATAUNIT_PM25\" \"%6s\" \"pm25a$n\" \"%6.1f\"
+                        printLivedataLine \"\$LIVEDATAHEADER_PM25${n}_24HAVG \$LV_DELIMITER \$VALUE_PADSPACERIGHT\" \"\$LIVEDATA_PM25${n}_24HAVG\" \"%6.1f\" \"\$LIVEDATAUNIT_PM25\" \"%6s\" \"pm25a$n\" \"%6.1f\"
              fi"
             n=$((n + 1))
         done
