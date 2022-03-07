@@ -352,6 +352,8 @@ GW1000A_V1.6.8
 Allows viewing hex file in Visual Studio Code
 ## append | a - print append format/args for liveview
 ## strict - show warning if packet length is not the same as actual packet length and crc fails
+## export - show exported variables
+## set - show all variables
 <br><br>
 
 # Standalone execution of livedata view
