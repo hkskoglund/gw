@@ -4,9 +4,14 @@
  # source arguments to dash shell
 # . | source - run in current shell
 # shellcheck disable=SC1091
+#echo "start args $*"
 if [ -z "$1" ]; then
   echo >&2 Error: no host ip
-  return 1
+  if return 1 2>/dev/null; then
+    :
+  else
+    exit 1
+  fi
 fi
 
 #https://github.com/koalaman/shellcheck/wiki/SC2240 The dot command does not support arguments in sh/dash. Set them as variables.
@@ -23,8 +28,8 @@ if [ $GWEXPORTSHOW -eq 1 ] ; then
 fi
 
 # oneliner
-printf "in %s %u out %s %u Wind: %s %s speed %s gust %s %s %u Pressure: %s abs %s Rain: rate %s %s day %s Solar: light %s uvi %s\n" "$LIVEDATA_INTEMP" "$LIVEDATA_INHUMI" "$LIVEDATA_OUTTEMP" "$LIVEDATA_OUTHUMI"\
+printf "in %s %u out %s %u Wind: %s %s speed %s gust %s %s %u Pressure: %s abs %s Rain: rate %s %s day %s Solar: light %s uvi $LIVEDATASTYLE_SOLAR_UVI%s$STYLE_RESET %s\n" "$LIVEDATA_INTEMP" "$LIVEDATA_INHUMI" "$LIVEDATA_OUTTEMP" "$LIVEDATA_OUTHUMI"\
  "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE" "$LIVEDATA_WINDDIRECTION_COMPASS" "$LIVEDATA_WINDSPEED" "$LIVEDATA_WINDGUSTSPEED" "$LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION" "$LIVEDATA_WINDGUSTSPEED_BEUFORT"\
  "$LIVEDATA_PRESSURE_RELBARO" "$LIVEDATA_PRESSURE_ABSBARO"\
  "$LIVEDATA_RAINRATE" "$LIVEDATA_RAINRATE_STATE" "$LIVEDATA_RAINDAY"\
- "$LIVEDATA_SOLAR_LIGHT" "$LIVEDATA_SOLAR_UVI"
+ "$LIVEDATA_SOLAR_LIGHT" "$LIVEDATA_SOLAR_UVI" "$LIVEDATA_SOLAR_UVI_DESCRIPTION"

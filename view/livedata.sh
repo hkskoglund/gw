@@ -275,9 +275,11 @@ printLivedata()
         if [ -n "$LIVEDATA_SOLAR_UVI" ]; then
            if [ -z "$LIVEVIEW_HIDE_UVI" ]; then
                 setUVRisk "$LIVEDATA_SOLAR_UVI"
+                export LIVEDATA_SOLAR_UVI_DESCRIPTION="$VALUE_UV_RISK"
                 setStyleUVI "$LIVEDATA_SOLAR_UVI"
                 #shellcheck disable=SC2153
                 STYLE_LIVE_VALUE=$STYLE_UVI
+                export LIVEDATASTYLE_SOLAR_UVI="$STYLE_UVI"
             else
               unset LV_DELIMITER
             fi
