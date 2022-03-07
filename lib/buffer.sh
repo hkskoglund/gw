@@ -288,7 +288,9 @@ readInt8()
         EXITCODE_BUFFER=$?
     fi
 
-    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readInt8 buffername: "$read_buffername" int8: "$VALUE_INT8" info: "$read_info" 
+    [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readInt8 buffername: "$read_buffername" int8: "$VALUE_INT8" info: "$read_info"
+
+    unset read_buffername read_info 
 
     return $EXITCODE_BUFFER
 
@@ -316,6 +318,8 @@ readUInt16BE()
   
     [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readUInt16BE buffername: "$read_buffername"  uint16: "$VALUE_UINT16BE" info: "$read_info" 
 
+    unset read_buffername read_info 
+
     return "$EXITCODE_BUFFER"
 }
 
@@ -339,6 +343,7 @@ readInt16BE()
 
     [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readInt16BE buffername: "$read_buffername"  int16: "$VALUE_INT16BE" info: "$read_info" 
 
+    unset read_buffername read_info 
 
     return "$EXITCODE_BUFFER"
 
@@ -366,6 +371,8 @@ readUInt32BE()
   
     [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 readUInt32BE buffername: "$read_buffername"  uint32: "$VALUE_UINT32BE" info: "$read_info" 
 
+    unset read_buffername read_info 
+
     return "$EXITCODE_BUFFER"
 
 }
@@ -389,6 +396,7 @@ readInt32BE()
 
     [ "$DEBUG_BUFFER" -eq 1 ] && echo >&2 echo >&2 readInt32BE buffername: "$read_buffername"  int32: "$VALUE_INT32BE" info: "$read_info" 
 
+    unset read_buffername read_info 
 
     return "$EXITCODE_BUFFER"
 }
@@ -442,7 +450,7 @@ readString()
 
     [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "readString: $VALUE_STRING length: ${#VALUE_STRING}"
 
-    unset len_uint8 n
+    unset len_uint8 n read_info read_buffername
 
     return "$EXITCODE_BUFFER"
 }
