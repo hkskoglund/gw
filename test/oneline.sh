@@ -38,8 +38,15 @@ case "$ONELINE_FORMAT" in
      beufort_wingustspeed_description="$VALUE_LOWERCASE"
      toLowercase "$LIVEDATA_RAINRATE_STATE_DESCRIPTION"
      rainrate_state_description="$VALUE_LOWERCASE"
-     printf "%s %s %s %s %s %s %s %s %s %s %s\n" "$LIVEDATA_OUTTEMP" "$LIVEDATAUNIT_TEMP" "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE" "$LIVEDATA_WINDDIRECTION_COMPASS" "$LIVEDATA_WINDGUSTSPEED" "$LIVEDATAUNIT_WIND" "$beufort_wingustspeed_description"\
-    "$LIVEDATA_RAINRATE" "$LIVEDATAUNIT_RAINRATE" "$LIVEDATA_RAINRATE_STATE" "$rainrate_state_description" 
+     toLowercase "$LIVEDATA_SOLAR_UVI_DESCRIPTION"
+     solar_uvi_description="$VALUE_LOWERCASE"
+     
+     printf "%s %s | %s %s | %s %s %s %s %s | rain %s %s %s %s %s %s | UV index $LIVEDATASTYLE_SOLAR_UVI%s %s$STYLE_RESET\n"\
+      "$LIVEDATA_OUTTEMP" "$LIVEDATAUNIT_TEMP"\
+      "$LIVEDATA_PRESSURE_RELBARO" "$LIVEDATAUNIT_PRESSURE"\
+      "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE" "$LIVEDATA_WINDDIRECTION_COMPASS" "$LIVEDATA_WINDSPEED-$LIVEDATA_WINDGUSTSPEED" "$LIVEDATAUNIT_WIND" "$beufort_wingustspeed_description"\
+      "$LIVEDATA_RAINDAY" "$LIVEDATAUNIT_RAIN" "$LIVEDATA_RAINRATE" "$LIVEDATAUNIT_RAINRATE" "$LIVEDATA_RAINRATE_STATE" "$rainrate_state_description"\
+       "$LIVEDATA_SOLAR_UVI" "$solar_uvi_description"
 
   ;;
   *)
