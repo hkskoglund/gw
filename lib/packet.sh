@@ -10,7 +10,7 @@ fi
 sendPacket()
 # wrapper function for sending packet to host
 # previous prototype used bash tcp/udp functionality, instead of locking the script to bash only, nc command is used instead for allowing multiple shells
-# $1 command, $2 host
+# $1 command, $2 host, $3 backup filename (optional)
 {
     EXITCODE_SENDPACKET=0
 
@@ -66,9 +66,8 @@ sendPacketnc()
 { 
     EXITCODE_SENDPACKETNC=0
     DEBUG_SENDPACKETNC=${DEBUG_SENDPACKETNC:=$DEBUG_PACKET}
-    DEBUG_FUNC='sendPacketnc'
 
-    [ "$DEBUG_SENDPACKETNC" -eq 1 ] && echo >&2 "$DEBUG_FUNC args: $* length: $# 0: $0 command: $1 host: $2 PACKET_TX_BODY: $PACKET_TX_BODY"
+    [ "$DEBUG_SENDPACKETNC" -eq 1 ] && echo >&2 "sendPacketnc args: $* length: $# 0: $0 command: $1 host: $2 PACKET_TX_BODY: $PACKET_TX_BODY"
     
     timeout_nc=0.05
     timeout_udp_broadcast=0.236 # timeout selected based on udp port scanning 254 hosts in 60s (60s/254=0.236s)
@@ -205,15 +204,18 @@ newPacket()
 }
 
 getPacketLength()
-# get length of tx packet buffer, set VALUE_LENGTH
+# get length of tx packet buffer
 # $1 string of uint8 integers with space
+# set VALUE_PACKET_LENGTH
 {
     IFS=' '
-    VALUE_LENGTH=0
-    for BYTE in $1; do
-      VALUE_LENGTH=$(( VALUE_LENGTH + 1 ))
-    done
-    unset BYTE
+    if [ -z "$1" ]; then # just command, no body
+      VALUE_PACKET_LENGTH=0
+    else
+      set -- "$1"
+      VALUE_PACKET_LENGTH=$#
+    fi
+    [ $DEBUG_PACKET -eq 1 ] && echo >&2 "getPacketLength VALUE_PACKET_LENGTH=$VALUE_PACKET_LENGTH"
 }
 
 checksum()
@@ -246,9 +248,10 @@ checksumPacketTX()
     [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 "checksumPacketTX: START command: $1 PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
 
     getPacketLength "$PACKET_TX_BODY"
-    PACKET_TX_BODY_LENGTH=$((VALUE_LENGTH + 2)) # at least 2 byte for (length + checksum bytes)
+
+    PACKET_TX_BODY_LENGTH=$((VALUE_PACKET_LENGTH + 2)) # minimum 2 byte for (length + checksum bytes)
     
-    if [ "$PACKET_TX_CMD" -eq "$CMD_BROADCAST" ] || [ "$PACKET_TX_CMD" -eq "$CMD_WRITE_SSID" ]; then # 2 byte length 
+    if [ "$PACKET_TX_CMD" -eq "$CMD_BROADCAST" ] || [ "$PACKET_TX_CMD" -eq "$CMD_WRITE_SSID" ]; then # 2 byte packet length 
         PACKET_TX_BODY_LENGTH=$(( PACKET_TX_BODY_LENGTH + 1 ))
         PACKET_TX_LENGTH=" $(( ((PACKET_TX_BODY_LENGTH + 1) & 0xff00) >> 8 )) $(( (PACKET_TX_BODY_LENGTH + 1) & 0xff ))"
     else

@@ -1574,10 +1574,10 @@ while [ $# -gt 0 ]; do
                             DEBUG_BACKUP=1
                             [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "$(date) Backup started to $FILENAME_BACKUP"
 
-                            for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND ; do
+                            for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND $CMD_READ_WOW $CMD_READ_WEATHERCLOUD ; do
                                 getCommandName "$cmd"
                                 if sendPacket $cmd "$GW_HOST" "$FILENAME_BACKUP"; then
-                                     [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "OK $COMMAND_NAME"
+                                     [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "$COMMAND_NAME OK"
                                 else
                                    echo >&2 "FAILED $COMMAND_NAME, error code: $?"
                                 fi
@@ -1600,15 +1600,25 @@ while [ $# -gt 0 ]; do
                         elif [ -z "$GW_HOST" ]; then
                             echo >&2 Error: No host
                             EXITCODE_MAIN=$ERROR_NO_HOST_SPECIFIED
-                            shift
+                            set -x
+                            if [ -n "$2" ]; then 
+                                shift 2
+                            else 
+                               shift
+                            fi
                         else
                             FILENAME_RESTORE="$2"
-                            printf "%s" "Overwrite current configuration for host $GW_HOST (Y) ? "
-                            read -r RESTORE_OVERWRITE_CURRENT
-                            if [ "$RESTORE_OVERWRITE_CURRENT" = "Y" ]; then
-                                restoreBackup "$FILENAME_RESTORE" "$GW_HOST"
-                            fi 
-                            shift
+                            if [ -e "$FILENAME_RESTORE" ]; then
+                                printf "%s" "Overwrite current configuration for host $GW_HOST (Y) ? "
+                                read -r RESTORE_OVERWRITE_CURRENT
+                                if [ "$RESTORE_OVERWRITE_CURRENT" = "Y" ]; then
+                                    restoreBackup "$FILENAME_RESTORE" "$GW_HOST"
+                                fi 
+                            else
+                                echo >&2 "Error: restore filename $FILENAME_RESTORE does not exsist"
+                                EXITCODE_MAIN=$ERROR_NONEXIST_FILENAME
+                            fi
+                            shift 2
                         fi
                         
                         ;;

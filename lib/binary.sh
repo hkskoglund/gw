@@ -977,20 +977,28 @@ parseLivedata()
     
 }
 
+commandHas2BytePacketLength()
+# broadcast, livedata, read_sensor_id_new has 2 byte packet length
+# return 0 = two byte packet length
+{
+    if [ "$1" -eq "$CMD_BROADCAST" ] || [ "$1" -eq "$CMD_LIVEDATA" ] || [ "$1" -eq "$CMD_READ_SENSOR_ID_NEW" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 readPacketPreambleCommandLength()
 # verify preamble = ff ff, read command and packet length
 # $1 buffername
-# set PACKET_RX_LENGTH, PACKET_RX_CRC (optional if strict packet check)
+# set PACKET_RX_LENGTH, PACKET_RX_CRC 
 # set EXITCODE_PARSEPACKET
 {
     EXITCODE_PARSEPACKET=0
 
     readPacketPreambleCommandLength_buffername=$1
-    eval realPacketLength="\$${readPacketPreambleCommandLength_buffername}_LENGTH"
-    #shellcheck disable=SC2154
-    packetCRCPosition=$(( realPacketLength - 1 )) # -1 due to 0-index
-
-    readSlice "$1" 4 "packet preamble"
+   
+    readSlice "$readPacketPreambleCommandLength_buffername" 4 "packet preamble"
 
     IFS=" " 
     #shellcheck disable=SC2086
@@ -1006,7 +1014,7 @@ readPacketPreambleCommandLength()
     getCommandName "$PRX_CMD_UINT8"
   
     #Packet length
-    if [ "$PRX_CMD_UINT8" -eq "$CMD_BROADCAST" ] || [ "$PRX_CMD_UINT8" -eq "$CMD_LIVEDATA" ] || [ "$PRX_CMD_UINT8" -eq "$CMD_READ_SENSOR_ID_NEW" ]; then
+    if commandHas2BytePacketLength "$PRX_CMD_UINT8"; then
         readUInt8 "$readPacketPreambleCommandLength_buffername" "command name: $COMMAND_NAME dec: $PRX_CMD_UINT8 16-bit packet length msb: $4 lsb"
         PACKET_RX_LENGTH_BYTES=2
         PACKET_RX_LENGTH=$(( ($4 << 8) | VALUE_UINT8))
@@ -1015,9 +1023,11 @@ readPacketPreambleCommandLength()
         PACKET_RX_LENGTH=$(($4))
     fi
 
-    eval packetContentPosition="\$${readPacketPreambleCommandLength_buffername}_HEAD" # backup position
-
     if [ "$DEBUG_OPTION_STRICTPACKET" -eq 1 ]; then
+        eval packetContentPosition="\$${readPacketPreambleCommandLength_buffername}_HEAD" # backup position
+
+        eval realPacketLength="\$${readPacketPreambleCommandLength_buffername}_LENGTH"
+
         # verify packet length
         #shellcheck disable=SC2154
         if ! [ $(( realPacketLength - 2 )) -eq $PACKET_RX_LENGTH  ]; then # -2 for "255 255" packet header
@@ -1027,6 +1037,9 @@ readPacketPreambleCommandLength()
         else
             [ "$DEBUG" -eq 1 ] &&  echo >&2 "RX PACKET LENGTH (byte 3 in packet) $PACKET_RX_LENGTH, actual packet length $(( realPacketLength - 2 )) "
         fi
+
+         #shellcheck disable=SC2154
+        packetCRCPosition=$(( realPacketLength - 1 )) # -1 due to 0-index
 
         readUInt8 "$readPacketPreambleCommandLength_buffername" "verify crc" $packetCRCPosition
         PACKET_RX_CRC=$VALUE_UINT8
@@ -1089,9 +1102,7 @@ parsePacket()
 
      { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" ] ; } && {
        printf >&2 "< %-20s" "$COMMAND_NAME"
-       set -x
        eval printBuffer >&2 \"\$"$VALUE_PARSEPACKET_BUFFERNAME"\" 
-       set +x
     }
 
     if isWriteCommand "$PRX_CMD_UINT8"; then
@@ -1139,50 +1150,77 @@ parsePacket()
 }
 
 restoreBackup()
-# restore configuration from backup file
+# restore configuration from backup file (containing bundle of read commands)
 # $1 filename
 # $2 host
 {
-    RESTORE_BUFFER="$(od -A n -t u1 -w"$MAX_16BIT_UINT" "$1")"
+    EXITCODE_RESTOREBACKUP=0
+    restoreFilename="$1"
+    restoreHost="$2"
 
-    while [ ${#RESTORE_BUFFER} -gt 0 ]; do 
+    
+    if ! RESTORE_BUFFER="$(od -A n -t u1 -w"$MAX_16BIT_UINT" "$restoreFilename")"; then
+          EXITCODE_RESTOREBACKUP=$?
+         echo >&2 Error: unable to restore from filename "$restoreFilename"
+         return "$EXITCODE_RESTOREBACKUP"
+    fi
 
-        if ! readPacketPreambleCommandLength  "RESTORE_BUFFER"; then
-            return "$EXITCODE_PARSEPACKET"
+    IFS=' '
+    #shellcheck disable=SC2086
+    set -- $RESTORE_BUFFER
+    # $1=255 $2=255 $3=command $4=msb packet length, $5 (optional 2byte packet length)
+
+    while [ $# -gt 0 ]; do
+        restoreReadCommand=$(( $3 )) 
+        restoreWriteCommand=$(( restoreReadCommand + 1 )) # writecmd.=readcmd.+ 1
+        getCommandName "$restoreWriteCommand"
+        echo >&2 "restoring command $COMMAND_NAME"
+
+        if ! commandHas2BytePacketLength "$restoreReadCommand"; then
+            restorePacketLength=$(( $4 ))
+        else
+        restorePacketLength=$(( ( $4 << 8 ) | $5 ))
         fi
 
-        echo >&2 "Restore $COMMAND_NAME dec: $PRX_CMD_UINT8 packet length:$PACKET_RX_LENGTH, packet length bytes: $PACKET_RX_LENGTH_BYTES"
+set -x
+        restoreCRCpos=$(( 2 + restorePacketLength ))
+        set +x
+        eval "restoreReadCRC=\${$restoreCRCpos}"
+        #shellcheck disable=SC2154 disable=SC2034
+        restoreWriteCRC=$(( ( restoreReadCRC + 1) & 255 )) # just add 1 to checksum
 
-        newPacket "$(( PRX_CMD_UINT8 + 1))" # write command (read + 1 )
-        RESTORE_N=1
-        while [ $RESTORE_N -le $(( PACKET_RX_LENGTH - PACKET_RX_LENGTH_BYTES - 2 )) ]; do # -2 = command + checksum
-            readUInt8 "RESTORE_BUFFER"
-          # writeUInt8 "PACKET_TX" "$VALUE_UINT8"
-            echo >&2 "Read RESTORE_N:$RESTORE_N uint8:$VALUE_UINT8 uint8hex:$(printf "%x" "$VALUE_UINT8") restorebuflen: ${#RESTORE_BUFFER}"
-            RESTORE_N=$(( RESTORE_N + 1))
-            done
-
-            DEBUG_SENDPACKETNC=1 sendPacket "$(( PRX_CMD_UINT8 + 1))" "$2"
-
-            readUInt8 "RESTORE_BUFFER" #checksum
+        restorePos=4
+        restoreBuffer="\$1 \$2 \$restoreWriteCommand" # build string with positional parameters containing packet
+        while [ $restorePos -le $(( restoreCRCpos - 1 )) ]; do
+            restoreBuffer="$restoreBuffer \${$restorePos}"
+            restorePos=$(( restorePos + 1))
+        done
+        set -x
+        eval "restoreBuffer=\"$restoreBuffer \$restoreWriteCRC\"" #set the packet with new CRC
+        set +x
+        shift $restoreCRCpos
     done
+
+   # echo >&2 restoreWriteCommand: $restoreWriteCommand restorePacketLength: $restorePacketLength restoreCRCpos: $restoreCRCpos restoreCRC: $restoreCRC
+
+    return 0
 
 }
 
 isWriteCommand() {
     [ "$1" -eq "$CMD_WRITE_ECOWITT_INTERVAL" ] ||
-        [ "$1" -eq "$CMD_WRITE_RESET" ] ||
-        [ "$1" -eq "$CMD_WRITE_CUSTOMIZED" ] ||
-        [ "$1" -eq "$CMD_WRITE_PATH" ] ||
-        [ "$1" -eq "$CMD_REBOOT" ] ||
-        [ "$1" -eq "$CMD_WRITE_SSID" ] ||
-        [ "$1" -eq "$CMD_WRITE_RAINDATA" ] ||
-        [ "$1" -eq "$CMD_WRITE_WUNDERGROUND" ] ||
-        [ "$1" -eq "$CMD_WRITE_WOW" ] ||
-        [ "$1" -eq "$CMD_WRITE_WEATHERCLOUD" ] ||
-        [ "$1" -eq "$CMD_WRITE_SENSOR_ID" ] ||
-        [ "$1" -eq "$CMD_WRITE_CALIBRATION" ] ||
-        [ "$1" -eq "$CMD_WRITE_SYSTEM" ]
+    [ "$1" -eq "$CMD_WRITE_RESET" ] ||
+    [ "$1" -eq "$CMD_WRITE_CUSTOMIZED" ] ||
+    [ "$1" -eq "$CMD_WRITE_PATH" ] ||
+    [ "$1" -eq "$CMD_REBOOT" ] ||
+    [ "$1" -eq "$CMD_WRITE_SSID" ] ||
+    [ "$1" -eq "$CMD_WRITE_RAINDATA" ] ||
+    [ "$1" -eq "$CMD_WRITE_WUNDERGROUND" ] ||
+    [ "$1" -eq "$CMD_WRITE_WOW" ] ||
+    [ "$1" -eq "$CMD_WRITE_WEATHERCLOUD" ] ||
+    [ "$1" -eq "$CMD_WRITE_SENSOR_ID" ] ||
+    [ "$1" -eq "$CMD_WRITE_CALIBRATION" ] ||
+    [ "$1" -eq "$CMD_WRITE_SYSTEM" ]
 }
 
 printWeatherServices ()
