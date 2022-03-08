@@ -1574,6 +1574,7 @@ while [ $# -gt 0 ]; do
                             DEBUG_BACKUP=1
                             [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "$(date) Backup started to $FILENAME_BACKUP"
 
+                            # backup weather services (compatible with EasyWeather/GW* devices)
                             for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND $CMD_READ_WOW $CMD_READ_WEATHERCLOUD $CMD_READ_CUSTOMIZED; do
                                 getCommandName "$cmd"
                                 if sendPacket $cmd "$GW_HOST" "$FILENAME_BACKUP"; then
@@ -1581,8 +1582,9 @@ while [ $# -gt 0 ]; do
                                 else
                                    echo >&2 "FAILED $COMMAND_NAME, error code: $?"
                                 fi
-                               
                             done
+
+                            #to do: GW* devices backup sensor configuration etc.
                             
                             [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "$(date) Backup finished"
 
