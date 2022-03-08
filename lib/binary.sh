@@ -26,8 +26,8 @@ parseResult() {
     export GW_RESULT="$write_result"
 
     if [ "$write_result" -eq 0 ]; then
-    :
-     #   echo >&2 "$COMMAND_NAME OK"
+        #:
+        [ "$DEBUG_OPTION_RESULT" -eq 1 ] && echo >&2 "$COMMAND_NAME OK"
     elif [ "$write_result" -eq 1 ]; then
         echo >&2 "$COMMAND_NAME FAIL"
     else
@@ -35,7 +35,6 @@ parseResult() {
     fi
 
     unset write_result
-
 }
 
 printBroadcast() {
@@ -1090,7 +1089,9 @@ parsePacket()
 
      { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" ] ; } && {
        printf >&2 "< %-20s" "$COMMAND_NAME"
-       eval printBuffer >&2 \$"$VALUE_PARSEPACKET_BUFFERNAME" 
+       set -x
+       eval printBuffer >&2 \"\$"$VALUE_PARSEPACKET_BUFFERNAME"\" 
+       set +x
     }
 
     if isWriteCommand "$PRX_CMD_UINT8"; then

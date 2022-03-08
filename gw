@@ -613,7 +613,7 @@ processSensorOptions()
                 sendPacket $CMD_READ_SENSOR_ID_NEW "$GW_HOST" #only sent for first , expression
                 sentReadSensorIdCommand=1
             else # yet another read (for example -c sensor 1-10,40-47) use in-memory buffer backup 
-               IFS=" " eval parsePacket \$"$VALUE_PARSEPACKET_BUFFERNAME" 
+               IFS=" " eval parsePacket \"\$"$VALUE_PARSEPACKET_BUFFERNAME"\" 
             fi
             SENSORVIEW_HIDE_HEADER=1 #disabled header for next , expression
             continue
@@ -931,6 +931,9 @@ processDebugOptions()
         
             ""|--*|-*)  DEBUG=1
                         ;;
+
+            result)     DEBUG_OPTION_RESULT=1 # always show packet result
+                        ;;
             set)        DEBUG_OPTION_SET=1 # show all variables
                         ;;
             export)     DEBUG_OPTION_EXPORT=1 # show exported variables
@@ -985,7 +988,7 @@ processDebugOptions()
                       done
                       unset uvi
                       ;;
-                    *)  echo >&2 "Error: Unknown debug option $opt, use append | a, buffer | b, command | c, http | h, sensor | s, t | trace, export, set"
+                    *)  echo >&2 "Error: Unknown debug option $opt, use append | a, buffer | b, command | c, http | h, sensor | s, t | trace, export, set, result"
                         echo >&2  "Styling: beufort | wind, pm25, rainintensity | ri, uvi"
                         ;;
         esac
@@ -1567,20 +1570,21 @@ while [ $# -gt 0 ]; do
                         else
                             FILENAME_BACKUP='backup.hex'
                             IFS=' '
-                            #[ $DEBUG -eq 1 ] &&
-                            echo >&2 "$(date) Backup started to $FILENAME_BACKUP"
+                            DEBUG_BACKUP=${DEBUG_BACKUP:=$DEBUG}
+                            DEBUG_BACKUP=1
+                            [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "$(date) Backup started to $FILENAME_BACKUP"
+
                             for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND ; do
                                 getCommandName "$cmd"
                                 if sendPacket $cmd "$GW_HOST" "$FILENAME_BACKUP"; then
-                                     # [ $DEBUG -eq 1 ] &&
-                                     echo >&2 "OK $COMMAND_NAME"
+                                     [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "OK $COMMAND_NAME"
                                 else
                                    echo >&2 "FAILED $COMMAND_NAME, error code: $?"
                                 fi
                                
                             done
-                            #[ $DEBUG -eq 1 ] &&
-                            echo >&2 "$(date) Backup stopped"
+                            
+                            [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "$(date) Backup finished"
 
                             unset cmd FILENAME_BACKUP
                             shift
