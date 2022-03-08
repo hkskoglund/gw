@@ -1201,6 +1201,7 @@ restoreBackup()
 
    # echo >&2 restoreWriteCommand: $restoreWriteCommand restorePacketLength: $restorePacketLength restoreCRCpos: $restoreCRCpos restoreCRC: $restoreCRC
 
+    unset restoreFilename restoreHost restoreReadCommand restoreWriteCommand restorePacketLength restorePos restoreBuffer restoreCRCpos
     return 0
 
 }
