@@ -1182,9 +1182,7 @@ restoreBackup()
         restorePacketLength=$(( ( $4 << 8 ) | $5 ))
         fi
 
-set -x
         restoreCRCpos=$(( 2 + restorePacketLength ))
-        set +x
         eval "restoreReadCRC=\${$restoreCRCpos}"
         #shellcheck disable=SC2154 disable=SC2034
         restoreWriteCRC=$(( ( restoreReadCRC + 1) & 255 )) # just add 1 to checksum
