@@ -27,11 +27,11 @@ parseResult() {
 
     if [ "$write_result" -eq 0 ]; then
         #:
-        [ "$DEBUG_OPTION_RESULT" -eq 1 ] && echo >&2 "$COMMAND_NAME OK"
+        [ "$DEBUG_OPTION_RESULT" -eq 1 ] && echo >&2 "$VALUE_COMMAND_NAME OK"
     elif [ "$write_result" -eq 1 ]; then
-        echo >&2 "$COMMAND_NAME FAIL"
+        echo >&2 "$VALUE_COMMAND_NAME FAIL"
     else
-        echo >&2 "$COMMAND_NAME errorcode: $write_result"
+        echo >&2 "$VALUE_COMMAND_NAME errorcode: $write_result"
     fi
 
     unset write_result
@@ -977,13 +977,32 @@ parseLivedata()
     
 }
 
-commandHas2BytePacketLength()
-# broadcast, livedata, read_sensor_id_new has 2 byte packet length
+commandHas2BytePacketLengthResponse()
+# broadcast, livedata, read_sensor_id_new has 2 byte response packet length
 # return 0 = two byte packet length
 {
+    DEBUG_COMMANDHAS2BYTEPACKETLENGTH=${DEBUG_COMMANDHAS2BYTEPACKETLENGTH:=$DEBUG}
+
     if [ "$1" -eq "$CMD_BROADCAST" ] || [ "$1" -eq "$CMD_LIVEDATA" ] || [ "$1" -eq "$CMD_READ_SENSOR_ID_NEW" ]; then
+          [ "$DEBUG_COMMANDHAS2BYTEPACKETLENGTH" -eq 1 ] && { getCommandName "$1"; echo >&2 "commandHas2BytePacketLengthResponse YES/0 command: $VALUE_COMMAND_NAME dec: $1" ; }
         return 0
     else
+         [ "$DEBUG_COMMANDHAS2BYTEPACKETLENGTH" -eq 1 ] && { getCommandName "$1"; echo >&2 "commandHas2BytePacketLengthResponse NO/1 command: $VALUE_COMMAND_NAME dec: $1"; }
+        return 1
+    fi
+}
+
+commandHas2BytePacketLength()
+# broadcast, write ssid has two byte packet length
+{
+    DEBUG_COMMANDHAS2BYTEPACKETLENGTH=${DEBUG_COMMANDHAS2BYTEPACKETLENGTH:=$DEBUG}
+
+    if  [ "$1" -eq "$CMD_BROADCAST" ] || [ "$1" -eq "$CMD_WRITE_SSID" ] 
+     then
+          [ "$DEBUG_COMMANDHAS2BYTEPACKETLENGTH" -eq 1 ] && { getCommandName "$1"; echo >&2 "commandHas2BytePacketLength         YES/0 command: $VALUE_COMMAND_NAME dec: $1" ; }
+        return 0
+    else
+         [ "$DEBUG_COMMANDHAS2BYTEPACKETLENGTH" -eq 1 ] && { getCommandName "$1"; echo >&2 "commandHas2BytePacketLength         NO/1 command: $VALUE_COMMAND_NAME dec: $1"; }
         return 1
     fi
 }
@@ -1014,8 +1033,8 @@ readPacketPreambleCommandLength()
     getCommandName "$PRX_CMD_UINT8"
   
     #Packet length
-    if commandHas2BytePacketLength "$PRX_CMD_UINT8"; then
-        readUInt8 "$readPacketPreambleCommandLength_buffername" "command name: $COMMAND_NAME dec: $PRX_CMD_UINT8 16-bit packet length msb: $4 lsb"
+    if commandHas2BytePacketLengthResponse "$PRX_CMD_UINT8"; then
+        readUInt8 "$readPacketPreambleCommandLength_buffername" "command name: $VALUE_COMMAND_NAME dec: $PRX_CMD_UINT8 16-bit packet length msb: $4 lsb"
         PACKET_RX_LENGTH_BYTES=2
         PACKET_RX_LENGTH=$(( ($4 << 8) | VALUE_UINT8))
     else
@@ -1032,7 +1051,7 @@ readPacketPreambleCommandLength()
         #shellcheck disable=SC2154
         if ! [ $(( realPacketLength - 2 )) -eq $PACKET_RX_LENGTH  ]; then # -2 for "255 255" packet header
             #[ "$DEBUG" -eq 1 ] && 
-            printf >&2  "Warning: %s dec: %u hex: %x, reported packet length %u not the same as actual packet length %u\n" "$COMMAND_NAME" "$PRX_CMD_UINT8" "$PRX_CMD_UINT8" "$PACKET_RX_LENGTH" "$(( realPacketLength - 2 ))"
+            printf >&2  "Warning: %s dec: %u hex: %x, reported packet length %u not the same as actual packet length %u\n" "$VALUE_COMMAND_NAME" "$PRX_CMD_UINT8" "$PRX_CMD_UINT8" "$PACKET_RX_LENGTH" "$(( realPacketLength - 2 ))"
             EXITCODE_PARSEPACKET=$ERROR_PARSEPACKET_LENGTH
         else
             [ "$DEBUG" -eq 1 ] &&  echo >&2 "RX PACKET LENGTH (byte 3 in packet) $PACKET_RX_LENGTH, actual packet length $(( realPacketLength - 2 )) "
@@ -1045,7 +1064,7 @@ readPacketPreambleCommandLength()
         PACKET_RX_CRC=$VALUE_UINT8
         eval getPacketCRC "\"\$$readPacketPreambleCommandLength_buffername\""
         if [ "$PACKET_RX_CRC" -ne "$VALUE_CRC" ]; then
-            printf >&2 "Warning: %s, dec: %u hex: %x , inpacket crc %u != %u  (calculated), packet CRC index: %u\n" "$COMMAND_NAME" "$PRX_CMD_UINT8"  "$PRX_CMD_UINT8" "$PACKET_RX_CRC" "$VALUE_CRC" "$packetCRCPosition"
+            printf >&2 "Warning: %s, dec: %u hex: %x , inpacket crc %u != %u  (calculated), packet CRC index: %u\n" "$VALUE_COMMAND_NAME" "$PRX_CMD_UINT8"  "$PRX_CMD_UINT8" "$PACKET_RX_CRC" "$VALUE_CRC" "$packetCRCPosition"
             EXITCODE_PARSEPACKET=$ERROR_PARSEPACKET_CRC
         fi
 
@@ -1101,7 +1120,7 @@ parsePacket()
    fi
 
      { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" ] ; } && {
-       printf >&2 "< %-20s" "$COMMAND_NAME"
+       printf >&2 "< %-20s" "$VALUE_COMMAND_NAME"
        eval printBuffer >&2 \"\$"$VALUE_PARSEPACKET_BUFFERNAME"\" 
     }
 
@@ -1136,7 +1155,7 @@ parsePacket()
     elif [ "$PRX_CMD_UINT8" -eq "$CMD_READ_SENSOR_ID_NEW" ] ||[ "$PRX_CMD_UINT8" -eq "$CMD_READ_SENSOR_ID" ]; then
         parseSensorIdNew
     else
-        echo >&2 ERROR Parsing of command "$COMMAND_NAME" not supported
+        echo >&2 ERROR Parsing of command "$VALUE_COMMAND_NAME" not supported
         EXITCODE_PARSEPACKET=$ERROR_PARSEPACKET_UNSUPPORTED_COMMAND
     fi
 
@@ -1153,12 +1172,14 @@ restoreBackup()
 # restore configuration from backup file (containing bundle of read commands)
 # $1 filename
 # $2 host
+# $3 filter
 {
     EXITCODE_RESTOREBACKUP=0
+
     restoreFilename="$1"
     restoreHost="$2"
+    restoreFilter="$3"
 
-    
     if ! RESTORE_BUFFER="$(od -A n -t u1 -w"$MAX_16BIT_UINT" "$restoreFilename")"; then
           EXITCODE_RESTOREBACKUP=$?
          echo >&2 Error: unable to restore from filename "$restoreFilename"
@@ -1170,16 +1191,16 @@ restoreBackup()
     set -- $RESTORE_BUFFER
     # $1=255 $2=255 $3=command $4=msb packet length, $5 (optional 2byte packet length)
 
-    while [ $# -gt 0 ]; do
+    while [ $# -gt 4 ]; do
         restoreReadCommand=$(( $3 )) 
         restoreWriteCommand=$(( restoreReadCommand + 1 )) # writecmd.=readcmd.+ 1
         getCommandName "$restoreWriteCommand"
-        echo >&2 "restoring command $COMMAND_NAME"
+        echo >&2 "restoring command $VALUE_COMMAND_NAME"
 
         if ! commandHas2BytePacketLength "$restoreReadCommand"; then
             restorePacketLength=$(( $4 ))
         else
-        restorePacketLength=$(( ( $4 << 8 ) | $5 ))
+            restorePacketLength=$(( ( $4 << 8 ) | $5 ))
         fi
 
         restoreCRCpos=$(( 2 + restorePacketLength ))
@@ -1189,21 +1210,28 @@ restoreBackup()
 
         restorePos=4
         restoreBuffer="\$1 \$2 \$restoreWriteCommand" # build string with positional parameters containing packet
+        backupBuffer="\$1 \$2 \$3"
         while [ $restorePos -le $(( restoreCRCpos - 1 )) ]; do
             restoreBuffer="$restoreBuffer \${$restorePos}"
+            backupBuffer="$backupBuffer \${$restorePos}"
             restorePos=$(( restorePos + 1))
         done
-        set -x
+        #set -x
         eval "restoreBuffer=\"$restoreBuffer \$restoreWriteCRC\"" #set the packet with new CRC
-        set +x
+        eval "backupBuffer=\"$backupBuffer \$restoreReadCRC\""
+        #set +x
+        case "$restoreFilter" in
+          cat) parsePacket "$backupBuffer" # view backup content
+                ;;
+        esac
         shift $restoreCRCpos
     done
 
    # echo >&2 restoreWriteCommand: $restoreWriteCommand restorePacketLength: $restorePacketLength restoreCRCpos: $restoreCRCpos restoreCRC: $restoreCRC
 
-    unset restoreFilename restoreHost restoreReadCommand restoreWriteCommand restorePacketLength restorePos restoreBuffer restoreCRCpos
-    return 0
-
+    unset restoreBuffer backupBuffer restoreFilename restoreHost restoreReadCommand restoreWriteCommand restorePacketLength restorePos restoreBuffer restoreCRCpos restoreFilter
+    
+    return $EXITCODE_RESTOREBACKUP
 }
 
 isWriteCommand() {

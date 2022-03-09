@@ -398,18 +398,21 @@ processCustomizedOptions() {
 
                     wunderground | w | 1)
                         value=1
+                         [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_TYPE from $GW_WS_CUSTOMIZED_HTTP to $value"
+                          GW_WS_CUSTOMIZED_HTTP=$value
                         ;;
 
                     ecowitt | e | 0)
                         value=0
+                          [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_TYPE from $GW_WS_CUSTOMIZED_HTTP to $value"
+                          GW_WS_CUSTOMIZED_HTTP=$value
                         ;;
 
                     *)  echo >&2 "Error: Unknown value $value for http protocol, use wunderground|w|1 or ecowitt|e|0"
                         EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED_OPTION"
                 esac
 
-                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_TYPE from $GW_WS_CUSTOMIZED_HTTP to $value"
-                GW_WS_CUSTOMIZED_HTTP=$value
+              
                 ;;
 
             enabled | e)
@@ -418,18 +421,19 @@ processCustomizedOptions() {
 
                     on | 1 | yes | y)
                        value=1
+                        [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_enabled from $GW_WS_CUSTOMIZED_ENABLED to $value"
+                        GW_WS_CUSTOMIZED_ENABLED=$value
                         ;;
 
                     off | 0 | no | n)
                         value=0
+                        [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_enabled from $GW_WS_CUSTOMIZED_ENABLED to $value"
+                        GW_WS_CUSTOMIZED_ENABLED=$value
                         ;;
 
                     *)  echo >&2 "Error: Unknown value $value for enabled, use on|1|yes|y, off|0|no|n"
                         EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED_OPTION"
                 esac
-
-                [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_enabled from $GW_WS_CUSTOMIZED_ENABLED to $value"
-                GW_WS_CUSTOMIZED_ENABLED=$value
 
                 ;;
 
@@ -1575,16 +1579,21 @@ while [ $# -gt 0 ]; do
                             [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "$(date) Backup started to $FILENAME_BACKUP"
 
                             # backup weather services (compatible with EasyWeather/GW* devices)
-                            for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND $CMD_READ_WOW $CMD_READ_WEATHERCLOUD $CMD_READ_CUSTOMIZED; do
-                                getCommandName "$cmd"
-                                if sendPacket $cmd "$GW_HOST" "$FILENAME_BACKUP"; then
-                                     [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "$COMMAND_NAME OK"
-                                else
-                                   echo >&2 "FAILED $COMMAND_NAME, error code: $?"
-                                fi
+                            for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND $CMD_READ_WOW $CMD_READ_WEATHERCLOUD $CMD_READ_CUSTOMIZED $CMD_READ_PATH; do
+                                sendBackupCommand "$cmd" "$GW_HOST" "$FILENAME_BACKUP"
                             done
 
-                            #to do: GW* devices backup sensor configuration etc.
+                            if isGWdevice "$GW_VERSION"; then
+                                getSensorIdCommand "$GW_VERSION_INT"
+                                backup_commands="$CMD_READ_SOILHUMIAD $CMD_READ_SYSTEM $CMD_READ_RAINDATA $CMD_READ_GAIN $CMD_READ_CALIBRATION $VALUE_SENSORID_READ_COMMAND"
+                                 [ "$GW_VERSION_INT" -ge $FW_CMD_READ_MULCH_OFFSET ] && backup_commands="$backup_commands $CMD_READ_MULCH_OFFSET"
+                                 [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PM25_OFFSET ] && backup_commands="$backup_commands $CMD_READ_PM25_OFFSET"
+                                 [ "$GW_VERSION_INT" -ge $FW_CMD_READ_CO2_OFFSET ] && backup_commands="$backup_commands $CMD_READ_CO2_OFFSET"
+
+                                for cmd in $backup_commands; do
+                                    sendBackupCommand "$cmd" "$GW_HOST" "$FILENAME_BACKUP"
+                                done
+                            fi
                             
                             [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "$(date) Backup finished"
 
@@ -1602,7 +1611,6 @@ while [ $# -gt 0 ]; do
                         elif [ -z "$GW_HOST" ]; then
                             echo >&2 Error: No host
                             EXITCODE_MAIN=$ERROR_NO_HOST_SPECIFIED
-                            set -x
                             if [ -n "$2" ]; then 
                                 shift 2
                             else 
@@ -1614,7 +1622,12 @@ while [ $# -gt 0 ]; do
                                 printf "%s" "Overwrite current configuration for host $GW_HOST (Y) ? "
                                 read -r RESTORE_OVERWRITE_CURRENT
                                 if [ "$RESTORE_OVERWRITE_CURRENT" = "Y" ]; then
-                                    restoreBackup "$FILENAME_RESTORE" "$GW_HOST"
+                                  if ! argEmptyOrOption "$3"; then
+                                        restoreBackup "$FILENAME_RESTORE" "$GW_HOST" "$3"
+                                        shift
+                                  else
+                                        restoreBackup "$FILENAME_RESTORE" "$GW_HOST"
+                                  fi
                                 fi 
                             else
                                 echo >&2 "Error: restore filename $FILENAME_RESTORE does not exsist"

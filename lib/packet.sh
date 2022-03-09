@@ -77,7 +77,7 @@ sendPacketnc()
 
     { [ "$DEBUG_SENDPACKETNC" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" ] ; } &&
     {
-        printf >&2 "> %-20s" "$COMMAND_NAME"
+        printf >&2 "> %-20s" "$VALUE_COMMAND_NAME"
         printBuffer >&2 "$PACKET_TX"
     }
 
@@ -86,8 +86,8 @@ sendPacketnc()
     if [ "$DEBUG_OPTION_TRACEPACKET" -eq 1 ]; then
        #visual studio code: problems with HH:MM:SS display for date -> using space
        tracedate=$(date +'%H %M %S %N') #https://superuser.com/questions/674464/print-current-time-with-milliseconds
-       rxpipecmd=" | tee \"rx-$COMMAND_NAME-$tracedate.hex\""
-       txpipecmd=" | tee \"tx-$COMMAND_NAME-$tracedate.hex\""
+       rxpipecmd=" | tee \"rx-$VALUE_COMMAND_NAME-$tracedate.hex\""
+       txpipecmd=" | tee \"tx-$VALUE_COMMAND_NAME-$tracedate.hex\""
     fi
 
     if [ -n "$3" ]; then # append to backup file
@@ -158,14 +158,17 @@ sendPacketnc()
     if [ -n "$cmdstr" ]; then
 
        if [ -n "$DEBUG_OPTION_COMMAND" ] && [ "$DEBUG_OPTION_COMMAND" -eq 1 ]; then
-            printf >&2 "%s: %s\n" "$COMMAND_NAME" "$cmdstr"
+            printf >&2 "%s: %s\n" "$VALUE_COMMAND_NAME" "$cmdstr"
        fi
        
        if [ "$DEBUG_SENDPACKETNC" -eq 1 ]; then
-            echo >&2 "Sending packet $COMMAND_NAME to $2:$port"
+            echo >&2 "Sending packet $VALUE_COMMAND_NAME to $2:$port"
        fi 
 
        od_buffer=$(eval "$cmdstr" )
+       if [ -z "$od_buffer" ]; then
+         echo >&2 "Warning: no response from host $2"
+       fi
        #maybe use: https://stackoverflow.com/questions/1550933/catching-error-codes-in-a-shell-pipe
        if [ -z "$3" ]; then
             parsePacket "$od_buffer"
@@ -199,7 +202,7 @@ newPacket()
     PACKET_TX_PREAMBLE="255 255"
     unset PACKET_TX PACKET_TX_LENGTH PACKET_TX_ESCAPE PACKET_TX_BODY PACKET_TX_BODY_LENGTH
 
-    [ $DEBUG_PACKET -eq 1 ] && echo >&2 newPacket command "$1" "$COMMAND_NAME"
+    [ $DEBUG_PACKET -eq 1 ] && echo >&2 newPacket command "$1" "$VALUE_COMMAND_NAME"
    #set | grep PACKET
 }
 
@@ -212,7 +215,8 @@ getPacketLength()
     if [ -z "$1" ]; then # just command, no body
       VALUE_PACKET_LENGTH=0
     else
-      set -- "$1"
+      #shellcheck disable=SC2086
+      set -- $1
       VALUE_PACKET_LENGTH=$#
     fi
     [ $DEBUG_PACKET -eq 1 ] && echo >&2 "getPacketLength VALUE_PACKET_LENGTH=$VALUE_PACKET_LENGTH"
@@ -251,7 +255,7 @@ checksumPacketTX()
 
     PACKET_TX_BODY_LENGTH=$((VALUE_PACKET_LENGTH + 2)) # minimum 2 byte for (length + checksum bytes)
     
-    if [ "$PACKET_TX_CMD" -eq "$CMD_BROADCAST" ] || [ "$PACKET_TX_CMD" -eq "$CMD_WRITE_SSID" ]; then # 2 byte packet length 
+    if commandHas2BytePacketLength "$PACKET_TX_CMD" ; then  
         PACKET_TX_BODY_LENGTH=$(( PACKET_TX_BODY_LENGTH + 1 ))
         PACKET_TX_LENGTH=" $(( ((PACKET_TX_BODY_LENGTH + 1) & 0xff00) >> 8 )) $(( (PACKET_TX_BODY_LENGTH + 1) & 0xff ))"
     else
@@ -479,6 +483,22 @@ sendSensorId()
     unset n
 
     sendPacket "$CMD_WRITE_SENSOR_ID" "$4"
+}
+
+sendBackupCommand()
+# $1 command
+# $2 host
+# $3 backup filename
+{
+    EXITCODE_SENDBACKUPCOMMAND=0
+     getCommandName "$1"
+    if sendPacket "$1" "$2" "$3"; then
+            [ $DEBUG_PACKET -eq 1 ] && echo >&2 "Backup $VALUE_COMMAND_NAME OK"
+    else
+        EXITCODE_SENDBACKUPCOMMAND=$?
+        echo >&2 "Backup $VALUE_COMMAND_NAME, FAILED error code: $EXITCODE_SENDBACKUPCOMMAND"
+    fi
+    return $EXITCODE_SENDBACKUPCOMMAND
 }
 
 discovery() {
