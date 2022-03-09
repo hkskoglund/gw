@@ -101,8 +101,6 @@ getCommandName()
         "$CMD_WRITE_CO2_OFFSET")        VALUE_COMMAND_NAME='write co2 calibration' ;;
         "$CMD_READ_GAIN")               VALUE_COMMAND_NAME='read uv/solarrad./wind/rain gain calibration' ;;
         "$CMD_WRITE_GAIN")              VALUE_COMMAND_NAME='write uv/solarrad./wind/rain gain calibration' ;;
-         
         *)                              VALUE_COMMAND_NAME="command name unknown dec: $1" ;;
     esac
-    
 }

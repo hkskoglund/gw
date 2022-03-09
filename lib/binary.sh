@@ -1119,10 +1119,7 @@ parsePacket()
       #return "$EXITCODE_PARSEPACKET"
    fi
 
-     { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" ] ; } && {
-       printf >&2 "< %-20s" "$VALUE_COMMAND_NAME"
-       eval printBuffer >&2 \"\$"$VALUE_PARSEPACKET_BUFFERNAME"\" 
-    }
+   
 
     if isWriteCommand "$PRX_CMD_UINT8"; then
         parseResult
@@ -1195,7 +1192,7 @@ restoreBackup()
         restoreReadCommand=$(( $3 )) 
         restoreWriteCommand=$(( restoreReadCommand + 1 )) # writecmd.=readcmd.+ 1
         getCommandName "$restoreWriteCommand"
-        echo >&2 "restoring command $VALUE_COMMAND_NAME"
+        echo >&2 "restoring $VALUE_COMMAND_NAME"
 
         if ! commandHas2BytePacketLength "$restoreReadCommand"; then
             restorePacketLength=$(( $4 ))

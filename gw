@@ -1585,7 +1585,7 @@ while [ $# -gt 0 ]; do
 
                             if isGWdevice "$GW_VERSION"; then
                                 getSensorIdCommand "$GW_VERSION_INT"
-                                backup_commands="$CMD_READ_SOILHUMIAD $CMD_READ_SYSTEM $CMD_READ_RAINDATA $CMD_READ_GAIN $CMD_READ_CALIBRATION $VALUE_SENSORID_READ_COMMAND"
+                                backup_commands=" $CMD_READ_SYSTEM $CMD_READ_RAINDATA $CMD_READ_GAIN $CMD_READ_CALIBRATION $CMD_READ_SOILHUMIAD $VALUE_SENSORID_READ_COMMAND"
                                  [ "$GW_VERSION_INT" -ge $FW_CMD_READ_MULCH_OFFSET ] && backup_commands="$backup_commands $CMD_READ_MULCH_OFFSET"
                                  [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PM25_OFFSET ] && backup_commands="$backup_commands $CMD_READ_PM25_OFFSET"
                                  [ "$GW_VERSION_INT" -ge $FW_CMD_READ_CO2_OFFSET ] && backup_commands="$backup_commands $CMD_READ_CO2_OFFSET"

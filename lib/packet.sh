@@ -45,7 +45,12 @@ sendPacket()
         [ "$1" -eq "$CMD_READ_SYSTEM" ] ||\
         [ "$1" -eq "$CMD_READ_VERSION" ] ||\
         [ "$1" -eq "$CMD_REBOOT" ] ||\
-        [ "$1" -eq "$CMD_WRITE_RESET" ]  ; then
+        [ "$1" -eq "$CMD_WRITE_RESET" ] ||\
+        [ "$1" -eq "$CMD_READ_SOILHUMIAD" ] ||\
+        [ "$1" -eq "$CMD_READ_MULCH_OFFSET" ] ||\
+        [ "$1" -eq "$CMD_READ_PM25_OFFSET" ] ||\
+        [ "$1" -eq "$CMD_READ_CO2_OFFSET" ] ||\
+        [ "$1" -eq "$CMD_READ_GAIN" ]; then
              newPacket "$1"
     fi
 
@@ -168,7 +173,12 @@ sendPacketnc()
        od_buffer=$(eval "$cmdstr" )
        if [ -z "$od_buffer" ]; then
          echo >&2 "Warning: no response from host $2"
-       fi
+       else
+            { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" -eq 1 ] ; } && {
+                 printf >&2 "< %-20s" "$VALUE_COMMAND_NAME"
+                 printBuffer >&2 "$od_buffer" ; }
+        fi
+
        #maybe use: https://stackoverflow.com/questions/1550933/catching-error-codes-in-a-shell-pipe
        if [ -z "$3" ]; then
             parsePacket "$od_buffer"
