@@ -80,12 +80,11 @@ sendPacketnc()
 
     createPacketTX "$1"
 
-    { [ "$DEBUG_SENDPACKETNC" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" ] ; } &&
-    {
+    if [ "$DEBUG_SENDPACKETNC" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" -eq 1 ]; then
         printf >&2 "> %-20s" "$VALUE_COMMAND_NAME"
         printBuffer >&2 "$PACKET_TX"
-    }
-
+    fi
+    
     unset rxpipecmd txpipecmd
 
     if [ "$DEBUG_OPTION_TRACEPACKET" -eq 1 ]; then
@@ -173,10 +172,10 @@ sendPacketnc()
        od_buffer=$(eval "$cmdstr" )
        if [ -z "$od_buffer" ]; then
          echo >&2 "Warning: no response from host $2"
-       else
-            { [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" -eq 1 ] ; } && {
-                 printf >&2 "< %-20s" "$VALUE_COMMAND_NAME"
-                 printBuffer >&2 "$od_buffer" ; }
+       elif  [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" -eq 1 ]; then
+            echo "DEBUG $DEBUG DEBUG_OPTION_OD_BUFFER $DEBUG_OPTION_OD_BUFFER"
+            printf >&2 "< %-20s" "$VALUE_COMMAND_NAME"
+            printBuffer >&2 "$od_buffer"
         fi
 
        #maybe use: https://stackoverflow.com/questions/1550933/catching-error-codes-in-a-shell-pipe
@@ -473,7 +472,6 @@ sendSensorId()
 # send sensor id for sensortype range
 # $1 low sensortype, $2 high sensortype, $3 sensorid, $4 host
 {
-
     newPacket "$CMD_WRITE_SENSOR_ID"
 
     if [ -z "$2" ]; then

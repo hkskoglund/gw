@@ -1186,6 +1186,7 @@ restoreBackup()
     IFS=' '
     #shellcheck disable=SC2086
     set -- $RESTORE_BUFFER
+
     # $1=255 $2=255 $3=command $4=msb packet length, $5 (optional 2byte packet length)
 
     while [ $# -gt 4 ]; do
@@ -1193,8 +1194,9 @@ restoreBackup()
         restoreWriteCommand=$(( restoreReadCommand + 1 )) # writecmd.=readcmd.+ 1
         getCommandName "$restoreWriteCommand"
         echo >&2 "restoring $VALUE_COMMAND_NAME"
+        printBuffer "$*"
 
-        if ! commandHas2BytePacketLength "$restoreReadCommand"; then
+        if ! commandHas2BytePacketLengthResponse "$restoreReadCommand"; then
             restorePacketLength=$(( $4 ))
         else
             restorePacketLength=$(( ( $4 << 8 ) | $5 ))
@@ -1217,11 +1219,16 @@ restoreBackup()
         eval "restoreBuffer=\"$restoreBuffer \$restoreWriteCRC\"" #set the packet with new CRC
         eval "backupBuffer=\"$backupBuffer \$restoreReadCRC\""
         #set +x
+
+        convertBufferFromDecToOctalEscape "$restoreBuffer" # \0377 \0377 \0nnn
+        set -x
+        printf "%b" "$VALUE_OCTAL_BUFFER_ESCAPE" | nc -4 -N -w 1 "$restoreHost" 45000 | od -A n -t x1 -w131000
+        set +x
         case "$restoreFilter" in
           cat) parsePacket "$backupBuffer" # view backup content
                 ;;
         esac
-        shift $restoreCRCpos
+        shift $restoreCRCpos # remove restored buffer at front
     done
 
    # echo >&2 restoreWriteCommand: $restoreWriteCommand restorePacketLength: $restorePacketLength restoreCRCpos: $restoreCRCpos restoreCRC: $restoreCRC

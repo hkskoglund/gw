@@ -87,20 +87,21 @@ getCommandName()
         "$CMD_READ_SENSOR_ID")          VALUE_COMMAND_NAME='read sensor id' ;;
         "$CMD_WRITE_SENSOR_ID")         VALUE_COMMAND_NAME='write sensor id' ;;
         "$CMD_READ_SENSOR_ID_NEW")      VALUE_COMMAND_NAME='read sensor id new' ;;
+       #? "$CMD_WRITE_SENSOR_ID_NEW")     VALUE_COMMAND_NAME='write sensor id new' ;;
         "$CMD_READ_SYSTEM")             VALUE_COMMAND_NAME='read system' ;;
         "$CMD_WRITE_SYSTEM")            VALUE_COMMAND_NAME='write system' ;;
         "$CMD_READ_CALIBRATION")        VALUE_COMMAND_NAME='read calibration' ;;
         "$CMD_WRITE_CALIBRATION")       VALUE_COMMAND_NAME='write calibration' ;;
         "$CMD_READ_SOILHUMIAD")         VALUE_COMMAND_NAME='read soilmoisture calibration' ;;
         "$CMD_WRITE_SOILHUMIAD")        VALUE_COMMAND_NAME='write soilmoisture calibratation' ;;
-        "$CMD_READ_MULCH_OFFSET")       VALUE_COMMAND_NAME='read temperature/humidity calibration' ;;
-        "$CMD_WRITE_MULCH_OFFSET")      VALUE_COMMAND_NAME='write temperature/humidity calibration' ;;
+        "$CMD_READ_MULCH_OFFSET")       VALUE_COMMAND_NAME='read WH31 temp calibration' ;;
+        "$CMD_WRITE_MULCH_OFFSET")      VALUE_COMMAND_NAME='write WH31 temp calibration' ;;
         "$CMD_READ_PM25_OFFSET")        VALUE_COMMAND_NAME='read pm25 calibration' ;;
         "$CMD_WRITE_PM25_OFFSET")       VALUE_COMMAND_NAME='write pm25 calibration' ;;
         "$CMD_READ_CO2_OFFSET")         VALUE_COMMAND_NAME='read co2 calibration' ;;
         "$CMD_WRITE_CO2_OFFSET")        VALUE_COMMAND_NAME='write co2 calibration' ;;
-        "$CMD_READ_GAIN")               VALUE_COMMAND_NAME='read uv/solarrad./wind/rain gain calibration' ;;
-        "$CMD_WRITE_GAIN")              VALUE_COMMAND_NAME='write uv/solarrad./wind/rain gain calibration' ;;
+        "$CMD_READ_GAIN")               VALUE_COMMAND_NAME='read gain calibration' ;;
+        "$CMD_WRITE_GAIN")              VALUE_COMMAND_NAME='write gain calibration' ;;
         *)                              VALUE_COMMAND_NAME="command name unknown dec: $1" ;;
     esac
 }
