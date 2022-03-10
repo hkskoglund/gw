@@ -17,7 +17,7 @@ sendPacket()
     #validate command
     if [ -z "$1" ]; then
       echo >&2 "Error: No command specified"
-      EXITCODE_SENDPACKET="$ERROR_NO_HOST_SPECIFIED"
+      EXITCODE_SENDPACKET=$ERROR_NO_COMMAND_SPECIFIED
       return "$EXITCODE_SENDPACKET"
     fi
     
