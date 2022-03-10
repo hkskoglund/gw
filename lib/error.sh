@@ -33,6 +33,7 @@ ERROR_SENSORID_COMMAND_NOT_SUPPORTED=31 # if sensor id + sensor id new command n
 ERROR_INVALID_ECOWITT_INTERVAL=32 # not a number, or outside 0-5
 ERROR_NONEXIST_FILENAME=33 
 
+
 logErr()
 #$1 - 1=on,0=off
 {
