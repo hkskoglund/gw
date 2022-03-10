@@ -614,7 +614,8 @@ processSensorOptions()
             SPATTERNID_RANGE_LOW=$sensorType_low
             SPATTERNID_RANGE_HIGH=$sensorType_high
             if [ $sentReadSensorIdCommand -eq 0 ]; then 
-                sendPacket $CMD_READ_SENSOR_ID_NEW "$GW_HOST" #only sent for first , expression
+                getSensorIdCommandForFW "$GW_VERSION_INT"
+                sendPacket $VALUE_SENSORID_READ_COMMAND "$GW_HOST" #only sent for first , expression
                 sentReadSensorIdCommand=1
             else # yet another read (for example -c sensor 1-10,40-47) use in-memory buffer backup 
                IFS=" " eval parsePacket \"\$"$VALUE_PARSEPACKET_BUFFERNAME"\" 
@@ -1405,7 +1406,7 @@ processCommand()
         livedata | l)
             
             #get battery/signal info to merge into livedata view
-            if isGWdevice "$GW_VERSION" && getSensorIdCommand "$GW_VERSION_INT"; then
+            if isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
                 sendPacket "$VALUE_SENSORID_READ_COMMAND" "$GW_HOST" >/dev/null
             fi
             
@@ -1425,7 +1426,7 @@ processCommand()
 
         sensor_id | sensor | s) 
 
-           if  isGWdevice "$GW_VERSION" && getSensorIdCommand "$GW_VERSION_INT"; then
+           if  isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
 
                 if ! argEmptyOrOption "$1"; then
                 #filter for senorid; -c sensor connected|-c s co
@@ -1584,14 +1585,14 @@ while [ $# -gt 0 ]; do
                             done
 
                             if isGWdevice "$GW_VERSION"; then
-                                getSensorIdCommand "$GW_VERSION_INT"
+                                getSensorIdCommandForFW "$GW_VERSION_INT"
                                 unset backup_commands
                                 #backup_commands=" $CMD_READ_SYSTEM $CMD_READ_RAINDATA $CMD_READ_GAIN $CMD_READ_CALIBRATION $CMD_READ_SOILHUMIAD $VALUE_SENSORID_READ_COMMAND"
                                 #backup_commands="$CMD_READ_SYSTEM $CMD_READ_RAINDATA $CMD_READ_GAIN $CMD_READ_CALIBRATION $CMD_READ_SOILHUMIAD"
                                  backup_commands="$VALUE_SENSORID_READ_COMMAND"
-                                [ "$GW_VERSION_INT" -ge $FW_CMD_READ_MULCH_OFFSET ] && backup_commands="$backup_commands $CMD_READ_MULCH_OFFSET"
-                                 [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PM25_OFFSET ] && backup_commands="$backup_commands $CMD_READ_PM25_OFFSET"
-                                 [ "$GW_VERSION_INT" -ge $FW_CMD_READ_CO2_OFFSET ] && backup_commands="$backup_commands $CMD_READ_CO2_OFFSET"
+                               # [ "$GW_VERSION_INT" -ge $FW_CMD_READ_MULCH_OFFSET ] && backup_commands="$backup_commands $CMD_READ_MULCH_OFFSET"
+                               #  [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PM25_OFFSET ] && backup_commands="$backup_commands $CMD_READ_PM25_OFFSET"
+                               # [ "$GW_VERSION_INT" -ge $FW_CMD_READ_CO2_OFFSET ] && backup_commands="$backup_commands $CMD_READ_CO2_OFFSET"
                                 for cmd in $backup_commands; do
                                     sendBackupCommand "$cmd" "$GW_HOST" "$FILENAME_BACKUP"
                                 done

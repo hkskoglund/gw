@@ -501,6 +501,6 @@ printBuffer()
     
     echo "$APPEND_STRING ($localn bytes)"
 
-    unset BYTE APPEND_STRING
+    unset BYTE APPEND_STRING localn
 
 }

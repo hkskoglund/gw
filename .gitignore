@@ -10,3 +10,4 @@ data.csv
 tx*.hex
 rx*.hex
 backup*.hex
+restore.hex

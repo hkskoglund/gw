@@ -7,7 +7,9 @@ parseVersion() {
     readString "$VALUE_PARSEPACKET_BUFFERNAME" "version"
     export GW_VERSION="$VALUE_STRING"
     getVersionInt "$GW_VERSION"
+    set -x
     export GW_VERSION_INT="${GW_VERSION_INT:=$VALUE_VERSION}" # allow override for testing
+    set +x
     echo "$GW_VERSION"
 }
 
@@ -1220,10 +1222,37 @@ restoreBackup()
         eval "backupBuffer=\"$backupBuffer \$restoreReadCRC\""
         #set +x
 
+        #binary backup of sensor ids
+        if [ "$restoreReadCommand" -eq "$CMD_READ_SENSOR_ID" ] || [ "$restoreReadCommand" -eq "$CMD_READ_SENSOR_ID_NEW" ]; then
+              echo Special treatment for sensor id command
+              IFS=' '
+              local_n=1
+              local_packetLength=0
+              local_crc=0
+              unset sensorBuffer
+              for byte in $backupBuffer; do
+                if [ $local_n -ge 5 ] && [ $(( (local_n - 5) % 7)) -lt 5 ]; then # copy only sensortype (1-byte) and sensorid (4-byte) = 5 bytes, skip battery signal = 2bytes
+                    sensorBuffer="$sensorBuffer $byte"
+                    local_crc=$(( (local_crc + byte ) & 255 ))
+                    local_packetLength=$(( local_packetLength + 1 ))
+                fi
+                #echo $local_n $(( (local_n - 5) % 7 ))
+                local_n=$(( local_n + 1 ))
+              done
+              local_packetLength=$(( local_packetLength + 3 )) # cmd+packetlength+crc = 3 bytes
+              local_crc=$(( (local_crc + CMD_WRITE_SENSOR_ID + local_packetLength) & 255 ))
+              set -x
+              sensorBuffer="255 255 $CMD_WRITE_SENSOR_ID $local_packetLength $sensorBuffer $local_crc"
+              set +x
+              echo sensorBuffer "$sensorBuffer"
+              restoreBuffer="$sensorBuffer"
+        fi
+
         convertBufferFromDecToOctalEscape "$restoreBuffer" # \0377 \0377 \0nnn
         set -x
-        printf "%b" "$VALUE_OCTAL_BUFFER_ESCAPE" | nc -4 -N -w 1 "$restoreHost" 45000 | od -A n -t x1 -w131000
+        printf "%b" "$VALUE_OCTAL_BUFFER_ESCAPE" | tee restore.hex | nc -4 -N -w 1 "$restoreHost" 45000 | od -A n -t x1 -w131000
         set +x
+
         case "$restoreFilter" in
           cat) parsePacket "$backupBuffer" # view backup content
                 ;;
@@ -1233,7 +1262,7 @@ restoreBackup()
 
    # echo >&2 restoreWriteCommand: $restoreWriteCommand restorePacketLength: $restorePacketLength restoreCRCpos: $restoreCRCpos restoreCRC: $restoreCRC
 
-    unset restoreBuffer backupBuffer restoreFilename restoreHost restoreReadCommand restoreWriteCommand restorePacketLength restorePos restoreBuffer restoreCRCpos restoreFilter
+    unset local_n local_crc local_packetLength restoreBuffer backupBuffer restoreFilename restoreHost restoreReadCommand restoreWriteCommand restorePacketLength restorePos restoreBuffer restoreCRCpos restoreFilter
     
     return $EXITCODE_RESTOREBACKUP
 }
@@ -1484,26 +1513,28 @@ getBatteryLowOrNormal() {
     fi
 }
 
-getSensorIdCommand()
+getSensorIdCommandForFW()
 # get sensor id command based on firmware version
 # $1 integer - firmware version 
 # set VALUE_SENSOR_COMMAND
 {
     unset VALUE_SENSORID_READ_COMMAND
+    EXITCODE_GETSENSORIDCOMMAND=0
+    DEBUG_GETSENSORIDCOMMAND=${DEBUG_GETSENSORIDCOMMAND:=$DEBUG}
 
     if [ -z "$1" ]; then # if version not available, fallback to read sensor
        VALUE_SENSORID_READ_COMMAND="$CMD_READ_SENSOR_ID"
-       return 0
-    fi
-
-    if [ "$1" -ge "$FW_CMD_READ_SENSOR_ID_NEW" ]; then # Added in fw v 1.5.4 
-        VALUE_SENSORID_READ_COMMAND="$CMD_READ_SENSOR_ID_NEW"  #support soiltemp, co2, leafwetness
+       EXITCODE_GETSENSORIDCOMMAND=0
+    elif [ "$1" -ge "$FW_CMD_READ_SENSOR_ID_NEW" ]; then # Added in fw v 1.5.4 
+            VALUE_SENSORID_READ_COMMAND="$CMD_READ_SENSOR_ID_NEW"  #support soiltemp, co2, leafwetness
     elif [ "$1" -ge "$FW_CMD_READ_SENSOR_ID" ]; then # Added in fw v 1.4.6
-        VALUE_SENSORID_READ_COMMAND="$CMD_READ_SENSOR_ID"
+            VALUE_SENSORID_READ_COMMAND="$CMD_READ_SENSOR_ID"
     else
-        echo >&2 "Warning: Firmware $1 does not support command sensor id (dec $CMD_READ_SENSOR_ID)/sensor id new (dec $CMD_READ_SENSOR_ID_NEW)"
-        return "$ERROR_SENSORID_COMMAND_NOT_SUPPORTED"
-    fi
+            echo >&2 "Warning: Firmware $1 does not support command sensor id (dec $CMD_READ_SENSOR_ID)/sensor id new (dec $CMD_READ_SENSOR_ID_NEW)"
+            EXITCODE_GETSENSORIDCOMMAND="$ERROR_SENSORID_COMMAND_NOT_SUPPORTED"
+        fi
     
-    return 0
+    [ "$DEBUG_GETSENSORIDCOMMAND" -eq 1 ] && { getCommandName "$VALUE_SENSORID_READ_COMMAND"; printf >&2 "getSensorIdCommandForFW: firmware %s %d using %s dec: %d hex: %x \n" "$GW_VERSION" "$GW_VERSION_INT" "$VALUE_COMMAND_NAME" "$VALUE_SENSORID_READ_COMMAND" "$VALUE_SENSORID_READ_COMMAND"; }
+    
+    return "$EXITCODE_GETSENSORIDCOMMAND"
 }
