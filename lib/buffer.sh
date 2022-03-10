@@ -492,12 +492,14 @@ printBuffer()
     unset APPEND_STRING
 
     IFS=" "
+    localn=0
     for BYTE in $1; do
         convertUInt8ToHex "$BYTE"
         APPEND_STRING=$APPEND_STRING" $VALUE_UINT8_HEX"
+        localn=$(( localn + 1))
     done
     
-    echo "$APPEND_STRING"
+    echo "$APPEND_STRING ($localn bytes)"
 
     unset BYTE APPEND_STRING
 

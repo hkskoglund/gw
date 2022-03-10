@@ -81,10 +81,10 @@ sendPacketnc()
     createPacketTX "$1"
 
     if [ "$DEBUG_SENDPACKETNC" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" -eq 1 ]; then
-        printf >&2 "> %-20s" "$VALUE_COMMAND_NAME"
+        printf >&2 "> %-25s" "$VALUE_COMMAND_NAME"
         printBuffer >&2 "$PACKET_TX"
     fi
-    
+
     unset rxpipecmd txpipecmd
 
     if [ "$DEBUG_OPTION_TRACEPACKET" -eq 1 ]; then
@@ -161,8 +161,9 @@ sendPacketnc()
 
     if [ -n "$cmdstr" ]; then
 
+       # print command 
        if [ -n "$DEBUG_OPTION_COMMAND" ] && [ "$DEBUG_OPTION_COMMAND" -eq 1 ]; then
-            printf >&2 "%s: %s\n" "$VALUE_COMMAND_NAME" "$cmdstr"
+            printf >&2 "c %-25s %s\n" "$VALUE_COMMAND_NAME" "$cmdstr"
        fi
        
        if [ "$DEBUG_SENDPACKETNC" -eq 1 ]; then
@@ -173,8 +174,7 @@ sendPacketnc()
        if [ -z "$od_buffer" ]; then
          echo >&2 "Warning: no response from host $2"
        elif  [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" -eq 1 ]; then
-            echo "DEBUG $DEBUG DEBUG_OPTION_OD_BUFFER $DEBUG_OPTION_OD_BUFFER"
-            printf >&2 "< %-20s" "$VALUE_COMMAND_NAME"
+            printf >&2 "< %-25s" "$VALUE_COMMAND_NAME"
             printBuffer >&2 "$od_buffer"
         fi
 
