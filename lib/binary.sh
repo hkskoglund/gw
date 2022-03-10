@@ -175,9 +175,9 @@ calibration wind direction offset           $GW_CALIBRATION_WINDDIROFFSET $LIVED
 
 }
 
-
 parseCalibration() {
 
+    echo "parseCalibration buffer:$VALUE_PARSEPACKET_BUFFERNAME"
     readInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "intemp offset"
     export GW_CALIBRATION_INTEMPOFFSET_INTS10="$VALUE_INT16BE"
     convertScale10ToFloat "$GW_CALIBRATION_INTEMPOFFSET_INTS10"
@@ -1119,8 +1119,6 @@ parsePacket()
       #return "$EXITCODE_PARSEPACKET"
    fi
 
-   
-
     if isWriteCommand "$PRX_CMD_UINT8"; then
         parseResult
     elif [ "$PRX_CMD_UINT8" -eq "$CMD_READ_VERSION" ]; then
@@ -1152,7 +1150,7 @@ parsePacket()
     elif [ "$PRX_CMD_UINT8" -eq "$CMD_READ_SENSOR_ID_NEW" ] ||[ "$PRX_CMD_UINT8" -eq "$CMD_READ_SENSOR_ID" ]; then
         parseSensorIdNew
     else
-        echo >&2 ERROR Parsing of command "$VALUE_COMMAND_NAME" not supported
+        echo >&2 "Warning: Parsing of command $VALUE_COMMAND_NAME not implemented"
         EXITCODE_PARSEPACKET=$ERROR_PARSEPACKET_UNSUPPORTED_COMMAND
     fi
 
@@ -1192,9 +1190,10 @@ restoreBackup()
     while [ $# -gt 4 ]; do
         restoreReadCommand=$(( $3 )) 
         restoreWriteCommand=$(( restoreReadCommand + 1 )) # writecmd.=readcmd.+ 1
-        getCommandName "$restoreWriteCommand"
+       
+        getCommandName "$restoreReadCommand"
         echo >&2 "restoring $VALUE_COMMAND_NAME"
-        printBuffer "$*"
+        #>&2 printBuffer "$*"
 
         if ! commandHas2BytePacketLengthResponse "$restoreReadCommand"; then
             restorePacketLength=$(( $4 ))
@@ -1222,19 +1221,23 @@ restoreBackup()
 
         #binary backup of sensor ids
         if [ "$restoreReadCommand" -eq "$CMD_READ_SENSOR_ID" ] || [ "$restoreReadCommand" -eq "$CMD_READ_SENSOR_ID_NEW" ]; then
-              echo Special treatment for sensor id command
               IFS=' '
               local_n=1
               local_packetLength=0
               local_crc=0
+              if [ "$restoreReadCommand" -eq "$CMD_READ_SENSOR_ID" ]; then
+                local_startpos=5 # start at byte 5, counting from 1,2,...
+              elif [ "$restoreReadCommand" -eq "$CMD_READ_SENSOR_ID_NEW" ]; then
+                local_startpos=6
+              fi
               unset sensorBuffer
               for byte in $backupBuffer; do
-                if [ $local_n -ge 5 ] && [ $(( (local_n - 5) % 7)) -lt 5 ]; then # copy only sensortype (1-byte) and sensorid (4-byte) = 5 bytes, skip battery signal = 2bytes
+                if [ $local_n -ge $local_startpos ] && [ $(( (local_n - local_startpos) % 7)) -lt 5 ]; then # copy only sensortype (1-byte) and sensorid (4-byte) = 5 bytes, skip battery signal = 2bytes
                     sensorBuffer="$sensorBuffer $byte"
                     local_crc=$(( (local_crc + byte ) & 255 ))
                     local_packetLength=$(( local_packetLength + 1 ))
                 fi
-                #echo $local_n $(( (local_n - 5) % 7 ))
+               # echo $local_n $(( (local_n - local_startpos) % 7 ))
                 local_n=$(( local_n + 1 ))
               done
               local_packetLength=$(( local_packetLength + 3 )) # cmd+packetlength+crc = 3 bytes
@@ -1252,12 +1255,13 @@ restoreBackup()
           cat) parsePacket "$backupBuffer" # view backup content
                 ;;
         esac
+
         shift $restoreCRCpos # remove restored buffer at front
     done
 
    # echo >&2 restoreWriteCommand: $restoreWriteCommand restorePacketLength: $restorePacketLength restoreCRCpos: $restoreCRCpos restoreCRC: $restoreCRC
 
-    unset local_n local_crc local_packetLength restoreBuffer backupBuffer restoreFilename restoreHost restoreReadCommand restoreWriteCommand restorePacketLength restorePos restoreBuffer restoreCRCpos restoreFilter
+    unset byte local_startpos local_n local_crc local_packetLength restoreBuffer backupBuffer restoreFilename restoreHost restoreReadCommand restoreWriteCommand restorePacketLength restorePos restoreBuffer restoreCRCpos restoreFilter sensorBuffer
     
     return $EXITCODE_RESTOREBACKUP
 }

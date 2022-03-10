@@ -26,9 +26,9 @@ CMD_WRITE_RAINDATA=$((0x35))
 CMD_LIVEDATA=$((0x27))
 
 #sensors
-CMD_READ_SENSOR_ID=$((0x3a))
+CMD_READ_SENSOR_ID=$((0x3a)) # sensortypes 0-30
 CMD_WRITE_SENSOR_ID=$((0x3b))
-CMD_READ_SENSOR_ID_NEW=$((0x3c)) # for new sensors
+CMD_READ_SENSOR_ID_NEW=$((0x3c)) # for new sensors sensortypes 31-47
 CMD_READ_SYSTEM=$((0x30))
 CMD_WRITE_SYSTEM=$((0x31))
 CMD_READ_CALIBRATION=$((0x38))
