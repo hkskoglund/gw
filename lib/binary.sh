@@ -7,9 +7,7 @@ parseVersion() {
     readString "$VALUE_PARSEPACKET_BUFFERNAME" "version"
     export GW_VERSION="$VALUE_STRING"
     getVersionInt "$GW_VERSION"
-    set -x
     export GW_VERSION_INT="${GW_VERSION_INT:=$VALUE_VERSION}" # allow override for testing
-    set +x
     echo "$GW_VERSION"
 }
 
@@ -1241,10 +1239,7 @@ restoreBackup()
               done
               local_packetLength=$(( local_packetLength + 3 )) # cmd+packetlength+crc = 3 bytes
               local_crc=$(( (local_crc + CMD_WRITE_SENSOR_ID + local_packetLength) & 255 ))
-              set -x
               sensorBuffer="255 255 $CMD_WRITE_SENSOR_ID $local_packetLength $sensorBuffer $local_crc"
-              set +x
-              echo sensorBuffer "$sensorBuffer"
               restoreBuffer="$sensorBuffer"
         fi
 
