@@ -1228,7 +1228,7 @@ restoreBackup()
               if [ "$restoreReadCommand" -eq "$CMD_READ_SENSOR_ID" ]; then
                 local_startpos=5 # start at byte 5, counting from 1,2,...
               elif [ "$restoreReadCommand" -eq "$CMD_READ_SENSOR_ID_NEW" ]; then
-                local_startpos=6
+                local_startpos=6 # start at byte 6 ( 2 byte packet length in read packet)
               fi
               unset sensorBuffer
               for byte in $backupBuffer; do

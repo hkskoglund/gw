@@ -64,7 +64,9 @@ sendPacket()
 
 sendPacketnc()
 # send packet to host with nc, append response to backup file if specified
-# $1 command, $2 host ip , $3 backup filename (optional)
+# $1 command
+# $2 host ip
+# $3 backup filename (optional)
 # DEBUG_OPTION_OD_BUFFER=1      print od buffer
 # DEBUG_OPTION_TRACEPACKET=1    create tx/rx files in .hex binary format
 # DEBUG_SENDPACKETNC=1          debug only this function
@@ -172,7 +174,7 @@ sendPacketnc()
 
        od_buffer=$(eval "$cmdstr" )
        if [ -z "$od_buffer" ]; then
-         echo >&2 "Warning: no response from host $2"
+         echo >&2 "$(date) Warning: command $VALUE_COMMAND_NAME no response from host $2"
        elif  [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" -eq 1 ]; then
             printf >&2 "< %-25s" "$VALUE_COMMAND_NAME"
             printBuffer >&2 "$od_buffer"
