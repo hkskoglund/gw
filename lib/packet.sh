@@ -497,18 +497,22 @@ sendSensorId()
 }
 
 sendBackupCommand()
+# send backup command to device
 # $1 command
 # $2 host
 # $3 backup filename
 {
     EXITCODE_SENDBACKUPCOMMAND=0
-     getCommandName "$1"
+    
+    getCommandName "$1"
+
     if sendPacket "$1" "$2" "$3"; then
             [ $DEBUG_PACKET -eq 1 ] && echo >&2 "Backup $VALUE_COMMAND_NAME OK"
     else
         EXITCODE_SENDBACKUPCOMMAND=$?
         echo >&2 "Backup $VALUE_COMMAND_NAME, FAILED error code: $EXITCODE_SENDBACKUPCOMMAND"
     fi
+
     return $EXITCODE_SENDBACKUPCOMMAND
 }
 

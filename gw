@@ -702,7 +702,13 @@ parseRaindataOptions()
                            >&2 echo "Warning: Invalid value for $rainexpr, min/max 0/$CALIBRATION_RAIN_MAX"
                          fi
                             ;;
-                *) >&2 echo "Warning: comma delimited list: day|d=, week|w=, month|m=, year|y=, d=10.0 sets daily rain to 10.0 mm"
+                reset) rainday=0
+                        rainweek=0
+                        rainmonth=0
+                        rainyear=0
+                        rain_needsupdate=1
+                        ;;
+                *) >&2 echo "Warning: comma delimited list: day|d=, week|w=, month|m=, year|y=, reset, d=10.0 sets daily rain to 10.0 mm"
                     ;;
             esac
     done
@@ -1573,20 +1579,19 @@ while [ $# -gt 0 ]; do
                             EXITCODE_MAIN=$ERROR_NO_HOST_SPECIFIED
                             shift
                         else
-                            FILENAME_BACKUP='backup.hex'
+                            FILENAME_BACKUP="backup-$GW_HOST-$GW_VERSION-$(date +'%H %M %S %N').hex"
                             IFS=' '
                             DEBUG_BACKUP=${DEBUG_BACKUP:=$DEBUG}
-                            [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "$(date) BACKUP STARTED to $FILENAME_BACKUP"
 
                             # backup weather services (compatible with EasyWeather/GW* devices)
-                            #for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND $CMD_READ_WOW $CMD_READ_WEATHERCLOUD $CMD_READ_CUSTOMIZED $CMD_READ_PATH; do
-                            #    sendBackupCommand "$cmd" "$GW_HOST" "$FILENAME_BACKUP"
-                            #done
+                            for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND $CMD_READ_WOW $CMD_READ_WEATHERCLOUD $CMD_READ_CUSTOMIZED $CMD_READ_PATH; do
+                                sendBackupCommand "$cmd" "$GW_HOST" "$FILENAME_BACKUP"
+                            done
 
                             if isGWdevice "$GW_VERSION"; then
                                 getSensorIdCommandForFW "$GW_VERSION_INT"
-                               # backup_commands="$VALUE_SENSORID_READ_COMMAND $CMD_READ_SYSTEM $CMD_READ_RAINDATA $CMD_READ_GAIN $CMD_READ_CALIBRATION $CMD_READ_SOILHUMIAD"
-                               backup_commands="$VALUE_SENSORID_READ_COMMAND" 
+                                backup_commands="$VALUE_SENSORID_READ_COMMAND $CMD_READ_SYSTEM $CMD_READ_RAINDATA $CMD_READ_GAIN $CMD_READ_CALIBRATION $CMD_READ_SOILHUMIAD"
+                               #backup_commands="$VALUE_SENSORID_READ_COMMAND" 
                                # [ "$GW_VERSION_INT" -ge $FW_CMD_READ_MULCH_OFFSET ] && backup_commands="$backup_commands $CMD_READ_MULCH_OFFSET"
                                # [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PM25_OFFSET ] && backup_commands="$backup_commands $CMD_READ_PM25_OFFSET"
                                # [ "$GW_VERSION_INT" -ge $FW_CMD_READ_CO2_OFFSET ] && backup_commands="$backup_commands $CMD_READ_CO2_OFFSET"
@@ -1596,7 +1601,7 @@ while [ $# -gt 0 ]; do
                                 done
                             fi
                             
-                            [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "$(date) BACKUP FINISHED"
+                            echo "Backup created $FILENAME_BACKUP"
 
                             unset cmd FILENAME_BACKUP
                             shift
