@@ -7,7 +7,7 @@ parseVersion() {
     readString "$VALUE_PARSEPACKET_BUFFERNAME" "version"
     export GW_VERSION="$VALUE_STRING"
     getVersionInt "$GW_VERSION"
-    export GW_VERSION_INT="${GW_VERSION_INT:=$VALUE_VERSION}" # allow override for testing
+    export GW_VERSION_INT="$VALUE_VERSION"
     echo "$GW_VERSION"
 }
 
@@ -177,21 +177,21 @@ calibration wind direction offset           $GW_CALIBRATION_WINDDIROFFSET $LIVED
 
 parseCalibration() {
 
-    echo "parseCalibration buffer:$VALUE_PARSEPACKET_BUFFERNAME"
     readInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "intemp offset"
     export GW_CALIBRATION_INTEMPOFFSET_INTS10="$VALUE_INT16BE"
     convertScale10ToFloat "$GW_CALIBRATION_INTEMPOFFSET_INTS10"
+    
     GW_CALIBRATION_INTEMPOFFSET="$VALUE_SCALE10_FLOAT"
 
     readInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "inhumidity offset"
     export GW_CALIBRATION_INHUMIDITYOFFSET="$VALUE_INT8"
 
-    readInt32BE "absolute offset"
+    readInt32BE "$VALUE_PARSEPACKET_BUFFERNAME" "absolute offset"
     export GW_CALIBRATION_ABSOFFSET_INTS10="$VALUE_INT32BE" 
     convertScale10ToFloat "$GW_CALIBRATION_ABSOFFSET_INTS10"
     GW_CALIBRATION_ABSOFFSET="$VALUE_SCALE10_FLOAT"
 
-    readInt32BE "relative offset"
+    readInt32BE "$VALUE_PARSEPACKET_BUFFERNAME" "relative offset"
     export GW_CALIBRATION_RELOFFSET_INTS10="$VALUE_INT32BE" #used for int comparison [ ... ]
     convertScale10ToFloat "$GW_CALIBRATION_RELOFFSET_INTS10"
     GW_CALIBRATION_RELOFFSET="$VALUE_SCALE10_FLOAT"
@@ -1010,7 +1010,9 @@ commandHas2BytePacketLength()
 readPacketPreambleCommandLength()
 # verify preamble = ff ff, read command and packet length
 # $1 buffername
-# set PACKET_RX_LENGTH, PACKET_RX_CRC 
+# set PACKET_RX_LENGTH
+# set PACKET_RX_CRC
+# set VALUE_COMMAND_NAME (getCommandName called) 
 # set EXITCODE_PARSEPACKET
 {
     EXITCODE_PARSEPACKET=0
@@ -1119,6 +1121,8 @@ parsePacket()
       #return "$EXITCODE_PARSEPACKET"
    fi
 
+    [ "$DEBUG_PARSEPACKET" -eq 1 ] && echo >&2 "parsePacket: Received command $VALUE_COMMAND_NAME dec cmd $PRX_CMD_UINT8"
+
     if isWriteCommand "$PRX_CMD_UINT8"; then
         parseResult
     elif [ "$PRX_CMD_UINT8" -eq "$CMD_READ_VERSION" ]; then
@@ -1153,8 +1157,6 @@ parsePacket()
         echo >&2 "Warning: Parsing of command $VALUE_COMMAND_NAME not implemented"
         EXITCODE_PARSEPACKET=$ERROR_PARSEPACKET_UNSUPPORTED_COMMAND
     fi
-
-    [ "$DEBUG" -eq 1 ] && echo >&2 "Received command $PRX_CMD integer cmd $PRX_CMD_UINT8"
 
     destroyBuffer "$VALUE_PARSEPACKET_BUFFERNAME"
 

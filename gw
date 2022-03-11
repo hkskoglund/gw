@@ -820,7 +820,7 @@ processCalibrationOptions()
                     [ "$DEBUG_CALIBRATION_OPTIONS" -eq 1 ] && echo >&2 "$DEBUG_FUNC Reset calibration"
                     ;;
 
-            *) echo >&2 "Error: Unknown key $1, use it | intemp, ih | inhumi, ot | outtemp, oh | outhumi, a | absoffset, r | reloffset, w | winddiroffset"
+            *) echo >&2 "Error: Unknown key $1, use it | intemp, ih | inhumi, ot | outtemp, oh | outhumi, a | absoffset, r | reloffset, w | winddiroffset, reset"
                 ;;
         esac
 
@@ -1472,11 +1472,11 @@ processCommand()
             if sendPacket $CMD_READ_CALIBRATION "$GW_HOST" >/dev/null; then 
 
                 case "$1" in
-                    ""|--*|-*) printCalibration
-                    ;;
+                    ""|--*|-*)  printCalibration
+                                ;;
                     
-                    *) processCalibrationOptions "$1"
-                    ;;
+                            *) processCalibrationOptions "$1"
+                                ;;
                 esac
             fi
             EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
@@ -1579,7 +1579,7 @@ while [ $# -gt 0 ]; do
                             EXITCODE_MAIN=$ERROR_NO_HOST_SPECIFIED
                             shift
                         else
-                            FILENAME_BACKUP="backup-$GW_HOST-$GW_VERSION-$(date +'%H %M %S %N').hex"
+                            FILENAME_BACKUP="backup-$GW_HOST-$GW_VERSION-$(date +'%H-%M-%S-%N').hex"
                             IFS=' '
                             DEBUG_BACKUP=${DEBUG_BACKUP:=$DEBUG}
 
@@ -1592,18 +1592,18 @@ while [ $# -gt 0 ]; do
                                 getSensorIdCommandForFW "$GW_VERSION_INT"
                                 backup_commands="$VALUE_SENSORID_READ_COMMAND $CMD_READ_SYSTEM $CMD_READ_RAINDATA $CMD_READ_GAIN $CMD_READ_CALIBRATION $CMD_READ_SOILHUMIAD"
                                #backup_commands="$VALUE_SENSORID_READ_COMMAND" 
-                               # [ "$GW_VERSION_INT" -ge $FW_CMD_READ_MULCH_OFFSET ] && backup_commands="$backup_commands $CMD_READ_MULCH_OFFSET"
-                               # [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PM25_OFFSET ] && backup_commands="$backup_commands $CMD_READ_PM25_OFFSET"
-                               # [ "$GW_VERSION_INT" -ge $FW_CMD_READ_CO2_OFFSET ] && backup_commands="$backup_commands $CMD_READ_CO2_OFFSET"
+                                [ "$GW_VERSION_INT" -ge $FW_CMD_READ_MULCH_OFFSET ] && backup_commands="$backup_commands $CMD_READ_MULCH_OFFSET"
+                                [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PM25_OFFSET ] && backup_commands="$backup_commands $CMD_READ_PM25_OFFSET"
+                                [ "$GW_VERSION_INT" -ge $FW_CMD_READ_CO2_OFFSET ] && backup_commands="$backup_commands $CMD_READ_CO2_OFFSET"
                                
                                 for cmd in $backup_commands; do
                                     sendBackupCommand "$cmd" "$GW_HOST" "$FILENAME_BACKUP"
                                 done
                             fi
                             
-                            echo "Backup created $FILENAME_BACKUP"
+                            echo "Created $FILENAME_BACKUP"
 
-                            unset cmd FILENAME_BACKUP
+                            unset cmd FILENAME_BACKUP backup_commands
                             shift
                         fi
                             

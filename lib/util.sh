@@ -163,17 +163,25 @@ padSpaceRight()
 }
 
 getVersionInt()
-# get version integer from GW1000A_V1.6.8 -> 168
+# get version integer from GW1000A_V1.6.8 -> 168, EasyWeatherV1.6.1 -> 161
 # $1 version
 # set VALUE_VERSION
+# return 1 - if not GW or Easyweather
 {
     VALUE_VERSION=$1
-    VALUE_VERSION=${VALUE_VERSION#*_V}
+    case "$VALUE_VERSION" in
+        GW*_V*)              VALUE_VERSION=${VALUE_VERSION#*_V}
+                            ;;
+        EasyWeatherV*)      VALUE_VERSION=${VALUE_VERSION#*V}
+                            ;;
+                    *)      unset VALUE_VERSION
+                            return 1
+                            ;;
+    esac
     IFS=.
     #shellcheck disable=SC2086
     set -- $VALUE_VERSION
     VALUE_VERSION="$1$2$3"
-
 }
 
 isGWdevice()

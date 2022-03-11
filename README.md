@@ -295,10 +295,10 @@ When **auto=on** is on, the timezone is determined automatically. Otherwise the 
 ### Send a wifi configuration packet with ssid and password to the gw. This command must be used with the -g **host** option.<br><br>
 
 ## rain | r **[OPTIONS]** - get/set rain day, week, month and year
-### OPTIONS comma delimited list [ key=value, ... ]; day= | week= | month= | year=< value in mm ><br><br>
+### OPTIONS comma delimited list [ key=value, ... ]; day= | week= | month= | year=< value in mm > | reset<br><br>
 
 ## calibrate | cal **[OPTIONS]** - get/set calibration
-### OPTIONS - comma delimited list [ key=value, ... ]; it | intemp=[-]offset (℃) ,ih | inhumi=[-]offset (%), ot | outtemp=[-]offset (℃),oh | outhumi=[-]offset (%), a|absolute=[-]offset (hPa), r|relative=[-]offset (hPa), w | winddir=[-]offset (°)
+### OPTIONS - comma delimited list [ key=value, ... ]; it | intemp=[-]offset (℃) ,ih | inhumi=[-]offset (%), ot | outtemp=[-]offset (℃),oh | outhumi=[-]offset (%), a|absolute=[-]offset (hPa), r|relative=[-]offset (hPa), w | winddir=[-]offset (°), reset
 reset will set all calibration offsets to 0. Calibration is updated on the device each minute (based on test: while true; do ./gw -g 192.168.3.26 -c l | egrep -i "press|utc|host" ; sleep 1;  done)
 
 ## reboot - reboot device<br>
