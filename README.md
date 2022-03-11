@@ -1,8 +1,10 @@
-# gw - shell script for viewing weather data and sensors connected to gw-1000 or compatible devices
+# gw - view weather data, sensor management and configuration backup for gw-1000 or compatible devices
 
 gw reads weather data from gw-1000 and shows it in a live view. Data can be filtered for example hiding rain. It supports the binary protocol (*client*-mode) and http requests (*server*-mode). Settings on the device can be configured. For example gw can receive Ecowitt or Wunderground http requests by configuring the **customized server**.
 
 The sensor view lists current battery, signal status and state (searching/disabled/hexid) to all sensors. Setting a new sensor state, for example from searching to disabled is supported.
+
+Backup and restore of the entire weather service, calibration and sensor configuration is supported. 
 
 It is designed with *portability* in mind and tested on bash, zsh, ksh93, mksh and **dash**. Ansi escape codes are used to style wind, uv index, and pm25 air quality index. 
 
@@ -146,13 +148,17 @@ enabled            1 on
 path ecowitt  /
 </pre>
 
+## Backup and restore of weather services, calibration and sensor configuration
+<code>./gw -g 192.168.3.16 -b</code>
+<pre>Created backup-192.168.3.16-GW1000A_V1.6.8-11-00-04-914237195.hex</pre>
+<code>./gw -g 192.168.3.16 -r backup-192.168.3.16-GW1000A_V1.6.8-11-00-04-914237195.hex</code>
+
 ## Continous monitoring each 1 minute -H option to hide groups (rain, system, temperature and leak)
 <code> while true; do clear;./gw -g 192.168.3.16 -H rain,system,t,leak  -c l; sleep 60; done</code>
 
 ## Listen for Ecowitt/Wunderground http request on port 8080
 
 <code>./gw -l 8080</code>
-
 
 ## Setting all leafwetness sensors to disabled and disable temperature sensor 6, next reset temp sensor 6 to id 'ba'.
 
@@ -267,6 +273,7 @@ calibration wind direction offset           0
 ## -g, --gw IP - ip adress to device<br>
 ## -c, --command COMMAND [OPTIONS] - send command to device
 ## -l, --listen PORT - listen for incoming ecowitt/wunderground http requests
+## -b, --backup - backup of weather services, calibration and sensor configuration
 ## -s, --scan SUBNET - scan for devices on xxx.xxx.xxx 
 ## -H, --hide-headers HEADERS - hide headers in livedata view
 ## -u, --unit UNITS - set unit conversion for pressure,rain and wind
@@ -304,6 +311,12 @@ reset will set all calibration offsets to 0. Calibration is updated on the devic
 ## reboot - reboot device<br>
 Reboot takes about 5 seconds. Time is synchronized with cn.pool.ntp.org each hour. Timezone, utcoffset, sunrise/sunset are fetched from rtpdate.ecowitt.net. Wind daily max is reset during reboot.
 ## reset - reset device to default settings<br><br>
+
+# Option: -b | --backup - backup of weather sevice, calibration and sensor configuration
+Takes a binary backup of entire configuration including weather services, calibration offsets and sensor configuration.
+
+# Option -r | --restore BACKUPFILE - restore weather service, calibration and sensor configuration
+Restores binary backup from backupfile
 
 # Option: -H - hide/filter groups in livedata view
 Comma separated list of headers groups and styling: for example <code>-H headers,rain</code> hides group headers/compact view and rain group
