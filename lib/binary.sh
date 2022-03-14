@@ -324,13 +324,20 @@ parseRaindata() {
 }
 
 getSensorNameShort()
+# mapping from sensortype to names
+# $1 sensortype
+# set SENSORNAME_WH
+# set SENSORNAME_SHORT
+# set SENSORNAME_VAR
 {
+    unset SENSORNAME_WH SENSORNAME_SHORT SENSORNAME_VAR
+    
     case "$1" in
         0) if [ -n "$GW_SYSTEM_SENSORTYPE" ]; then
                 if [ "$GW_SYSTEM_SENSORTYPE" -eq "$SYSTEM_SENSOR_TYPE_WH24" ]; then
-                SENSORNAME_WH='WH24'
+                    SENSORNAME_WH='WH24'
                 else
-                SENSORNAME_WH='WH65'
+                    SENSORNAME_WH='WH65'
                 fi
             else
               SENSORNAME_WH='WH??' # no system information, cannot determine WH24/WH65
@@ -351,7 +358,11 @@ getSensorNameShort()
             ;;
         6|7|8|9|10|11|12|13)
            SENSORNAME_WH='WH31'
-           SENSORNAME_SHORT="Temperature$(($1 - 5))"
+           local_channel=$(( $1 -5 ))
+           SENSORNAME_SHORT="Temperature$local_channel"
+           set -x
+           SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}TEMP$local_channel"
+           set +x
            ;;
         14|15|16|17|18|19|20|21)
           SENSORNAME_WH='WH51'
@@ -387,6 +398,8 @@ getSensorNameShort()
           SENSORNAME_WH='WH??' 
           SENSORNAME_SHORT='?'
     esac
+
+    unset local_channel
 }
 
 printSensorLine()
@@ -396,7 +409,6 @@ printSensorLine()
 
     unset VALUE_BATTERY_STATE
 
-    getSensorNameShort "$1"
     
    # TEST data 
     #if [ "$1" -eq 40 ]; then
@@ -459,10 +471,10 @@ parseSensorIdNew()
 
     [ "$DEBUG" -eq  1 ] &&  >&2 echo "parseSensorIdNew SPATTERNID $SPATTERNID"
     
-     export LIVEDATA_SENSOR_COUNT_SEARCHING=0
-     export LIVEDATA_SENSOR_COUNT_CONNECTED=0
-     export LIVEDATA_SENSOR_COUNT_DISCONNECTED=0
-     export LIVEDATA_SENSOR_COUNT_DISABLED=0
+     export LIVEDATASENSOR_SEARCHING=0
+     export LIVEDATASENSOR_CONNECTED=0
+     export LIVEDATASENSOR_DISCONNECTED=0
+     export LIVEDATASENSOR_DISABLED=0
 
      parseSensorIdNew_max_length=$(( OD_BUFFER_LENGTH - 1 ))
 
@@ -480,15 +492,26 @@ parseSensorIdNew()
         readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "sensor signal"
         signal=$VALUE_UINT8
 
+        getSensorNameShort "$stype"
+       
+
         if [ "$SID" -eq "$SENSORID_SEARCH" ]; then
-            LIVEDATA_SENSOR_COUNT_SEARCHING=$(( LIVEDATA_SENSOR_COUNT_SEARCHING + 1 ))
+            LIVEDATASENSOR_SEARCHING=$(( LIVEDATASENSOR_SEARCHING + 1 ))
+            local_sensorstate="searching"
         elif [ "$SID" -eq "$SENSORID_DISABLE" ]; then
-            LIVEDATA_SENSOR_COUNT_DISABLED=$(( LIVEDATA_SENSOR_COUNT_DISABLED + 1 ))
+            local_sensorstate="disabled"
+            LIVEDATASENSOR_DISABLED=$(( LIVEDATASENSOR_DISABLED + 1 ))
         elif [ "$signal" -gt 0 ]; then
-            LIVEDATA_SENSOR_COUNT_CONNECTED=$(( LIVEDATA_SENSOR_COUNT_CONNECTED + 1 ))
+            LIVEDATASENSOR_CONNECTED=$(( LIVEDATASENSOR_CONNECTED + 1 ))
+            local_sensorstate="connected"
             setLivedataSignal "$stype" "$signal"
         elif [ "$signal" -eq 0 ]; then
-            LIVEDATA_SENSOR_COUNT_DISCONNECTED=$(( LIVEDATA_SENSOR_COUNT_DISCONNECTED + 1 ))
+            local_sensorstate="disconnected"
+            LIVEDATASENSOR_DISCONNECTED=$(( LIVEDATASENSOR_DISCONNECTED + 1 ))
+        fi
+
+        if [ -n "$SENSORNAME_VAR" ]; then
+             eval export "${SENSORNAME_VAR}_ID=$SID" "${SENSORNAME_VAR}_ID_STATE=$local_sensorstate" "${SENSORNAME_VAR}_BATTERY=$battery" "${SENSORNAME_VAR}_SIGNAL=$signal"
         fi
 
         #pattern matching
@@ -517,7 +540,7 @@ parseSensorIdNew()
 
     printAppendBuffer
 
-    unset stype signal battery printSensorHeader printSensorMatch parseSensorIdNew_max_length
+    unset stype signal battery printSensorHeader printSensorMatch parseSensorIdNew_max_length local_sensorstate
 }
 
 printSystem() 
