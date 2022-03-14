@@ -22,7 +22,7 @@ getHexDigit() {
 
 getFloatAsIntDecmial()
 #$1 - floating point number
-#get int and decimal porition; int.decimals
+#get int and decimal portion; int.decimals
 #assumes always . present in $1
 {
     FLOAT_INT=${1%%.*}

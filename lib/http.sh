@@ -118,6 +118,20 @@ EOL
     fi
 }
 
+setHttpBatteryState()
+# determine low battery 
+# $1 value x.xx format
+# set VALUE_BATTERY_STATE
+{
+     getFloatAsIntDecmial "$value" # 3.20 format
+                
+    if [ "$FLOAT_AS_INT" -le $(( BATTERY_VOLTAGE_LOW * 10 * 2 )) ]; then # [ -le 240]
+        appendLowBatteryState
+    else
+        appendBatteryState
+    fi
+}
+
 parseEcowittHttpRequest()
 #$1 - http request message (entire)
 {
@@ -285,15 +299,27 @@ parseEcowittHttpRequest()
 
                 getBatteryLowOrNormal "$value"
                 export LIVEDATA_WH65_BATTERY="$value"
-                export LIVEDATA_WH65_BATTERY_STATE="$SBATTERY_STATE"
+                export LIVEDATA_WH65_BATTERY_STATE="$VALUE_BATTERY_STATE"
                 ;;
+
+            wh68batt)
+                setHttpBatteryState "$value"
+                export LIVEDATA_WH68_BATTERY="$value"
+                export LIVEDATA_WH68_BATTERY_STATE="$VALUE_BATTERY_STATE${value}V"
+                ;;
+
+            wh80batt)
+                setHttpBatteryState "$value"
+                export LIVEDATA_WH80_BATTERY="$value"
+                export LIVEDATA_WH80_BATTERY_STATE="$VALUE_BATTERY_STATE${value}V"
+               ;;
 
             batt?)
 
                 channel=${key##batt}
                 getBatteryLowOrNormal "$value"
                 eval "export LIVEDATA_WH31TEMP${channel}_BATTERY=$value"
-                eval "export LIVEDATA_WH31TEMP${channel}_BATTERY_STATE=$SBATTERY_STATE"
+                eval "export LIVEDATA_WH31TEMP${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
                 ;;
 
             pm25batt?)
@@ -301,18 +327,20 @@ parseEcowittHttpRequest()
                 channel=${key##pm25batt}
                 getBatteryLevelState "$value"
                 eval "export LIVEDATA_PM25${channel}_BATTERY=$value"
-                eval "export LIVEDATA_PM25${channel}_BATTERY_STATE=$SBATTERY_STATE"
+                eval "export LIVEDATA_PM25${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
                 ;;
 
             soilbatt?)
 
                 channel=${key##soilbatt}
                 getFloatAsIntDecmial "$value"
-                getBatteryVoltageLevelState "$FLOAT_AS_INT"
+                getBatteryVoltageScale10State "$FLOAT_AS_INT"
                 
-                eval "export LIVEDATA_SOILMOISTURE${channel}_BATTERY_UINT8=$FLOAT_AS_INT"  
+                set -x
+                eval "export LIVEDATA_SOILMOISTURE${channel}_BATTERY_INTS10=$FLOAT_AS_INT"  
                 eval "export LIVEDATA_SOILMOISTURE${channel}_BATTERY=$value"
-                eval "export LIVEDATA_SOILMOISTURE${channel}_BATTERY_STATE=\"$SBATTERY_STATE\""  
+                eval "export LIVEDATA_SOILMOISTURE${channel}_BATTERY_STATE=\"$VALUE_BATTERY_STATE\""  
+                set +x
                 ;;
 
             leakbatt?)
@@ -320,7 +348,7 @@ parseEcowittHttpRequest()
                 channel=${key##leakbatt}
                 getBatteryLevelState "$value"
                 eval "export LIVEDATA_LEAK${channel}_BATTERY=$value"
-                eval "export LIVEDATA_LEAK${channel}_BATTERY_STATE=\"$SBATTERY_STATE\""
+                eval "export LIVEDATA_LEAK${channel}_BATTERY_STATE=\"$VALUE_BATTERY_STATE\""
                 ;;
 
             stationtype)
@@ -386,8 +414,8 @@ parseWundergroundHttpReqest()
     #http_request="ID="$http_request
 
     IFS='&'
-    #for f in $http_request; do
-    for f in ${HTTP_URL#*\?}; do #\? remove everything in front up to ?-> start at ID=
+    local_httpprefix=${HTTP_URL%ID=*}
+    for f in ${HTTP_URL#"$local_httpprefix"}; do 
 
         value=${f##*=}
         key=${f%%=*}
@@ -542,5 +570,5 @@ parseWundergroundHttpReqest()
         printOrLogLivedata
     fi
 
-    unset http_request f key value
+    unset http_request f key value local_httpprefix
 }

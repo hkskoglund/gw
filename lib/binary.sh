@@ -394,7 +394,7 @@ printSensorLine()
 {
 #observation: leak sensor signal -> starts at level 1 after search state, then increases +1 each time a new rf message is received
 
-    unset SBATTERY_STATE
+    unset VALUE_BATTERY_STATE
 
     getSensorNameShort "$1"
     
@@ -435,7 +435,7 @@ printSensorLine()
      # use \r\t\t\t workaround for unicode alignment
   
     appendBuffer "%6u %9x %3u %1u %4s %-17s $style_sensor%-12s$style_sensor_off\t%s\t%s\n"\
- "'$1' '$2' '$3' '$4'  '$SENSORNAME_WH' '$SENSORNAME_SHORT' '$sensorIdState' '$SBATTERY_STATE' '$sensorsignal_unicode'"
+ "'$1' '$2' '$3' '$4'  '$SENSORNAME_WH' '$SENSORNAME_SHORT' '$sensorIdState' '$VALUE_BATTERY_STATE' '$sensorsignal_unicode'"
     
     unset sensorIdState sensorsignal_unicode style_sensor_off style_sensor
 }
@@ -535,7 +535,6 @@ printSystem()
             "$LIVEDATAHEADER_SYSTEM_TIMEZONE_AUTO" "$GW_SYSTEM_TIMEZONE_AUTO_BIT" "$GW_SYSTEM_TIMEZONE_AUTO_STATE"\
             "$LIVEDATAHEADER_SYSTEM_TIMEZONE_DST" "$GW_SYSTEM_TIMEZONE_DST_BIT" "$GW_SYSTEM_TIMEZONE_DST_STATUS_STATE"
 }
-
 
 parseSystem() {
     readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "system frequency"
@@ -926,8 +925,8 @@ parseLivedata()
             eval "export LIVEDATA_TF_USR${channel}_BATTERY_INTS10=$VALUE_UINT8"
             eval "convertScale10ToFloat \$LIVEDATA_TF_USR${channel}_BATTERY_INTS10"
             eval "export LIVEDATA_TF_USR${channel}_BATTERY=$VALUE_SCALE10_FLOAT"
-            getBatteryVoltageLevelState "$VALUE_UINT8"
-            eval "export LIVEDATA_TF_USR${channel}_BATTERY_STATE=$SBATTERY_STATE"
+            getBatteryVoltageScale10State "$VALUE_UINT8"
+            eval "export LIVEDATA_TF_USR${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
             
 
         elif [ "$ldf" -ge "$LDF_LIGHTNING" ]; then
@@ -1344,10 +1343,11 @@ setLivedataSignal()
 getSensorBatteryState()
 # $1 sensortype 0-48
 # $2 sensor battery value
+# set VALUE_BATTERY_STATE
 {
    
     #specification FOS_ENG-022-A, page 28
-    unset SBATTERY_STATE
+    unset VALUE_BATTERY_STATE
 
      case "$1" in
         0) setBatteryLowNormal "WH65" "$2" # WH65
@@ -1400,102 +1400,103 @@ setBatteryLowNormal()
 {
      getBatteryLowOrNormal "$2" 
     eval "export LIVEDATA_${1}_BATTERY=$2"
-    eval "export LIVEDATA_${1}_BATTERY_STATE='$SBATTERY_STATE'"
+    eval "export LIVEDATA_${1}_BATTERY_STATE='$VALUE_BATTERY_STATE'"
 }
 
 setBatteryVoltageLevel()
+# $1 sensorname
+# $2 voltage x 10
 {
-    getBatteryVoltageLevelState "$2"
-    eval "export LIVEDATA_${1}_BATTERY_UINT8=$2"
+    getBatteryVoltageScale10State "$2"
+    eval "export LIVEDATA_${1}_BATTERY_INTS10=$2"
     eval "export LIVEDATA_${1}_BATTERY=$VALUE_BATTERY_VOLTAGE"
-    eval "export LIVEDATA_${1}_BATTERY_STATE='$SBATTERY_STATE'"
+    eval "export LIVEDATA_${1}_BATTERY_STATE='$VALUE_BATTERY_STATE'"
 }
 
 setBatteryLevel()
 {
     getBatteryLevelState "$2"
     eval "export LIVEDATA_${1}_BATTERY=$2"
-    eval "export LIVEDATA_${1}_BATTERY_STATE='$SBATTERY_STATE'"
+    eval "export LIVEDATA_${1}_BATTERY_STATE='$VALUE_BATTERY_STATE'"
 }
 
 setBatteryVoltageLevel002()
 # set battery voltagelevel, value is multiplied by 0.2 (divide by 5), to get scalex10 value, two AA batteries inside WH80 -> divide value by 2 -> divide by 10
 # $1 sensor name WH80/WH68
-# $2 value
+# $2 value - this is a x100 scale value
 {
-    #if [ "$SHELL_SUPPORT_FLOATINGPOINT" -eq 1 ]; then
-    #    #shellcheck disable=SC2079
-    #   setBatteryVoltageLevel "$1" $(( $2 / 10.0 ))
-    #else
-        setBatteryVoltageLevel "$1" $(( $2 / 10 ))
-    #fi 
+    unset VALUE_BATTERY_STATE
+
+    local_voltage_s100=$(( $2 * 2 )) # scale x 100 - for 2 AA batteries
+
+    if [ "$2" -le $(( BATTERY_VOLTAGE_LOW * 10 )) ]; then # [ -le 120]
+       appendLowBatteryState
+    else
+       appendBatteryState
+    fi
+
+    local_voltage=${local_voltage_s100%??}$SHELL_DECIMAL_POINT${local_voltage_s100#?} # assumes 3 digits always for local_voltage_s100
+    eval "export LIVEDATA_${1}_BATTERY=$local_voltage" 
+    VALUE_BATTERY_STATE=$VALUE_BATTERY_STATE"${local_voltage}V"
+    eval "export LIVEDATA_${1}_BATTERY_STATE='$VALUE_BATTERY_STATE'"
+
+    unset local_voltage local_voltage_s100
 }
 
 appendBatteryState()
+# appends unicode for battery or +
+# set VALUE_BATTERY_STATE
 {
    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-        SBATTERY_STATE=$SBATTERY_STATE$UNICODE_BATTERY
+        VALUE_BATTERY_STATE=$VALUE_BATTERY_STATE$UNICODE_BATTERY
    else
-        SBATTERY_STATE=$SBATTERY_STATE"+"
+        VALUE_BATTERY_STATE=$VALUE_BATTERY_STATE"+"
    fi 
 }
 
 appendLowBatteryState()
+# appends unicode for battery low or LOW
+# set VALUE_BATTERY_STATE
 {
     if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
     #https://emojipedia.org/low-battery/ "Coming to major platforms in late 2021 and throughout 2022".
-         SBATTERY_STATE=$SBATTERY_STATE$UNICODE_BATTERY_LOW 
+         VALUE_BATTERY_STATE=$VALUE_BATTERY_STATE$UNICODE_BATTERY_LOW 
     else
-        SBATTERY_STATE=$SBATTERY_STATE"LOW"
+        VALUE_BATTERY_STATE=$VALUE_BATTERY_STATE"LOW"
     fi
 }
 
-getBatteryVoltageLevelState()
+getBatteryVoltageScale10State()
+# appends voltage level for 1 AA battery to VALUE_BATTERY_STATE
 # $1 voltage scaled * 10
 # set VALUE_BATTERY_VOLTAGE
-# set SBATTERY_STATE
+# set VALUE_BATTERY_STATE
 {
-     if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-        #shellcheck disable=SC3044
-  #      typeset -i  i
-    :
-    else
-   #     local       i
-    :
-    fi
+   unset VALUE_BATTERY_STATE
 
-   unset SBATTERY_STATE
-
-   if [ "$1" -le 12 ]; then
+   if [ "$1" -le "$BATTERY_VOLTAGE_LOW" ]; then
       appendLowBatteryState
    else
-    # i=13
-    # while [ "$i" -le "$1" ]; do
-       appendBatteryState # not really linear, but approximate 
-    #   i=$(( i + 1 ))
-    # done
+      appendBatteryState
    fi
-   VALUE_VOLTAGE_SCALE10=$1
-   convertScale10ToFloat "$VALUE_VOLTAGE_SCALE10"
-   VALUE_BATTERY_VOLTAGE="$VALUE_SCALE10_FLOAT"
-   SBATTERY_STATE=$SBATTERY_STATE" ${VALUE_BATTERY_VOLTAGE}V"
 
-   if [ -n "$KSH_VERSION" ]; then
-        unset  i
-    fi
+   convertScale10ToFloat "$1"
+
+   VALUE_BATTERY_VOLTAGE="$VALUE_SCALE10_FLOAT"
+   VALUE_BATTERY_STATE=$VALUE_BATTERY_STATE" ${VALUE_BATTERY_VOLTAGE}V"
 }
 
 getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
     
-    unset SBATTERY_STATE
+    unset VALUE_BATTERY_STATE
    
     #set -- 0     #debug  set $1 to 0
     if [ "$1" -eq 6 ]; then
       if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
        #https://emojipedia.org/electric-plug/
-        SBATTERY_STATE=$UNICODE_PLUG
+        VALUE_BATTERY_STATE=$UNICODE_PLUG
       else
-        SBATTERY_STATE="dc" # for example PM 2.5 indoor
+        VALUE_BATTERY_STATE="dc" # for example PM 2.5 indoor
       fi
     else
        # l=1
@@ -1513,7 +1514,7 @@ getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
           appendBatteryState
        fi
 
-       SBATTERY_STATE=$SBATTERY_STATE" $1"
+       VALUE_BATTERY_STATE=$VALUE_BATTERY_STATE" $1"
     fi
 
     unset  l
@@ -1521,7 +1522,7 @@ getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
 
 getBatteryLowOrNormal() {
     
-    unset SBATTERY_STATE
+    unset VALUE_BATTERY_STATE
 
     if [ "$1" -eq "$BATTERY_NORMAL" ]; then
        appendBatteryState
