@@ -504,6 +504,7 @@ parseSensorIdNew()
         if ! getSensorNameShort "$stype"; then
           contiunue
         fi
+         export "$SENSORNAME_VAR"_ID="$SID" "$SENSORNAME_VAR"_ID_STATE="$local_sensorstate" 
         
         unset VALUE_BATTERY_STATE VALUE_SIGNAL_UNICODE
 
@@ -516,15 +517,12 @@ parseSensorIdNew()
         elif [ "$signal" -gt 0 ]; then
             LIVEDATASENSOR_CONNECTED=$(( LIVEDATASENSOR_CONNECTED + 1 ))
             local_sensorstate=$SENSORIDSTATE_CONNECTED
-            exportLivedataBattery "$stype" "$battery"
-            exportLivedataSignal "$stype" "$signal"
+            exportLivedataBattery "$stype" "$battery" "$SENSORNAME_VAR"
+            getSignalUnicode "$signal"
+            export "$SENSORNAME_VAR"_SIGNAL="$signal" "$SENSORNAME_VAR"_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
         elif [ "$signal" -eq 0 ]; then
             local_sensorstate=$SENSORIDSTATE_DISCONNECTED
             LIVEDATASENSOR_DISCONNECTED=$(( LIVEDATASENSOR_DISCONNECTED + 1 ))
-        fi
-
-        if [ -n "$SENSORNAME_VAR" ]; then
-            eval export "${SENSORNAME_VAR}_ID=$SID" "${SENSORNAME_VAR}_ID_STATE=$local_sensorstate" 
         fi
 
         #pattern matching
@@ -1336,110 +1334,37 @@ getSignalUnicode()
     fi
 }
 
-setLivedataSignal()
-# export LIVEDATA_*_SIGNAL LIVEDATA_*_SIGNAL_STATE
-#$1 sensorname WH?? $2 signal value
-{
-    getSignalUnicode "$2"
-    export LIVEDATASENSOR_"$1"_SIGNAL="$2" LIVEDATASENSOR_"$1"_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
-}
-
-exportLivedataSignal()
-# maps integer sensortype to variable for each sensortype 
-# $1 sensortype $2 signal
-# set VALUE_SIGNAL_UNICODE
-{
-    if [ "$1" -eq "$SENSORTYPE_WH65" ]; then # 0
-        setLivedataSignal "WH65" "$2"
-    elif [ "$1" -eq "$SENSORTYPE_WH68" ]; then # 1
-        setLivedataSignal "WH68" "$2"
-    elif [ "$1" -eq "$SENSORTYPE_WH80" ]; then # 2
-        setLivedataSignal "WH80" "$2"
-    elif [ "$1" -eq "$SENSORTYPE_WH40" ]; then # 3
-       setLivedataSignal "WH40RAINFALL" "$2"
-    elif [ "$1" -eq "$SENSORTYPE_WH32" ]; then # 5
-        setLivedataSignal "WH32TEMP" "$2"
-    elif [ "$1" -ge "$SENSORTYPE_WH31TEMP" ] && [ "$1" -lt $(( SENSORTYPE_WH31TEMP + SENSORTYPE_WH31TEMP_MAXCH )) ]; then # 6-13
-        setLivedataSignal "WH31TEMP$(( $1 - SENSORTYPE_WH31TEMP + 1))" "$2"
-    elif [ "$1" -ge "$SENSORTYPE_WH51SOILMOISTURE" ] && [ "$1" -lt $(( SENSORTYPE_WH51SOILMOISTURE + SENSORTYPE_WH51SOILMOISTURE_MAXCH )) ]; then # 14-21
-       setLivedataSignal "WH51SOILMOISTURE$(( $1 - SENSORTYPE_WH51SOILMOISTURE + 1))" "$2"
-    elif [ "$1" -ge "$SENSORTYPE_WH43PM25" ] && [ "$1" -lt $(( SENSORTYPE_WH43PM25 + SENSORTYPE_WH43PM25_MAXCH )) ]; then # 22-25
-       setLivedataSignal "WH43PM25$(( $1 - SENSORTYPE_WH43PM25 + 1))" "$2"
-    elif [ "$1" -eq "$SENSORTYPE_WH57LIGHTNING" ]; then # 26
-       setLivedataSignal "WH57LIGHTNING" "$2"
-    elif [ "$1" -ge "$SENSORTYPE_WH55LEAK" ] && [ "$1" -lt $(( SENSORTYPE_WH55LEAK + SENSORTYPE_WH55LEAK_MAXCH )) ]; then # 26-30
-       setLivedataSignal "WH55LEAK$(( $1 - SENSORTYPE_WH55LEAK + 1))" "$2"
-    elif [ "$1" -ge "$SENSORTYPE_WH34SOILTEMP" ] && [ "$1" -lt $(( SENSORTYPE_WH34SOILTEMP + SENSORTYPE_WH34SOILTEMP_MAXCH )) ]; then # 31 - 38
-       setLivedataSignal "WH34SOILTEMP$(( $1 - SENSORTYPE_WH34SOILTEMP + 1))" "$2"
-    elif [ "$1" -ge "$SENSORTYPE_WH45CO2" ]; then # 39
-       setLivedataSignal "WH45CO2" "$2"
-    elif [ "$1" -ge "$SENSORTYPE_WH35LEAFWETNESS" ] && [ "$1" -lt $(( SENSORTYPE_WH35LEAFWETNESS + SENSORTYPE_WH35LEAFWETNESS_MAXCH )) ]; then # 40-47
-       setLivedataSignal "WH35LEAFWETNESS$(( $1 - SENSORTYPE_WH35LEAFWETNESS + 1))" "$2"
-    fi
-      
-}
-
 exportLivedataBattery()
 # $1 sensortype 0-48
 # $2 sensor battery value
+# $3 sensor export variable prefix
 # set VALUE_BATTERY_STATE
 {
-   
+  # echo >&2 "exportLivedataBattery: args $*"
     #specification FOS_ENG-022-A, page 28
     unset VALUE_BATTERY_STATE
 
      case "$1" in
-        0) setBatteryLowNormal "WH65" "$2" # WH65
-            ;;
-        1) setBatteryVoltageLevel002 "WH68" "$2"
-            ;;
-        2) setBatteryVoltageLevel002 "WH80" "$2"
-            ;;
-        3) setBatteryLowNormal "WH40RAINFALL" "$2"
-            ;;
-        5) setBatteryLowNormal "WH32TEMP" "$2"
-            ;;
-        6|7|8|9|10|11|12|13)
-           channel=$(($1 - 5))
-           setBatteryLowNormal "WH31TEMP$channel" "$2"
-           ;;
-        14|15|16|17|18|19|20|21)
-           channel=$(( $1 - 13))
-           setBatteryVoltageLevel "WH51SOILMOISTURE$channel" "$2"
-          ;;
-        22|23|24|25)
-          channel=$(( $1 - 21 ))
-          setBatteryLevel "WH43PM25$channel" "$2"
-          ;;
-        26)
-          setBatteryLevel "WH57LIGHTNING" "$2"
-          ;;
-        27|28|29|30)
-          channel=$(( $1 - 26 ))
-          setBatteryLevel "WH55LEAK$channel" "$2"
-          ;;
-        31|32|33|34|35|36|37|38)
-           channel=$(( $1 - 30))
-           setBatteryVoltageLevel "WH34SOILTEMP$channel" "$2"
-           ;;
-        39)
-           setBatteryLevel "WH45CO2" "$2"
-           #battery info also available from sensor read livedata
-          ;;
-        40|41|42|43|44|45|46|47)
-           channel=$(( $1 - 39))
-           setBatteryVoltageLevel "WH35LEAFWETNESS$channel" "$2"
-           ;;
+        0|3|5|6|7|8|9|10|11|12|13)         
+                            setBatteryLowNormal "$3" "$2" # WH65,WH32,WH31
+                            ;;
+                 1|2)       setBatteryVoltageLevel002 "$3" "$2" #WH68/WH80
+                            ;;
+        14|15|16|17|18|19|20|21|31|32|33|34|35|36|37|38|40|41|42|43|44|45|46|47)
+                            setBatteryVoltageLevel "$3" "$2"
+                            ;;
+        22|23|24|25|26|27|28|29|30|39)
+                           setBatteryLevel "$3" "$2"
+                            ;;
     esac
 
-    unset channel
 }
 
 setBatteryLowNormal()
 {
-     getBatteryLowOrNormal "$2" 
-    eval "export LIVEDATASENSOR_${1}_BATTERY=$2"
-    eval "export LIVEDATASENSOR_${1}_BATTERY_STATE='$VALUE_BATTERY_STATE'"
+     getBatteryLowOrNormal "$2"
+    eval "export $1_BATTERY=$2"
+    eval "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'"
 }
 
 setBatteryVoltageLevel()
@@ -1447,16 +1372,16 @@ setBatteryVoltageLevel()
 # $2 voltage x 10
 {
     getBatteryVoltageScale10State "$2"
-    eval "export LIVEDATASENSOR_${1}_BATTERY_INTS10=$2"
-    eval "export LIVEDATASENSOR_${1}_BATTERY=$VALUE_BATTERY_VOLTAGE"
-    eval "export LIVEDATASENSOR_${1}_BATTERY_STATE='$VALUE_BATTERY_STATE'"
+    eval "export $1_BATTERY_INTS10=$2"
+    eval "export $1_BATTERY=$VALUE_BATTERY_VOLTAGE"
+    eval "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'"
 }
 
 setBatteryLevel()
 {
     getBatteryLevelState "$2"
-    eval "export LIVEDATASENSOR_${1}_BATTERY=$2"
-    eval "export LIVEDATASENSOR_${1}_BATTERY_STATE='$VALUE_BATTERY_STATE'"
+    eval "export $1_BATTERY=$2"
+    eval "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'"
 }
 
 setBatteryVoltageLevel002()
@@ -1475,9 +1400,9 @@ setBatteryVoltageLevel002()
     fi
 
     local_voltage=${local_voltage_s100%??}$SHELL_DECIMAL_POINT${local_voltage_s100#?} # assumes 3 digits always for local_voltage_s100
-    eval "export LIVEDATASENSOR_${1}_BATTERY=$local_voltage" 
+    eval "export $1_BATTERY=$local_voltage" 
     VALUE_BATTERY_STATE=$VALUE_BATTERY_STATE"${local_voltage}V"
-    eval "export LIVEDATASENSOR_${1}_BATTERY_STATE='$VALUE_BATTERY_STATE'"
+    eval "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'"
 
     unset local_voltage local_voltage_s100
 }
