@@ -79,7 +79,6 @@ sendPacketnc()
     timeout_nc=0.05
     timeout_udp_broadcast=0.236 # timeout selected based on udp port scanning 254 hosts in 60s (60s/254=0.236s)
     useTimeout=0
-    local_sendattempt=1 # send command attemps
     
 
     createPacketTX "$1"
@@ -175,11 +174,16 @@ sendPacketnc()
        fi 
 
        unset od_buffer
-       while [ -z "$od_buffer" ] && [ $local_sendattempt -le 3 ]; do
+        local_resendattempt=0 # send command attemps
+       while [ -z "$od_buffer" ] && [ $local_resendattempt -le 3 ]; do
             od_buffer=$(eval "$cmdstr" )
             if [ -z "$od_buffer" ]; then
-                local_sendattempt=$(( local_sendattempt + 1 ))
-                sleep 1
+                if [ $local_resendattempt -eq 0 ]; then
+                   sleep 1
+                else
+                    sleep $(( 5 * local_resendattempt ))
+                fi
+                local_resendattempt=$(( local_resendattempt + 1 ))
                 continue
             else
                 break
@@ -187,7 +191,7 @@ sendPacketnc()
         done
 
        if [ -z "$od_buffer" ]; then
-         echo >&2 "$(date) Warning: command $VALUE_COMMAND_NAME no response (0 bytes) from host $2, send attempts $local_sendattempt"
+         echo >&2 "$(date) Warning: command $VALUE_COMMAND_NAME no response (0 bytes) from host $2, send attempts $local_resendattempt"
        elif  [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" -eq 1 ]; then
             printf >&2 "< %-25s" "$VALUE_COMMAND_NAME"
             printBuffer >&2 "$od_buffer"
@@ -203,7 +207,7 @@ sendPacketnc()
        EXITCODE_SENDPACKETNC=$?
     fi
 
-    unset local_sendattempt ncUDPOpt ncIdleOpt port host timeout_udp_broadcast useTimeout timeout_nc od_buffer cmdstr nccmdstr odcmdstr  rxpipecmd txpipecmd
+    unset local_resendattempt ncUDPOpt ncIdleOpt port host timeout_udp_broadcast useTimeout timeout_nc od_buffer cmdstr nccmdstr odcmdstr  rxpipecmd txpipecmd
 
     return $EXITCODE_SENDPACKETNC
 }
