@@ -324,7 +324,7 @@ parseRaindata() {
 }
 
 getSensorNameShort()
-# mapping from sensortype to names
+# mapping from sensortype to long/short names
 # $1 sensortype
 # set SENSORNAME_WH
 # set SENSORNAME_SHORT
@@ -343,72 +343,96 @@ getSensorNameShort()
               SENSORNAME_WH='WH??' # no system information, cannot determine WH24/WH65
             fi
             SENSORNAME_SHORT='Weather Station'
+            SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}"
             ;;
         1) SENSORNAME_WH='WH68'
            SENSORNAME_SHORT="Weather Station"
+            SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}"
             ;;
         2) SENSORNAME_WH="WH80"
            SENSORNAME_SHORT='Weather Station'
+            SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}"
             ;;
         3) SENSORNAME_WH="WH40"
            SENSORNAME_SHORT="Rainfall"
+            SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}RAINFALL"
+
             ;;
         5) SENSORNAME_WH='WH32'
            SENSORNAME_SHORT='Temperatue out'
+            SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}TEMP"
+
             ;;
         6|7|8|9|10|11|12|13)
            SENSORNAME_WH='WH31'
            local_channel=$(( $1 -5 ))
-           SENSORNAME_SHORT="Temperature$local_channel"
-           set -x
+           SENSORNAME_SHORT="Temperature $local_channel"
            SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}TEMP$local_channel"
-           set +x
            ;;
         14|15|16|17|18|19|20|21)
           SENSORNAME_WH='WH51'
-          SENSORNAME_SHORT="Soilmoisture$(($1 - 13))"
+          local_channel=$(( $1 - 13 ))
+          SENSORNAME_SHORT="Soilmoisture $local_channel"
+          SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}SOILMOISTURE$local_channel"
+
           ;;
         22|23|24|25)
           SENSORNAME_WH='WH43'
-          SENSORNAME_SHORT="PM2.5 AQ $(($1 - 21))"
+          local_channel=$(($1 - 21))
+          SENSORNAME_SHORT="PM2.5 AQ $local_channel"
+          SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}PM25$local_channel"
           ;;
         26)
           SENSORNAME_SHORT="Lightning"
           SENSORNAME_WH='WH57'
+          SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}LIGHTNING$local_channel"
           ;;
         27|28|29|30)
           SENSORNAME_WH='WH55'
-          SENSORNAME_SHORT="Leak$(($1 - 26))"
+          local_channel=$(($1 - 26))
+          SENSORNAME_SHORT="Leak $local_channel"
+          SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}LEAK$local_channel"
           ;;
         31|32|33|34|35|36|37|38)
 
           SENSORNAME_WH='WH34'
-          SENSORNAME_SHORT="Soiltemperature$(($1 - 30))"
+          local_channel=$(($1 - 30))
+          SENSORNAME_SHORT="Soiltemperature $local_channel"
+          SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}SOILTEMP$local_channel"
+          
           ;;
         39)
           SENSORNAME_WH='WH45'
           SENSORNAME_SHORT="CO2 PM2.5 PM10 AQ"
+          SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}CO2"
+
           ;;
         40|41|42|43|44|45|46|47)
             SENSORNAME_WH='WH35'
-            SENSORNAME_SHORT="Leafwetness$(($1 - 39))"
+            local_channel=$(($1 - 39))
+            SENSORNAME_SHORT="Leafwetness $local_channel"
+            SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}LEAFWETNESS$local_channel"
+
            ;;
          *)
          echo >&2 "Warning: Unknown sensortype $1"
           SENSORNAME_WH='WH??' 
           SENSORNAME_SHORT='?'
+          SENSORNAME_VAR="LIVEDATASENSOR_UNKNOWN$1"
+          return 1
     esac
 
     unset local_channel
 }
 
 printSensorLine()
-#$1 - sensortype, $2 sensor id, $3 battery, $4 signal
+#$1 - sensortype, $2 sensor id, $3 battery, $4 signal , $5 sensorid state, $6 battery state, $7signal unicode
+# in: SENSORNAME_WH
+# in: SENSORNAME_SHORT
 {
 #observation: leak sensor signal -> starts at level 1 after search state, then increases +1 each time a new rf message is received
 
-    unset VALUE_BATTERY_STATE
-
+    unset VALUE_BATTERY_STATE style_sensor
     
    # TEST data 
     #if [ "$1" -eq 40 ]; then
@@ -417,26 +441,11 @@ printSensorLine()
     #fi
 
     if [ "$2" -eq "$SENSORID_DISABLE" ]; then 
-      style_sensor=$STYLE_SENSOR_DISABLE
-      sensorIdState=$SENSORIDSTATE_DISABLED
+        style_sensor=$STYLE_SENSOR_DISABLE
     elif [ "$2" -eq "$SENSORID_SEARCH" ]; then
-      style_sensor=$STYLE_SENSOR_SEARCH
-      sensorIdState=$SENSORIDSTATE_SEARCHING
-    else
-        unset style_sensor
-       getSensorBatteryState "$1" "$3"
-       if [ "$4" -gt 0 ]; then 
-            sensorIdState=$SENSORIDSTATE_CONNECTED
-        else
-            style_sensor=$STYLE_SENSOR_DISCONNECTED
-            sensorIdState=$SENSORIDSTATE_DISCONNECTED
-        fi
-
-       if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-            getSignalUnicode "$4"
-            sensorsignal_unicode=$VALUE_SIGNAL_UNICODE
-           # unicode e2 96 81 e2 96 82 e2 96 83 e2 96 84 -> each symbol 3 bytes, minimum field size = 4*3 = 12
-        fi
+        style_sensor=$STYLE_SENSOR_SEARCH
+    elif [ "$4" -eq 0 ]; then 
+        style_sensor=$STYLE_SENSOR_DISCONNECTED
     fi
 
     if [ -n "$style_sensor" ]; then
@@ -447,9 +456,9 @@ printSensorLine()
      # use \r\t\t\t workaround for unicode alignment
   
     appendBuffer "%6u %9x %3u %1u %4s %-17s $style_sensor%-12s$style_sensor_off\t%s\t%s\n"\
- "'$1' '$2' '$3' '$4'  '$SENSORNAME_WH' '$SENSORNAME_SHORT' '$sensorIdState' '$VALUE_BATTERY_STATE' '$sensorsignal_unicode'"
+ "'$1' '$2' '$3' '$4'  '$SENSORNAME_WH' '$SENSORNAME_SHORT' '$5' '$6' '$7'"
     
-    unset sensorIdState sensorsignal_unicode style_sensor_off style_sensor
+    unset style_sensor_off style_sensor
 }
 
 parseSensorIdNew()
@@ -492,26 +501,30 @@ parseSensorIdNew()
         readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "sensor signal"
         signal=$VALUE_UINT8
 
-        getSensorNameShort "$stype"
-       
+        if ! getSensorNameShort "$stype"; then
+          contiunue
+        fi
+        
+        unset VALUE_BATTERY_STATE VALUE_SIGNAL_UNICODE
 
         if [ "$SID" -eq "$SENSORID_SEARCH" ]; then
             LIVEDATASENSOR_SEARCHING=$(( LIVEDATASENSOR_SEARCHING + 1 ))
-            local_sensorstate="searching"
+            local_sensorstate=$SENSORIDSTATE_CONNECTED
         elif [ "$SID" -eq "$SENSORID_DISABLE" ]; then
-            local_sensorstate="disabled"
+            local_sensorstate=$SENSORIDSTATE_DISABLED
             LIVEDATASENSOR_DISABLED=$(( LIVEDATASENSOR_DISABLED + 1 ))
         elif [ "$signal" -gt 0 ]; then
             LIVEDATASENSOR_CONNECTED=$(( LIVEDATASENSOR_CONNECTED + 1 ))
-            local_sensorstate="connected"
-            setLivedataSignal "$stype" "$signal"
+            local_sensorstate=$SENSORIDSTATE_CONNECTED
+            exportLivedataBattery "$stype" "$battery"
+            exportLivedataSignal "$stype" "$signal"
         elif [ "$signal" -eq 0 ]; then
-            local_sensorstate="disconnected"
+            local_sensorstate=$SENSORIDSTATE_DISCONNECTED
             LIVEDATASENSOR_DISCONNECTED=$(( LIVEDATASENSOR_DISCONNECTED + 1 ))
         fi
 
         if [ -n "$SENSORNAME_VAR" ]; then
-             eval export "${SENSORNAME_VAR}_ID=$SID" "${SENSORNAME_VAR}_ID_STATE=$local_sensorstate" "${SENSORNAME_VAR}_BATTERY=$battery" "${SENSORNAME_VAR}_SIGNAL=$signal"
+            eval export "${SENSORNAME_VAR}_ID=$SID" "${SENSORNAME_VAR}_ID_STATE=$local_sensorstate" 
         fi
 
         #pattern matching
@@ -532,7 +545,7 @@ parseSensorIdNew()
         fi
 
         if [ $printSensorMatch -eq 1 ]; then
-            printSensorLine "$stype" "$SID" "$battery" "$signal"
+            printSensorLine "$stype" "$SID" "$battery" "$signal" "$local_sensorstate" "$VALUE_BATTERY_STATE" "$VALUE_SIGNAL_UNICODE"
         fi
         
         [ "$DEBUG" -eq 1 ] && >&2 echo "type $stype id $SID battery $battery signal $signal"
@@ -951,7 +964,6 @@ parseLivedata()
             getBatteryVoltageScale10State "$VALUE_UINT8"
             eval "export LIVEDATA_TF_USR${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
             
-
         elif [ "$ldf" -ge "$LDF_LIGHTNING" ]; then
 
             readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "lightning distance"
@@ -1319,51 +1331,55 @@ printWeatherServices ()
 
 getSignalUnicode()
 {
-    eval VALUE_SIGNAL_UNICODE="\$UNICODE_SIGNAL_LEVEL$1"
-}
-
-setSignal()
-#$1 sensorname WH?? $2 value
-{
-    export LIVEDATA_"$1"_SIGNAL="$2"
-    getSignalUnicode "$2"
-    export LIVEDATA_"$1"_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE" 
+    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+        eval VALUE_SIGNAL_UNICODE="\$UNICODE_SIGNAL_LEVEL$1"
+    fi
 }
 
 setLivedataSignal()
-# $1 sensortype $2 signal
-#maps sensor type to livedata
+# export LIVEDATA_*_SIGNAL LIVEDATA_*_SIGNAL_STATE
+#$1 sensorname WH?? $2 signal value
 {
-    
-    if [ "$1" -ge "$SENSORTYPE_WH31TEMP" ] && [ "$1" -lt $(( SENSORTYPE_WH31TEMP + SENSORTYPE_WH31TEMP_MAXCH )) ]; then
-        setSignal "WH31TEMP$(( $1 - SENSORTYPE_WH31TEMP + 1))" "$2"
-    elif [ "$1" -eq "$SYSTEM_SENSOR_TYPE_WH24" ]; then
-        setSignal "WH65" "$2"
-    elif [ "$1" -eq "$SENSORTYPE_WH68" ]; then
-        setSignal "WH68" "$2"
-    elif [ "$1" -eq "$SENSORTYPE_WH80" ]; then
-        setSignal "WH80" "$2"
-    elif [ "$1" -eq "$SENSORTYPE_WH32" ]; then
-        setSignal "WH32" "$2"
-    elif [ "$1" -eq "$SENSORTYPE_WH40" ]; then
-       setSignal "WH40_RAINFALL" "$2"
-    elif [ "$1" -eq "$SENSORTYPE_WH57LIGHTNING" ]; then
-       setSignal "LIGHTNING" "$2"
-    elif [ "$1" -ge "$SENSORTYPE_WH51SOILMOISTURE" ] && [ "$1" -lt $(( SENSORTYPE_WH51SOILMOISTURE + SENSORTYPE_WH51SOILMOISTURE_MAXCH )) ]; then
-       setSignal "SOILMOISTURE$(( $1 - SENSORTYPE_WH51SOILMOISTURE + 1))" "$2"
-    elif [ "$1" -ge "$SENSORTYPE_WH55LEAK" ] && [ "$1" -lt $(( SENSORTYPE_WH55LEAK + SENSORTYPE_WH55LEAK_MAXCH )) ]; then
-       setSignal "LEAK$(( $1 - SENSORTYPE_WH55LEAK + 1))" "$2"
-    elif [ "$1" -ge "$SENSORTYPE_WH34SOILTEMP" ] && [ "$1" -lt $(( SENSORTYPE_WH34SOILTEMP + SENSORTYPE_WH34SOILTEMP_MAXCH )) ]; then
-       setSignal "SOILTEMP$(( $1 - SENSORTYPE_WH34SOILTEMP + 1))" "$2"
-    elif [ "$1" -ge "$SENSORTYPE_WH43PM25" ] && [ "$1" -lt $(( SENSORTYPE_WH43PM25 + SENSORTYPE_WH43PM25_MAXCH )) ]; then
-       setSignal "PM25$(( $1 - SENSORTYPE_WH43PM25 + 1))" "$2"
-    elif [ "$1" -ge "$SENSORTYPE_WH35LEAFWETNESS" ] && [ "$1" -lt $(( SENSORTYPE_WH35LEAFWETNESS + SENSORTYPE_WH35LEAFWETNESS_MAXCH )) ]; then
-       setSignal "LEAFWETNESS$(( $1 - SENSORTYPE_WH35LEAFWETNESS + 1))" "$2"
+    getSignalUnicode "$2"
+    export LIVEDATASENSOR_"$1"_SIGNAL="$2" LIVEDATASENSOR_"$1"_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
+}
+
+exportLivedataSignal()
+# maps integer sensortype to variable for each sensortype 
+# $1 sensortype $2 signal
+# set VALUE_SIGNAL_UNICODE
+{
+    if [ "$1" -eq "$SENSORTYPE_WH65" ]; then # 0
+        setLivedataSignal "WH65" "$2"
+    elif [ "$1" -eq "$SENSORTYPE_WH68" ]; then # 1
+        setLivedataSignal "WH68" "$2"
+    elif [ "$1" -eq "$SENSORTYPE_WH80" ]; then # 2
+        setLivedataSignal "WH80" "$2"
+    elif [ "$1" -eq "$SENSORTYPE_WH40" ]; then # 3
+       setLivedataSignal "WH40RAINFALL" "$2"
+    elif [ "$1" -eq "$SENSORTYPE_WH32" ]; then # 5
+        setLivedataSignal "WH32TEMP" "$2"
+    elif [ "$1" -ge "$SENSORTYPE_WH31TEMP" ] && [ "$1" -lt $(( SENSORTYPE_WH31TEMP + SENSORTYPE_WH31TEMP_MAXCH )) ]; then # 6-13
+        setLivedataSignal "WH31TEMP$(( $1 - SENSORTYPE_WH31TEMP + 1))" "$2"
+    elif [ "$1" -ge "$SENSORTYPE_WH51SOILMOISTURE" ] && [ "$1" -lt $(( SENSORTYPE_WH51SOILMOISTURE + SENSORTYPE_WH51SOILMOISTURE_MAXCH )) ]; then # 14-21
+       setLivedataSignal "WH51SOILMOISTURE$(( $1 - SENSORTYPE_WH51SOILMOISTURE + 1))" "$2"
+    elif [ "$1" -ge "$SENSORTYPE_WH43PM25" ] && [ "$1" -lt $(( SENSORTYPE_WH43PM25 + SENSORTYPE_WH43PM25_MAXCH )) ]; then # 22-25
+       setLivedataSignal "WH43PM25$(( $1 - SENSORTYPE_WH43PM25 + 1))" "$2"
+    elif [ "$1" -eq "$SENSORTYPE_WH57LIGHTNING" ]; then # 26
+       setLivedataSignal "WH57LIGHTNING" "$2"
+    elif [ "$1" -ge "$SENSORTYPE_WH55LEAK" ] && [ "$1" -lt $(( SENSORTYPE_WH55LEAK + SENSORTYPE_WH55LEAK_MAXCH )) ]; then # 26-30
+       setLivedataSignal "WH55LEAK$(( $1 - SENSORTYPE_WH55LEAK + 1))" "$2"
+    elif [ "$1" -ge "$SENSORTYPE_WH34SOILTEMP" ] && [ "$1" -lt $(( SENSORTYPE_WH34SOILTEMP + SENSORTYPE_WH34SOILTEMP_MAXCH )) ]; then # 31 - 38
+       setLivedataSignal "WH34SOILTEMP$(( $1 - SENSORTYPE_WH34SOILTEMP + 1))" "$2"
+    elif [ "$1" -ge "$SENSORTYPE_WH45CO2" ]; then # 39
+       setLivedataSignal "WH45CO2" "$2"
+    elif [ "$1" -ge "$SENSORTYPE_WH35LEAFWETNESS" ] && [ "$1" -lt $(( SENSORTYPE_WH35LEAFWETNESS + SENSORTYPE_WH35LEAFWETNESS_MAXCH )) ]; then # 40-47
+       setLivedataSignal "WH35LEAFWETNESS$(( $1 - SENSORTYPE_WH35LEAFWETNESS + 1))" "$2"
     fi
       
 }
 
-getSensorBatteryState()
+exportLivedataBattery()
 # $1 sensortype 0-48
 # $2 sensor battery value
 # set VALUE_BATTERY_STATE
@@ -1379,9 +1395,9 @@ getSensorBatteryState()
             ;;
         2) setBatteryVoltageLevel002 "WH80" "$2"
             ;;
-        3) setBatteryLowNormal "WH40_RAINFALL" "$2"
+        3) setBatteryLowNormal "WH40RAINFALL" "$2"
             ;;
-        5) setBatteryLowNormal "WH32_TEMPERATURE" "$2"
+        5) setBatteryLowNormal "WH32TEMP" "$2"
             ;;
         6|7|8|9|10|11|12|13)
            channel=$(($1 - 5))
@@ -1389,22 +1405,22 @@ getSensorBatteryState()
            ;;
         14|15|16|17|18|19|20|21)
            channel=$(( $1 - 13))
-           setBatteryVoltageLevel "SOILMOISTURE$channel" "$2"
+           setBatteryVoltageLevel "WH51SOILMOISTURE$channel" "$2"
           ;;
         22|23|24|25)
           channel=$(( $1 - 21 ))
-          setBatteryLevel "PM25$channel" "$2"
+          setBatteryLevel "WH43PM25$channel" "$2"
           ;;
         26)
-          setBatteryLevel "WH57_LIGHTNING" "$2"
+          setBatteryLevel "WH57LIGHTNING" "$2"
           ;;
         27|28|29|30)
           channel=$(( $1 - 26 ))
-          setBatteryLevel "LEAK$channel" "$2"
+          setBatteryLevel "WH55LEAK$channel" "$2"
           ;;
         31|32|33|34|35|36|37|38)
            channel=$(( $1 - 30))
-           setBatteryVoltageLevel "SOILTEMP$channel" "$2"
+           setBatteryVoltageLevel "WH34SOILTEMP$channel" "$2"
            ;;
         39)
            setBatteryLevel "WH45CO2" "$2"
@@ -1412,7 +1428,7 @@ getSensorBatteryState()
           ;;
         40|41|42|43|44|45|46|47)
            channel=$(( $1 - 39))
-           setBatteryVoltageLevel "LEAFWETNESS$channel" "$2"
+           setBatteryVoltageLevel "WH35LEAFWETNESS$channel" "$2"
            ;;
     esac
 
@@ -1422,8 +1438,8 @@ getSensorBatteryState()
 setBatteryLowNormal()
 {
      getBatteryLowOrNormal "$2" 
-    eval "export LIVEDATA_${1}_BATTERY=$2"
-    eval "export LIVEDATA_${1}_BATTERY_STATE='$VALUE_BATTERY_STATE'"
+    eval "export LIVEDATASENSOR_${1}_BATTERY=$2"
+    eval "export LIVEDATASENSOR_${1}_BATTERY_STATE='$VALUE_BATTERY_STATE'"
 }
 
 setBatteryVoltageLevel()
@@ -1431,16 +1447,16 @@ setBatteryVoltageLevel()
 # $2 voltage x 10
 {
     getBatteryVoltageScale10State "$2"
-    eval "export LIVEDATA_${1}_BATTERY_INTS10=$2"
-    eval "export LIVEDATA_${1}_BATTERY=$VALUE_BATTERY_VOLTAGE"
-    eval "export LIVEDATA_${1}_BATTERY_STATE='$VALUE_BATTERY_STATE'"
+    eval "export LIVEDATASENSOR_${1}_BATTERY_INTS10=$2"
+    eval "export LIVEDATASENSOR_${1}_BATTERY=$VALUE_BATTERY_VOLTAGE"
+    eval "export LIVEDATASENSOR_${1}_BATTERY_STATE='$VALUE_BATTERY_STATE'"
 }
 
 setBatteryLevel()
 {
     getBatteryLevelState "$2"
-    eval "export LIVEDATA_${1}_BATTERY=$2"
-    eval "export LIVEDATA_${1}_BATTERY_STATE='$VALUE_BATTERY_STATE'"
+    eval "export LIVEDATASENSOR_${1}_BATTERY=$2"
+    eval "export LIVEDATASENSOR_${1}_BATTERY_STATE='$VALUE_BATTERY_STATE'"
 }
 
 setBatteryVoltageLevel002()
@@ -1459,9 +1475,9 @@ setBatteryVoltageLevel002()
     fi
 
     local_voltage=${local_voltage_s100%??}$SHELL_DECIMAL_POINT${local_voltage_s100#?} # assumes 3 digits always for local_voltage_s100
-    eval "export LIVEDATA_${1}_BATTERY=$local_voltage" 
+    eval "export LIVEDATASENSOR_${1}_BATTERY=$local_voltage" 
     VALUE_BATTERY_STATE=$VALUE_BATTERY_STATE"${local_voltage}V"
-    eval "export LIVEDATA_${1}_BATTERY_STATE='$VALUE_BATTERY_STATE'"
+    eval "export LIVEDATASENSOR_${1}_BATTERY_STATE='$VALUE_BATTERY_STATE'"
 
     unset local_voltage local_voltage_s100
 }

@@ -14,7 +14,7 @@ injectWH45_CO2Livedata()
     LIVEDATA_WH45CO2_CO2=999
     LIVEDATA_WH45CO2_CO2_24HAVG=1000
     setBatteryLevel "WH45CO2" 4
-    setSignal "WH45CO2" 4
+    setLivedataSignal "WH45CO2" 4
 
 }
 
@@ -25,8 +25,8 @@ injectWH57_LightningLivedata()
     LIVEDATA_LIGHTNING_TIME=1638531935
     getDateUTC "$LIVEDATA_LIGHTNING_TIME"
     LIVEDATA_LIGHTNING_TIME_UTC=$VALUE_DATE_UTC
-    setBatteryLevel "WH57_LIGHTNING" 1
-    setSignal "WH57_LIGHTNING" 4
+    setBatteryLevel "WH57LIGHTNING" 1
+    setLivedataSignal "WH57LIGHTNING" 4
 }
 
 
@@ -35,7 +35,7 @@ injectWH35_LeafwetnessLivedata()
     #shellcheck disable=SC2034
     LIVEDATA_LEAFWETNESS1=47
     setBatteryVoltageLevel "LEAFWETNESS1" 14
-    setSignal "LEAFWETNESS1" 4
+    setLivedataSignal "LEAFWETNESS1" 4
 }
 
 inject_TF_USR()
@@ -44,7 +44,7 @@ inject_TF_USR()
     #shellcheck disable=SC2034
     LIVEDATA_TF_USR1="$VALUE_SCALE10_FLOAT"
     setBatteryVoltageLevel "TF_USR1" 14
-    setSignal "TF_USR1" 4
+    setLivedataSignal "TF_USR1" 4
 }
 
 injectSoiltempLivedata()
@@ -55,7 +55,7 @@ injectSoiltempLivedata()
     #shellcheck disable=SC2034
     LIVEDATA_SOILTEMP1="$VALUE_SCALE10_FLOAT"
     setBatteryVoltageLevel "SOILTEMP1" 14
-    setSignal "SOILTEMP1" 4
+    setLivedataSignal "SOILTEMP1" 4
 }
 
 injectWH32TemperatureLivedata()
@@ -65,13 +65,13 @@ injectWH32TemperatureLivedata()
     LIVEDATA_OUTTEMP="$VALUE_SCALE10_FLOAT"
     LIVEDATA_OUTHUMI=45
     setBatteryLowNormal "WH32" "$BATTERY_NORMAL"
-    setSignal "WH32" 4
+    setLivedataSignal "WH32" 4
 }
 
 injectWH40RainfallLivedata()
 {
-    setBatteryLowNormal "WH40_RAINFALL" 0
-    setSignal "WH40_RAINFALL" 4
+    setBatteryLowNormal "WH40RAINFALL" 0
+    setLivedataSignal "WH40RAINFALL" 4
 }
 
 injectTestSensorLivedata()
