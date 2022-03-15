@@ -1344,19 +1344,18 @@ exportLivedataBattery()
     #specification FOS_ENG-022-A, page 28
     unset VALUE_BATTERY_STATE
 
-     case "$1" in
-        0|3|5|6|7|8|9|10|11|12|13)         
-                            setBatteryLowNormal "$3" "$2" # WH65,WH32,WH31
-                            ;;
-                 1|2)       setBatteryVoltageLevel002 "$3" "$2" #WH68/WH80
-                            ;;
-        14|15|16|17|18|19|20|21|31|32|33|34|35|36|37|38|40|41|42|43|44|45|46|47)
-                            setBatteryVoltageLevel "$3" "$2"
-                            ;;
-        22|23|24|25|26|27|28|29|30|39)
-                           setBatteryLevel "$3" "$2"
-                            ;;
-    esac
+    if [ "$1" -eq "$SENSORTYPE_WH65" ] || [ "$1" -eq "$SENSORTYPE_WH40" ] || [ "$1" -ge "$SENSORTYPE_WH32" ] && [ "$1" -lt $((SENSORTYPE_WH31 + SENSORTYPE_WH31TEMP_MAXCH)) ]; then
+        setBatteryLowNormal "$3" "$2" # WH65,WH32,WH31
+    elif [ "$1" -eq "$SENSORTYPE_WH68" ] || [ "$1" -eq "$SENSORTYPE_WH80" ]; then
+        setBatteryVoltageLevel002 "$3" "$2"
+    elif [ "$1" -ge "$SENSORTYPE_WH51SOILMOISTURE" ] && [ "$1" -lt $(( SENSORTYPE_WH51SOILMOISTURE + SENSORTYPE_WH51SOILMOISTURE_MAXCH)) ] ||\
+         [ "$1" -ge "$SENSORTYPE_WH34SOILTEMP" ] && [ "$1" -lt $(( SENSORTYPE_WH34SOILTEMP + SENSORTYPE_WH34SOILTEMP_MAXCH)) ] ||\
+         [ "$1" -ge "$SENSORTYPE_WH35LEAFWETNESS" ] && [ "$1" -lt $(( SENSORTYPE_WH35LEAFWETNESS + SENSORTYPE_WH35LEAFWETNESS_MAXCH)) ]; then
+            setBatteryVoltageLevel "$3" "$2"
+    elif [ "$1" -ge "$SENSORTYPE_WH43PM25" ] && [ "$1" -lt $(( SENSORTYPE_WH55LEAK +  SENSORTYPE_WH55LEAK_MAXCH)) ] ||\
+        [ "$1" -eq "$SENSORTYPE_WH45CO2" ]; then
+        setBatteryLevel "$3" "$2"
+    fi
 
 }
 
