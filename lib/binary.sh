@@ -1344,7 +1344,7 @@ exportLivedataBattery()
     #specification FOS_ENG-022-A, page 28
     unset VALUE_BATTERY_STATE
 
-    if [ "$1" -eq "$SENSORTYPE_WH65" ] || [ "$1" -eq "$SENSORTYPE_WH40" ] || [ "$1" -ge "$SENSORTYPE_WH32" ] && [ "$1" -lt $((SENSORTYPE_WH31 + SENSORTYPE_WH31TEMP_MAXCH)) ]; then
+    if [ "$1" -eq "$SENSORTYPE_WH65" ] || [ "$1" -eq "$SENSORTYPE_WH40" ] || [ "$1" -ge "$SENSORTYPE_WH32" ] && [ "$1" -lt $((SENSORTYPE_WH31TEMP + SENSORTYPE_WH31TEMP_MAXCH)) ]; then
         setBatteryLowNormal "$3" "$2" # WH65,WH32,WH31
     elif [ "$1" -eq "$SENSORTYPE_WH68" ] || [ "$1" -eq "$SENSORTYPE_WH80" ]; then
         setBatteryVoltageLevel002 "$3" "$2"
