@@ -52,17 +52,19 @@ setMAC()
      IFS=' '
     #shellcheck disable=SC2086
     set -- $1
-    N=1
+    local_N=1
     
-    while [ $N -le 6 ]; do
-        eval convertUInt8ToHex "\${$N}"
-        if [ $N -le 5 ]; then
+    while [ $local_N -le 6 ]; do
+        eval convertUInt8ToHex "\${$local_N}"
+        if [ $local_N -le 5 ]; then
             VALUE_MAC="$VALUE_MAC$VALUE_UINT8_HEX:" 
         else
             VALUE_MAC="$VALUE_MAC$VALUE_UINT8_HEX"
         fi 
-        N=$(( N + 1 ))
+        local_N=$(( local_N + 1 ))
     done
+
+    unset local_N
 }
 
 parseBroadcast() {
@@ -90,16 +92,18 @@ parseBroadcast() {
 
     printBroadcast
 
-    unset N
 }
 
-printEcowittInterval() {
-
+printEcowittInterval()
+ {
     if [ "$GW_WS_ECOWITT_INTERVAL" -eq 1 ]; then
-        echo "ecowitt interval              $GW_WS_ECOWITT_INTERVAL minute"
+       local_min="$WEATHERSERVICEHEADERUNIT_MINUTE"
     elif [ "$GW_WS_ECOWITT_INTERVAL" -gt 1 ]; then
-        echo "ecowitt interval              $GW_WS_ECOWITT_INTERVAL minutes"
+        local_min="$WEATHERSERVICEHEADERUNIT_MINUTES"
     fi
+    printf "%s\r\t\t\t\t\t%s %s\n" "$WEATHERSERVICEHEADER_ECOWITT" "$GW_WS_ECOWITT_INTERVAL" "$local_min"
+    
+    unset local_min
 }
 
 parseEcowittInterval() {
@@ -110,8 +114,7 @@ parseEcowittInterval() {
 }
 
 printWunderground() {
-    echo "wunderground station id       $GW_WS_WUNDERGROUND_ID
-wunderground station password $GW_WS_WUNDERGROUND_PASSWORD"
+    printf "%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n" "$WEATHERSERVICEHEADER_WUNDERGROUND_ID" "$GW_WS_WUNDERGROUND_ID" "$WEATHERSERVICEHEADER_WUNDERGROUND_PASSWORD" "$GW_WS_WUNDERGROUND_PASSWORD"
 }
 
 parseWunderground() {
@@ -124,8 +127,8 @@ parseWunderground() {
 }
 
 printWeathercloud() {
-    echo "weathercloud id               $GW_WS_WC_ID
-weathercloud password         $GW_WS_WC_PASSWORD"
+    printf "%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n" "$WEATHERSERVICEHEADER_WEATHERCLOUD_ID" "$GW_WS_WC_ID" "$WEATHERSERVICEHEADER_WEATHERCLOUD_PASSWORD" "$GW_WS_WC_PASSWORD"
+
 }
 
 parseWeathercloud() {
@@ -139,8 +142,7 @@ parseWeathercloud() {
 }
 
 printWow() {
-    echo "wow id                        $GW_WS_WOW_ID
-wow password                  $GW_WS_WOW_PASSWORD"
+    printf "%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n" "$WEATHERSERVICEHEADER_WOW_ID" "$GW_WS_WC_ID" "$WEATHERSERVICEHEADER_WOW_PASSWORD" "$GW_WS_WC_PASSWORD"
 }
 
 parseWow() {
@@ -152,6 +154,67 @@ parseWow() {
 
     printWow
 }
+
+
+printCustomized() {
+    printf "%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s %s\n%s\r\t\t\t\t\t%s %s\n%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n"\
+                    "$WEATHERSERVICEHEADER_CUSTOMIZED_ID" "$GW_WS_CUSTOMIZED_ID" "$WEATHERSERVICEHEADER_CUSTOMIZED_PASSWORD" "$GW_WS_CUSTOMIZED_PASSWORD"\
+                    "$WEATHERSERVICEHEADER_CUSTOMIZED_SERVER" "$GW_WS_CUSTOMIZED_SERVER" "$WEATHERSERVICEHEADER_CUSTOMIZED_PORT" "$GW_WS_CUSTOMIZED_PORT"\
+                    "$WEATHERSERVICEHEADER_CUSTOMIZED_INTERVAL" "$GW_WS_CUSTOMIZED_INTERVAL" "$WEATHERSERVICEHEADERUNIT_SECONDS" "$WEATHERSERVICEHEADER_CUSTOMIZED_HTTP" "$GW_WS_CUSTOMIZED_HTTP" "$GW_WS_CUSTOMIZED_HTTP_STATE"\
+                    "$WEATHERSERVICEHEADER_CUSTOMIZED_PATH_ECOWITT" "$GW_WS_CUSTOMIZED_PATH_ECOWITT" "$WEATHERSERVICEHEADER_CUSTOMIZED_PATH_WUNDERGROUND" "$GW_WS_CUSTOMIZED_PATH_WU"
+}
+
+parseCustomized() {
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "customized wunderground id"
+    export GW_WS_CUSTOMIZED_ID="$VALUE_STRING"
+
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "customized wunderground password"
+    export GW_WS_CUSTOMIZED_PASSWORD="$VALUE_STRING"
+
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "customized server"
+    export GW_WS_CUSTOMIZED_SERVER="$VALUE_STRING"
+
+    readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "customized port"
+    export GW_WS_CUSTOMIZED_PORT="$VALUE_UINT16BE"
+
+    readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "customized interval"
+    export GW_WS_CUSTOMIZED_INTERVAL="$VALUE_UINT16BE"
+
+    readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "customized http"
+    export GW_WS_CUSTOMIZED_HTTP="$VALUE_UINT8"
+
+    if [ "$GW_WS_CUSTOMIZED_HTTP" -eq 1 ]; then
+        export GW_WS_CUSTOMIZED_HTTP_STATE="wunderground"
+    elif [ "$GW_WS_CUSTOMIZED_HTTP" -eq 0 ]; then
+        export GW_WS_CUSTOMIZED_HTTP_STATE="ecowitt"
+    fi
+
+    readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "customized enabled"
+
+    export GW_WS_CUSTOMIZED_ENABLED="$VALUE_UINT8"
+    if [ "$GW_WS_CUSTOMIZED_ENABLED" -eq 1 ]; then
+        export GW_WS_CUSTOMIZED_ENABLED_STATE="on"
+    elif [ "$GW_WS_CUSTOMIZED_ENABLED" -eq 0 ]; then
+        export GW_WS_CUSTOMIZED_ENABLED_STATE="off"
+    fi
+
+    printCustomized
+}
+
+printPath() {
+    echo "path ecowitt      $GW_WS_CUSTOMIZED_PATH_ECOWITT
+path wunderground $GW_WS_CUSTOMIZED_PATH_WU"
+}
+
+parsePath() {
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "path ecowitt"
+    export GW_WS_CUSTOMIZED_PATH_ECOWITT="$VALUE_STRING"
+    readString "$VALUE_PARSEPACKET_BUFFERNAME" "path wunderground"
+    export GW_WS_CUSTOMIZED_PATH_WU="$VALUE_STRING"
+
+    printPath
+}
+
 
 printCalibration() {
     #if [ "$SHELL_SUPPORT_BULTIN_PRINTF" -eq 1 ]; then
@@ -208,76 +271,6 @@ parseCalibration() {
     export GW_CALIBRATION_WINDDIROFFSET="$VALUE_INT16BE"
 
     printCalibration
-}
-
-printCustomized() {
-    if [ "$GW_WS_CUSTOMIZED_HTTP" -eq "$HTTP_WUNDERGROUND" ]; then #wunderground
-    echo "id                 $GW_WS_CUSTOMIZED_ID
-password           $GW_WS_CUSTOMIZED_PASSWORD"
-fi
-
-    echo "server             $GW_WS_CUSTOMIZED_SERVER
-port               $GW_WS_CUSTOMIZED_PORT
-interval           $GW_WS_CUSTOMIZED_INTERVAL
-http               $GW_WS_CUSTOMIZED_HTTP $GW_WS_CUSTOMIZED_HTTP_STATE 
-enabled            $GW_WS_CUSTOMIZED_ENABLED $GW_WS_CUSTOMIZED_ENABLED_STATE"
-
-if [ "$GW_WS_CUSTOMIZED_HTTP" -eq "$HTTP_ECOWITT" ]; then
-    echo "path ecowitt       $GW_WS_CUSTOMIZED_PATH_ECOWITT"
-else
-    echo "path wunderground  $GW_WS_CUSTOMIZED_PATH_WU"
-fi
-}
-
-parseCustomized() {
-    readString "$VALUE_PARSEPACKET_BUFFERNAME" "customized id"
-    export GW_WS_CUSTOMIZED_ID="$VALUE_STRING"
-
-    readString "$VALUE_PARSEPACKET_BUFFERNAME" "customized password"
-    export GW_WS_CUSTOMIZED_PASSWORD="$VALUE_STRING"
-
-    readString "$VALUE_PARSEPACKET_BUFFERNAME" "customized server"
-    export GW_WS_CUSTOMIZED_SERVER="$VALUE_STRING"
-
-    readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "customized port"
-    export GW_WS_CUSTOMIZED_PORT="$VALUE_UINT16BE"
-
-    readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "customized interval"
-    export GW_WS_CUSTOMIZED_INTERVAL="$VALUE_UINT16BE"
-
-    readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "customized http"
-    export GW_WS_CUSTOMIZED_HTTP="$VALUE_UINT8"
-
-    if [ "$GW_WS_CUSTOMIZED_HTTP" -eq 1 ]; then
-        export GW_WS_CUSTOMIZED_HTTP_STATE="wunderground"
-    elif [ "$GW_WS_CUSTOMIZED_HTTP" -eq 0 ]; then
-        export GW_WS_CUSTOMIZED_HTTP_STATE="ecowitt"
-    fi
-
-    readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "customized enabled"
-
-    export GW_WS_CUSTOMIZED_ENABLED="$VALUE_UINT8"
-    if [ "$GW_WS_CUSTOMIZED_ENABLED" -eq 1 ]; then
-        export GW_WS_CUSTOMIZED_ENABLED_STATE="on"
-    elif [ "$GW_WS_CUSTOMIZED_ENABLED" -eq 0 ]; then
-        export GW_WS_CUSTOMIZED_ENABLED_STATE="off"
-    fi
-
-    printCustomized
-}
-
-printPath() {
-    echo "path ecowitt      $GW_WS_CUSTOMIZED_PATH_ECOWITT
-path wunderground $GW_WS_CUSTOMIZED_PATH_WU"
-}
-
-parsePath() {
-    readString "$VALUE_PARSEPACKET_BUFFERNAME" "path ecowitt"
-    export GW_WS_CUSTOMIZED_PATH_ECOWITT="$VALUE_STRING"
-    readString "$VALUE_PARSEPACKET_BUFFERNAME" "path wunderground"
-    export GW_WS_CUSTOMIZED_PATH_WU="$VALUE_STRING"
-
-    printPath
 }
 
 printRaindata() {

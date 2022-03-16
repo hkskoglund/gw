@@ -24,6 +24,7 @@ GWDIR=${GWDIR:='.'}
 . "$GWDIR/lib/fullwidth-number.sh"
 . "$GWDIR/lib/limits.sh"
 . "$GWDIR/lib/livedata-header.sh"
+. "$GWDIR/lib/weatherservice-header.sh"
 . "$GWDIR/lib/wind.sh"
 . "$GWDIR/view/livedata.sh"
 
@@ -1704,7 +1705,7 @@ while [ $# -gt 0 ]; do
             fi
           ;;
       
-        -W | --show-ws)
+        -w | --show-ws)
             
             printWeatherServices "$GW_HOST"
             shift
