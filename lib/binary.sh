@@ -988,21 +988,11 @@ parseLivedata()
 
     done
 
- #   if [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ]; then
- #       readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "checksum"
- #       checksum=$VALUE_UINT8
- #       echo >&2 checksum "$(printf "%02x dec:%02u" "$checksum" "$checksum")"
- #   fi
-
     [ "$DEBUG_OPTION_TESTSENSOR" -eq 1 ] && injectTestSensorLivedata
-
-    #[ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] &&
-    # export -p
 
     printOrLogLivedata
 
-    unset ldf ldf_hex channel checksum DEBUG_FUNC parselivedata_max_length
-    
+    unset ldf ldf_hex channel DEBUG_FUNC parselivedata_max_length
 }
 
 commandHas2BytePacketLengthResponse()

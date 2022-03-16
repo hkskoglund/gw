@@ -1821,6 +1821,18 @@ while [ $# -gt 0 ]; do
 
             ;;
 
+        -x | --execute)
+
+           if argEmptyOrOption "$2"; then
+             echo >&2 "Error: -x no command to execute"
+             echo "$*"
+             shift
+            else
+              eval "$2"
+              shift
+            fi
+            ;;
+
         *)        # unknown option
             shift # past argument
             ;;
