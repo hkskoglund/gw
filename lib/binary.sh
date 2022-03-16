@@ -331,7 +331,8 @@ getSensorNameShort()
 # set SENSORNAME_VAR
 {
     unset SENSORNAME_WH SENSORNAME_SHORT SENSORNAME_VAR
-    
+    local_prefix="LIVEDATASENSOR_"
+
     case "$1" in
         0) if [ -n "$GW_SYSTEM_SENSORTYPE" ]; then
                 if [ "$GW_SYSTEM_SENSORTYPE" -eq "$SYSTEM_SENSOR_TYPE_WH24" ]; then
@@ -343,86 +344,85 @@ getSensorNameShort()
               SENSORNAME_WH='WH??' # no system information, cannot determine WH24/WH65
             fi
             SENSORNAME_SHORT='Weather Station'
-            SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}"
+            eval SENSORNAME_VAR="${local_prefix}"
             ;;
         1) SENSORNAME_WH='WH68'
            SENSORNAME_SHORT="Weather Station"
-            SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}"
+            eval SENSORNAME_VAR="${local_prefix}"
             ;;
         2) SENSORNAME_WH="WH80"
            SENSORNAME_SHORT='Weather Station'
-            SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}"
+            eval SENSORNAME_VAR="${local_prefix}"
             ;;
         3) SENSORNAME_WH="WH40"
            SENSORNAME_SHORT="Rainfall"
-            SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}RAINFALL"
-
+            eval SENSORNAME_VAR="${local_prefix}RAINFALL"
             ;;
         5) SENSORNAME_WH='WH32'
-           SENSORNAME_SHORT='Temperatue out'
-            SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}TEMP"
+           SENSORNAME_SHORT='Temperature out'
+            eval SENSORNAME_VAR="${local_prefix}OUTTEMP"
 
             ;;
         6|7|8|9|10|11|12|13)
            SENSORNAME_WH='WH31'
            local_channel=$(( $1 -5 ))
            SENSORNAME_SHORT="Temperature $local_channel"
-           SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}TEMP$local_channel"
+           eval SENSORNAME_VAR="${local_prefix}TEMP$local_channel"
            ;;
         14|15|16|17|18|19|20|21)
           SENSORNAME_WH='WH51'
           local_channel=$(( $1 - 13 ))
           SENSORNAME_SHORT="Soilmoisture $local_channel"
-          SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}SOILMOISTURE$local_channel"
+          eval SENSORNAME_VAR="${local_prefix}SOILMOISTURE$local_channel"
 
           ;;
         22|23|24|25)
           SENSORNAME_WH='WH43'
           local_channel=$(($1 - 21))
           SENSORNAME_SHORT="PM2.5 AQ $local_channel"
-          SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}PM25$local_channel"
+          eval SENSORNAME_VAR="${local_prefix}PM25$local_channel"
           ;;
         26)
           SENSORNAME_SHORT="Lightning"
           SENSORNAME_WH='WH57'
-          SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}LIGHTNING$local_channel"
+          eval SENSORNAME_VAR="${local_prefix}LIGHTNING$local_channel"
           ;;
         27|28|29|30)
           SENSORNAME_WH='WH55'
           local_channel=$(($1 - 26))
           SENSORNAME_SHORT="Leak $local_channel"
-          SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}LEAK$local_channel"
+          eval SENSORNAME_VAR="${local_prefix}LEAK$local_channel"
           ;;
         31|32|33|34|35|36|37|38)
 
           SENSORNAME_WH='WH34'
           local_channel=$(($1 - 30))
           SENSORNAME_SHORT="Soiltemperature $local_channel"
-          SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}SOILTEMP$local_channel"
+          eval SENSORNAME_VAR="${local_prefix}SOILTEMP$local_channel"
           
           ;;
         39)
           SENSORNAME_WH='WH45'
           SENSORNAME_SHORT="CO2 PM2.5 PM10 AQ"
-          SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}CO2"
+          eval SENSORNAME_VAR="${local_prefix}CO2"
 
           ;;
         40|41|42|43|44|45|46|47)
             SENSORNAME_WH='WH35'
             local_channel=$(($1 - 39))
             SENSORNAME_SHORT="Leafwetness $local_channel"
-            SENSORNAME_VAR="LIVEDATASENSOR_${SENSORNAME_WH}LEAFWETNESS$local_channel"
+            eval SENSORNAME_VAR="${local_prefix}LEAFWETNESS$local_channel"
 
            ;;
          *)
          echo >&2 "Warning: Unknown sensortype $1"
           SENSORNAME_WH='WH??' 
           SENSORNAME_SHORT='?'
-          SENSORNAME_VAR="LIVEDATASENSOR_UNKNOWN$1"
+          eval SENSORNAME_VAR="LIVEDATASENSOR_UNKNOWN$1"
           return 1
     esac
 
-    unset local_channel
+    unset local_channel local_prefix
 }
 
 printSensorLine()
@@ -480,10 +480,10 @@ parseSensorIdNew()
 
     [ "$DEBUG" -eq  1 ] &&  >&2 echo "parseSensorIdNew SPATTERNID $SPATTERNID"
     
-     export LIVEDATASENSOR_SEARCHING=0
-     export LIVEDATASENSOR_CONNECTED=0
-     export LIVEDATASENSOR_DISCONNECTED=0
-     export LIVEDATASENSOR_DISABLED=0
+     export LIVEDATASENSORSTAT_SEARCHING=0
+     export LIVEDATASENSORSTAT_CONNECTED=0
+     export LIVEDATASENSORSTAT_DISCONNECTED=0
+     export LIVEDATASENSORSTAT_DISABLED=0
 
      parseSensorIdNew_max_length=$(( OD_BUFFER_LENGTH - 1 ))
 
@@ -509,20 +509,20 @@ parseSensorIdNew()
         unset VALUE_BATTERY_STATE VALUE_SIGNAL_UNICODE
 
         if [ "$SID" -eq "$SENSORID_SEARCH" ]; then
-            LIVEDATASENSOR_SEARCHING=$(( LIVEDATASENSOR_SEARCHING + 1 ))
+            LIVEDATASENSORSTAT_SEARCHING=$(( LIVEDATASENSORSTAT_SEARCHING + 1 ))
             local_sensorstate=$SENSORIDSTATE_CONNECTED
         elif [ "$SID" -eq "$SENSORID_DISABLE" ]; then
             local_sensorstate=$SENSORIDSTATE_DISABLED
-            LIVEDATASENSOR_DISABLED=$(( LIVEDATASENSOR_DISABLED + 1 ))
+            LIVEDATASENSORSTAT_DISABLED=$(( LIVEDATASENSORSTAT_DISABLED + 1 ))
         elif [ "$signal" -gt 0 ]; then
-            LIVEDATASENSOR_CONNECTED=$(( LIVEDATASENSOR_CONNECTED + 1 ))
+            LIVEDATASENSORSTAT_CONNECTED=$(( LIVEDATASENSORSTAT_CONNECTED + 1 ))
             local_sensorstate=$SENSORIDSTATE_CONNECTED
             exportLivedataBattery "$stype" "$battery" "$SENSORNAME_VAR"
             getSignalUnicode "$signal"
             export "$SENSORNAME_VAR"_SIGNAL="$signal" "$SENSORNAME_VAR"_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
         elif [ "$signal" -eq 0 ]; then
             local_sensorstate=$SENSORIDSTATE_DISCONNECTED
-            LIVEDATASENSOR_DISCONNECTED=$(( LIVEDATASENSOR_DISCONNECTED + 1 ))
+            LIVEDATASENSORSTAT_DISCONNECTED=$(( LIVEDATASENSORSTAT_DISCONNECTED + 1 ))
         fi
 
         #pattern matching
@@ -803,8 +803,8 @@ parseLivedata()
             readInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "temp $channel"
             convertTemperatureLivedata "$VALUE_INT16BE"
 
-            eval "export LIVEDATA_WH31TEMP${channel}_INTS10=$VALUE_INT16BE"
-            eval "export LIVEDATA_WH31TEMP$channel=$VALUE_SCALE10_FLOAT"
+            eval "export LIVEDATA_TEMP${channel}_INTS10=$VALUE_INT16BE"
+            eval "export LIVEDATA_TEMP$channel=$VALUE_SCALE10_FLOAT"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex temperature$channel int16be $VALUE_INT16BE $VALUE_SCALE10_FLOAT $UNIT_UNICODE_CELCIUS"
 
 
@@ -813,7 +813,7 @@ parseLivedata()
             channel=$((ldf - LDF_HUMI1 + 1))
             readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "humidity$channel"
 
-            eval "export LIVEDATA_WH31HUMI$channel=$VALUE_UINT8"
+            eval "export LIVEDATA_HUMI$channel=$VALUE_UINT8"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex humidity$channel uint8 $VALUE_UINT8 $LIVEDATAUNIT_HUMIDITY"
 
 
@@ -911,41 +911,41 @@ parseLivedata()
             # 9 co2_batt      u8 (0~5)
 
             readInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 tempf"
-            export LIVEDATA_WH45CO2_TEMPF_INTS10="$VALUE_INT16BE"
-            convertScale10ToFloat "$LIVEDATA_WH45CO2_TEMPF_INTS10"
-            export LIVEDATA_WH45CO2_TEMPF="$VALUE_SCALE10_FLOAT"
+            export LIVEDATA_CO2_TEMPF_INTS10="$VALUE_INT16BE"
+            convertScale10ToFloat "$LIVEDATA_CO2_TEMPF_INTS10"
+            export LIVEDATA_CO2_TEMPF="$VALUE_SCALE10_FLOAT"
 
             readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 humidity"
-            export LIVEDATA_WH45CO2_HUMI="$VALUE_UINT8"
+            export LIVEDATA_CO2_HUMI="$VALUE_UINT8"
 
             readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 PM10"
-            export LIVEDATA_WH45CO2_PM10_INTS10="$VALUE_UINT16BE"
-            convertScale10ToFloat "$LIVEDATA_WH45CO2_PM10_INTS10"
-            export LIVEDATA_WH45CO2_PM10="$VALUE_SCALE10_FLOAT"
+            export LIVEDATA_CO2_PM10_INTS10="$VALUE_UINT16BE"
+            convertScale10ToFloat "$LIVEDATA_CO2_PM10_INTS10"
+            export LIVEDATA_CO2_PM10="$VALUE_SCALE10_FLOAT"
 
             readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 PM10 24h avg"
-            export LIVEDATA_WH45CO2_PM10_24HAVG_INTS10="$VALUE_UINT16BE"
-            convertScale10ToFloat "$LIVEDATA_WH45CO2_PM10_24HAVG_INTS10"
-            export LIVEDATA_WH45CO2_PM10_24HAVG="$VALUE_SCALE10_FLOAT"
+            export LIVEDATA_CO2_PM10_24HAVG_INTS10="$VALUE_UINT16BE"
+            convertScale10ToFloat "$LIVEDATA_CO2_PM10_24HAVG_INTS10"
+            export LIVEDATA_CO2_PM10_24HAVG="$VALUE_SCALE10_FLOAT"
 
             readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 PM25"
-            export LIVEDATA_WH45CO2_PM25_INTS10="$VALUE_UINT16BE"
-            convertScale10ToFloat "$LIVEDATA_WH45CO2_PM25_INTS10"
-            export LIVEDATA_WH45CO2_PM25="$VALUE_SCALE10_FLOAT"
+            export LIVEDATA_CO2_PM25_INTS10="$VALUE_UINT16BE"
+            convertScale10ToFloat "$LIVEDATA_CO2_PM25_INTS10"
+            export LIVEDATA_CO2_PM25="$VALUE_SCALE10_FLOAT"
 
             readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 PM25 24h avg"
-            export LIVEDATA_WH45CO2_PM25_24HAVG_INTS10="$VALUE_UINT16BE"
-            convertScale10ToFloat "$LIVEDATA_WH45CO2_PM25_24HAVG_INTS10"
-            export LIVEDATA_WH45CO2_PM25_24HAVG="$VALUE_SCALE10_FLOAT"
+            export LIVEDATA_CO2_PM25_24HAVG_INTS10="$VALUE_UINT16BE"
+            convertScale10ToFloat "$LIVEDATA_CO2_PM25_24HAVG_INTS10"
+            export LIVEDATA_CO2_PM25_24HAVG="$VALUE_SCALE10_FLOAT"
 
             readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "CO2"
-            export LIVEDATA_WH45CO2_CO2="$VALUE_UINT16BE"
+            export LIVEDATA_CO2_CO2="$VALUE_UINT16BE"
 
             readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 24g avg"
-            export LIVEDATA_WH45CO2_CO2_24HAVG="$VALUE_UINT16BE"
+            export LIVEDATA_CO2_CO2_24HAVG="$VALUE_UINT16BE"
 
             readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 battery"
-            export LIVEDATA_WH45CO2_BATTERY="$VALUE_UINT8"
+            export LIVEDATA_CO2_BATTERY="$VALUE_UINT8"
 
         elif [ "$ldf" -ge "$LDF_TF_USR1" ] && [ "$ldf" -le "$LDF_TF_USR8" ]; then
             channel=$((ldf - LDF_TF_USR1 + 1))

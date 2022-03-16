@@ -3,18 +3,18 @@
 injectWH45_CO2Livedata()
 {
     #spec. p 8/32 FOS-ENG-022-A
-    LIVEDATA_WH45CO2_TEMPF="20.1" #propably farenheit? -> converting necessary
-    LIVEDATA_WH45CO2_HUMI=40
-    LIVEDATA_WH45CO2_PM10=37
-    LIVEDATA_WH45CO2_PM10_24HAVG=38
-    LIVEDATA_WH45CO2_PM25_INTS10=410
-    LIVEDATA_WH45CO2_PM25=41
-    LIVEDATA_WH45CO2_PM25_24HAVG_INTS10=360
-    LIVEDATA_WH45CO2_PM25_24HAVG=36
-    LIVEDATA_WH45CO2_CO2=999
-    LIVEDATA_WH45CO2_CO2_24HAVG=1000
-    setBatteryLevel "WH45CO2" 4
-    setLivedataSignal "WH45CO2" 4
+    LIVEDATA_CO2_TEMPF="20.1" #propably farenheit? -> converting necessary
+    LIVEDATA_CO2_HUMI=40
+    LIVEDATA_CO2_PM10=37
+    LIVEDATA_CO2_PM10_24HAVG=38
+    LIVEDATA_CO2_PM25_INTS10=410
+    LIVEDATA_CO2_PM25=41
+    LIVEDATA_CO2_PM25_24HAVG_INTS10=360
+    LIVEDATA_CO2_PM25_24HAVG=36
+    LIVEDATA_CO2_CO2=999
+    LIVEDATA_CO2_CO2_24HAVG=1000
+    setBatteryLevel "CO2" 4
+    setLivedataSignal "CO2" 4
 
 }
 
@@ -25,8 +25,8 @@ injectWH57_LightningLivedata()
     LIVEDATA_LIGHTNING_TIME=1638531935
     getDateUTC "$LIVEDATA_LIGHTNING_TIME"
     LIVEDATA_LIGHTNING_TIME_UTC=$VALUE_DATE_UTC
-    setBatteryLevel "WH57LIGHTNING" 1
-    setLivedataSignal "WH57LIGHTNING" 4
+    setBatteryLevel "LIGHTNING" 1
+    setLivedataSignal "LIGHTNING" 4
 }
 
 
@@ -64,14 +64,14 @@ injectWH32TemperatureLivedata()
     convertTemperatureLivedata "$LIVEDATA_OUTTEMP_INTS10"
     LIVEDATA_OUTTEMP="$VALUE_SCALE10_FLOAT"
     LIVEDATA_OUTHUMI=45
-    setBatteryLowNormal "WH32" "$BATTERY_NORMAL"
-    setLivedataSignal "WH32" 4
+    setBatteryLowNormal "OUTTEMP" "$BATTERY_NORMAL"
+    setLivedataSignal "OUTTEMP" 4
 }
 
 injectWH40RainfallLivedata()
 {
-    setBatteryLowNormal "WH40RAINFALL" 0
-    setLivedataSignal "WH40RAINFALL" 4
+    setBatteryLowNormal "RAINFALL" 0
+    setLivedataSignal "RAINFALL" 4
 }
 
 injectTestSensorLivedata()

@@ -189,13 +189,13 @@ parseEcowittHttpRequest()
             
                 channel=${key##temp}
                 channel=${channel%f}
-                setTemperatureHttpLivedata LIVEDATA_WH31TEMP"$channel" "$value" 
+                setTemperatureHttpLivedata LIVEDATA_TEMP"$channel" "$value" 
                 ;;
 
             humidity?)
 
                 channel=${key##humidity}
-                eval export LIVEDATA_WH31HUMI"$channel"="$value"
+                eval export LIVEDATA_HUMI"$channel"="$value"
                 ;;
             
             winddir)
@@ -318,16 +318,16 @@ parseEcowittHttpRequest()
 
                 channel=${key##batt}
                 getBatteryLowOrNormal "$value"
-                eval "export LIVEDATASENSOR_WH31TEMP${channel}_BATTERY=$value"
-                eval "export LIVEDATASENSOR_WH31TEMP${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
+                eval "export LIVEDATASENSOR_TEMP${channel}_BATTERY=$value"
+                eval "export LIVEDATASENSOR_TEMP${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
                 ;;
 
             pm25batt?)
             
                 channel=${key##pm25batt}
                 getBatteryLevelState "$value"
-                eval "export LIVEDATASENSOR_WH43PM25${channel}_BATTERY=$value"
-                eval "export LIVEDATASENSOR_WH43PM25${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
+                eval "export LIVEDATASENSOR_PM25${channel}_BATTERY=$value"
+                eval "export LIVEDATASENSOR_PM25${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
                 ;;
 
             soilbatt?)
@@ -336,17 +336,17 @@ parseEcowittHttpRequest()
                 getFloatAsIntDecmial "$value"
                 getBatteryVoltageScale10State "$FLOAT_AS_INT"
                 
-                eval "export LIVEDATASENSOR_WH51SOILMOISTURE${channel}_BATTERY_INTS10=$FLOAT_AS_INT"  
-                eval "export LIVEDATASENSOR_WH51SOILMOISTURE${channel}_BATTERY=$value"
-                eval "export LIVEDATASENSOR_WH51SOILMOISTURE${channel}_BATTERY_STATE=\"$VALUE_BATTERY_STATE\""  
+                eval "export LIVEDATASENSOR_SOILMOISTURE${channel}_BATTERY_INTS10=$FLOAT_AS_INT"  
+                eval "export LIVEDATASENSOR_SOILMOISTURE${channel}_BATTERY=$value"
+                eval "export LIVEDATASENSOR_SOILMOISTURE${channel}_BATTERY_STATE=\"$VALUE_BATTERY_STATE\""  
                 ;;
 
             leakbatt?)
                 
                 channel=${key##leakbatt}
                 getBatteryLevelState "$value"
-                eval "export LIVEDATASENSOR_WH55LEAK${channel}_BATTERY=$value"
-                eval "export LIVEDATASENSOR_WH55LEAK${channel}_BATTERY_STATE=\"$VALUE_BATTERY_STATE\""
+                eval "export LIVEDATASENSOR_LEAK${channel}_BATTERY=$value"
+                eval "export LIVEDATASENSOR_LEAK${channel}_BATTERY_STATE=\"$VALUE_BATTERY_STATE\""
                 ;;
 
             stationtype)

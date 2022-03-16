@@ -83,7 +83,7 @@ Sensor        ID   B S Type Name              State             Battery Signal
      1  ffffffff 255 0 WH68 Weather Station   <span style="color: green">searching</span>
      2  ffffffff 255 0 WH80 Weather Station   <span style="color: green">searching</span>
      3  ffffffff  31 0 WH40 Rainfall          <span style="color: green">searching</span>
-     5  ffffffff   0 0 WH32 Temperatue out    <span style="color: green">searching</span>
+     5  ffffffff   0 0 WH32 Temperature out    <span style="color: green">searching</span>
      6        ba   0 4 WH31 Temperature1      connected         🔋      📶 100%
      7        db   0 4 WH31 Temperature2      connected         🔋      📶 100%
      8        6e   0 4 WH31 Temperature3      connected         🔋      📶 100%
