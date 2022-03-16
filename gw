@@ -848,6 +848,8 @@ printOrLogLivedata()
        #https://stackoverflow.com/questions/10411616/grep-regex-not-containing-string
             #set | grep ^LIVEDATA | grep -v _HEADER
             printLivedata
+       elif [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NULL ]; then
+          :
        else
           echo >&2 Not implemented liveview $LIVEDATA_VIEW
        fi
@@ -1648,10 +1650,13 @@ while [ $# -gt 0 ]; do
        -v | --view) IFS=,
                     for liveview in $2; do
                        case "$liveview" in
-                         
+                           0 | null) LIVEDATA_VIEW=$LIVEDATA_VIEW_NULL
+                                ;;
+                           n | normal) LIVEDATA_VIEW=$LIVEDATA_VIEW_NORMAL
+                                ;;
                            t | terse) LIVEDATA_VIEW=$LIVEDATA_VIEW_TERSE
                                     ;;
-                            *) >&2 echo "Warning: Unknown livedata view $liveview, use terse|t"
+                            *) >&2 echo "Warning: Unknown livedata view $liveview, use 0 | null, n | normal"
                             ;;
                         esac
                     done
@@ -1710,8 +1715,6 @@ while [ $# -gt 0 ]; do
             printWeatherServices "$GW_HOST"
             shift
             ;;
-
-      
         
         -u | --unit)
                
@@ -1825,7 +1828,7 @@ while [ $# -gt 0 ]; do
 
            if argEmptyOrOption "$2"; then
              echo >&2 "Error: -x no command to execute"
-             echo "$*"
+             #echo "$*"
              shift
             else
               eval "$2"
