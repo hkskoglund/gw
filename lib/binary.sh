@@ -439,6 +439,8 @@ printSensorLine()
         style_sensor=$STYLE_SENSOR_SEARCH
     elif [ "$4" -eq 0 ]; then 
         style_sensor=$STYLE_SENSOR_DISCONNECTED
+    else
+        style_sensor=$STYLE_SENSOR_CONNECTED
     fi
 
     if [ -n "$style_sensor" ]; then
@@ -503,7 +505,7 @@ parseSensorIdNew()
 
         if [ "$SID" -eq "$SENSORID_SEARCH" ]; then
             LIVEDATASENSORSTAT_SEARCHING=$(( LIVEDATASENSORSTAT_SEARCHING + 1 ))
-            local_sensorstate=$SENSORIDSTATE_CONNECTED
+            local_sensorstate=$SENSORIDSTATE_SEARCHING
         elif [ "$SID" -eq "$SENSORID_DISABLE" ]; then
             local_sensorstate=$SENSORIDSTATE_DISABLED
             LIVEDATASENSORSTAT_DISABLED=$(( LIVEDATASENSORSTAT_DISABLED + 1 ))
@@ -1470,7 +1472,7 @@ getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
           appendBatteryState
        fi
 
-       VALUE_BATTERY_STATE=$VALUE_BATTERY_STATE" $1"
+       VALUE_BATTERY_STATE=$VALUE_BATTERY_STATE"$1/5"
     fi
 
     unset  l
