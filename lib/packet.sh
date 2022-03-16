@@ -174,11 +174,11 @@ sendPacketnc()
        fi 
 
        unset od_buffer
-        local_resendattempt=0 # send command attemps
+        local_resendattempt=1 # send command attemps
        while [ -z "$od_buffer" ] && [ $local_resendattempt -le 3 ]; do
             od_buffer=$(eval "$cmdstr" )
             if [ -z "$od_buffer" ]; then
-                if [ $local_resendattempt -eq 0 ]; then
+                if [ $local_resendattempt -eq 1 ]; then
                    sleep 1
                 else
                     sleep $(( 5 * local_resendattempt ))
