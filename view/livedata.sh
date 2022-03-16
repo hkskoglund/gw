@@ -376,8 +376,7 @@ printLivedata()
             VALUE_LEAK=$LIVEDATAHEADER_LEAK_NO
             eval "if [ -n ''"\$LIVEDATA_LEAK$n" ]; then
                         [ \"\$LIVEDATA_LEAK$n\" -ne 0 ] && STYLE_LIVE_VALUE=\"$STYLE_LEAK\" && VALUE_LEAK=$LIVEDATAHEADER_LEAK_YES
-                        LIVEDATAHEADER_LEAK$n=\"\$LIVEDATAHEADER_LEAK$n \$LV_DELIMITER \$VALUE_LEAK\"
-                        printLivedataLine \"\$LIVEDATAHEADER_LEAK$n\" \"\$LIVEDATA_LEAK$n\" \"%6u\" \"\" \"%4s\" \"leak$n\" '' \"\$LIVEDATASENSOR_LEAK${n}_BATTERY\" \"\$LIVEDATASENSOR_LEAK${n}_BATTERY_STATE\" '' \"\$LIVEDATASENSOR_LEAK${n}_SIGNAL\" \"\$LIVEDATASENSOR_LEAK${n}_SIGNAL_STATE\"
+                        printLivedataLine \"\$LIVEDATAHEADER_LEAK$n \$LV_DELIMITER \$VALUE_LEAK\" \"\$LIVEDATA_LEAK$n\" \"%6u\" \"\" \"%4s\" \"leak$n\" '' \"\$LIVEDATASENSOR_LEAK${n}_BATTERY\" \"\$LIVEDATASENSOR_LEAK${n}_BATTERY_STATE\" '' \"\$LIVEDATASENSOR_LEAK${n}_SIGNAL\" \"\$LIVEDATASENSOR_LEAK${n}_SIGNAL_STATE\"
                 fi"
             n=$((n + 1))
         done
@@ -439,15 +438,13 @@ printLivedata()
             setAQI "$LIVEDATA_CO2_PM25_INTS10"
             setStyleAQI "$LIVEDATA_CO2_PM25_INTS10"
             STYLE_LIVE_VALUE=$STYLE_AQI
-            LIVEDATAHEADER_CO2_PM25="$LIVEDATAHEADER_CO2_PM25 $LV_DELIMITER $VALUE_PM25_AQI"
-            printLivedataLine "$LIVEDATAHEADER_CO2_PM25" "$LIVEDATA_CO2_PM25"                "%6.1f" "$LIVEDATAUNIT_PM25" "%7s" 'pm25'
+            printLivedataLine "$LIVEDATAHEADER_CO2_PM25 $LV_DELIMITER $VALUE_PM25_AQI" "$LIVEDATA_CO2_PM25"                "%6.1f" "$LIVEDATAUNIT_PM25" "%7s" 'pm25'
         fi
         if [ -n "$LIVEDATA_CO2_PM25_24HAVG" ]; then
             setAQI "$LIVEDATA_CO2_PM25_24HAVG_INTS10"
             setStyleAQI "$LIVEDATA_CO2_PM25_24HAVG_INTS10"
             STYLE_LIVE_VALUE=$STYLE_AQI
-            LIVEDATAHEADER_CO2_PM25_24HAVG="$LIVEDATAHEADER_CO2_PM25_24HAVG $LV_DELIMITER $VALUE_PM25_AQI"
-            printLivedataLine "$LIVEDATAHEADER_CO2_PM25_24HAVG" "$LIVEDATA_CO2_PM25_24HAVG"  "%6.1f" "$LIVEDATAUNIT_PM25" "%7s" 'pm25a'
+            printLivedataLine "$LIVEDATAHEADER_CO2_PM25_24HAVG $LV_DELIMITER $VALUE_PM25_AQI" "$LIVEDATA_CO2_PM25_24HAVG"  "%6.1f" "$LIVEDATAUNIT_PM25" "%7s" 'pm25a'
         fi
         [ -n "$LIVEDATA_CO2_CO2" ]          && printLivedataLine "$LIVEDATAHEADER_CO2_CO2" "$LIVEDATA_CO2_CO2"                  "%6u" "$LIVEDATAUNIT_CO2" "%6s" 'co2'
         [ -n "$LIVEDATA_CO2_CO2_24HAVG" ]   && printLivedataLine "$LIVEDATAHEADER_CO2_CO2_24HAVG" "$LIVEDATA_CO2_CO2_24HAVG"           "%6u" "$LIVEDATAUNIT_CO2" "%6s" 'co2a'
