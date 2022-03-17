@@ -10,9 +10,7 @@ fi
 sendPacket()
 # wrapper function for sending packet to host
 # previous prototype used bash tcp/udp functionality, instead of locking the script to bash only, nc command is used instead for allowing multiple shells
-# $1 command, $2 host, $3 backup filename (optional)
-# if SENDPACKET_TXESCAPE set  - write directly to device, no newPacket
-#
+# $1 command, $2 host, $3 backup filename (optional), $4 octal escape string (optional) - for restore backup
 {
     EXITCODE_SENDPACKET=0
 
@@ -30,7 +28,7 @@ sendPacket()
       return "$EXITCODE_SENDPACKET"
     fi
 
-    if [ -z "$SENDPACKET_TXESCAPE" ]; then
+    if [ -z "$4" ]; then
 
         #init new packet for simple command without body
         if  [ "$1" -eq "$CMD_BROADCAST" ] ||\
@@ -74,7 +72,7 @@ sendPacketnc()
 # $1 command
 # $2 host ip
 # $3 backup filename (optional)
-# in: PACKET_TX_ESCAPE (optional) writes directly without any checksum/octal escape generation (for restoreBackup)
+# $4 octal escape string (optional) - writes directly without any checksum/octal escape generation (for restoreBackup)
 # DEBUG_OPTION_OD_BUFFER=1      print od buffer
 # DEBUG_OPTION_TRACEPACKET=1    create tx/rx files in .hex binary format
 # DEBUG_SENDPACKETNC=1          debug only this function
@@ -88,8 +86,10 @@ sendPacketnc()
     local_timeout_udp_broadcast=0.236 # timeout selected based on udp port scanning 254 hosts in 60s (60s/254=0.236s)
     local_useTimeout=0
 
-    if [ -z "$SENDPACKET_TXESCAPE" ]; then # create octal escape PACKET_TX_ESCAPE
+    if [ -z "$4" ]; then # create octal escape PACKET_TX_ESCAPE
         checksumPacketTXOctalEscape "$1" 
+    else
+       PACKET_TX_ESCAPE="$4"
     fi
 
     if [ "$DEBUG_SENDPACKETNC" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" -eq 1 ]; then
@@ -112,20 +112,17 @@ sendPacketnc()
 
     local_TCPport=$GW_PORT_TCP
 
-    if [ -n "$1" ]; then
-
-        if [ "$1" -eq "$CMD_BROADCAST" ]; then
-            local_ncUDPopt='-u' # udp mode
-            local_TCPport=$GW_PORT_UDP
-            local_timeout_nc=$local_timeout_udp_broadcast
-            local_useTimeout=1
-        elif [ "$1" -eq "$CMD_WRITE_RESET" ] || [ "$1" -eq "$CMD_WRITE_SSID" ]; then
-            :
-        elif [ "$1" -eq "$CMD_REBOOT" ]; then
+    if [ "$1" -eq "$CMD_BROADCAST" ]; then
+        local_ncUDPopt='-u' # udp mode
+        local_TCPport=$GW_PORT_UDP
+        local_timeout_nc=$local_timeout_udp_broadcast
         local_useTimeout=1
-        local_timeout_nc=1
-        #sometimes result packet from gw is not received, and nc hangs
-        fi
+    elif [ "$1" -eq "$CMD_WRITE_RESET" ] || [ "$1" -eq "$CMD_WRITE_SSID" ]; then
+        :
+    elif [ "$1" -eq "$CMD_REBOOT" ]; then
+    local_useTimeout=1
+    local_timeout_nc=1
+    #sometimes result packet from gw is not received, and nc hangs
     fi
 
     # change between openbsd/nmap ncat in WSL2/ubuntu - sudo update-alternatives --config nc
@@ -210,7 +207,7 @@ sendPacketnc()
         fi
 
        #maybe use: https://stackoverflow.com/questions/1550933/catching-error-codes-in-a-shell-pipe
-       if [ -z "$3" ]; then
+       if [ -z "$3" ] && [ -z "$4" ]; then
             parsePacket "$local_od_buffer"
       # else
       #      echo >> "$3" #append newline | 0xa

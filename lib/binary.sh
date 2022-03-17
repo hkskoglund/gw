@@ -1208,8 +1208,6 @@ restoreBackup()
 
     # $1=255 $2=255 $3=command $4=msb packet length, $5 (optional 2byte packet length)
 
-    SENDPACKET_TXESCAPE=1 # write escape codes direcly
-
     while [ $# -gt 4 ]; do
         restoreReadCommand=$(( $3 )) 
         restoreWriteCommand=$(( restoreReadCommand + 1 )) # writecmd.=readcmd.+ 1
@@ -1271,8 +1269,7 @@ restoreBackup()
         fi
 
         convertBufferFromDecToOctalEscape "$restoreBuffer" # \0377 \0377 \0nnn
-        PACKET_TX_ESCAPE=$VALUE_OCTAL_BUFFER_ESCAPE
-        sendPacket $restoreWriteCommand "$restoreHost"
+        sendPacket "$restoreWriteCommand" "$restoreHost" "" "$VALUE_OCTAL_BUFFER_ESCAPE"
         #printf "%b" "$VALUE_OCTAL_BUFFER_ESCAPE" | tee restore.hex | nc -4 -N -w 1 "$restoreHost" 45000 | od -A n -t x1 -w131000
 
         case "$restoreFilter" in
@@ -1285,7 +1282,7 @@ restoreBackup()
 
    # echo >&2 restoreWriteCommand: $restoreWriteCommand restorePacketLength: $restorePacketLength restoreCRCpos: $restoreCRCpos restoreCRC: $restoreCRC
 
-    unset SENDPACKET_TXESCAPE byte local_startpos local_n local_crc local_packetLength restoreBuffer backupBuffer restoreFilename restoreHost restoreReadCommand restoreWriteCommand restorePacketLength restorePos restoreBuffer restoreCRCpos restoreFilter sensorBuffer
+    unset byte local_startpos local_n local_crc local_packetLength restoreBuffer backupBuffer restoreFilename restoreHost restoreReadCommand restoreWriteCommand restorePacketLength restorePos restoreBuffer restoreCRCpos restoreFilter sensorBuffer
     
     return $EXITCODE_RESTOREBACKUP
 }
