@@ -11,6 +11,8 @@ sendPacket()
 # wrapper function for sending packet to host
 # previous prototype used bash tcp/udp functionality, instead of locking the script to bash only, nc command is used instead for allowing multiple shells
 # $1 command, $2 host, $3 backup filename (optional)
+# if SENDPACKET_TXESCAPE set  - write directly to device, no newPacket
+#
 {
     EXITCODE_SENDPACKET=0
 
@@ -28,37 +30,42 @@ sendPacket()
       return "$EXITCODE_SENDPACKET"
     fi
 
-     #init new packet for simple command without body
-    if  [ "$1" -eq "$CMD_BROADCAST" ] ||\
-        [ "$1" -eq "$CMD_LIVEDATA" ] ||\
-        [ "$1" -eq "$CMD_READ_CALIBRATION" ] ||\
-        [ "$1" -eq "$CMD_READ_ECOWITT_INTERVAL" ] ||\
-        [ "$1" -eq "$CMD_READ_WUNDERGROUND" ] ||\
-        [ "$1" -eq "$CMD_READ_WOW" ] ||\
-        [ "$1" -eq "$CMD_READ_WEATHERCLOUD" ] ||\
-        [ "$1" -eq "$CMD_READ_CUSTOMIZED" ] ||\
-        [ "$1" -eq "$CMD_READ_PATH" ] ||\
-        [ "$1" -eq "$CMD_READ_MAC" ] ||\
-        [ "$1" -eq "$CMD_READ_RAINDATA" ] ||\
-        [ "$1" -eq "$CMD_READ_SENSOR_ID" ] ||\
-        [ "$1" -eq "$CMD_READ_SENSOR_ID_NEW" ] ||\
-        [ "$1" -eq "$CMD_READ_SYSTEM" ] ||\
-        [ "$1" -eq "$CMD_READ_VERSION" ] ||\
-        [ "$1" -eq "$CMD_REBOOT" ] ||\
-        [ "$1" -eq "$CMD_WRITE_RESET" ] ||\
-        [ "$1" -eq "$CMD_READ_SOILHUMIAD" ] ||\
-        [ "$1" -eq "$CMD_READ_MULCH_OFFSET" ] ||\
-        [ "$1" -eq "$CMD_READ_PM25_OFFSET" ] ||\
-        [ "$1" -eq "$CMD_READ_CO2_OFFSET" ] ||\
-        [ "$1" -eq "$CMD_READ_GAIN" ]; then
-             newPacket "$1"
+    if [ -z "$SENDPACKET_TXESCAPE" ]; then
+
+        #init new packet for simple command without body
+        if  [ "$1" -eq "$CMD_BROADCAST" ] ||\
+            [ "$1" -eq "$CMD_LIVEDATA" ] ||\
+            [ "$1" -eq "$CMD_READ_CALIBRATION" ] ||\
+            [ "$1" -eq "$CMD_READ_ECOWITT_INTERVAL" ] ||\
+            [ "$1" -eq "$CMD_READ_WUNDERGROUND" ] ||\
+            [ "$1" -eq "$CMD_READ_WOW" ] ||\
+            [ "$1" -eq "$CMD_READ_WEATHERCLOUD" ] ||\
+            [ "$1" -eq "$CMD_READ_CUSTOMIZED" ] ||\
+            [ "$1" -eq "$CMD_READ_PATH" ] ||\
+            [ "$1" -eq "$CMD_READ_MAC" ] ||\
+            [ "$1" -eq "$CMD_READ_RAINDATA" ] ||\
+            [ "$1" -eq "$CMD_READ_SENSOR_ID" ] ||\
+            [ "$1" -eq "$CMD_READ_SENSOR_ID_NEW" ] ||\
+            [ "$1" -eq "$CMD_READ_SYSTEM" ] ||\
+            [ "$1" -eq "$CMD_READ_VERSION" ] ||\
+            [ "$1" -eq "$CMD_REBOOT" ] ||\
+            [ "$1" -eq "$CMD_WRITE_RESET" ] ||\
+            [ "$1" -eq "$CMD_READ_SOILHUMIAD" ] ||\
+            [ "$1" -eq "$CMD_READ_MULCH_OFFSET" ] ||\
+            [ "$1" -eq "$CMD_READ_PM25_OFFSET" ] ||\
+            [ "$1" -eq "$CMD_READ_CO2_OFFSET" ] ||\
+            [ "$1" -eq "$CMD_READ_GAIN" ]; then
+                newPacket "$1"
+        fi
+    else
+      getCommandName "$1"
     fi
 
    if ! sendPacketnc "$@"; then # $@ each arg expands to a separate word
       EXITCODE_SENDPACKET=$EXITCODE_SENDPACKETNC
       [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 "Sendpacket failed with error code $EXITCODE_SENDPACKET"
    fi
-    
+
     return "$EXITCODE_SENDPACKET"
 }
 
@@ -67,6 +74,7 @@ sendPacketnc()
 # $1 command
 # $2 host ip
 # $3 backup filename (optional)
+# in: PACKET_TX_ESCAPE (optional) writes directly without any checksum/octal escape generation (for restoreBackup)
 # DEBUG_OPTION_OD_BUFFER=1      print od buffer
 # DEBUG_OPTION_TRACEPACKET=1    create tx/rx files in .hex binary format
 # DEBUG_SENDPACKETNC=1          debug only this function
@@ -76,84 +84,88 @@ sendPacketnc()
 
     [ "$DEBUG_SENDPACKETNC" -eq 1 ] && echo >&2 "sendPacketnc args: $* length: $# 0: $0 command: $1 host: $2 PACKET_TX_BODY: $PACKET_TX_BODY"
     
-    timeout_nc=0.05
-    timeout_udp_broadcast=0.236 # timeout selected based on udp port scanning 254 hosts in 60s (60s/254=0.236s)
-    useTimeout=0
-    
+    local_timeout_nc=0.05
+    local_timeout_udp_broadcast=0.236 # timeout selected based on udp port scanning 254 hosts in 60s (60s/254=0.236s)
+    local_useTimeout=0
 
-    createPacketTX "$1"
+    if [ -z "$SENDPACKET_TXESCAPE" ]; then # create octal escape PACKET_TX_ESCAPE
+        checksumPacketTXOctalEscape "$1" 
+    fi
 
     if [ "$DEBUG_SENDPACKETNC" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" -eq 1 ]; then
         printf >&2 "> %-25s" "$VALUE_COMMAND_NAME"
         printBuffer >&2 "$PACKET_TX"
     fi
 
-    unset rxpipecmd txpipecmd
+    unset local_rxpipecmd local_txpipecmd
 
     if [ "$DEBUG_OPTION_TRACEPACKET" -eq 1 ]; then
        #visual studio code: problems with HH:MM:SS display for date -> using space
-       tracedate=$(date +'%H %M %S %N') #https://superuser.com/questions/674464/print-current-time-with-milliseconds
-       rxpipecmd=" | tee \"rx-$VALUE_COMMAND_NAME-$tracedate.hex\""
-       txpipecmd=" | tee \"tx-$VALUE_COMMAND_NAME-$tracedate.hex\""
+       local_tracedate=$(date +'%H %M %S %N') #https://superuser.com/questions/674464/print-current-time-with-milliseconds
+       local_rxpipecmd=" | tee \"rx-$VALUE_COMMAND_NAME-$local_tracedate.hex\""
+       local_txpipecmd=" | tee \"tx-$VALUE_COMMAND_NAME-$local_tracedate.hex\""
     fi
 
     if [ -n "$3" ]; then # append to backup file
-      rxpipecmd="$rxpipecmd | tee -a \"$3\""
+      local_rxpipecmd="$local_rxpipecmd | tee -a \"$3\""
     fi
 
-    port=$GW_PORT_TCP
+    local_TCPport=$GW_PORT_TCP
 
-    if [ "$PACKET_TX_CMD" -eq "$CMD_BROADCAST" ]; then
-        ncUDPOpt='-u' # udp mode
-        port=$GW_PORT_UDP
-        timeout_nc=$timeout_udp_broadcast
-        useTimeout=1
-    elif [ "$PACKET_TX_CMD" -eq "$CMD_WRITE_RESET" ] || [ "$PACKET_TX_CMD" -eq "$CMD_WRITE_SSID" ]; then
-        :
-    elif [ "$PACKET_TX_CMD" -eq "$CMD_REBOOT" ]; then
-       useTimeout=1
-       timeout_nc=1
-       #sometimes result packet from gw is not received, and nc hangs
+    if [ -n "$1" ]; then
+
+        if [ "$1" -eq "$CMD_BROADCAST" ]; then
+            local_ncUDPopt='-u' # udp mode
+            local_TCPport=$GW_PORT_UDP
+            local_timeout_nc=$local_timeout_udp_broadcast
+            local_useTimeout=1
+        elif [ "$1" -eq "$CMD_WRITE_RESET" ] || [ "$1" -eq "$CMD_WRITE_SSID" ]; then
+            :
+        elif [ "$1" -eq "$CMD_REBOOT" ]; then
+        local_useTimeout=1
+        local_timeout_nc=1
+        #sometimes result packet from gw is not received, and nc hangs
+        fi
     fi
 
     # change between openbsd/nmap ncat in WSL2/ubuntu - sudo update-alternatives --config nc
 
-    odcmdstr="od -A n -t u1 -w$MAX_16BIT_UINT"
+    local_odcmdstr="od -A n -t u1 -w$MAX_16BIT_UINT"
 
     if [ "$NC_VERSION" = "$NC_OPENBSD" ]; then
 
         # -N shutdown(2) the network socket after EOF on the input / from man nc - otherwise nc hangs
-        nccmdstr="\"$NC_CMD\" -4 -N -w 1 $ncUDPOpt $2 $port" 
+        local_nccmdstr="\"$NC_CMD\" -4 -N -w 1 $local_ncUDPopt $2 $local_TCPport" 
        
-        #if [ "$useTimeout" -eq 1 ]; then
-        #   nccmdstr="timeout $timeout_nc $nccmdstr"
+        #if [ "$local_useTimeout" -eq 1 ]; then
+        #   local_nccmdstr="timeout $local_timeout_nc $local_nccmdstr"
         #fi
         
-        cmdstr="printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd | $nccmdstr $rxpipecmd | $odcmdstr"
+        local_cmdstr="printf %b \"$PACKET_TX_ESCAPE\" $local_txpipecmd | $local_nccmdstr $local_rxpipecmd | $local_odcmdstr"
 
     elif [ "$NC_VERSION" = "$NC_NMAP" ]; then
 
         #sleep to disable immediate EOF and shutdown of ncat -> which leads to data not received from udp socket
        
-        nccmdstr="\"$NC_CMD\" -4 -w 1  $ncUDPOpt $2 $port"
-        cmdstr="{ printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd ; sleep $timeout_nc; } |  $nccmdstr $rxpipecmd | $odcmdstr"
+        local_nccmdstr="\"$NC_CMD\" -4 -w 1  $local_ncUDPopt $2 $local_TCPport"
+        local_cmdstr="{ printf %b \"$PACKET_TX_ESCAPE\" $local_txpipecmd ; sleep $local_timeout_nc; } |  $local_nccmdstr $local_rxpipecmd | $local_odcmdstr"
 
     elif [ "$NC_VERSION" = "$NC_TOYBOX" ]; then
 
-        nccmdstr="$NC_CMD -4 $ncUDPOpt $2 $port"
+        local_nccmdstr="$NC_CMD -4 $local_ncUDPopt $2 $local_TCPport"
         
-        if [ "$useTimeout" -eq 1 ]; then
-           nccmdstr="timeout $timeout_nc $nccmdstr"
+        if [ "$local_useTimeout" -eq 1 ]; then
+           local_nccmdstr="timeout $local_timeout_nc $local_nccmdstr"
         fi
 
-        cmdstr="printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd | $nccmdstr $rxpipecmd | $odcmdstr"
+        local_cmdstr="printf %b \"$PACKET_TX_ESCAPE\" $local_txpipecmd | $local_nccmdstr $local_rxpipecmd | $local_odcmdstr"
 
     elif [ "$NC_VERSION" = "$NC_BUSYBOX" ]; then
 
-        nccmdstr="$NC_CMD $2 $port"
+        local_nccmdstr="$NC_CMD $2 $local_TCPport"
 
-        if [ -z "$ncUDPOpt" ]; then
-            cmdstr="printf %b \"$PACKET_TX_ESCAPE\" $txpipecmd |  $nccmdstr $rxpipecmd | $odcmdstr"
+        if [ -z "$local_ncUDPopt" ]; then
+            local_cmdstr="printf %b \"$PACKET_TX_ESCAPE\" $local_txpipecmd |  $local_nccmdstr $local_rxpipecmd | $local_odcmdstr"
         else
             echo >&2 Busybox nc does not support UDP
         fi
@@ -162,22 +174,22 @@ sendPacketnc()
         return "$ERROR_DEPENDENCY_NC"
     fi
 
-    if [ -n "$cmdstr" ]; then
+    if [ -n "$local_cmdstr" ]; then
 
        # print command 
        if [ -n "$DEBUG_OPTION_COMMAND" ] && [ "$DEBUG_OPTION_COMMAND" -eq 1 ]; then
-            printf >&2 "c %-25s %s\n" "$VALUE_COMMAND_NAME" "$cmdstr"
+            printf >&2 "c %-25s %s\n" "$VALUE_COMMAND_NAME" "$local_cmdstr"
        fi
        
        if [ "$DEBUG_SENDPACKETNC" -eq 1 ]; then
-            echo >&2 "Sending packet $VALUE_COMMAND_NAME to $2:$port"
+            echo >&2 "Sending packet $VALUE_COMMAND_NAME to $2:$local_TCPport"
        fi 
 
-       unset od_buffer
+       unset local_od_buffer
         local_resendattempt=1 # send command attemps
-       while [ -z "$od_buffer" ] && [ $local_resendattempt -le 3 ]; do
-            od_buffer=$(eval "$cmdstr" )
-            if [ -z "$od_buffer" ]; then
+       while [ -z "$local_od_buffer" ] && [ $local_resendattempt -le 3 ]; do
+            local_od_buffer=$(eval "$local_cmdstr" )
+            if [ -z "$local_od_buffer" ]; then
                 if [ $local_resendattempt -eq 1 ]; then
                    sleep 1
                 else
@@ -190,16 +202,16 @@ sendPacketnc()
             fi
         done
 
-       if [ -z "$od_buffer" ]; then
+       if [ -z "$local_od_buffer" ]; then
          echo >&2 "$(date) Warning: command $VALUE_COMMAND_NAME no response (0 bytes) from host $2, send attempts $local_resendattempt"
        elif  [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_OD_BUFFER" -eq 1 ]; then
             printf >&2 "< %-25s" "$VALUE_COMMAND_NAME"
-            printBuffer >&2 "$od_buffer"
+            printBuffer >&2 "$local_od_buffer"
         fi
 
        #maybe use: https://stackoverflow.com/questions/1550933/catching-error-codes-in-a-shell-pipe
        if [ -z "$3" ]; then
-            parsePacket "$od_buffer"
+            parsePacket "$local_od_buffer"
       # else
       #      echo >> "$3" #append newline | 0xa
         fi
@@ -207,7 +219,7 @@ sendPacketnc()
        EXITCODE_SENDPACKETNC=$?
     fi
 
-    unset local_resendattempt ncUDPOpt ncIdleOpt port host timeout_udp_broadcast useTimeout timeout_nc od_buffer cmdstr nccmdstr odcmdstr  rxpipecmd txpipecmd
+    unset local_resendattempt local_ncUDPopt local_TCPport local_timeout_udp_broadcast local_useTimeout local_timeout_nc local_od_buffer local_cmdstr local_nccmdstr local_odcmdstr local_rxpipecmd local_txpipecmd local_tracedate
 
     return $EXITCODE_SENDPACKETNC
 }
@@ -272,10 +284,11 @@ checksum()
 }
 
 checksumPacketTX()
-# calculates packet chekcum and set final packet tx
+# calculates packet chekcum 
 # $1 command
+# in: PACKET_TX_BODY
 # set PACKET_TX
- {
+{
 
     [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 "checksumPacketTX: START command: $1 PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
 
@@ -305,7 +318,7 @@ checksumPacketTX()
     [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 "checksumPacketTX: END PACKET_TX $PACKET_TX PACKET_TX_BODY $PACKET_TX_BODY"
 }
 
-createPacketTX()
+checksumPacketTXOctalEscape()
 # creates checksum for packet, converts PACKET_TX from decimal to octal
 # $1 command
 # set PACKET_TX_ESCAPE

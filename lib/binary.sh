@@ -1190,6 +1190,7 @@ restoreBackup()
 # $3 filter
 {
     EXITCODE_RESTOREBACKUP=0
+    DEBUG_RESTOREBACKUP=${DEBUG_RESTOREBACKUP:=$DEBUG}
 
     restoreFilename="$1"
     restoreHost="$2"
@@ -1207,12 +1208,14 @@ restoreBackup()
 
     # $1=255 $2=255 $3=command $4=msb packet length, $5 (optional 2byte packet length)
 
+    SENDPACKET_TXESCAPE=1 # write escape codes direcly
+
     while [ $# -gt 4 ]; do
         restoreReadCommand=$(( $3 )) 
         restoreWriteCommand=$(( restoreReadCommand + 1 )) # writecmd.=readcmd.+ 1
        
         getCommandName "$restoreReadCommand"
-        echo >&2 "restoring $VALUE_COMMAND_NAME"
+        [ "$DEBUG_RESTOREBACKUP" -eq 1 ] && echo >&2 "restoring $VALUE_COMMAND_NAME"
         #>&2 printBuffer "$*"
 
         if ! commandHas2BytePacketLengthResponse "$restoreReadCommand"; then
@@ -1264,12 +1267,13 @@ restoreBackup()
               local_crc=$(( (local_crc + CMD_WRITE_SENSOR_ID + local_packetLength) & 255 ))
               sensorBuffer="255 255 $CMD_WRITE_SENSOR_ID $local_packetLength $sensorBuffer $local_crc"
               restoreBuffer="$sensorBuffer"
+              restoreWriteCommand=$CMD_WRITE_SENSOR_ID
         fi
 
         convertBufferFromDecToOctalEscape "$restoreBuffer" # \0377 \0377 \0nnn
-        set -x
-        printf "%b" "$VALUE_OCTAL_BUFFER_ESCAPE" | tee restore.hex | nc -4 -N -w 1 "$restoreHost" 45000 | od -A n -t x1 -w131000
-        set +x
+        PACKET_TX_ESCAPE=$VALUE_OCTAL_BUFFER_ESCAPE
+        sendPacket $restoreWriteCommand "$restoreHost"
+        #printf "%b" "$VALUE_OCTAL_BUFFER_ESCAPE" | tee restore.hex | nc -4 -N -w 1 "$restoreHost" 45000 | od -A n -t x1 -w131000
 
         case "$restoreFilter" in
           cat) parsePacket "$backupBuffer" # view backup content
@@ -1281,7 +1285,7 @@ restoreBackup()
 
    # echo >&2 restoreWriteCommand: $restoreWriteCommand restorePacketLength: $restorePacketLength restoreCRCpos: $restoreCRCpos restoreCRC: $restoreCRC
 
-    unset byte local_startpos local_n local_crc local_packetLength restoreBuffer backupBuffer restoreFilename restoreHost restoreReadCommand restoreWriteCommand restorePacketLength restorePos restoreBuffer restoreCRCpos restoreFilter sensorBuffer
+    unset SENDPACKET_TXESCAPE byte local_startpos local_n local_crc local_packetLength restoreBuffer backupBuffer restoreFilename restoreHost restoreReadCommand restoreWriteCommand restorePacketLength restorePos restoreBuffer restoreCRCpos restoreFilter sensorBuffer
     
     return $EXITCODE_RESTOREBACKUP
 }
@@ -1299,7 +1303,12 @@ isWriteCommand() {
     [ "$1" -eq "$CMD_WRITE_WEATHERCLOUD" ] ||
     [ "$1" -eq "$CMD_WRITE_SENSOR_ID" ] ||
     [ "$1" -eq "$CMD_WRITE_CALIBRATION" ] ||
-    [ "$1" -eq "$CMD_WRITE_SYSTEM" ]
+    [ "$1" -eq "$CMD_WRITE_SYSTEM" ] ||
+    [ "$1" -eq "$CMD_WRITE_GAIN" ] ||
+    [ "$1" -eq "$CMD_WRITE_SOILHUMIAD" ] ||
+    [ "$1" -eq "$CMD_WRITE_CO2_OFFSET" ] ||
+    [ "$1" -eq "$CMD_WRITE_MULCH_OFFSET" ] ||
+    [ "$1" -eq "$CMD_WRITE_PM25_OFFSET" ]
 }
 
 printWeatherServices ()
