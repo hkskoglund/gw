@@ -72,7 +72,7 @@ sendPacketnc()
 # $1 command
 # $2 host ip
 # $3 backup filename (optional)
-# $4 octal escape string (optional) - writes directly without any checksum/octal escape generation (for restoreBackup)
+# $4 octal escape string (optional) - writes directly without any checksum/octal escape generation (for restoreBinaryBackup)
 # DEBUG_OPTION_OD_BUFFER=1      print od buffer
 # DEBUG_OPTION_TRACEPACKET=1    create tx/rx files in .hex binary format
 # DEBUG_SENDPACKETNC=1          debug only this function

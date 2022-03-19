@@ -346,6 +346,17 @@ processCustomizedOptions() {
 
         case "$key" in
 
+            reset) GW_WS_CUSTOMIZED_ID=""
+                    GW_WS_CUSTOMIZED_PASSWORD=""
+                    GW_WS_CUSTOMIZED_SERVER=""
+                    GW_WS_CUSTOMIZED_PORT=9999
+                    GW_WS_CUSTOMIZED_ENABLED=0
+                    GW_WS_CUSTOMIZED_HTTP=0
+                    GW_WS_CUSTOMIZED_INTERVAL=99
+                    GW_WS_CUSTOMIZED_PATH_ECOWITT=""
+                    GW_WS_CUSTOMIZED_PATH_WU=""
+                    ;;
+
             id)
                 if [ ${#GW_WS_CUSTOMIZED_ID} -le 40 ]; then
                     [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_id from $GW_WS_CUSTOMIZED_ID to $value length:${#value}"
@@ -413,7 +424,6 @@ processCustomizedOptions() {
                         EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED_OPTION"
                 esac
 
-              
                 ;;
 
             enabled | e)
@@ -501,7 +511,7 @@ processCustomizedOptions() {
                 ;;
 
             help|?|*)
-                echo >&2 "Error: Unknown key $key, use id, password|pw, server|s, port|p, http|h, enabled|e, interval|i, path_wunderground|p_w, path_ecowitt|p_e"
+                echo >&2 "Error: Unknown key $key, use id, password|pw, server|s, port|p, http|h, enabled|e, interval|i, path_wunderground|p_w, path_ecowitt|p_e, reset"
                 EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED_OPTION"
                 ;;
         esac
@@ -1537,9 +1547,13 @@ DEBUG_MAIN=${DEBUG_MAIN:=$DEBUG}
 [ "$DEBUG_MAIN" -eq 1 ] && echo >&2 "main: PID $$ arguments $* length: $#"
 
 # parse options
+    EXITCODE_MAIN=0
+
 while [ $# -gt 0 ]; do
 
-    EXITCODE_MAIN=0
+    if [ $EXITCODE_MAIN -ne 0 ]; then
+      break
+    fi
 
     KEY="$1"
 
@@ -1627,20 +1641,18 @@ while [ $# -gt 0 ]; do
                             fi
                         else
                             FILENAME_RESTORE="$2"
-                            if [ -e "$FILENAME_RESTORE" ]; then
-                                printf "%s" "Overwrite current configuration for host $GW_HOST (Y) ? "
-                                read -r RESTORE_OVERWRITE_CURRENT
-                                if [ "$RESTORE_OVERWRITE_CURRENT" = "Y" ]; then
-                                  if ! argEmptyOrOption "$3"; then
-                                        restoreBackup "$FILENAME_RESTORE" "$GW_HOST" "$3"
-                                        shift
-                                  else
-                                        restoreBackup "$FILENAME_RESTORE" "$GW_HOST"
-                                  fi
-                                fi 
-                            else
+                            if ! [ -e "$FILENAME_RESTORE" ]; then
                                 echo >&2 "Error: restore filename $FILENAME_RESTORE does not exsist"
                                 EXITCODE_MAIN=$ERROR_NONEXIST_FILENAME
+                            else
+                                  if ! argEmptyOrOption "$3"; then
+                                        restoreBinaryBackup "$FILENAME_RESTORE" "$GW_HOST" "$3" "$4"
+                                        EXITCODE_MAIN=$?
+                                        shift
+                                  else
+                                        restoreBinaryBackup "$FILENAME_RESTORE" "$GW_HOST"
+                                        EXITCODE_MAIN=$?
+                                  fi
                             fi
                             shift 2
                         fi
@@ -1831,9 +1843,9 @@ while [ $# -gt 0 ]; do
              #echo "$*"
              shift
             else
-            set -x
+            #set -x
               eval "$2"
-              set +x
+             # set +x
               shift
             fi
             ;;

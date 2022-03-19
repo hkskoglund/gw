@@ -157,10 +157,11 @@ parseWow() {
 
 
 printCustomized() {
-    printf "%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s %s\n%s\r\t\t\t\t\t%s %s\n%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n"\
+    printf "%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s %s\n%s\r\t\t\t\t\t%s %s\n%s\r\t\t\t\t\t%s %s\n%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n"\
                     "$WEATHERSERVICEHEADER_CUSTOMIZED_ID" "$GW_WS_CUSTOMIZED_ID" "$WEATHERSERVICEHEADER_CUSTOMIZED_PASSWORD" "$GW_WS_CUSTOMIZED_PASSWORD"\
                     "$WEATHERSERVICEHEADER_CUSTOMIZED_SERVER" "$GW_WS_CUSTOMIZED_SERVER" "$WEATHERSERVICEHEADER_CUSTOMIZED_PORT" "$GW_WS_CUSTOMIZED_PORT"\
                     "$WEATHERSERVICEHEADER_CUSTOMIZED_INTERVAL" "$GW_WS_CUSTOMIZED_INTERVAL" "$WEATHERSERVICEHEADERUNIT_SECONDS" "$WEATHERSERVICEHEADER_CUSTOMIZED_HTTP" "$GW_WS_CUSTOMIZED_HTTP" "$GW_WS_CUSTOMIZED_HTTP_STATE"\
+                    "$WEATHERSERVICEHEADER_CUSTOMIZED_ENABLED" "$GW_WS_CUSTOMIZED_ENABLED" "$GW_WS_CUSTOMIZED_ENABLED_STATE"\
                     "$WEATHERSERVICEHEADER_CUSTOMIZED_PATH_ECOWITT" "$GW_WS_CUSTOMIZED_PATH_ECOWITT" "$WEATHERSERVICEHEADER_CUSTOMIZED_PATH_WUNDERGROUND" "$GW_WS_CUSTOMIZED_PATH_WU"
 }
 
@@ -1183,18 +1184,76 @@ parsePacket()
     return "$EXITCODE_PARSEPACKET"
 }
 
-restoreBackup()
-# restore configuration from backup file (containing bundle of read commands)
+restoreBinaryBackup()
+# restore configuration from binary backup file (containing bundle of read commands)
 # $1 filename
 # $2 host
-# $3 filter
+# $3 command - cat
+# $4 filter - weather,sensor,calibration,...
 {
     EXITCODE_RESTOREBACKUP=0
     DEBUG_RESTOREBACKUP=${DEBUG_RESTOREBACKUP:=$DEBUG}
 
     restoreFilename="$1"
     restoreHost="$2"
-    restoreFilter="$3"
+    restoreCommand="$3"
+    restoreFilter="$4"
+    if argEmptyOrOption "$restoreFilter"; then #ignore optional option
+        restoreFilter=""
+    fi
+   
+    # validate command
+    case "$restoreCommand" in
+      cp|"") printf "%s" "Overwrite current configuration for host $restoreHost (Y) ? "
+            read -r local_overwriteAnswer
+            if ! [ "$local_overwriteAnswer" = "Y" ]; then
+                unset restoreFilename restoreHost restoreCommand restoreFilter local_overwriteAnswer
+                EXITCODE_RESTOREBACKUP=$ERROR_RESTORE_DENIED
+                return "$EXITCODE_RESTOREBACKUP"
+            fi
+             ;;
+      cat) : ;;
+      *)    echo >&2 "Error: Unknown restore command, use cat | cp" 
+            EXITCODE_RESTOREBACKUP=$ERROR_UNKNOWN_RESTORE_COMMAND
+            return "$EXITCODE_RESTOREBACKUP"
+            ;;
+    esac
+
+    IFS=,
+    unset filterCommand
+    # echo >&2 "restoreFilter: $restoreFilter"
+    for filterexpr in $restoreFilter; do
+        #  echo >&2 "filterexpr $filterexpr"
+        case $filterexpr in
+                weather|w)          filterCommand="$filterCommand $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND $CMD_READ_WOW $CMD_READ_WEATHERCLOUD $CMD_READ_CUSTOMIZED" ;;
+                ecowitt|e)          filterCommand="$filterCommand $CMD_READ_ECOWITT_INTERVAL"    ;;  
+                wunderground|wu)    filterCommand="$filterCommand $CMD_READ_WUNDERGROUND"        ;;
+                wow)                filterCommand="$filterCommand $CMD_READ_WOW"                 ;;
+                weathercloud|wc)    filterCommand="$filterCommand $CMD_READ_WEATHERCLOUD"        ;;
+                customized|c)       filterCommand="$filterCommand $CMD_READ_CUSTOMIZED"          ;;
+                    sensor|s)       filterCommand="$filterCommand $CMD_READ_SENSOR_ID_NEW $CMD_READ_SENSOR"  ;;
+                system)             filterCommand="$filterCommand $CMD_READ_SYSTEM"              ;;
+                # calibration
+                rain)               filterCommand="$filterCommand $CMD_READ_RAINDATA"            ;;
+                calibration)        filterCommand="$filterCommand $CMD_READ_CALIBRATION"         ;;
+                soilmoisture)       filterCommand="$filterCommand $CMD_READ_SOILHUMIAD"          ;;
+                gain)               filterCommand="$filterCommand $CMD_READ_GAIN"                ;;
+                co2)                filterCommand="$filterCommand $CMD_READ_CO2_OFFSET"          ;;
+            temperature|temp|t)     filterCommand="$filterCommand $CMD_READ_MULCH_OFFSET"        ;;
+                pm25)               filterCommand="$filterCommand $CMD_READ_PM25_OFFSET"         ;;
+
+                *)      echo >&2 "No such command '$filterexpr' in backup, use weather, ecowitt, wunderground|wu, wow, weathercloud | wc, customized | c, sensor | s, system, rain, calibration, soilmoisture, gain, co2, temperature | temp |t, pm25"
+                        ;;
+        esac
+    done
+
+    if [ -z "$filterCommand" ]; then
+        #GLOB "*"
+        filterCommand="$CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND $CMD_READ_WOW $CMD_READ_WEATHERCLOUD $CMD_READ_CUSTOMIZED $CMD_READ_SENSOR_ID_NEW $CMD_READ_SENSOR\
+ $CMD_READ_RAINDATA $CMD_READ_CALIBRATION $CMD_READ_SOILHUMIAD $CMD_READ_GAIN $CMD_READ_CO2_OFFSET $CMD_READ_MULCH_OFFSET $CMD_READ_PM25_OFFSET"
+    fi
+
+     [ "$DEBUG_RESTOREBACKUP" -eq 1 ] &&  echo >&2 "filename: $restoreFilename host: $restoreHost command: $restoreCommand filter: $restoreFilter filtercommands: $filterCommand"
 
     if ! RESTORE_BUFFER="$(od -A n -t u1 -w"$MAX_16BIT_UINT" "$restoreFilename")"; then
           EXITCODE_RESTOREBACKUP=$?
@@ -1209,7 +1268,9 @@ restoreBackup()
     # $1=255 $2=255 $3=command $4=msb packet length, $5 (optional 2byte packet length)
 
     while [ $# -gt 4 ]; do
+    
         restoreReadCommand=$(( $3 )) 
+        
         restoreWriteCommand=$(( restoreReadCommand + 1 )) # writecmd.=readcmd.+ 1
        
         getCommandName "$restoreReadCommand"
@@ -1235,10 +1296,10 @@ restoreBackup()
             backupBuffer="$backupBuffer \${$restorePos}"
             restorePos=$(( restorePos + 1))
         done
-        #set -x
+        [ "$DEBUG_RESTOREBACKUP" -eq 1 ] && set -x
         eval "restoreBuffer=\"$restoreBuffer \$restoreWriteCRC\"" #set the packet with new CRC
         eval "backupBuffer=\"$backupBuffer \$restoreReadCRC\""
-        #set +x
+        [ "$DEBUG_RESTOREBACKUP" -eq 1 ] && set +x
 
         #binary backup of sensor ids
         if [ "$restoreReadCommand" -eq "$CMD_READ_SENSOR_ID" ] || [ "$restoreReadCommand" -eq "$CMD_READ_SENSOR_ID_NEW" ]; then
@@ -1253,13 +1314,13 @@ restoreBackup()
               fi
               unset sensorBuffer
               for byte in $backupBuffer; do
-                if [ $local_n -ge $local_startpos ] && [ $(( (local_n - local_startpos) % 7)) -lt 5 ]; then # copy only sensortype (1-byte) and sensorid (4-byte) = 5 bytes, skip battery signal = 2bytes
-                    sensorBuffer="$sensorBuffer $byte"
-                    local_crc=$(( (local_crc + byte ) & 255 ))
-                    local_packetLength=$(( local_packetLength + 1 ))
-                fi
-               # echo $local_n $(( (local_n - local_startpos) % 7 ))
-                local_n=$(( local_n + 1 ))
+                    if [ $local_n -ge $local_startpos ] && [ $(( (local_n - local_startpos) % 7)) -lt 5 ]; then # copy only sensortype (1-byte) and sensorid (4-byte) = 5 bytes, skip battery signal = 2bytes
+                        sensorBuffer="$sensorBuffer $byte"
+                        local_crc=$(( (local_crc + byte ) & 255 ))
+                        local_packetLength=$(( local_packetLength + 1 ))
+                    fi
+                # echo $local_n $(( (local_n - local_startpos) % 7 ))
+                    local_n=$(( local_n + 1 ))
               done
               local_packetLength=$(( local_packetLength + 3 )) # cmd+packetlength+crc = 3 bytes
               local_crc=$(( (local_crc + CMD_WRITE_SENSOR_ID + local_packetLength) & 255 ))
@@ -1267,13 +1328,20 @@ restoreBackup()
               restoreBuffer="$sensorBuffer"
               restoreWriteCommand=$CMD_WRITE_SENSOR_ID
         fi
-
-        convertBufferFromDecToOctalEscape "$restoreBuffer" # \0377 \0377 \0nnn
-        sendPacket "$restoreWriteCommand" "$restoreHost" "" "$VALUE_OCTAL_BUFFER_ESCAPE"
-        #printf "%b" "$VALUE_OCTAL_BUFFER_ESCAPE" | tee restore.hex | nc -4 -N -w 1 "$restoreHost" 45000 | od -A n -t x1 -w131000
-
-        case "$restoreFilter" in
-          cat) parsePacket "$backupBuffer" # view backup content
+                    
+        case "$restoreCommand" in
+            cat) case "$filterCommand" in
+                    *$restoreReadCommand*) parsePacket "$backupBuffer" ;; # view backup content
+                 esac
+                 ;;
+             cp) case "$filterCommand" in
+                    *$restoreReadCommand*)  convertBufferFromDecToOctalEscape "$restoreBuffer" # \0377 \0377 \0nnn
+                                            sendPacket "$restoreWriteCommand" "$restoreHost" "" "$VALUE_OCTAL_BUFFER_ESCAPE"
+                                            ;;
+                 esac
+                 ;;
+             "")  convertBufferFromDecToOctalEscape "$restoreBuffer" # \0377 \0377 \0nnn
+                  sendPacket "$restoreWriteCommand" "$restoreHost" "" "$VALUE_OCTAL_BUFFER_ESCAPE"
                 ;;
         esac
 
@@ -1282,7 +1350,7 @@ restoreBackup()
 
    # echo >&2 restoreWriteCommand: $restoreWriteCommand restorePacketLength: $restorePacketLength restoreCRCpos: $restoreCRCpos restoreCRC: $restoreCRC
 
-    unset byte local_startpos local_n local_crc local_packetLength restoreBuffer backupBuffer restoreFilename restoreHost restoreReadCommand restoreWriteCommand restorePacketLength restorePos restoreBuffer restoreCRCpos restoreFilter sensorBuffer
+    unset restoreReadCRC restoreWriteCRC restoreFilter local_overwriteAnswer filterexpr filterCommand byte local_startpos local_n local_crc local_packetLength restoreBuffer backupBuffer restoreFilename restoreHost restoreReadCommand restoreWriteCommand restorePacketLength restorePos restoreBuffer restoreCRCpos restoreCommand sensorBuffer
     
     return $EXITCODE_RESTOREBACKUP
 }

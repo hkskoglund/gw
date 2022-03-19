@@ -99,20 +99,17 @@ test_printf_sformat()
 
 argEmptyOrOption() {
     [ "$DEBUG" -eq 1 ] && echo >&2 argEmptyOrOption "$@"
-    if [ -z "$1" ]; then
+
+    case "$1" in
+
+    ""|-*)
         return 0
-    else
-        case "$1" in
+        ;;
 
-        -*)
-            return 0
-            ;;
-
-        *)
-            return 1
-            ;;
-        esac
-    fi
+    *)
+        return 1
+        ;;
+    esac
 }
 
 getDateUTC()
