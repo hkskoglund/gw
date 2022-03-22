@@ -73,7 +73,7 @@ dumpstack()
 roundFloat()
 #https://unix.stackexchange.com/questions/89712/how-to-convert-floating-point-number-to-integer
 {
-    if [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" -eq 1 ]; then
+    if [ "$SHELL_SUPPORT_BUILTIN_PRINTF_VOPT" -eq 1 ]; then
     #shellcheck disable=SC3045
        printf -v VALUE_FLOAT_TO_INT "%.0f" "$1"
     else

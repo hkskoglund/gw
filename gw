@@ -64,10 +64,10 @@ initShell() {
             SHELL_SUPPORT_BULTIN_PRINTF=1 
               #storing value in variable from printf
             #shellcheck disable=SC3045
-            if printf -v SHELL_SUPPORT_BULTIN_PRINTF_VOPT "%s" "-v" 1>/dev/null 2>/dev/null && [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" = '-v' ]; then
-                SHELL_SUPPORT_BULTIN_PRINTF_VOPT=1
+            if printf -v SHELL_SUPPORT_BUILTIN_PRINTF_VOPT "%s" "-v" 1>/dev/null 2>/dev/null && [ "$SHELL_SUPPORT_BUILTIN_PRINTF_VOPT" = '-v' ]; then
+                SHELL_SUPPORT_BUILTIN_PRINTF_VOPT=1
             else
-                SHELL_SUPPORT_BULTIN_PRINTF_VOPT=0
+                SHELL_SUPPORT_BUILTIN_PRINTF_VOPT=0
             fi
         ;;
         
@@ -1460,7 +1460,7 @@ processCommand()
 
         sensor_id | sensor | s) 
 
-           if  isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
+            if  isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
 
                 if ! argEmptyOrOption "$1"; then
                 #filter for senorid; -c sensor connected|-c s co
@@ -1576,7 +1576,7 @@ restoreBackup()
     # parse backup
     
     while read -r backup_name backup_value; do
-        [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "Restore file $backup_name $backup_value length: ${#backup_value}"
+        [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "Restore: read $backup_name $backup_value length: ${#backup_value}"
         case "$backup_name" in
             \#*) : ;; # ignore comment starting with #
             "$WEATHERSERVICENAME_ECOWITT_INTERVAL")               GWBACKUP_WS_ECOWITT_INTERVAL="$backup_value" ;;
@@ -1595,7 +1595,7 @@ restoreBackup()
             "$WEATHERSERVICENAME_CUSTOMIZED_ENABLED")             GWBACKUP_WS_CUSTOMIZED_ENABLED="$backup_value" ;;
             "$WEATHERSERVICENAME_CUSTOMIZED_PATH_ECOWITT")        GWBACKUP_WS_CUSTOMIZED_PATH_ECOWITT="$backup_value" ;;
             "$WEATHERSERVICENAME_CUSTOMIZED_PATH_WUNDERGROUND")    GWBACKUP_WS_CUSTOMIZED_PATH_WU="$backup_value" ;;
-            *) echo >&2 "Error: Unknown name: $backup_name" 
+            *) echo >&2 "Error: Restore unknown name '$backup_name', ignored" 
             ;;
         esac
     done <"$1"

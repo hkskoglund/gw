@@ -2,7 +2,7 @@
 
 DEBUG=${DEBUG:=0}
 DEBUG_BUFFER=${DEBUG_BUFFER:=$DEBUG}
-SHELL_SUPPORT_BULTIN_PRINTF_VOPT=${SHELL_SUPPORT_BULTIN_PRINTF_VOPT:=0}
+SHELL_SUPPORT_BUILTIN_PRINTF_VOPT=${SHELL_SUPPORT_BUILTIN_PRINTF_VOPT:=0}
 ERROR_READ_BUFFER=${ERROR_READ_BUFFER:=1}
 
 # debug bash: set -o posix; set | grep GWBUFFER; set +o posix
@@ -180,7 +180,7 @@ writeString()
         n=$(( n + 1 ))
     done
 
-    if [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" -eq  1 ] && [ -n "$APPEND_FORMAT_WRITE_STRING" ]; then
+    if [ "$SHELL_SUPPORT_BUILTIN_PRINTF_VOPT" -eq  1 ] && [ -n "$APPEND_FORMAT_WRITE_STRING" ]; then
         [ "$DEBUG_BUFFER_STRING" -eq 1 ] && { echo >&2 "writeString: converting string"; set -x; }
         eval printf -v decstr \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING"
         #shellcheck disable=SC2154
@@ -411,7 +411,6 @@ readString()
 # \x formatted printf format not supported in dash -> must use \nnn-octal format,
 # https://bugs.launchpad.net/ubuntu/+source/dash/+bug/1499473
 # $1 buffername, $2 debug info
-# test: for char in $(seq -s' ' 0 255); do oct=$(printf "%03o" $char); printf "%3d %03o %b\n" 0$oct 0$oct  \\$oct; done
 # only support for dec 0-127: !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
  { 
      DEBUG_BUFFER_STRING=${DEBUG_BUFFER_STRING:=$DEBUG_BUFFER}
@@ -448,7 +447,7 @@ readString()
 
     if [ "$EXITCODE_BUFFER" -eq 0 ]; then
 
-        if [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" -eq 1 ]; then
+        if [ "$SHELL_SUPPORT_BUILTIN_PRINTF_VOPT" -eq 1 ]; then
                     [ $DEBUG_BUFFER_STRING -eq 1 ] && { echo >&2 "readString: Converting escaped octal string to string"; set -x; }
             #shellcheck disable=SC3045
             printf -v VALUE_STRING "%b" "$VALUE_STRING_ESCAPE"

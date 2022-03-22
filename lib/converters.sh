@@ -400,7 +400,7 @@ convertFloatToScale10()
 }
 
 convertHexToOctal() { #$1 - 0xff format
-    if [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" -eq 1 ]; then
+    if [ "$SHELL_SUPPORT_BUILTIN_PRINTF_VOPT" -eq 1 ]; then
     #shellcheck disable=SC3045
        printf -v VALUE_OCTAL "%03o" "$1"
        return
@@ -571,8 +571,9 @@ convertWindDirectionToCompassDirection() { #$1 - direction in degrees
 }
 
 convertUInt8ToHex() {
-#$1 - decimal value to convert to hex
-    if [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" -eq 1 ]; then
+# $1 decimal value to convert to hex
+# set VALUE_UINT8_HEX
+    if [ "$SHELL_SUPPORT_BUILTIN_PRINTF_VOPT" -eq 1 ]; then
     #shellcheck disable=SC3045
         printf -v VALUE_UINT8_HEX "%02x" "$1"
         return
@@ -591,6 +592,34 @@ convertUInt8ToHex() {
     fi
 
     unset lsb lsb_hexdigit msb
+}
+
+convertUInt32BEToHex()
+# $1 decimal value to convert
+# set VALUE_UINT32BE_HEX
+{
+ #   if [ "$SHELL_SUPPORT_BUILTIN_PRINTF_VOPT" -eq 1 ]; then
+ #   #shellcheck disable=SC3045
+ #       printf -v VALUE_UINT32BE_HEX "%4x" "$1"
+ #       return
+ #   fi
+
+    unset VALUE_UINT32BE_HEX
+
+set -x
+    convuint32be_lsb=$((          $1 & 0xff ))
+    convuint32be_msb=$((  ($1 >> 8)  & 0xff ))
+    convuint32be_lsb2=$(( ($1 >> 16) & 0xff ))
+    convuint32be_msb2=$((  $1 >> 24 ))
+[ $convuint32be_msb2 -ne 0 ]
+    [ $convuint32be_msb2 -ne 0 ] && { convertUInt8ToHex $convuint32be_msb2; VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX; }
+    [ $convuint32be_lsb2 -ne 0 ] && { convertUInt8ToHex $convuint32be_lsb2; VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX; }
+    [ $convuint32be_msb -ne 0 ]  && { convertUInt8ToHex $convuint32be_msb;  VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX; }
+     convertUInt8ToHex $convuint32be_lsb  
+     VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX
+      set +x
+
+    unset convuint32be_lsb convuint32be_lsb2 convuint32be_msb convuint32be_msb2
 }
 
 setLightHttpLivedata()

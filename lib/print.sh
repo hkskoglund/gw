@@ -92,6 +92,94 @@ printWeatherServices()
     printCustomized
 }
 
+printSensorLine()
+#$1 - sensortype, $2 sensor id, $3 battery, $4 signal , $5 sensorid state, $6 battery state, $7signal unicode
+# in: SENSORNAME_WH
+# in: SENSORNAME_SHORT
+{
+#observation: leak sensor signal -> starts at level 1 after search state, then increases +1 each time a new rf message is received
+
+    unset VALUE_BATTERY_STATE style_sensor
+    
+   # TEST data 
+    #if [ "$1" -eq 40 ]; then
+    #   set -- "39" "$(( 0xfff ))" 4 4  # co2
+    #  set -- "40" "$(( 0xfff ))" 14 4 # leaf wetness
+    #fi
+
+    if [ "$2" -eq "$SENSORID_DISABLE" ]; then 
+        style_sensor=$STYLE_SENSOR_DISABLE
+    elif [ "$2" -eq "$SENSORID_SEARCH" ]; then
+        style_sensor=$STYLE_SENSOR_SEARCH
+    elif [ "$4" -eq 0 ]; then 
+        style_sensor=$STYLE_SENSOR_DISCONNECTED
+    else
+        style_sensor=$STYLE_SENSOR_CONNECTED
+    fi
+
+    if [ -n "$style_sensor" ]; then
+       style_sensor_off=$STYLE_RESET # insert end escape sequence only if sgi is used
+    fi
+    
+     # 1 battery unicode is field size 4 in printf format string. TEST printf  "🔋 1.3 V" | od -A n -t x1 | wc -w -> 10
+     # use \r\t\t\t workaround for unicode alignment
+  
+    appendBuffer "%6u %9x %3u %1u %4s %-17s $style_sensor%-12s$style_sensor_off\t%s\t%s\n"\
+ "'$1' '$2' '$3' '$4'  '$SENSORNAME_WH' '$SENSORNAME_SHORT' '$5' '$6' '$7'"
+    
+    unset style_sensor_off style_sensor
+}
+
+printSensorHeader()
+{
+    resetAppendBuffer
+
+    printSensorHeaderState=0
+
+    if [ -z "$SENSORVIEW_HIDE_HEADER" ];  then 
+       printSensorHeaderState=1
+    elif [ "$SENSORVIEW_HIDE_HEADER" -eq 0 ]; then
+       printSensorHeaderState=1
+    fi
+
+    if [ $printSensorHeaderState -eq 1 ]; then
+                      #1:Sensortype 2:sid 3:battery 4:signal 5:type 6:name 7:state 8:battery 9:signal
+        appendBuffer "%6s %9s %3s %1s %-4s %-17s %-12s\t%s\t%s\n%s\n" "$SENSORID_HEADER ───────────────────────────────────────────────────────────────────────────────"
+    fi
+}
+
+printSensorMatch()
+{
+      #pattern matching
+        printSensorMatch=0
+
+        if [ "$SPATTERNID" = "$SPATTERNID_CONNECTED" ] && [ "$SID" -ne "$SENSORID_SEARCH" ] && [ "$SID" -ne "$SENSORID_DISABLE" ]; then # connected sensor
+            printSensorMatch=1
+        elif [ "$SPATTERNID" = "$SPATTERNID_DISCONNECTED" ] && [ "$SID" -ne "$SENSORID_SEARCH" ] && [ "$SID" -ne "$SENSORID_DISABLE" ] && [ "$signal" -eq 0 ]; then
+            printSensorMatch=1
+        elif [ "$SPATTERNID" = "$SPATTERNID_RANGE" ] && [ -n "$SPATTERNID_RANGE_LOW" ] && [ -n "$SPATTERNID_RANGE_HIGH" ] && [ "$stype" -ge "$SPATTERNID_RANGE_LOW" ] && [ "$stype" -le "$SPATTERNID_RANGE_HIGH" ]; then 
+            printSensorMatch=1
+        elif [ "$SPATTERNID" = "$SPATTERNID_SEARCHING" ] && [ "$SID" -eq "$SENSORID_SEARCH"  ]; then 
+            printSensorMatch=1
+        elif [ "$SPATTERNID" = "$SPATTERNID_DISABLED" ] && [ "$SID" -eq "$SENSORID_DISABLE" ]; then
+            printSensorMatch=1
+        elif [ -z "$SPATTERNID" ]; then #all sensors
+            printSensorMatch=1
+        fi
+
+        if [ $printSensorMatch -eq 1 ]; then
+            printSensorLine "$stype" "$SID" "$battery" "$signal" "$local_sensorstate" "$VALUE_BATTERY_STATE" "$VALUE_SIGNAL_UNICODE"
+        fi
+}
+
+printSensorBackup()
+{
+    resetAppendBuffer
+    appendBuffer "%s=%s" "'$SENSORNAME_WH65' '"
+    sensorstr="$SENSORNAME_WH65=$LIVEDATASENSOR_WH65\n"
+    printf "$SENSORNAME_WH65=$LIVEDATASENSOR_WH65\n"
+}
+
 
 
 
