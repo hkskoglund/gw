@@ -8,7 +8,6 @@ parseVersion() {
     export GW_VERSION="$VALUE_STRING"
     getVersionInt "$GW_VERSION"
     export GW_VERSION_INT="$VALUE_VERSION"
-    echo "$GW_VERSION"
 }
 
 parseMAC() 
@@ -16,7 +15,6 @@ parseMAC()
     readSlice "$VALUE_PARSEPACKET_BUFFERNAME" 6 "MAC"
     setMAC "$VALUE_SLICE"
     export GW_MAC="$VALUE_MAC"
-    echo "$GW_MAC"
 }
 
 parseResult() {
@@ -93,43 +91,20 @@ parseBroadcast() {
     printBroadcast
 
 }
-
-printEcowittInterval()
- {
-    if [ "$GW_WS_ECOWITT_INTERVAL" -eq 1 ]; then
-       local_min="$WEATHERSERVICEHEADERUNIT_MINUTE"
-    elif [ "$GW_WS_ECOWITT_INTERVAL" -gt 1 ]; then
-        local_min="$WEATHERSERVICEHEADERUNIT_MINUTES"
-    fi
-    printf "%s\r\t\t\t\t\t%s %s\n" "$WEATHERSERVICEHEADER_ECOWITT" "$GW_WS_ECOWITT_INTERVAL" "$local_min"
-    
-    unset local_min
-}
-
 parseEcowittInterval() {
 
     readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "ecowitt interval"
     export GW_WS_ECOWITT_INTERVAL="$VALUE_UINT8"
-    printEcowittInterval
-}
-
-printWunderground() {
-    printf "%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n" "$WEATHERSERVICEHEADER_WUNDERGROUND_ID" "$GW_WS_WUNDERGROUND_ID" "$WEATHERSERVICEHEADER_WUNDERGROUND_PASSWORD" "$GW_WS_WUNDERGROUND_PASSWORD"
 }
 
 parseWunderground() {
     readString "$VALUE_PARSEPACKET_BUFFERNAME" "wunderground id"
     export GW_WS_WUNDERGROUND_ID="$VALUE_STRING"
     readString "$VALUE_PARSEPACKET_BUFFERNAME" "wunderground password"
-    GW_WS_WUNDERGROUND_PASSWORD=$VALUE_STRING
-
-    printWunderground
+    export GW_WS_WUNDERGROUND_PASSWORD="$VALUE_STRING"
 }
 
-printWeathercloud() {
-    printf "%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n" "$WEATHERSERVICEHEADER_WEATHERCLOUD_ID" "$GW_WS_WC_ID" "$WEATHERSERVICEHEADER_WEATHERCLOUD_PASSWORD" "$GW_WS_WC_PASSWORD"
 
-}
 
 parseWeathercloud() {
     readString "$VALUE_PARSEPACKET_BUFFERNAME" "weathercloud id"
@@ -138,11 +113,6 @@ parseWeathercloud() {
     readString "$VALUE_PARSEPACKET_BUFFERNAME" "weathercloud password"
     export GW_WS_WC_PASSWORD="$VALUE_STRING"
 
-    printWeathercloud
-}
-
-printWow() {
-    printf "%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n" "$WEATHERSERVICEHEADER_WOW_ID" "$GW_WS_WC_ID" "$WEATHERSERVICEHEADER_WOW_PASSWORD" "$GW_WS_WC_PASSWORD"
 }
 
 parseWow() {
@@ -152,17 +122,6 @@ parseWow() {
     readString "$VALUE_PARSEPACKET_BUFFERNAME" "wow password"
     export GW_WS_WOW_PASSWORD="$VALUE_STRING"
 
-    printWow
-}
-
-
-printCustomized() {
-    printf "%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s %s\n%s\r\t\t\t\t\t%s %s\n%s\r\t\t\t\t\t%s %s\n%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n"\
-                    "$WEATHERSERVICEHEADER_CUSTOMIZED_ID" "$GW_WS_CUSTOMIZED_ID" "$WEATHERSERVICEHEADER_CUSTOMIZED_PASSWORD" "$GW_WS_CUSTOMIZED_PASSWORD"\
-                    "$WEATHERSERVICEHEADER_CUSTOMIZED_SERVER" "$GW_WS_CUSTOMIZED_SERVER" "$WEATHERSERVICEHEADER_CUSTOMIZED_PORT" "$GW_WS_CUSTOMIZED_PORT"\
-                    "$WEATHERSERVICEHEADER_CUSTOMIZED_INTERVAL" "$GW_WS_CUSTOMIZED_INTERVAL" "$WEATHERSERVICEHEADERUNIT_SECONDS" "$WEATHERSERVICEHEADER_CUSTOMIZED_HTTP" "$GW_WS_CUSTOMIZED_HTTP" "$GW_WS_CUSTOMIZED_HTTP_STATE"\
-                    "$WEATHERSERVICEHEADER_CUSTOMIZED_ENABLED" "$GW_WS_CUSTOMIZED_ENABLED" "$GW_WS_CUSTOMIZED_ENABLED_STATE"\
-                    "$WEATHERSERVICEHEADER_CUSTOMIZED_PATH_ECOWITT" "$GW_WS_CUSTOMIZED_PATH_ECOWITT" "$WEATHERSERVICEHEADER_CUSTOMIZED_PATH_WUNDERGROUND" "$GW_WS_CUSTOMIZED_PATH_WU"
 }
 
 parseCustomized() {
@@ -199,13 +158,8 @@ parseCustomized() {
         export GW_WS_CUSTOMIZED_ENABLED_STATE="off"
     fi
 
-    printCustomized
 }
 
-printPath() {
-    echo "path ecowitt      $GW_WS_CUSTOMIZED_PATH_ECOWITT
-path wunderground $GW_WS_CUSTOMIZED_PATH_WU"
-}
 
 parsePath() {
     readString "$VALUE_PARSEPACKET_BUFFERNAME" "path ecowitt"
@@ -213,7 +167,6 @@ parsePath() {
     readString "$VALUE_PARSEPACKET_BUFFERNAME" "path wunderground"
     export GW_WS_CUSTOMIZED_PATH_WU="$VALUE_STRING"
 
-    printPath
 }
 
 
@@ -1376,15 +1329,6 @@ isWriteCommand() {
     [ "$1" -eq "$CMD_WRITE_PM25_OFFSET" ]
 }
 
-printWeatherServices ()
-# $1 - host
- {
-    sendPacket "$CMD_READ_ECOWITT_INTERVAL" "$1"
-    sendPacket "$CMD_READ_WUNDERGROUND" "$1"
-    sendPacket "$CMD_READ_WOW" "$1"
-    sendPacket "$CMD_READ_WEATHERCLOUD" "$1"
-    sendPacket "$CMD_READ_CUSTOMIZED" "$1"
-}
 
 getSignalUnicode()
 {

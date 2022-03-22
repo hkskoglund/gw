@@ -26,6 +26,7 @@ GWDIR=${GWDIR:='.'}
 . "$GWDIR/lib/livedata-header.sh"
 . "$GWDIR/lib/weatherservice-header.sh"
 . "$GWDIR/lib/wind.sh"
+. "$GWDIR/lib/print.sh"
 . "$GWDIR/view/livedata.sh"
 
 initShell() {
@@ -318,21 +319,23 @@ parseSystemOption()
 
 }
 
-processCustomizedOptions() {
+processCustomizedOptions() 
+# $1 options - format id=,password=,server=,port=,interval=,http=,enabled=,path_ecowitt=,path_wunderground=
+{
     DEBUG_CUSTOMIZED=${DEBUG_CUSTOMIZED:=$DEBUG}
 
     EXITCODE_CUSTOMIZED_OPTION=0
 
     #readarray -d ',' -t OPTION_CUSTOMIZED < <(echo -n "$1") # <<< HERE string appends 0x0a -> using process substitution
 
-    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "option expression: $1"
+    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "processCustomizedOptions: expression: $1"
 
     # 1. parse , expressions server=localhost,port=8080,protocol=ecowitt,enabled=yes
 
      IFS=','
      for option in $1; do
         
-        [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "option $option"
+        #[ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "processCustomizedOptions option $option"
 
         # 2. parse = expressions
 
@@ -342,7 +345,7 @@ processCustomizedOptions() {
         key=$1
         value=$2
 
-        [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "KEY $key len ${#key} VALUE $value len ${#value}"
+        [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "processCustomizedOptions KEY: $key VALUE: $value LENGTH:${#value}"
 
         case "$key" in
 
@@ -359,10 +362,10 @@ processCustomizedOptions() {
 
             id)
                 if [ ${#GW_WS_CUSTOMIZED_ID} -le 40 ]; then
-                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_id from $GW_WS_CUSTOMIZED_ID to $value length:${#value}"
+                    [ "$GW_WS_CUSTOMIZED_ID" != "$value" ] && [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "processCustomizedOptions Update customized_id from $GW_WS_CUSTOMIZED_ID to $value length:${#value}"
                     GW_WS_CUSTOMIZED_ID=$value
                 else
-                    echo >&2 "Error: id Max string limit execeeded (max 40)"
+                    echo >&2 "processCustomizedOptions Error: id Max string limit execeeded (max 40)"
                     EXITCODE_CUSTOMIZED_OPTION=$ERROR_MAX_STRING_LENGTH_EXCEEDED
                 fi
 
@@ -371,11 +374,11 @@ processCustomizedOptions() {
             password | pw)
 
                 if [ ${#GW_WS_CUSTOMIZED_PASSWORD} -le 40 ]; then
-                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_password from ${GW_WS_CUSTOMIZED_PASSWORD} to $value length:${#value}"
+                    [ "$GW_WS_CUSTOMIZED_PASSWORD" != "$value" ] && [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "processCustomizedOptionsUpdate customized_password from ${GW_WS_CUSTOMIZED_PASSWORD} to $value length:${#value}"
                     GW_WS_CUSTOMIZED_PASSWORD=$value
                     #observation: gw1000 client will not send wunderground http request unless password and id is specified
                 else
-                    echo >&2 "Error: password Max string limit execeeded (max 40)"
+                    echo >&2 "processCustomizedOptions Error: password Max string limit execeeded (max 40)"
                    EXITCODE_CUSTOMIZED_OPTION=$ERROR_MAX_STRING_LENGTH_EXCEEDED
                 fi
                 ;;
@@ -383,8 +386,7 @@ processCustomizedOptions() {
             server | s)
 
                 if [ ${#GW_WS_CUSTOMIZED_SERVER} -le 64 ]; then
-
-                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_server from $GW_WS_CUSTOMIZED_SERVER to $value length:${#value}"
+                    [ "$GW_WS_CUSTOMIZED_SERVER" != "$value" ] && [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "processCustomizedOptions Update customized_server from $GW_WS_CUSTOMIZED_SERVER to $value length:${#value}"
                     GW_WS_CUSTOMIZED_SERVER=$value
                 else
                     EXITCODE_CUSTOMIZED_OPTION=$ERROR_MAX_STRING_LENGTH_EXCEEDED
@@ -395,11 +397,11 @@ processCustomizedOptions() {
             port | p)
 
                 if ! isNumber "$value"; then
-                    echo >&2 "Error: Not a number -  cannot set customized port to $value from $value"
+                    echo >&2 "processCustomizedOptions Error: Not a number -  cannot set customized port to $GW_WS_CUSTOMIZED_PORT from $value"
                     EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED_OPTION"
                 else
+                    [ "$GW_WS_CUSTOMIZED_PORT" != "$value" ] && [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "processCustomizedOptions Update customized_port from $GW_WS_CUSTOMIZED_PORT to $value"
                     GW_WS_CUSTOMIZED_PORT=$((value))
-                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_port from $GW_WS_CUSTOMIZED_PORT to $value"
                 fi
 
                 ;;
@@ -410,17 +412,17 @@ processCustomizedOptions() {
 
                     wunderground | w | 1)
                         value=1
-                         [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_TYPE from $GW_WS_CUSTOMIZED_HTTP to $value"
+                         [ "$GW_WS_CUSTOMIZED_HTTP" != "$value" ] &&[ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "processCustomizedOptions Update customized_TYPE from $GW_WS_CUSTOMIZED_HTTP to $value"
                           GW_WS_CUSTOMIZED_HTTP=$value
                         ;;
 
                     ecowitt | e | 0)
                         value=0
-                          [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_TYPE from $GW_WS_CUSTOMIZED_HTTP to $value"
+                          [ "$GW_WS_CUSTOMIZED_HTTP" != "$value" ] && [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "processCustomizedOptions Update customized_TYPE from $GW_WS_CUSTOMIZED_HTTP to $value"
                           GW_WS_CUSTOMIZED_HTTP=$value
                         ;;
 
-                    *)  echo >&2 "Error: Unknown value $value for http protocol, use wunderground|w|1 or ecowitt|e|0"
+                    *)  echo >&2 "processCustomizedOptions Error: Unknown value $value for http protocol, use wunderground|w|1 or ecowitt|e|0"
                         EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED_OPTION"
                 esac
 
@@ -432,17 +434,17 @@ processCustomizedOptions() {
 
                     on | 1 | yes | y)
                        value=1
-                        [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_enabled from $GW_WS_CUSTOMIZED_ENABLED to $value"
+                        [ "$GW_WS_CUSTOMIZED_ENABLED" != "$value" ] && [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "processCustomizedOptions Update customized_enabled from $GW_WS_CUSTOMIZED_ENABLED to $value"
                         GW_WS_CUSTOMIZED_ENABLED=$value
                         ;;
 
                     off | 0 | no | n)
                         value=0
-                        [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_enabled from $GW_WS_CUSTOMIZED_ENABLED to $value"
+                        [ "$GW_WS_CUSTOMIZED_ENABLED" != "$value" ] && [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "processCustomizedOptions Update customized_enabled from $GW_WS_CUSTOMIZED_ENABLED to $value"
                         GW_WS_CUSTOMIZED_ENABLED=$value
                         ;;
 
-                    *)  echo >&2 "Error: Unknown value $value for enabled, use on|1|yes|y, off|0|no|n"
+                    *)  echo >&2 "processCustomizedOptions Error: Unknown value $value for enabled, use on|1|yes|y, off|0|no|n"
                         EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED_OPTION"
                 esac
 
@@ -451,14 +453,12 @@ processCustomizedOptions() {
             interval | i)
 
                 if ! isNumber "$value"; then
-                    echo >&2 "Error: Not a number cannot set customized interval to $value"
+                    echo >&2 "processCustomizedOptions Error: Not a number cannot set customized interval to $value"
                     EXITCODE_CUSTOMIZED_OPTION="$ERROR_CUSTOMIZED_OPTION"
                 else
-                    [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_interval from $GW_WS_CUSTOMIZED_INTERVAL to $value"
+                    [ "$GW_WS_CUSTOMIZED_INTERVAL" != "$value" ] && [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "processCustomizedOptions Update customized_interval from $GW_WS_CUSTOMIZED_INTERVAL to $value"
                     GW_WS_CUSTOMIZED_INTERVAL=$((value))
-
                 fi
-
                 ;;
 
             path_wunderground | p_w)
@@ -471,17 +471,17 @@ processCustomizedOptions() {
                         update_path_wu=1
                     else
                         update_path_wu=0
-                    echo >&2 "Warning: fw $GW_VERSION does not support read/write path"
+                    echo >&2 "processCustomizedOptions Warning: fw $GW_VERSION does not support read/write path"
                     fi
 
                     if [ $update_path_wu -eq 1 ]; then
-                        [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_path_wu from $GW_WS_CUSTOMIZED_PATH_WU to $value length:${#value}"
+                        [ "$GW_WS_CUSTOMIZED_PATH_WU" != "$value" ] && [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "processCustomizedOptions Update customized_path_wu from $GW_WS_CUSTOMIZED_PATH_WU to $value length:${#value}"
                         GW_WS_CUSTOMIZED_PATH_WU=$value
                     fi
 
                     unset update_path_wu
                 else
-                    echo >&2 "Error: path_wunderground Max string limit execeeded (max 64)"
+                    echo >&2 "processCustomizedOptions Error: path_wunderground Max string limit execeeded (max 64)"
                 fi
 
                 ;;
@@ -496,17 +496,17 @@ processCustomizedOptions() {
                         update_path_ecowitt=1
                     else
                         update_path_ecowitt=0
-                    echo >&2 "Warning: fw $GW_VERSION does not support read/write path"
+                    echo >&2 "processCustomizedOptions Warning: fw $GW_VERSION does not support read/write path"
                     fi
 
                     if [ $update_path_ecowitt -eq 1 ]; then
-                        [ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "Update customized_ecowitt_path from $GW_WS_CUSTOMIZED_PATH_ECOWITT to $value length:${#value}"
+                        [ "$GW_WS_CUSTOMIZED_PATH_ECOWITT" != "$value" ] &&[ $DEBUG_CUSTOMIZED -eq 1 ] && echo >&2 "processCustomizedOptions Update customized_ecowitt_path from $GW_WS_CUSTOMIZED_PATH_ECOWITT to $value length:${#value}"
                         GW_WS_CUSTOMIZED_PATH_ECOWITT=$value
                     fi
 
                     unset update_path_ecowitt
                 else
-                    echo >&2 "Error: path_ecowitt Max string limit execeeded (max 64)"
+                    echo >&2 "processCustomizedOptions Error: path_ecowitt Max string limit execeeded (max 64)"
                 fi
                 ;;
 
@@ -520,17 +520,17 @@ processCustomizedOptions() {
 
     #https://stackoverflow.com/questions/18668556/how-can-i-compare-numbers-in-bash
 
-    [ $DEBUG -eq 1 ] && printCustomized >&2
+    [ $DEBUG -eq 1 ] && { printCustomized; printPath ; } >&2
 
     if [ $GW_WS_CUSTOMIZED_HTTP -eq 1 ] && [ ${#GW_WS_CUSTOMIZED_ID} -eq 0 ] && [ ${#GW_WS_CUSTOMIZED_PASSWORD} -eq 0 ];  then
-      echo >&2 Warning: "Using zero length id and password wont send data to port $GW_WS_CUSTOMIZED_PORT with wunderground protocol"
+      echo >&2 "processCustomizedOptions Warning: Using zero length id and password wont send data to port $GW_WS_CUSTOMIZED_PORT with wunderground protocol"
     fi
 
-    sendCustomized "$GW_HOST" 
+    unset key value option 
 
-    unset key value option
-
-    return $EXITCODE_CUSTOMIZED_OPTION
+    sendCustomized "$GW_HOST"
+  
+    return "$EXITCODE_CUSTOMIZED_OPTION"
 }
 
 printCommands() {
@@ -1133,7 +1133,7 @@ processWeatherServiceOptions()
     IFS=,
     processWeatherServiceOptions_command=$1
 
-    unset id password maxStringLengthExceeded
+    unset id password 
 
     # init read id and password (in processCommand)
     if [ "$processWeatherServiceOptions_command" -eq "$CMD_WRITE_WUNDERGROUND" ] ; then
@@ -1156,12 +1156,24 @@ processWeatherServiceOptions()
         set -- $option
 
         case $1 in
-            id)    id=$2
-                    [ $DEBUG_WS_OPTIONS -eq 1 ] && echo >&2 "Updating weather service id=$id length:${#id}"
+            id)   if [ ${#2} -gt 39 ]; then
+                        # validate string length, max 39 (GW1000 fw1.6.8: truncated to 39 characters, device rebooted if too large)
+                        EXITCODE_PROCESSWEATHERSERVICE=$ERROR_MAX_STRING_LENGTH_EXCEEDED
+                        echo >&2 "Error: Max string limit of 39 exceeded, id: $2"
+                   else
+                        id=$2
+                        [ $DEBUG_WS_OPTIONS -eq 1 ] && echo >&2 "Updating weather service id=$id length:${#id}"
+                   fi
                 ;;
-            password | pw| key) password=$2
-                [ $DEBUG_WS_OPTIONS -eq 1 ] && echo >&2 "Updating weather service password=$password length: ${#password}"
-
+            password | pw| key)
+            
+                    if [ ${#2} -gt 39 ]; then
+                        EXITCODE_PROCESSWEATHERSERVICE=$ERROR_MAX_STRING_LENGTH_EXCEEDED
+                        echo >&2 "Error: Max string limit of 39 exceeded, password: $2"
+                   else
+                        password=$2
+                        [ $DEBUG_WS_OPTIONS -eq 1 ] && echo >&2 "Updating weather service password=$password length: ${#password}"
+                   fi
                 ;;
 
             reset) unset id password # zero-length string
@@ -1169,26 +1181,23 @@ processWeatherServiceOptions()
                    
             *)  echo >&2 "Error: Unknown option: $option, use id=, password|pw|key=, reset"
                 EXITCODE_PROCESSWEATHERSERVICE=$ERROR_WEATHERSERVICE_INVALID_OPTION
-                unset option id password
+                unset option processWeatherServiceOptions_command id password
                 return $EXITCODE_PROCESSWEATHERSERVICE
                  
         esac
     done 
 
-    # validate string length, max 39 (GW1000 fw1.6.8: truncated to 39 characters, device rebooted if too large)
-    if [ ${#id} -gt 39 ] || [ ${#password} -gt 39 ]; then
-        echo >&2 Error: Max string limit of 39 exceeded
-        EXITCODE_PROCESSWEATHERSERVICE=$ERROR_MAX_STRING_LENGTH_EXCEEDED
-    else
+    if [ $EXITCODE_PROCESSWEATHERSERVICE -eq 0 ]; then
         # write new id and password, length of string is truncated by firmware on device if over max limits
-        # teststring: 
-        sendWeatherservice "$processWeatherServiceOptions_command" "$id" "$password"
+        sendWeatherservice "$GW_HOST" "$processWeatherServiceOptions_command" "$id" "$password"
         EXITCODE_PROCESSWEATHERSERVICE=$?
+    else
+       echo >&2 "Error: processWeatherServiceOptions skipping update of command: $processWeatherServiceOptions_command error: $EXITCODE_PROCESSWEATHERSERVICE"
     fi
 
-    return $EXITCODE_PROCESSWEATHERSERVICE
+    unset option id password processWeatherServiceOptions_command
 
-    unset option id password
+    return $EXITCODE_PROCESSWEATHERSERVICE
 }
 
 processEcowittIntervalOptions()
@@ -1197,7 +1206,7 @@ processEcowittIntervalOptions()
     EXITCODE_PROCESS_ECOWITTOPTIONS=0
    
     if isNumber "$1" && [ "$1" -ge 0 ] && [ "$1" -le 5 ]; then
-        sendEcowittInterval "$1" "$GW_HOST"
+        sendEcowittInterval "$GW_HOST" "$1" 
         EXITCODE_PROCESS_ECOWITTOPTIONS=$?
     else
         echo >&2 "Error: ecowitt interval $1 invalid, specify 0-5 minutes"
@@ -1292,11 +1301,13 @@ processCommand()
 
         mac)
             sendPacket $CMD_READ_MAC "$GW_HOST"
+            echo "$GW_MAC"
             ;;
 
-        version|ver)
+        version)
 
             sendPacket $CMD_READ_VERSION "$GW_HOST"
+            echo "$GW_VERSION"
             ;;
 
         system | sys)
@@ -1316,6 +1327,8 @@ processCommand()
 
             if argEmptyOrOption "$1"; then
                 sendPacket $CMD_READ_ECOWITT_INTERVAL "$GW_HOST"
+                # read-eowitt | sendPacket | parsePacket | print
+                printEcowittInterval
             else
                processEcowittIntervalOptions "$1"
                EXITCODE_PROCESSCOMMAND=$?
@@ -1377,19 +1390,21 @@ processCommand()
 
             if argEmptyOrOption "$1"; then
                 if isGWdevice "$GW_VERSION" && [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PATH ]; then
-                        sendPacket $CMD_READ_PATH  "$GW_HOST" >/dev/null
+                        sendPacket $CMD_READ_PATH  "$GW_HOST" 
                 elif ! isGWdevice "$GW_VERSION"; then
-                     sendPacket $CMD_READ_PATH  "$GW_HOST" >/dev/null # try packet, on for example EasyWeatherV1.6.1
+                     sendPacket $CMD_READ_PATH  "$GW_HOST"  # try packet, on for example EasyWeatherV1.6.1
                 else
                     echo >&2 "Warning: Command read path not supported by fw $GW_VERSION_INT"
                 fi
 
                 if ! sendPacket $CMD_READ_CUSTOMIZED  "$GW_HOST"; then
-                    >&2 echo Error: Failed to get customized settings
+                    >&2 echo "Error: Failed to get customized settings"
+                else
+                  printCustomized
                 fi
             else
                 
-                if sendPacket $CMD_READ_CUSTOMIZED  "$GW_HOST" >/dev/null && sendPacket $CMD_READ_PATH "$GW_HOST" >/dev/null; then
+                if sendPacket $CMD_READ_CUSTOMIZED  "$GW_HOST" && sendPacket $CMD_READ_PATH "$GW_HOST" ; then
                     if ! processCustomizedOptions "$1"; then
                         EXITCODE_PROCESSCOMMAND=$EXITCODE_CUSTOMIZED_OPTION
                         #echo >&2 "Error: Failed to update customized settings"
@@ -1509,6 +1524,102 @@ processCommand()
     return "$EXITCODE_PROCESSCOMMAND"
 }
 
+printBackupcommand()
+# $1 command (decimal)
+{
+    if [ "$1" -eq $CMD_READ_ECOWITT_INTERVAL ]; then
+        printEcowittInterval
+    elif [ "$1" -eq $CMD_READ_WUNDERGROUND ]; then
+        printWunderground
+    elif [ "$1" -eq $CMD_READ_WEATHERCLOUD ]; then
+        printWeathercloud
+    elif [ "$1" -eq $CMD_READ_WOW ]; then
+        printWow
+    elif [ "$1" -eq $CMD_READ_CUSTOMIZED ]; then
+        printCustomized
+    elif [ "$1" -eq $CMD_READ_PATH ]; then
+        printPath
+    fi
+}
+
+restoreBackup()
+# $1 filenmae
+{
+     DEBUG_BACKUP=${DEBUG_BACKUP:=$DEBUG}
+    IFS=' '
+
+    # get current state -> allows merging of backup 
+
+    for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND $CMD_READ_WOW $CMD_READ_WEATHERCLOUD $CMD_READ_CUSTOMIZED $CMD_READ_PATH; do
+        sendBackupCommand "$cmd" "$GW_HOST"
+    done
+
+    [ $DEBUG_BACKUP -eq 1 ] && set | grep GW_WS
+
+    GWBACKUP_WS_ECOWITT_INTERVAL=$GW_WS_ECOWITT_INTERVAL
+    GWBACKUP_WS_WUNDERGROUND_ID=$GW_WS_WUNDERGROUND_ID
+    GWBACKUP_WS_WUNDERGROUND_PASSWORD=$GW_WS_WUNDERGROUND_PASSWORD
+    GWBACKUP_WS_WC_ID=$GW_WS_WC_ID
+    GWBACKUP_WS_WC_PASSWORD=$GW_WS_WC_PASSWORD
+    GWBACKUP_WS_WOW_ID=$GW_WS_WOW_ID
+    GWBACKUP_WS_WOW_PASSWORD=$GW_WS_WOW_PASSWORD
+    GWBACKUP_WS_CUSTOMIZED_ID=$GW_WS_CUSTOMIZED_ID
+    GWBACKUP_WS_CUSTOMIZED_PASSWORD=$GW_WS_CUSTOMIZED_PASSWORD
+    GWBACKUP_WS_CUSTOMIZED_SERVER=$GW_WS_CUSTOMIZED_SERVER
+    GWBACKUP_WS_CUSTOMIZED_PORT=$GW_WS_CUSTOMIZED_PORT
+    GWBACKUP_WS_CUSTOMIZED_INTERVAL=$GW_WS_CUSTOMIZED_INTERVAL
+    GWBACKUP_WS_CUSTOMIZED_HTTP=$GW_WS_CUSTOMIZED_HTTP
+    GWBACKUP_WS_CUSTOMIZED_ENABLED=$GW_WS_CUSTOMIZED_ENABLED
+    GWBACKUP_WS_CUSTOMIZED_PATH_ECOWITT=$GW_WS_CUSTOMIZED_PATH_ECOWITT
+    GWBACKUP_WS_CUSTOMIZED_PATH_WU=$GW_WS_CUSTOMIZED_PATH_WU
+    
+    # parse backup
+    
+    while read -r backup_name backup_value; do
+        [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "Restore file $backup_name $backup_value length: ${#backup_value}"
+        case "$backup_name" in
+            \#*) : ;; # ignore comment starting with #
+            "$WEATHERSERVICENAME_ECOWITT_INTERVAL")               GWBACKUP_WS_ECOWITT_INTERVAL=$backup_value ;;
+            "$WEATHERSERVICENAME_WUNDERGROUND_ID")                GWBACKUP_WS_WUNDERGROUND_ID=$backup_value ;;
+            "$WEATHERSERVICENAME_WUNDERGROUND_PASSWORD")          GWBACKUP_WS_WUNDERGROUND_PASSWORD=$backup_value ;;
+            "$WEATHERSERVICENAME_WEATHERCLOUD_ID")                GWBACKUP_WS_WC_ID=$backup_value ;;
+            "$WEATHERSERVICENAME_WEATHERCLOUD_PASSWORD")          GWBACKUP_WS_WC_PASSWORD=$backup_value ;;
+            "$WEATHERSERVICENAME_WOW_ID")                         GWBACKUP_WS_WOW_ID=$backup_value ;;
+            "$WEATHERSERVICENAME_WOW_PASSWORD")                   GWBACKUP_WS_WOW_PASSWORD=$backup_value ;;
+            "$WEATHERSERVICENAME_CUSTOMIZED_ID")                  GWBACKUP_WS_CUSTOMIZED_ID=$backup_value ;;
+            "$WEATHERSERVICENAME_CUSTOMIZED_PASSWORD")            GWBACKUP_WS_CUSTOMIZED_PASSWORD=$backup_value ;;
+            "$WEATHERSERVICENAME_CUSTOMIZED_SERVER")              GWBACKUP_WS_CUSTOMIZED_SERVER=$backup_value ;;
+            "$WEATHERSERVICENAME_CUSTOMIZED_PORT")                GWBACKUP_WS_CUSTOMIZED_PORT=$backup_value ;;
+            "$WEATHERSERVICENAME_CUSTOMIZED_INTERVAL")            GWBACKUP_WS_CUSTOMIZED_INTERVAL=$backup_value ;;
+            "$WEATHERSERVICENAME_CUSTOMIZED_HTTP")                GWBACKUP_WS_CUSTOMIZED_HTTP=$backup_value ;;
+            "$WEATHERSERVICENAME_CUSTOMIZED_ENABLED")             GWBACKUP_WS_CUSTOMIZED_ENABLED=$backup_value ;;
+            "$WEATHERSERVICENAME_CUSTOMIZED_PATH_ECOWITT")        GWBACKUP_WS_CUSTOMIZED_PATH_ECOWITT=$backup_value ;;
+            "$WEATHERSERVICENAME_CUSTOMIZED_PATH_WUNDERGROUND")    GWBACKUP_WS_CUSTOMIZED_PATH_WU=$backup_value ;;
+            *) echo >&2 "Error: Unknown name: $backup_name" 
+            ;;
+        esac
+    done <"$1"
+    
+    #merge/restore backup on device
+
+    processEcowittIntervalOptions "$GWBACKUP_WS_ECOWITT_INTERVAL"
+    processWeatherServiceOptions $CMD_WRITE_WUNDERGROUND    "id=$GWBACKUP_WS_WUNDERGROUND_ID,password=$GWBACKUP_WS_WUNDERGROUND_PASSWORD"
+    processWeatherServiceOptions $CMD_WRITE_WEATHERCLOUD    "id=$GWBACKUP_WS_WC_ID,password=$GWBACKUP_WS_WC_PASSWORD"
+    processWeatherServiceOptions $CMD_WRITE_WOW            "id=$GWBACKUP_WS_WOW_ID,password=$GWBACKUP_WS_WOW_PASSWORD"
+    processCustomizedOptions "id=$GWBACKUP_WS_CUSTOMIZED_ID,\
+password=$GWBACKUP_WS_CUSTOMIZED_PASSWORD,\
+server=$GWBACKUP_WS_CUSTOMIZED_SERVER,\
+port=$GWBACKUP_WS_CUSTOMIZED_PORT,\
+interval=$GWBACKUP_WS_CUSTOMIZED_INTERVAL,\
+http=$GWBACKUP_WS_CUSTOMIZED_HTTP,\
+enabled=$GWBACKUP_WS_CUSTOMIZED_ENABLED,\
+path_ecowitt=$GWBACKUP_WS_CUSTOMIZED_PATH_ECOWITT,\
+path_wunderground=$GWBACKUP_WS_CUSTOMIZED_PATH_WU"
+
+    unset cmd backup_name backup_value
+
+}
+
 #read -r -u 0 -t 0 STDIN
 
 #if [ -n "$STDIN" ]; then
@@ -1590,8 +1701,40 @@ while [ $# -gt 0 ]; do
             unset COMMAND param
             
             ;;
+        -b | --backup) #exec 6>&1 >backup.config
+                        LIVEDATA_VIEW=$LIVEDATA_VIEW_BACKUP
+                        for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND $CMD_READ_WOW $CMD_READ_WEATHERCLOUD $CMD_READ_CUSTOMIZED $CMD_READ_PATH; do
+                                if sendBackupCommand "$cmd" "$GW_HOST"; then
+                                    printBackupcommand "$cmd"
+                                fi
+                        done
+                        LIVEDATA_VIEW=$LIVEDATA_VIEW_NORMAL
+                        shift
+            ;;
 
-       -b | --backup)   if [ -z "$GW_HOST" ]; then
+        -r | --restore)
+                        if [ -z "$GW_HOST" ]; then
+                             echo >&2 Error: No host
+                            EXITCODE_MAIN=$ERROR_NO_HOST_SPECIFIED
+                        else
+                           if argEmptyOrOption "$2"; then
+                                echo >&2 "Error: Filename to restore not specified"
+                                EXITCODE_MAIN=$ERROR_NONEXIST_FILENAME
+                           else
+                                if ! [ -e "$2" ]; then
+                                    echo >&2 "Error: restore filename $2 does not exsist"
+                                    EXITCODE_MAIN=$ERROR_NONEXIST_FILENAME
+                                    shift
+                                else
+                                    restoreBackup "$2"
+                                    shift
+                                fi                           
+                            fi
+                        fi
+                        shift
+                        ;;
+
+       -B | --backup-binary)   if [ -z "$GW_HOST" ]; then
                              echo >&2 Error: No host
                             EXITCODE_MAIN=$ERROR_NO_HOST_SPECIFIED
                             shift
@@ -1626,7 +1769,7 @@ while [ $# -gt 0 ]; do
                             
                     ;;
 
-      -r | --restore)   # check for -g host
+      -R | --restore-binary)   # check for -g host
                         if argEmptyOrOption "$2"; then
                             echo >&2 Error: Please provide backup filename to restore
                             shift
@@ -1665,10 +1808,15 @@ while [ $# -gt 0 ]; do
                            0 | null) LIVEDATA_VIEW=$LIVEDATA_VIEW_NULL
                                 ;;
                            n | normal) LIVEDATA_VIEW=$LIVEDATA_VIEW_NORMAL
+                                exec 1>&6 6>&- # &- close fd
                                 ;;
                            t | terse) LIVEDATA_VIEW=$LIVEDATA_VIEW_TERSE
+                                ;;
+                           b | backup) LIVEDATA_VIEW=$LIVEDATA_VIEW_BACKUP
+                           #https://tldp.org/LDP/abs/html/x17974.html "Using exec"
+                               exec 6>&1 >backup.conf # fd6=stdout, stdout=backup.conf
                                     ;;
-                            *) >&2 echo "Warning: Unknown livedata view $liveview, use 0 | null, n | normal"
+                            *) >&2 echo "Warning: Unknown livedata view $liveview, use 0 | null, n | normal, b | backup"
                             ;;
                         esac
                     done

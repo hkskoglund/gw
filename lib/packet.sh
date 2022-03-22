@@ -435,25 +435,25 @@ sendCalibration()
 
 sendEcowittInterval()
 # send ecowitt interval to host
-# $1 interval 0-5, $2 host
+# $1 host, $2 interval 0-5
 {
     newPacket "$CMD_WRITE_ECOWITT_INTERVAL"
-    writeUInt8 PACKET_TX_BODY "$1" interval #interval
-    [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 Sending ecowitt interval "$1"
-    sendPacket "$CMD_WRITE_ECOWITT_INTERVAL" "$2"
+    writeUInt8 PACKET_TX_BODY "$2" interval #interval
+    [ "$DEBUG_PACKET" -eq 1 ] && echo >&2 Sending ecowitt interval "$2"
+    sendPacket "$CMD_WRITE_ECOWITT_INTERVAL" "$1"
 }
 
 sendWeatherservice() 
 # send id and password to weatherservice (wow/weathercloud/wunderground)
-# $1 command, $2 id, $3 password
+# $1 host, $1 command, $2 id, $3 password
 {
     DEBUG_SENDWEATHERSERVICE=${DEBUG_SENDWEATHERSERVICE:=$DEBUG_PACKET}
 
-    newPacket "$1"
-    writeString PACKET_TX_BODY "$2" id
-    writeString PACKET_TX_BODY "$3" password
+    newPacket "$2"
+    writeString PACKET_TX_BODY "$3" id
+    writeString PACKET_TX_BODY "$4" password
 
-    case "$1" in
+    case "$2" in
         "$CMD_WRITE_WOW")
             writeUInt8 PACKET_TX_BODY 0 unused # stationnum size - unused
             ;;
@@ -462,9 +462,9 @@ sendWeatherservice()
     writeUInt8 PACKET_TX_BODY 1 fixed    # fixed 1 value
 
     
-    [ "$DEBUG_SENDWEATHERSERVICE" -eq 1 ] && echo >&2 "Sending weather service command: $1 id: $2 length: ${#2} password: $3 length: ${#3}"
+    [ "$DEBUG_SENDWEATHERSERVICE" -eq 1 ] && echo >&2 "Sending weather service command: $2 id: $3 length: ${#3} password: $4 length: ${#4}"
 
-    sendPacket "$1" "$GW_HOST"
+    sendPacket "$2" "$GW_HOST"
 }
 
 sendCustomized()
@@ -527,7 +527,7 @@ sendBackupCommand()
 # send backup command to device
 # $1 command
 # $2 host
-# $3 backup filename
+# $3 backup filename (optional)
 {
     EXITCODE_SENDBACKUPCOMMAND=0
     
