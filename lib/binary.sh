@@ -99,7 +99,9 @@ parseEcowittInterval() {
 
 parseWunderground() {
     readString "$VALUE_PARSEPACKET_BUFFERNAME" "wunderground id"
+    set -x
     export GW_WS_WUNDERGROUND_ID="$VALUE_STRING"
+    set +x
     readString "$VALUE_PARSEPACKET_BUFFERNAME" "wunderground password"
     export GW_WS_WUNDERGROUND_PASSWORD="$VALUE_STRING"
 }

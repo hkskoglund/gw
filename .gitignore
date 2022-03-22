@@ -12,3 +12,4 @@ rx*.hex
 backup*.hex
 restore.hex
 test.csv
+backup.conf

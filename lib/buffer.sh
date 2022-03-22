@@ -157,12 +157,14 @@ writeString()
 # optimization: dont fork subshell with od
 # $1 buffername , $2 string, $3 debug info
 {
+   DEBUG_BUFFER_STRING=${DEBUG_BUFFER_STRING:=$DEBUG_BUFFER}
+
   # PACKET_TX_BODY="${#1} $(printf "%s" "$1" | od -A n -t u1)"
 
     str=$2
     len=${#str}
 
-    [ "$DEBUG_BUFFER" -eq 1 ] && >&2 echo  "writeString buffername:$1 string:$2 strlen: $len info: $3"
+    [ "$DEBUG_BUFFER_STRING" -eq 1 ] && >&2 echo  "writeString buffername:$1 string:$2 strlen: $len info: $3"
 
     writeUInt8 "$1" "$len" stringlength
 
@@ -179,11 +181,16 @@ writeString()
     done
 
     if [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" -eq  1 ] && [ -n "$APPEND_FORMAT_WRITE_STRING" ]; then
+        [ "$DEBUG_BUFFER_STRING" -eq 1 ] && { echo >&2 "writeString: converting string"; set -x; }
         eval printf -v decstr \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING"
         #shellcheck disable=SC2154
         eval "$1=\"\$$1 $decstr\""
+        [ "$DEBUG_BUFFER_STRING" -eq 1 ] && set +x
+
     elif [ -n "$APPEND_FORMAT_WRITE_STRING" ]; then
+        [ "$DEBUG_BUFFER_STRING" -eq 1 ] && { echo >&2 "writeString: converting string"; set -x; }
          eval "$1=\"\$$1 $(eval printf \""$APPEND_FORMAT_WRITE_STRING"\" "$APPEND_STRING")\""
+         [ "$DEBUG_BUFFER_STRING" -eq 1 ] && set +x
     fi
 
     #cleanup variables
@@ -404,7 +411,10 @@ readString()
 # \x formatted printf format not supported in dash -> must use \nnn-octal format,
 # https://bugs.launchpad.net/ubuntu/+source/dash/+bug/1499473
 # $1 buffername, $2 debug info
+# test: for char in $(seq -s' ' 0 255); do oct=$(printf "%03o" $char); printf "%3d %03o %b\n" 0$oct 0$oct  \\$oct; done
+# only support for dec 0-127: !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
  { 
+     DEBUG_BUFFER_STRING=${DEBUG_BUFFER_STRING:=$DEBUG_BUFFER}
    
     EXITCODE_BUFFER=0
     read_buffername=$1
@@ -439,14 +449,20 @@ readString()
     if [ "$EXITCODE_BUFFER" -eq 0 ]; then
 
         if [ "$SHELL_SUPPORT_BULTIN_PRINTF_VOPT" -eq 1 ]; then
+                    [ $DEBUG_BUFFER_STRING -eq 1 ] && { echo >&2 "readString: Converting escaped octal string to string"; set -x; }
             #shellcheck disable=SC3045
             printf -v VALUE_STRING "%b" "$VALUE_STRING_ESCAPE"
+                         [ $DEBUG_BUFFER_STRING -eq 1 ] && set +x
+
         else
+            [ $DEBUG_BUFFER_STRING -eq 1 ] && {  echo >&2 "readString: Converting escaped octal string to string"; set -x; }
              VALUE_STRING=$(printf "%b" "$VALUE_STRING_ESCAPE") # convert to string
+             [ $DEBUG_BUFFER_STRING -eq 1 ] && set +x
+
         fi
      fi
 
-    [ $DEBUG_BUFFER -eq 1 ] && echo >&2 "readString: $VALUE_STRING length: ${#VALUE_STRING}"
+    [ $DEBUG_BUFFER_STRING -eq 1 ] && echo >&2 "readString: $VALUE_STRING length: ${#VALUE_STRING}"
 
     unset len_uint8 n read_info read_buffername
 

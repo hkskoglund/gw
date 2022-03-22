@@ -19,7 +19,9 @@ printEcowittInterval()
 
 printWunderground() {
     if [ "$LIVEDATA_VIEW" -eq "$LIVEDATA_VIEW_NORMAL" ]; then
+        set -x
         printf "%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n" "$WEATHERSERVICEHEADER_WUNDERGROUND_ID" "$GW_WS_WUNDERGROUND_ID" "$WEATHERSERVICEHEADER_WUNDERGROUND_PASSWORD" "$GW_WS_WUNDERGROUND_PASSWORD"
+        set +x
     elif  [ "$LIVEDATA_VIEW" -eq "$LIVEDATA_VIEW_BACKUP" ]; then
         printf "%-32s %s\n%-32s %s\n" "$WEATHERSERVICENAME_WUNDERGROUND_ID" "$GW_WS_WUNDERGROUND_ID" "$WEATHERSERVICENAME_WUNDERGROUND_PASSWORD" "$GW_WS_WUNDERGROUND_PASSWORD"
     fi
