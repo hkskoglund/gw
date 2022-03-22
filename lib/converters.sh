@@ -598,11 +598,11 @@ convertUInt32BEToHex()
 # $1 decimal value to convert
 # set VALUE_UINT32BE_HEX
 {
- #   if [ "$SHELL_SUPPORT_BUILTIN_PRINTF_VOPT" -eq 1 ]; then
- #   #shellcheck disable=SC3045
- #       printf -v VALUE_UINT32BE_HEX "%4x" "$1"
- #       return
- #   fi
+    if [ "$SHELL_SUPPORT_BUILTIN_PRINTF_VOPT" -eq 1 ]; then
+    #shellcheck disable=SC3045
+        printf -v VALUE_UINT32BE_HEX "%4x" "$1"
+        return
+    fi
 
     unset VALUE_UINT32BE_HEX
 
