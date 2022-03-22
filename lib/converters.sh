@@ -606,18 +606,16 @@ convertUInt32BEToHex()
 
     unset VALUE_UINT32BE_HEX
 
-set -x
     convuint32be_lsb=$((          $1 & 0xff ))
     convuint32be_msb=$((  ($1 >> 8)  & 0xff ))
     convuint32be_lsb2=$(( ($1 >> 16) & 0xff ))
     convuint32be_msb2=$((  $1 >> 24 ))
-[ $convuint32be_msb2 -ne 0 ]
+    
     [ $convuint32be_msb2 -ne 0 ] && { convertUInt8ToHex $convuint32be_msb2; VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX; }
     [ $convuint32be_lsb2 -ne 0 ] && { convertUInt8ToHex $convuint32be_lsb2; VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX; }
     [ $convuint32be_msb -ne 0 ]  && { convertUInt8ToHex $convuint32be_msb;  VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX; }
      convertUInt8ToHex $convuint32be_lsb  
      VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX
-      set +x
 
     unset convuint32be_lsb convuint32be_lsb2 convuint32be_msb convuint32be_msb2
 }
