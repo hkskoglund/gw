@@ -423,8 +423,10 @@ parseSensorIdNew()
             LIVEDATASENSORSTAT_DISCONNECTED=$(( LIVEDATASENSORSTAT_DISCONNECTED + 1 ))
         fi
 
+        convertUInt32BEToHex "$SID"
+        echo >&2 "uint32behex $VALUE_UINT32BE_HEX"
         set -x
-         export "$SENSORNAME_VAR"_ID="$SID" "$SENSORNAME_VAR"_ID_STATE="$local_sensorstate" 
+         export "$SENSORNAME_VAR"_ID="$SID" "$SENSORNAME_VAR"_IDHEX="$VALUE_UINT32BE_HEX" "$SENSORNAME_VAR"_ID_STATE="$local_sensorstate" 
          set +x
         
         [ "$DEBUG" -eq 1 ] && >&2 echo "type $stype id $SID battery $battery signal $signal"

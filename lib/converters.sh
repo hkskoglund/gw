@@ -573,6 +573,12 @@ convertWindDirectionToCompassDirection() { #$1 - direction in degrees
 convertUInt8ToHex() {
 # $1 decimal value to convert to hex
 # set VALUE_UINT8_HEX
+
+   if [ "$1" -eq 0 ]; then
+      VALUE_UINT8_HEX="0"
+      return
+    fi
+
     if [ "$SHELL_SUPPORT_BUILTIN_PRINTF_VOPT" -eq 1 ]; then
     #shellcheck disable=SC3045
         printf -v VALUE_UINT8_HEX "%02x" "$1"
@@ -598,9 +604,14 @@ convertUInt32BEToHex()
 # $1 decimal value to convert
 # set VALUE_UINT32BE_HEX
 {
+    if [ "$1" -eq 0 ]; then
+       VALUE_UINT32BE_HEX=0
+       return
+    fi
+    
     if [ "$SHELL_SUPPORT_BUILTIN_PRINTF_VOPT" -eq 1 ]; then
     #shellcheck disable=SC3045
-        printf -v VALUE_UINT32BE_HEX "%4x" "$1"
+        printf -v VALUE_UINT32BE_HEX "%x" "$1"
         return
     fi
 
@@ -610,7 +621,7 @@ convertUInt32BEToHex()
     convuint32be_msb=$((  ($1 >> 8)  & 0xff ))
     convuint32be_lsb2=$(( ($1 >> 16) & 0xff ))
     convuint32be_msb2=$((  $1 >> 24 ))
-    
+
     [ $convuint32be_msb2 -ne 0 ] && { convertUInt8ToHex $convuint32be_msb2; VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX; }
     [ $convuint32be_lsb2 -ne 0 ] && { convertUInt8ToHex $convuint32be_lsb2; VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX; }
     [ $convuint32be_msb -ne 0 ]  && { convertUInt8ToHex $convuint32be_msb;  VALUE_UINT32BE_HEX=$VALUE_UINT32BE_HEX$VALUE_UINT8_HEX; }
