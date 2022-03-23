@@ -1,18 +1,22 @@
 #!/bin/sh
 #https://www.wxforum.net/index.php?topic=40730.0
+
+SENSORID_SEARCH_TEXT=ffffffff
+SENSORID_DISABLE_TEXT=fffffffe
+
 case $KSH_VERSION in
 
     *MIRBSD?KSH*)
         #shellcheck disable=SC3044
         typeset -iU SENSORID_SEARCH  SENSORID_DISABLE VALUE_UINT32BE  VALUE_UINT16BE VALUE_UINT8 SID VALUE_UINT_2SCOMPLEMENT # unsigned 32-bit 
-        SENSORID_SEARCH=$(( 0xffffffff ))
-        SENSORID_DISABLE=$(( 0xfffffffe ))
+        SENSORID_SEARCH=$(( 0x$SENSORID_SEARCH_TEXT ))
+        SENSORID_DISABLE=$(( 0x$SENSORID_DISABLE_TEXT ))
         # mksh - sets 0xffffffff to -1!? if typeset -i SENSORID_SEARCH=0xffffffff - its using 32-bit signed integer by default unless typeset -iU is used
         ;;
 
     *)
-        SENSORID_SEARCH=$((0xffffffff))
-        SENSORID_DISABLE=$((0xfffffffe))
+        SENSORID_SEARCH=$((0x$SENSORID_SEARCH_TEXT))
+        SENSORID_DISABLE=$((0x$SENSORID_DISABLE_TEXT))
         #ksh typeset option -iu for usigned int https://docstore.mik.ua/orelly/unix3/korn/appb_07.htm
         ;;
 esac
@@ -44,9 +48,11 @@ SENSORTYPE_MAX=47
 
 SENSORIDSTATE_CONNECTED=${SENSORIDSTATE_CONNECTED:="connected"}
 SENSORIDSTATE_DISCONNECTED=${SENSORIDSTATE_DISCONNECTED:="disconnected"} #sensortype specified, but signal still 0/no received packets
-SENSORIDSTATE_SEARCHING=${SENSORIDSTATE_SEARCHING:="searching"}
-SENSORIDSTATE_DISABLED=${SENSORIDSTATE_DISABLED:="disabled"}
+SENSORIDSTATE_SEARCH=${SENSORIDSTATE_SEARCH:="search"}
+SENSORIDSTATE_DISABLE=${SENSORIDSTATE_DISABLE:="disable"}
 SENSORID_HEADER=${SENSORID_HEADER:="Sensor ID B S Type Name State Battery Signal"}
+
+SENSORVAR_PREFIX=SENSOR_ # prefix used on variables when parsing read sensor/new command
 
 SENSORNAME_WH65="sensor_wh65" #0
 SENSORNAME_WH68='sensor_wh68' #1

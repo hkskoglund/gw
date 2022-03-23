@@ -499,23 +499,26 @@ sendCustomized()
 
 sendSensorId()
 # send sensor id for sensortype range
-# $1 low sensortype, $2 high sensortype, $3 sensorid, $4 host
+# $1 low sensortype, $2 high sensortype (optional ""), $3 sensorid, $4 host
 {
     DEBUG_SENDSENSORID=${DEBUG_SENDSENSORID:=$DEBUG_PACKET}
     newPacket "$CMD_WRITE_SENSOR_ID"
 
-    if [ -z "$2" ]; then
-     [ "$DEBUG_SENDSENSORID" -eq 1 ] && printf >&2 "Writing sensor type %2d sensorid %x\n" "$1" "$3"
-      writeUInt8 PACKET_TX_BODY "$1" sensortype
-      writeUInt32BE PACKET_TX_BODY"$3" sensorid
+    # single sensor
+    if [ -z "$2" ]; then 
+        [ "$DEBUG_SENDSENSORID" -eq 1 ] && printf >&2 "Writing sensor type %2d sensorid %x\n" "$1" "$3"
+        writeUInt8 PACKET_TX_BODY "$1" sensortype
+        writeUInt32BE PACKET_TX_BODY"$3" sensorid
     else
-      local_n="$1"
-      while [ "$local_n" -le "$2" ]; do
-        [ "$DEBUG_SENDSENSORID" -eq 1 ] && printf >&2  "Writing sensor type %2d sensorid %x\n" "$local_n" "$3"
-         writeUInt8 PACKET_TX_BODY "$local_n" sensortype
-         writeUInt32BE PACKET_TX_BODY "$3" sensorid
-         local_n=$(( local_n + 1 ))
-      done
+         # multiple sensors
+        local_n="$1"
+       
+        while [ "$local_n" -le "$2" ]; do 
+            [ "$DEBUG_SENDSENSORID" -eq 1 ] && printf >&2  "Writing sensor type %2d sensorid %x\n" "$local_n" "$3"
+            writeUInt8 PACKET_TX_BODY "$local_n" sensortype
+            writeUInt32BE PACKET_TX_BODY "$3" sensorid
+            local_n=$(( local_n + 1 ))
+        done
     fi
 
     unset local_n

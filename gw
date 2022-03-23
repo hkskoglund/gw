@@ -1524,6 +1524,8 @@ processCommand()
     return "$EXITCODE_PROCESSCOMMAND"
 }
 
+
+
 printBackupcommand()
 # $1 command (decimal)
 {
@@ -1539,11 +1541,39 @@ printBackupcommand()
         printCustomized
     elif [ "$1" -eq $CMD_READ_PATH ]; then
         printPath
+    elif [ "$1" -eq $CMD_READ_SENSOR_ID ] || [ "$1" -eq $CMD_READ_SENSOR_ID_NEW ]; then
+        printSensorBackup
     fi
 }
 
+sendSensorBackup()
+# $1 host
+# $2 string of sensor types in backup
+# in: SENSORRESTORE_??=id
+{
+    if [ -z "$2" ]; then
+       [ $DEBUG -eq 1 ] && echo >&2 Warning: Empty sensor backup
+      return
+    fi
+
+    IFS=" "
+    unset local_n
+    for local_type in $2; do
+        local_n=$(( local_n + 1 ))
+        if [ $local_n -eq 1 ]; then
+            newPacket "$CMD_WRITE_SENSOR_ID"  
+        fi
+         writeUInt8 PACKET_TX_BODY "$local_type" sensortype
+           eval local_id="\$SENSORRESTORE_$local_type" # hex
+           writeUInt32BE PACKET_TX_BODY $((0x$local_id)) sensorid
+    done
+    unset local_type local_id local_n
+
+    sendPacket $CMD_WRITE_SENSOR_ID "$1"
+}
+
 restoreBackup()
-# $1 filenmae
+# $1 filename
 {
      DEBUG_BACKUP=${DEBUG_BACKUP:=$DEBUG}
     IFS=' '
@@ -1574,6 +1604,9 @@ restoreBackup()
     GWBACKUP_WS_CUSTOMIZED_PATH_WU="$GW_WS_CUSTOMIZED_PATH_WU"
     
     # parse backup
+
+    local_sensortype_count=0
+    unset local_sensorrestore_type # string of sensor types of found sensors in backup
     
     while read -r backup_name backup_value; do
         [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "Restore: read $backup_name $backup_value length: ${#backup_value}"
@@ -1595,6 +1628,22 @@ restoreBackup()
             "$WEATHERSERVICENAME_CUSTOMIZED_ENABLED")             GWBACKUP_WS_CUSTOMIZED_ENABLED="$backup_value" ;;
             "$WEATHERSERVICENAME_CUSTOMIZED_PATH_ECOWITT")        GWBACKUP_WS_CUSTOMIZED_PATH_ECOWITT="$backup_value" ;;
             "$WEATHERSERVICENAME_CUSTOMIZED_PATH_WUNDERGROUND")    GWBACKUP_WS_CUSTOMIZED_PATH_WU="$backup_value" ;;
+            sensor_*)       local_sensortype_count=$(( local_sensortype_count + 1 ))
+                            #shellcheck disable=SC2086
+                            set -- $backup_value
+                            local_id=$1
+                            local_type=$2
+                            # convert sensor id search/disable to fffffffe/ffffffff
+                            if [ "$local_id" = $SENSORIDSTATE_DISABLE ]; then
+                               local_id=$SENSORID_DISABLE_TEXT
+                            elif [ "$local_id" = $SENSORIDSTATE_SEARCH ]; then
+                               local_id=$SENSORID_SEARCH_TEXT
+                            fi
+                            eval "SENSORRESTORE_$local_type=$local_id"
+                            local_sensorrestore_type="$local_sensorrestore_type$local_type "
+
+                            ;;
+                                                      
             *) echo >&2 "Error: Restore unknown name '$backup_name', ignored" 
             ;;
         esac
@@ -1616,8 +1665,20 @@ enabled=$GWBACKUP_WS_CUSTOMIZED_ENABLED,\
 path_ecowitt=$GWBACKUP_WS_CUSTOMIZED_PATH_ECOWITT,\
 path_wunderground=$GWBACKUP_WS_CUSTOMIZED_PATH_WU"
 
-    unset cmd backup_name backup_value
+   if [ -n "$local_sensorrestore_type" ]; then
+     if ! sendSensorBackup "$GW_HOST" "$local_sensorrestore_type"; then
+       echo >&2 Error: failed to restore backup of sensors, error code: $?
+     fi
+   fi
 
+   #cleanup SENSORRESTORE
+   for local_type in $local_sensorrestore_type; do
+     unset "SENSORRESTORE_$local_type"
+   done
+
+    unset cmd backup_name backup_value local_sensorrestore_type
+
+    
 }
 
 #read -r -u 0 -t 0 STDIN
@@ -1703,12 +1764,31 @@ while [ $# -gt 0 ]; do
             ;;
         -b | --backup) #exec 6>&1 >backup.config
                         LIVEDATA_VIEW=$LIVEDATA_VIEW_BACKUP
+                        
                         for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND $CMD_READ_WOW $CMD_READ_WEATHERCLOUD $CMD_READ_CUSTOMIZED $CMD_READ_PATH; do
                                 if sendBackupCommand "$cmd" "$GW_HOST"; then
                                     printBackupcommand "$cmd"
                                 fi
                         done
+
+                        if isGWdevice "$GW_VERSION"; then
+                            getSensorIdCommandForFW "$GW_VERSION_INT"
+                            #backup_commands="$VALUE_SENSORID_READ_COMMAND $CMD_READ_SYSTEM $CMD_READ_RAINDATA $CMD_READ_GAIN $CMD_READ_CALIBRATION $CMD_READ_SOILHUMIAD"
+                            backup_commands="$VALUE_SENSORID_READ_COMMAND" 
+                            #[ "$GW_VERSION_INT" -ge $FW_CMD_READ_MULCH_OFFSET ] && backup_commands="$backup_commands $CMD_READ_MULCH_OFFSET"
+                            #[ "$GW_VERSION_INT" -ge $FW_CMD_READ_PM25_OFFSET ] && backup_commands="$backup_commands $CMD_READ_PM25_OFFSET"
+                            #[ "$GW_VERSION_INT" -ge $FW_CMD_READ_CO2_OFFSET ] && backup_commands="$backup_commands $CMD_READ_CO2_OFFSET"
+                            
+                            for cmd in $backup_commands; do
+                                if sendBackupCommand "$cmd" "$GW_HOST"; then
+                                    printBackupcommand "$cmd"
+                                fi
+                            done
+                        fi
+
                         LIVEDATA_VIEW=$LIVEDATA_VIEW_NORMAL
+                        unset backup_commands
+
                         shift
             ;;
 

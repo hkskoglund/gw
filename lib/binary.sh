@@ -99,9 +99,7 @@ parseEcowittInterval() {
 
 parseWunderground() {
     readString "$VALUE_PARSEPACKET_BUFFERNAME" "wunderground id"
-    set -x
     export GW_WS_WUNDERGROUND_ID="$VALUE_STRING"
-    set +x
     readString "$VALUE_PARSEPACKET_BUFFERNAME" "wunderground password"
     export GW_WS_WUNDERGROUND_PASSWORD="$VALUE_STRING"
 }
@@ -274,13 +272,12 @@ parseRaindata() {
 
 getSensorNameShort()
 # mapping from sensortype to long/short names
-# $1 sensortype
+# $1 sensortype decimal 0-47
 # set SENSORNAME_WH
 # set SENSORNAME_SHORT
 # set SENSORNAME_VAR
 {
     unset SENSORNAME_WH SENSORNAME_SHORT SENSORNAME_VAR
-    local_prefix="LIVEDATASENSOR_"
 
     case "$1" in
         0) if [ -n "$GW_SYSTEM_SENSORTYPE" ]; then
@@ -293,146 +290,160 @@ getSensorNameShort()
               SENSORNAME_WH='WH??' # no system information, cannot determine WH24/WH65
             fi
             SENSORNAME_SHORT='Weather Station'
-            eval SENSORNAME_VAR="${local_prefix}WH65"
+            eval SENSORNAME_VAR="${SENSORVAR_PREFIX}WH65"
             ;;
         1) SENSORNAME_WH='WH68'
            SENSORNAME_SHORT="Weather Station"
-            eval SENSORNAME_VAR="${local_prefix}WH68"
+            eval SENSORNAME_VAR="${SENSORVAR_PREFIX}WH68"
             ;;
         2) SENSORNAME_WH="WH80"
            SENSORNAME_SHORT='Weather Station'
-            eval SENSORNAME_VAR="${local_prefix}WH80"
+            eval SENSORNAME_VAR="${SENSORVAR_PREFIX}WH80"
             ;;
         3) SENSORNAME_WH="WH40"
            SENSORNAME_SHORT="Rainfall"
-            eval SENSORNAME_VAR="${local_prefix}RAINFALL"
+            eval SENSORNAME_VAR="${SENSORVAR_PREFIX}RAINFALL"
             ;;
         5) SENSORNAME_WH='WH32'
            SENSORNAME_SHORT='Temperature out'
-            eval SENSORNAME_VAR="${local_prefix}OUTTEMP"
+            eval SENSORNAME_VAR="${SENSORVAR_PREFIX}OUTTEMP"
 
             ;;
         6|7|8|9|10|11|12|13)
            SENSORNAME_WH='WH31'
            local_channel=$(( $1 -5 ))
            SENSORNAME_SHORT="Temperature $local_channel"
-           eval SENSORNAME_VAR="${local_prefix}TEMP$local_channel"
+           eval SENSORNAME_VAR="${SENSORVAR_PREFIX}TEMP$local_channel"
            ;;
         14|15|16|17|18|19|20|21)
           SENSORNAME_WH='WH51'
           local_channel=$(( $1 - 13 ))
           SENSORNAME_SHORT="Soilmoisture $local_channel"
-          eval SENSORNAME_VAR="${local_prefix}SOILMOISTURE$local_channel"
+          eval SENSORNAME_VAR="${SENSORVAR_PREFIX}SOILMOISTURE$local_channel"
 
           ;;
         22|23|24|25)
           SENSORNAME_WH='WH43'
           local_channel=$(($1 - 21))
           SENSORNAME_SHORT="PM2.5 AQ $local_channel"
-          eval SENSORNAME_VAR="${local_prefix}PM25$local_channel"
+          eval SENSORNAME_VAR="${SENSORVAR_PREFIX}PM25$local_channel"
           ;;
         26)
           SENSORNAME_SHORT="Lightning"
           SENSORNAME_WH='WH57'
-          eval SENSORNAME_VAR="${local_prefix}LIGHTNING$local_channel"
+          eval SENSORNAME_VAR="${SENSORVAR_PREFIX}LIGHTNING$local_channel"
           ;;
         27|28|29|30)
           SENSORNAME_WH='WH55'
           local_channel=$(($1 - 26))
           SENSORNAME_SHORT="Leak $local_channel"
-          eval SENSORNAME_VAR="${local_prefix}LEAK$local_channel"
+          eval SENSORNAME_VAR="${SENSORVAR_PREFIX}LEAK$local_channel"
           ;;
         31|32|33|34|35|36|37|38)
 
           SENSORNAME_WH='WH34'
           local_channel=$(($1 - 30))
           SENSORNAME_SHORT="Soiltemperature $local_channel"
-          eval SENSORNAME_VAR="${local_prefix}SOILTEMP$local_channel"
+          eval SENSORNAME_VAR="${SENSORVAR_PREFIX}SOILTEMP$local_channel"
           
           ;;
         39)
           SENSORNAME_WH='WH45'
           SENSORNAME_SHORT="CO2 PM2.5 PM10 AQ"
-          eval SENSORNAME_VAR="${local_prefix}CO2"
+          eval SENSORNAME_VAR="${SENSORVAR_PREFIX}CO2"
 
           ;;
         40|41|42|43|44|45|46|47)
             SENSORNAME_WH='WH35'
             local_channel=$(($1 - 39))
             SENSORNAME_SHORT="Leafwetness $local_channel"
-            eval SENSORNAME_VAR="${local_prefix}LEAFWETNESS$local_channel"
+            eval SENSORNAME_VAR="${SENSORVAR_PREFIX}LEAFWETNESS$local_channel"
 
            ;;
          *)
          echo >&2 "Warning: Unknown sensortype $1"
           SENSORNAME_WH='WH??' 
           SENSORNAME_SHORT='?'
-          eval SENSORNAME_VAR="LIVEDATASENSOR_UNKNOWN$1"
+          eval SENSORNAME_VAR="${SENSORVAR_PREFIX}_UNKNOWN$1"
           return 1
     esac
 
-    unset local_channel local_prefix
+    unset local_channel
 }
 
 parseSensorIdNew()
 {
-    [ "$DEBUG" -eq  1 ] &&  >&2 echo "parseSensorIdNew SPATTERNID $SPATTERNID"
-    
-     export LIVEDATASENSORSTAT_SEARCHING=0
-     export LIVEDATASENSORSTAT_CONNECTED=0
-     export LIVEDATASENSORSTAT_DISCONNECTED=0
-     export LIVEDATASENSORSTAT_DISABLED=0
+     export SENSORSTAT_SEARCHING=0
+     export SENSORSTAT_CONNECTED=0
+     export SENSORSTAT_DISCONNECTED=0
+     export SENSORSTAT_DISABLED=0
+     export SENSORBACKUP; unset SENSORBACKUP
 
      parseSensorIdNew_max_length=$(( OD_BUFFER_LENGTH - 1 ))
 
     while [ "$OD_BUFFER_HEAD" -lt $parseSensorIdNew_max_length ]; do
        
         readUInt8  "$VALUE_PARSEPACKET_BUFFERNAME" "sensor type"          #type
-        stype=$VALUE_UINT8
+        local_type=$VALUE_UINT8
        
         readUInt32BE "$VALUE_PARSEPACKET_BUFFERNAME" "sensor id"        #id
-        SID=$VALUE_UINT32BE
+        local_id=$VALUE_UINT32BE
 
         readUInt8  "$VALUE_PARSEPACKET_BUFFERNAME" "sensor battery"
-        battery=$VALUE_UINT8
+        local_battery=$VALUE_UINT8
         
         readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "sensor signal"
-        signal=$VALUE_UINT8
+        local_signal=$VALUE_UINT8
 
         # set sensor id
-        if ! getSensorNameShort "$stype"; then
+        if ! getSensorNameShort "$local_type"; then
           contiunue
         fi
        
-        unset VALUE_BATTERY_STATE VALUE_SIGNAL_UNICODE
+        unset VALUE_BATTERY_STATE VALUE_SIGNAL_UNICODE local_sensorstate local_sensorstate_backup local_sensorname_backup
 
-        if [ "$SID" -eq "$SENSORID_SEARCH" ]; then
-            LIVEDATASENSORSTAT_SEARCHING=$(( LIVEDATASENSORSTAT_SEARCHING + 1 ))
-            local_sensorstate=$SENSORIDSTATE_SEARCHING
-        elif [ "$SID" -eq "$SENSORID_DISABLE" ]; then
-            local_sensorstate=$SENSORIDSTATE_DISABLED
-            LIVEDATASENSORSTAT_DISABLED=$(( LIVEDATASENSORSTAT_DISABLED + 1 ))
-        elif [ "$signal" -gt 0 ]; then
-            LIVEDATASENSORSTAT_CONNECTED=$(( LIVEDATASENSORSTAT_CONNECTED + 1 ))
+        if [ "$local_id" -eq "$SENSORID_SEARCH" ]; then
+            SENSORSTAT_SEARCHING=$(( SENSORSTAT_SEARCHING + 1 ))
+            local_sensorstate=$SENSORIDSTATE_SEARCH
+            local_sensorstate_backup=$SENSORIDSTATE_SEARCH
+        elif [ "$local_id" -eq "$SENSORID_DISABLE" ]; then
+            local_sensorstate=$SENSORIDSTATE_DISABLE
+            local_sensorstate_backup=$SENSORIDSTATE_DISABLE
+            SENSORSTAT_DISABLED=$(( SENSORSTAT_DISABLED + 1 ))
+        elif [ "$local_signal" -gt 0 ]; then
+            SENSORSTAT_CONNECTED=$(( SENSORSTAT_CONNECTED + 1 ))
             local_sensorstate=$SENSORIDSTATE_CONNECTED
-            exportLivedataBattery "$stype" "$battery" "$SENSORNAME_VAR"
-            getSignalUnicode "$signal"
-            export "$SENSORNAME_VAR"_SIGNAL="$signal" "$SENSORNAME_VAR"_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
-        elif [ "$signal" -eq 0 ]; then
+            exportLivedataBattery "$local_type" "$local_battery" "$SENSORNAME_VAR"
+            getSignalUnicode "$local_signal"
+            export "$SENSORNAME_VAR"_SIGNAL="$local_signal" "$SENSORNAME_VAR"_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
+        elif [ "$local_signal" -eq 0 ]; then
             local_sensorstate=$SENSORIDSTATE_DISCONNECTED
-            LIVEDATASENSORSTAT_DISCONNECTED=$(( LIVEDATASENSORSTAT_DISCONNECTED + 1 ))
+            SENSORSTAT_DISCONNECTED=$(( SENSORSTAT_DISCONNECTED + 1 ))
         fi
 
-        convertUInt32BEToHex "$SID"
-        echo >&2 "uint32behex $VALUE_UINT32BE_HEX"
-        set -x
-         export "$SENSORNAME_VAR"_ID="$SID" "$SENSORNAME_VAR"_IDHEX="$VALUE_UINT32BE_HEX" "$SENSORNAME_VAR"_ID_STATE="$local_sensorstate" 
-         set +x
+        convertUInt32BEToHex "$local_id"
         
-        [ "$DEBUG" -eq 1 ] && >&2 echo "type $stype id $SID battery $battery signal $signal"
+        export "$SENSORNAME_VAR=$VALUE_UINT32BE_HEX" "$SENSORNAME_VAR"_ID="$local_id" "$SENSORNAME_VAR"_ID_STATE="$local_sensorstate" 
+    
+        toLowercase "$SENSORNAME_VAR"
+        local_sensorname_backup=$VALUE_LOWERCASE
+        # align in columns
+        if [ ${#SENSORNAME_VAR} -le 15 ]; then
+           local_tabs='\t\t\t'
+        else
+          local_tabs='\t\t'
+        fi
+
+        if [ -z "$local_sensorstate_backup" ]; then # connected/disconnected, but with hex id
+            SENSORBACKUP="$SENSORBACKUP$local_sensorname_backup$local_tabs$VALUE_UINT32BE_HEX\t\t$local_type\n"
+        else
+            SENSORBACKUP="$SENSORBACKUP$local_sensorname_backup$local_tabs$local_sensorstate_backup\t\t$local_type\n" #disable/search
+        fi
+
+        [ "$DEBUG" -eq 1 ] && >&2 echo "type $local_type id $local_id battery $local_battery signal $local_signal"
     done
 
-    unset stype signal battery   parseSensorIdNew_max_length local_sensorstate
+    unset local_id local_type local_signal local_battery   parseSensorIdNew_max_length local_sensorstate local_sensorstate_backup local_tabs
 }
 
 printSystem() 
