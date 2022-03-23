@@ -435,9 +435,9 @@ parseSensorIdNew()
         fi
 
         if [ -z "$local_sensorstate_backup" ]; then # connected/disconnected, but with hex id
-            SENSORBACKUP="$SENSORBACKUP$local_sensorname_backup$local_tabs$VALUE_UINT32BE_HEX\t\t$local_type\n"
+            SENSORBACKUP="$SENSORBACKUP$local_sensorname_backup$local_tabs$VALUE_UINT32BE_HEX\n"
         else
-            SENSORBACKUP="$SENSORBACKUP$local_sensorname_backup$local_tabs$local_sensorstate_backup\t\t$local_type\n" #disable/search
+            SENSORBACKUP="$SENSORBACKUP$local_sensorname_backup$local_tabs$local_sensorstate_backup\n" #disable/search
         fi
 
         [ "$DEBUG" -eq 1 ] && >&2 echo "type $local_type id $local_id battery $local_battery signal $local_signal"
