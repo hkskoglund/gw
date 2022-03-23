@@ -372,12 +372,14 @@ getSensorNameShort()
 }
 
 parseSensorIdNew()
+# parse sensor id new
+# set SENSORBACKUP
 {
      export SENSORSTAT_SEARCHING=0
      export SENSORSTAT_CONNECTED=0
      export SENSORSTAT_DISCONNECTED=0
      export SENSORSTAT_DISABLED=0
-     export SENSORBACKUP; unset SENSORBACKUP
+     export SENSORBACKUP="# sensor id alias disable=fffffffe search=ffffffff\n"
 
      parseSensorIdNew_max_length=$(( OD_BUFFER_LENGTH - 1 ))
 
@@ -443,7 +445,7 @@ parseSensorIdNew()
         [ "$DEBUG" -eq 1 ] && >&2 echo "type $local_type id $local_id battery $local_battery signal $local_signal"
     done
 
-    unset local_id local_type local_signal local_battery   parseSensorIdNew_max_length local_sensorstate local_sensorstate_backup local_tabs
+    unset local_id local_type local_signal local_battery parseSensorIdNew_max_length local_sensorstate local_sensorstate_backup local_tabs
 }
 
 printSystem() 

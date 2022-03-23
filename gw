@@ -1595,7 +1595,9 @@ setSensorRestore()
 {
     convertSensorBackupIdToHex "$2"
     if [ -z $VALUE_SENSORID ]; then
-       eval "SENSORRESTORE_$1=$2"
+        eval "SENSORRESTORE_$1=$2"
+        #to do validation : echo >&2 "setSensorRestore Error: Not a valid hex number $2, skipping sensortype $1"
+        #return $ERROR_INVALID_VALUE
     else
       eval "SENSORRESTORE_$1=$VALUE_SENSORID"
     fi
@@ -1670,6 +1672,7 @@ restoreBackup()
             "$local_sensorprefix"soilmoisture?)     setSensorRestore $(( 13 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
             "$local_sensorprefix"pm25?)             setSensorRestore $(( 21 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
             "$local_sensorprefix"lightning)         setSensorRestore 26 "$backup_value" ;;
+            "$local_sensorprefix"leak?)             setSensorRestore $(( 26 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
             "$local_sensorprefix"soiltemp?)         setSensorRestore $(( 30 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
             "$local_sensorprefix"co2)               setSensorRestore 39 "$backup_value" ;;
             "$local_sensorprefix"leafwetness?)      setSensorRestore $(( 39 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
