@@ -777,15 +777,11 @@ parseLivedata()
 
         elif [ "$ldf" -ge "$LDF_PM25_CH2" ] && [ "$ldf" -le "$LDF_PM25_CH4" ]; then
 
-            set -x
             channel=$((ldf - LDF_PM25_CH2 + 2))
-            set +x
             readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "PM25 $channel"
             eval "export LIVEDATA_PM25${channel}_INTS10=$VALUE_UINT16BE"
             eval "convertScale10ToFloat \$LIVEDATA_PM25${channel}_INTS10"
-            set -x
             eval "export LIVEDATA_PM25$channel=$VALUE_SCALE10_FLOAT"
-            set +x
 
         elif [ "$ldf" -ge "$LDF_PM25_24HAVG1" ] && [ "$ldf" -le "$LDF_PM25_24HAVG4" ]; then
 
@@ -793,9 +789,7 @@ parseLivedata()
             readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "PM25 24h avg $channel"
             eval "export LIVEDATA_PM25${channel}_24HAVG_INTS10=$VALUE_UINT16BE"
             eval "convertScale10ToFloat \$LIVEDATA_PM25${channel}_24HAVG_INTS10"
-            set -x
             eval "export LIVEDATA_PM25${channel}_24HAVG=$VALUE_SCALE10_FLOAT"
-            set +x
 
         elif [ "$ldf" -eq "$LDF_SENSOR_CO2" ]; then
 
