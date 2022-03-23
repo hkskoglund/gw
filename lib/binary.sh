@@ -777,7 +777,9 @@ parseLivedata()
 
         elif [ "$ldf" -ge "$LDF_PM25_CH2" ] && [ "$ldf" -le "$LDF_PM25_CH4" ]; then
 
-            channel=$((ldf - LDF_PM25_CH1 + 1))
+            set -x
+            channel=$((ldf - LDF_PM25_CH2 + 1))
+            set +x
             readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "PM25 $channel"
             eval "export LIVEDATA_PM25${channel}_INTS10=$VALUE_UINT16BE"
             eval "convertScale10ToFloat \$LIVEDATA_PM25${channel}_INTS10"
