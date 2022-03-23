@@ -1558,6 +1558,10 @@ sendSensorBackup()
 
     IFS=" "
     unset local_n
+    local_n=0
+
+    [ $DEBUG -eq 1 ] && set | grep SENSORRESTORE
+
     for local_type in $2; do
         local_n=$(( local_n + 1 ))
         if [ $local_n -eq 1 ]; then
@@ -1567,9 +1571,35 @@ sendSensorBackup()
            eval local_id="\$SENSORRESTORE_$local_type" # hex
            writeUInt32BE PACKET_TX_BODY $((0x$local_id)) sensorid
     done
+
     unset local_type local_id local_n
 
     sendPacket $CMD_WRITE_SENSOR_ID "$1"
+}
+
+convertSensorBackupIdToHex()
+# convert disable/search to hex
+# set VALUE_SENSORID
+{
+    unset VALUE_SENSORID
+     if [ "$1" = $SENSORIDSTATE_DISABLE ]; then
+        VALUE_SENSORID=$SENSORID_DISABLE_HEXTEXT
+     elif [ "$1" = $SENSORIDSTATE_SEARCH ]; then
+        VALUE_SENSORID=$SENSORID_SEARCH_HEXTEXT
+    fi
+}
+
+setSensorRestore()
+#set SENSORRESTORE__$type=$id
+#$1 sensortype $2 sensorid
+{
+    convertSensorBackupIdToHex "$2"
+    if [ -z $VALUE_SENSORID ]; then
+       eval "SENSORRESTORE_$1=$2"
+    else
+      eval "SENSORRESTORE_$1=$VALUE_SENSORID"
+    fi
+     SENSORRESTORE_TYPE="$SENSORRESTORE_TYPE$1 "
 }
 
 restoreBackup()
@@ -1605,9 +1635,11 @@ restoreBackup()
     
     # parse backup
 
-    local_sensortype_count=0
-    unset local_sensorrestore_type # string of sensor types of found sensors in backup
-    
+    unset SENSORRESTORE_TYPE # string of sensor types of found sensors in backup
+    local_sensorprefix=$SENSORVAR_PREFIX
+    toLowercase $local_sensorprefix
+    local_sensorprefix=$VALUE_LOWERCASE
+
     while read -r backup_name backup_value; do
         [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "Restore: read $backup_name $backup_value length: ${#backup_value}"
         case "$backup_name" in
@@ -1628,21 +1660,19 @@ restoreBackup()
             "$WEATHERSERVICENAME_CUSTOMIZED_ENABLED")             GWBACKUP_WS_CUSTOMIZED_ENABLED="$backup_value" ;;
             "$WEATHERSERVICENAME_CUSTOMIZED_PATH_ECOWITT")        GWBACKUP_WS_CUSTOMIZED_PATH_ECOWITT="$backup_value" ;;
             "$WEATHERSERVICENAME_CUSTOMIZED_PATH_WUNDERGROUND")    GWBACKUP_WS_CUSTOMIZED_PATH_WU="$backup_value" ;;
-            sensor_*)       local_sensortype_count=$(( local_sensortype_count + 1 ))
-                            #shellcheck disable=SC2086
-                            set -- $backup_value
-                            local_id=$1
-                            local_type=$2
-                            # convert sensor id search/disable to fffffffe/ffffffff
-                            if [ "$local_id" = $SENSORIDSTATE_DISABLE ]; then
-                               local_id=$SENSORID_DISABLE_TEXT
-                            elif [ "$local_id" = $SENSORIDSTATE_SEARCH ]; then
-                               local_id=$SENSORID_SEARCH_TEXT
-                            fi
-                            eval "SENSORRESTORE_$local_type=$local_id"
-                            local_sensorrestore_type="$local_sensorrestore_type$local_type "
-
-                            ;;
+            
+            "$local_sensorprefix"wh65)              setSensorRestore 0 "$backup_value" ;;
+            "$local_sensorprefix"wh68)              setSensorRestore 1 "$backup_value" ;; 
+            "$local_sensorprefix"wh80)              setSensorRestore 2 "$backup_value" ;;
+            "$local_sensorprefix"rainfall)          setSensorRestore 3 "$backup_value" ;;
+            "$local_sensorprefix"outtemp)           setSensorRestore 5 "$backup_value" ;;
+            "$local_sensorprefix"temp?)             setSensorRestore $(( 5 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
+            "$local_sensorprefix"soilmoisture?)     setSensorRestore $(( 13 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
+            "$local_sensorprefix"pm25?)             setSensorRestore $(( 21 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
+            "$local_sensorprefix"lightning)         setSensorRestore 26 "$backup_value" ;;
+            "$local_sensorprefix"soiltemp?)         setSensorRestore $(( 30 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
+            "$local_sensorprefix"co2)               setSensorRestore 39 "$backup_value" ;;
+            "$local_sensorprefix"leafwetness?)      setSensorRestore $(( 39 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
                                                       
             *) echo >&2 "Error: Restore unknown name '$backup_name', ignored" 
             ;;
@@ -1665,20 +1695,19 @@ enabled=$GWBACKUP_WS_CUSTOMIZED_ENABLED,\
 path_ecowitt=$GWBACKUP_WS_CUSTOMIZED_PATH_ECOWITT,\
 path_wunderground=$GWBACKUP_WS_CUSTOMIZED_PATH_WU"
 
-   if [ -n "$local_sensorrestore_type" ]; then
-     if ! sendSensorBackup "$GW_HOST" "$local_sensorrestore_type"; then
+   if [ -n "$SENSORRESTORE_TYPE" ]; then
+     if ! sendSensorBackup "$GW_HOST" "$SENSORRESTORE_TYPE"; then
        echo >&2 Error: failed to restore backup of sensors, error code: $?
      fi
    fi
 
    #cleanup SENSORRESTORE
-   for local_type in $local_sensorrestore_type; do
+   for local_type in $SENSORRESTORE_TYPE; do
      unset "SENSORRESTORE_$local_type"
    done
 
-    unset cmd backup_name backup_value local_sensorrestore_type
+    unset cmd backup_name backup_value SENSORRESTORE_TYPE
 
-    
 }
 
 #read -r -u 0 -t 0 STDIN

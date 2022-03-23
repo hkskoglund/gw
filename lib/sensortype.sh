@@ -1,22 +1,22 @@
 #!/bin/sh
 #https://www.wxforum.net/index.php?topic=40730.0
 
-SENSORID_SEARCH_TEXT=ffffffff
-SENSORID_DISABLE_TEXT=fffffffe
+SENSORID_SEARCH_HEXTEXT=ffffffff
+SENSORID_DISABLE_HEXTEXT=fffffffe
 
 case $KSH_VERSION in
 
     *MIRBSD?KSH*)
         #shellcheck disable=SC3044
         typeset -iU SENSORID_SEARCH  SENSORID_DISABLE VALUE_UINT32BE  VALUE_UINT16BE VALUE_UINT8 SID VALUE_UINT_2SCOMPLEMENT # unsigned 32-bit 
-        SENSORID_SEARCH=$(( 0x$SENSORID_SEARCH_TEXT ))
-        SENSORID_DISABLE=$(( 0x$SENSORID_DISABLE_TEXT ))
+        SENSORID_SEARCH=$(( 0x$SENSORID_SEARCH_HEXTEXT ))
+        SENSORID_DISABLE=$(( 0x$SENSORID_DISABLE_HEXTEXT ))
         # mksh - sets 0xffffffff to -1!? if typeset -i SENSORID_SEARCH=0xffffffff - its using 32-bit signed integer by default unless typeset -iU is used
         ;;
 
     *)
-        SENSORID_SEARCH=$((0x$SENSORID_SEARCH_TEXT))
-        SENSORID_DISABLE=$((0x$SENSORID_DISABLE_TEXT))
+        SENSORID_SEARCH=$((0x$SENSORID_SEARCH_HEXTEXT))
+        SENSORID_DISABLE=$((0x$SENSORID_DISABLE_HEXTEXT))
         #ksh typeset option -iu for usigned int https://docstore.mik.ua/orelly/unix3/korn/appb_07.htm
         ;;
 esac
