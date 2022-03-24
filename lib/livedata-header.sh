@@ -3,6 +3,7 @@
 GWDIR=${GWDIR:='.'}
 
 if [ -z "$SENSORTYPE_WH31TEMP_MAXCH" ]; then
+    # shellcheck source=./sensortype.sh
     . "$GWDIR/lib/sensortype.sh"
 fi
 

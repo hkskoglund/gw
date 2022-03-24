@@ -1,5 +1,5 @@
 #!/bin/sh
-
+# shellcheck disable=SC2034
 GWDIR=${GWDIR:="."}
 DEBUG=${DEBUG:=0}
 DEBUG_OPTION_APPEND=${DEBUG_OPTION_APPEND:=0}
@@ -9,27 +9,33 @@ HIDE_LIGHT_LIVEDATA_AUTO=${HIDE_LIGHT_LIVEDATA_AUTO:=0} # auto hide_liveview whe
 LV_DELIMITER='-'
  
  if  ! type appendBuffer >/dev/null 2>/dev/null; then 
+# shellcheck source=../lib/appendBuffer.sh
    . "$GWDIR/lib/appendBuffer.sh"
 fi
 
 if ! type initUnit >/dev/null 2>/dev/null; then
+# shellcheck source=../lib/mode.sh
   . "$GWDIR/lib/mode.sh"
   initUnit
 fi
 
 if [ -z "$LIVEDATAHEADER_INTEMP" ]; then # assume lib not loaded
+# shellcheck source=../lib/livedata-header.sh
   . "$GWDIR/lib/livedata-header.sh"
 fi
 
 if [ -z "$CSI" ]; then 
+# shellcheck source=../style/ansiesc.sh
     . "$GWDIR/style/ansiesc.sh"
 fi
 
 if [ -z "$LIVEDATALIMIT_RAINHOUR" ]; then
+# shellcheck source=../lib/limits.sh
     . "$GWDIR/lib/limits.sh"
 fi
 
 if [ -z "$WIND_DIRECTION_N" ]; then
+# shellcheck source=../lib/wind.sh
     . "$GWDIR/lib/wind.sh"
 fi
 

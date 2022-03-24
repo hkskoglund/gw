@@ -1,4 +1,5 @@
 #!/bin/sh
+# shellcheck disable=SC2034
 #ANSI escape codes for styling
 #disable with NO_COLOR=y environment variable
 #https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -58,9 +59,13 @@ export STYLE_COMPASS_WIND="$CSI${SGI_BOLD}m"
 export STYLE_PROTOCOL_ECOWITT_HTTP="$CSI$SGI_FOREGC$SGI_COLOR_WHITE;$SGI_BACKGC${SGI_COLOR_ECOWITT}m"
 export STYLE_PROTOCOL_WUNDERGROUND_HTTP="$CSI$SGI_FOREGC$SGI_COLOR_BLACK;$SGI_BACKGC${SGI_COLOR_ORANGE}m"
 
+#shellcheck source=pm25.sh
 . "$GWDIR"/style/pm25.sh
+#shellcheck source=rainintensity.sh
 . "$GWDIR"/style/rainintensity.sh
+#shellcheck source=beufort.sh
 . "$GWDIR"/style/beufort.sh
+#shellcheck source=uvi.sh
 . "$GWDIR"/style/uvi.sh
 
 export STYLE_LIVEDATALIMIT="${STYLE_LIVEDATALIMIT:="$CSI$SGI_BOLD;${SGI_INVERSE}m"}"

@@ -1,4 +1,5 @@
 #!/bin/sh
+#shellcheck disable=SC2034
 #https://www.wxforum.net/index.php?topic=40730.0
 
 SENSORID_SEARCH_HEXTEXT=ffffffff

@@ -1,4 +1,5 @@
 #!/bin/sh
+# shellcheck disable=SC2034
 
 getHexDigit() {
     unset VALUE_HEX_DIGIT
@@ -608,7 +609,7 @@ convertUInt32BEToHex()
        VALUE_UINT32BE_HEX=0
        return
     fi
-    
+
     if [ "$SHELL_SUPPORT_BUILTIN_PRINTF_VOPT" -eq 1 ]; then
     #shellcheck disable=SC3045
         printf -v VALUE_UINT32BE_HEX "%x" "$1"

@@ -4,6 +4,7 @@ DEBUG=${DEBUG:=0}
 DEBUG_PACKET=${DEBUG_PACKET:=$DEBUG}
 
 if ! type convertBufferFromDecToOctalEscape 1>/dev/null 2>/dev/null; then
+# shellcheck source=converters.sh
     . ./lib/converters.sh
 fi
 
@@ -470,6 +471,7 @@ sendWeatherservice()
 sendCustomized()
 # send customized packet to host
 # $1 host
+# in: GW_VERSION, GW_VERSION_INT
 
  {
      EXITCODE_SENDCUSTOMIZED=0
@@ -477,7 +479,7 @@ sendCustomized()
     newCustomizedPacket
     sendPacket "$CMD_WRITE_CUSTOMIZED" "$1"
     EXITCODE_SENDCUSTOMIZED=$?
-
+# shellcheck disable=SC2153
     if isGWdevice "$GW_VERSION" &&  [ "$GW_VERSION_INT" -ge "$FW_CMD_READ_PATH" ]; then
         sendpathpacket=1
     elif ! isGWdevice "$GW_VERSION"; then

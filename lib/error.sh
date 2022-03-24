@@ -1,5 +1,5 @@
 #!/bin/sh
-
+# shellcheck disable=SC2034
 #ERROR_CONNECTION=1
 #ERROR_NO_NMCLI=2
 ERROR_NC_UDP_SCAN_UNAVAILABLE=3

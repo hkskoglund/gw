@@ -1,6 +1,9 @@
 #!/bin/sh
+# shellcheck disable=SC2034
 
 GWDIR=${GWDIR:=.}
+#https://github.com/koalaman/shellcheck/wiki/SC1090
+# shellcheck source=binary-fields.sh
 . "$GWDIR/lib/binary-fields.sh"
 
 parseVersion() {
@@ -227,13 +230,6 @@ parseCalibration() {
     printCalibration
 }
 
-printRaindata() {
-    echo "rain rate  $GW_RAINRATE $LIVEDATAUNIT_RAINRATE
-rain day   $GW_RAINDAILY $LIVEDATAUNIT_RAIN
-rain week  $GW_RAINWEEK $LIVEDATAUNIT_RAIN
-rain month $GW_RAINMONTH $LIVEDATAUNIT_RAIN
-rain year  $GW_RAINYEAR $LIVEDATAUNIT_RAIN"
-}
 
 parseRaindata() {
 
@@ -267,7 +263,6 @@ parseRaindata() {
     convertScale10ToFloat "$GW_RAINYEAR_INTS10"
     export GW_RAINYEAR="$VALUE_SCALE10_FLOAT"
 
-    printRaindata
 }
 
 getSensorNameShort()
@@ -427,10 +422,10 @@ parseSensorIdNew()
         
         export "$SENSORNAME_VAR=$VALUE_UINT32BE_HEX" "$SENSORNAME_VAR"_ID="$local_id" "$SENSORNAME_VAR"_ID_STATE="$local_sensorstate" 
     
-        toLowercase "$SENSORNAME_VAR"
-        local_sensorname_backup=$VALUE_LOWERCASE
+        getBackupname "$local_type" 
+        local_sensorname_backup=$VALUE_BACKUPNAME
         # align in columns
-        if [ ${#SENSORNAME_VAR} -le 15 ]; then
+        if [ ${#local_sensorname_backup} -le 15 ]; then
            local_tabs='\t\t\t'
         else
           local_tabs='\t\t'
@@ -954,10 +949,10 @@ readPacketPreambleCommandLength()
     #Packet length
     if commandHas2BytePacketLengthResponse "$PRX_CMD_UINT8"; then
         readUInt8 "$readPacketPreambleCommandLength_buffername" "command name: $VALUE_COMMAND_NAME dec: $PRX_CMD_UINT8 16-bit packet length msb: $4 lsb"
-        PACKET_RX_LENGTH_BYTES=2
+        #PACKET_RX_LENGTH_BYTES=2
         PACKET_RX_LENGTH=$(( ($4 << 8) | VALUE_UINT8))
     else
-        PACKET_RX_LENGTH_BYTES=1
+        #PACKET_RX_LENGTH_BYTES=1
         PACKET_RX_LENGTH=$(($4))
     fi
 

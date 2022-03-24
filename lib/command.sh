@@ -1,4 +1,5 @@
 #!/bin/sh
+#shellcheck disable=SC2034
 CMD_READ_VERSION=$((0x50)) #zsh - wont compare int with hex 16#50 in [ ] expression unless converted to decimal, works in [[ ]] expression
 CMD_REBOOT=$((0x40))
 CMD_READ_MAC=$((0x26))

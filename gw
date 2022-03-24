@@ -27,6 +27,7 @@ GWDIR=${GWDIR:='.'}
 . "$GWDIR/lib/weatherservice-header.sh"
 . "$GWDIR/lib/wind.sh"
 . "$GWDIR/lib/print.sh"
+. "$GWDIR/lib/backupname.sh"
 . "$GWDIR/view/livedata.sh"
 
 initShell() {
@@ -1646,36 +1647,36 @@ restoreBackup()
         [ $DEBUG_BACKUP -eq 1 ] && echo >&2 "Restore: read $backup_name $backup_value length: ${#backup_value}"
         case "$backup_name" in
             \#*) : ;; # ignore comment starting with #
-            "$WEATHERSERVICENAME_ECOWITT_INTERVAL")               GWBACKUP_WS_ECOWITT_INTERVAL="$backup_value" ;;
-            "$WEATHERSERVICENAME_WUNDERGROUND_ID")                GWBACKUP_WS_WUNDERGROUND_ID="$backup_value" ;;
-            "$WEATHERSERVICENAME_WUNDERGROUND_PASSWORD")          GWBACKUP_WS_WUNDERGROUND_PASSWORD="$backup_value" ;;
-            "$WEATHERSERVICENAME_WEATHERCLOUD_ID")                GWBACKUP_WS_WC_ID="$backup_value" ;;
-            "$WEATHERSERVICENAME_WEATHERCLOUD_PASSWORD")          GWBACKUP_WS_WC_PASSWORD="$backup_value" ;;
-            "$WEATHERSERVICENAME_WOW_ID")                         GWBACKUP_WS_WOW_ID="$backup_value" ;;
-            "$WEATHERSERVICENAME_WOW_PASSWORD")                   GWBACKUP_WS_WOW_PASSWORD="$backup_value" ;;
-            "$WEATHERSERVICENAME_CUSTOMIZED_ID")                  GWBACKUP_WS_CUSTOMIZED_ID="$backup_value" ;;
-            "$WEATHERSERVICENAME_CUSTOMIZED_PASSWORD")            GWBACKUP_WS_CUSTOMIZED_PASSWORD="$backup_value" ;;
-            "$WEATHERSERVICENAME_CUSTOMIZED_SERVER")              GWBACKUP_WS_CUSTOMIZED_SERVER="$backup_value" ;;
-            "$WEATHERSERVICENAME_CUSTOMIZED_PORT")                GWBACKUP_WS_CUSTOMIZED_PORT="$backup_value" ;;
-            "$WEATHERSERVICENAME_CUSTOMIZED_INTERVAL")            GWBACKUP_WS_CUSTOMIZED_INTERVAL="$backup_value" ;;
-            "$WEATHERSERVICENAME_CUSTOMIZED_HTTP")                GWBACKUP_WS_CUSTOMIZED_HTTP="$backup_value" ;;
-            "$WEATHERSERVICENAME_CUSTOMIZED_ENABLED")             GWBACKUP_WS_CUSTOMIZED_ENABLED="$backup_value" ;;
-            "$WEATHERSERVICENAME_CUSTOMIZED_PATH_ECOWITT")        GWBACKUP_WS_CUSTOMIZED_PATH_ECOWITT="$backup_value" ;;
-            "$WEATHERSERVICENAME_CUSTOMIZED_PATH_WUNDERGROUND")    GWBACKUP_WS_CUSTOMIZED_PATH_WU="$backup_value" ;;
+            "$BACKUPNAME_ECOWITT_INTERVAL")               GWBACKUP_WS_ECOWITT_INTERVAL="$backup_value" ;;
+            "$BACKUPNAME_WUNDERGROUND_ID")                GWBACKUP_WS_WUNDERGROUND_ID="$backup_value" ;;
+            "$BACKUPNAME_WUNDERGROUND_PASSWORD")          GWBACKUP_WS_WUNDERGROUND_PASSWORD="$backup_value" ;;
+            "$BACKUPNAME_WEATHERCLOUD_ID")                GWBACKUP_WS_WC_ID="$backup_value" ;;
+            "$BACKUPNAME_WEATHERCLOUD_PASSWORD")          GWBACKUP_WS_WC_PASSWORD="$backup_value" ;;
+            "$BACKUPNAME_WOW_ID")                         GWBACKUP_WS_WOW_ID="$backup_value" ;;
+            "$BACKUPNAME_WOW_PASSWORD")                   GWBACKUP_WS_WOW_PASSWORD="$backup_value" ;;
+            "$BACKUPNAME_CUSTOMIZED_ID")                  GWBACKUP_WS_CUSTOMIZED_ID="$backup_value" ;;
+            "$BACKUPNAME_CUSTOMIZED_PASSWORD")            GWBACKUP_WS_CUSTOMIZED_PASSWORD="$backup_value" ;;
+            "$BACKUPNAME_CUSTOMIZED_SERVER")              GWBACKUP_WS_CUSTOMIZED_SERVER="$backup_value" ;;
+            "$BACKUPNAME_CUSTOMIZED_PORT")                GWBACKUP_WS_CUSTOMIZED_PORT="$backup_value" ;;
+            "$BACKUPNAME_CUSTOMIZED_INTERVAL")            GWBACKUP_WS_CUSTOMIZED_INTERVAL="$backup_value" ;;
+            "$BACKUPNAME_CUSTOMIZED_HTTP")                GWBACKUP_WS_CUSTOMIZED_HTTP="$backup_value" ;;
+            "$BACKUPNAME_CUSTOMIZED_ENABLED")             GWBACKUP_WS_CUSTOMIZED_ENABLED="$backup_value" ;;
+            "$BACKUPNAME_CUSTOMIZED_PATH_ECOWITT")        GWBACKUP_WS_CUSTOMIZED_PATH_ECOWITT="$backup_value" ;;
+            "$BACKUPNAME_CUSTOMIZED_PATH_WUNDERGROUND")    GWBACKUP_WS_CUSTOMIZED_PATH_WU="$backup_value" ;;
             
-            "$local_sensorprefix"wh65)              setSensorRestore 0 "$backup_value" ;;
-            "$local_sensorprefix"wh68)              setSensorRestore 1 "$backup_value" ;; 
-            "$local_sensorprefix"wh80)              setSensorRestore 2 "$backup_value" ;;
-            "$local_sensorprefix"rainfall)          setSensorRestore 3 "$backup_value" ;;
-            "$local_sensorprefix"outtemp)           setSensorRestore 5 "$backup_value" ;;
-            "$local_sensorprefix"temp?)             setSensorRestore $(( 5 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
-            "$local_sensorprefix"soilmoisture?)     setSensorRestore $(( 13 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
-            "$local_sensorprefix"pm25?)             setSensorRestore $(( 21 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
-            "$local_sensorprefix"lightning)         setSensorRestore 26 "$backup_value" ;;
-            "$local_sensorprefix"leak?)             setSensorRestore $(( 26 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
-            "$local_sensorprefix"soiltemp?)         setSensorRestore $(( 30 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
-            "$local_sensorprefix"co2)               setSensorRestore 39 "$backup_value" ;;
-            "$local_sensorprefix"leafwetness?)      setSensorRestore $(( 39 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
+            "$BACKUPNAME_SENSOR_WH65")              setSensorRestore 0 "$backup_value" ;;
+            "$BACKUPNAME_SENSOR_WH68")              setSensorRestore 1 "$backup_value" ;; 
+            "$BACKUPNAME_SENSOR_WH80")              setSensorRestore 2 "$backup_value" ;;
+            "$BACKUPNAME_SENSOR_RAINFALL")          setSensorRestore 3 "$backup_value" ;;
+            "$BACKUPNAME_SENSOR_OUTTEMP")           setSensorRestore 5 "$backup_value" ;;
+            "$BACKUPNAME_SENSOR_TEMP"?)             setSensorRestore $(( 5 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
+            "$BACKUPNAME_SENSOR_SOILMOISTURE"?)     setSensorRestore $(( 13 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
+            "$BACKUPNAME_SENSOR_PM25"?)             setSensorRestore $(( 21 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
+            "$BACKUPNAME_SENSOR_LIGHTNING")         setSensorRestore 26 "$backup_value" ;;
+            "$BACKUPNAME_SENSOR_LEAK"?)             setSensorRestore $(( 26 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
+            "$BACKUPNAME_SENSOR_SOILTEMP"?)         setSensorRestore $(( 30 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
+            "$BACKUPNAME_SENSOR_CO2")               setSensorRestore 39 "$backup_value" ;;
+            "$BACKUPNAME_SENSOR_LEAFWETNESS"?)      setSensorRestore $(( 39 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
                                                       
             *) echo >&2 "Error: Restore unknown name '$backup_name', ignored" 
             ;;

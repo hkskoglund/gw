@@ -1,4 +1,5 @@
 #!/bin/sh
+#shellcheck disable=SC2034
 export DEBUG="${DEBUG:=0}" # 1 will enable additional debug information, -d option to enable
 [ $DEBUG -eq 1 ] && ls -l /bin/sh
 DEBUG_OPTION_APPEND=0

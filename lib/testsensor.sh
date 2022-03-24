@@ -1,4 +1,5 @@
 #!/bin/sh
+# shellcheck disable=SC2034
 #simulate sensors
 injectWH45_CO2Livedata()
 {
