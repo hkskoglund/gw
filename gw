@@ -1420,13 +1420,19 @@ processSensorLongOpt()
 
         case "$2" in
 
-            disable|false|off)    sendSensorId "$local_sensortype" "" $SENSORID_DISABLE "$GW_HOST"
-                        ;;
+            disable|false|off)      sendSensorId "$local_sensortype" "" $SENSORID_DISABLE "$GW_HOST"
+                                    ;;
 
-            search|true|on)     sendSensorId "$local_sensortype" "" $SENSORID_SEARCH "$GW_HOST"
-                        ;;
-                *)      echo >&2 "Error: Unknown sensor state, use disable |false | off,  search | true | on, hexid"
-                        EXITCODE_PROCESSSENSORLONGOPT=$ERROR_INVALID_SENSORID
+            search|true|on)         sendSensorId "$local_sensortype" "" $SENSORID_SEARCH "$GW_HOST"
+                                    ;;
+
+                        *)        if isHex "$2";  then
+                                        sendSensorId "$local_sensortype" "" $(( 0x$2 )) "$GW_HOST"
+                                  else
+                                        echo >&2 "Error: Invalid sensor id '$2', use disable |false | off,  search | true | on, hexid"
+                                       EXITCODE_PROCESSSENSORLONGOPT=$ERROR_INVALID_SENSORID_COMMAND
+                                  fi
+                                  ;;
 
         esac
 
@@ -1987,102 +1993,146 @@ while [ $# -gt 0 ]; do
 
         # use same properties as in backup file as long command line options - easier to remember syntax
 
-        --$BACKUPNAME_ECOWITT_INTERVAL=*) 
-                                        
-                                        processEcowittIntervalLongOpt "$1"
-                                        shift
-                                        ;;
+        --$BACKUPNAME_ECOWITT_INTERVAL=*)       processEcowittIntervalLongOpt "$1"
+                                                shift
+                                                ;;
 
-        --$BACKUPNAME_WUNDERGROUND_ID=*)  
-                                        
-                                        processWundergroundIdLongOpt "$1"
-                                        shift
-                                        ;;
+        --$BACKUPNAME_WUNDERGROUND_ID=*)        processWundergroundIdLongOpt "$1"
+                                                shift
+                                                ;;
 
-        --$BACKUPNAME_WUNDERGROUND_PASSWORD=*)  
-                                        
-                                        processWundergroundPasswordLongOpt "$1"
-                                        shift
-                                        ;;
+        --$BACKUPNAME_WUNDERGROUND_PASSWORD=*)  processWundergroundPasswordLongOpt "$1"
+                                                shift
+                                                ;;
         
-        --$BACKUPNAME_WOW_ID=*)         processWowIdLongOpt "$1"
-                                        shift
-                                        ;;
+        --$BACKUPNAME_WOW_ID=*)                 processWowIdLongOpt "$1"
+                                                shift
+                                                ;;
                                         
-        --$BACKUPNAME_WOW_PASSWORD=*)   processWowPasswordLongOpt "$1"
-                                        shift
-                                        ;;
+        --$BACKUPNAME_WOW_PASSWORD=*)           processWowPasswordLongOpt "$1"
+                                                shift
+                                                ;;
 
-        --$BACKUPNAME_WEATHERCLOUD_ID=*)
+        --$BACKUPNAME_WEATHERCLOUD_ID=*)        processWeathercloudIdLongOpt "$1"
+                                                shift
+                                                ;;
                                         
-                                        processWeathercloudIdLongOpt "$1"
-                                        shift
-                                        ;;
-                                        
-        --$BACKUPNAME_WEATHERCLOUD_PASSWORD=*)
+        --$BACKUPNAME_WEATHERCLOUD_PASSWORD=*)  processWeathercloudPasswordLongOpt "$1"
+                                                shift
+                                                ;;
 
-                                        processWeathercloudPasswordLongOpt "$1"
-                                        shift
-                                        ;;
+        --$BACKUPNAME_CUSTOMIZED_ID=*)          processCustomizedIdLongOpt "$1" 
+                                                shift
+                                                ;;
+                                    
+        --$BACKUPNAME_CUSTOMIZED_PASSWORD=*)    processCustomizedPasswordLongOpt "$1" 
+                                                shift
+                                                ;;
 
-        --$BACKUPNAME_CUSTOMIZED_ID=*) 
-                                        
-                                        processCustomizedIdLongOpt "$1" 
-                                        shift
-                                        ;;
-                                        
-        --$BACKUPNAME_CUSTOMIZED_PASSWORD=*)        
-                                        
-                                        processCustomizedPasswordLongOpt "$1" 
-                                        shift
-                                        ;;
+        --$BACKUPNAME_CUSTOMIZED_SERVER=*)      processCustomizedServerLongOpt "$1" 
+                                                shift
+                                                ;;
 
-        --$BACKUPNAME_CUSTOMIZED_SERVER=*)
+        --$BACKUPNAME_CUSTOMIZED_PORT=*)        processCustomizedPortLongOpt "$1" 
+                                                shift
+                                                ;;
 
-                                        processCustomizedServerLongOpt "$1" 
-                                        shift
-                                        ;;
+        --$BACKUPNAME_CUSTOMIZED_INTERVAL=*)    processCustomizedIntervalLongOpt "$1" 
+                                                shift
+                                                ;;
 
-        --$BACKUPNAME_CUSTOMIZED_PORT=*)
-
-                                        processCustomizedPortLongOpt "$1" 
-                                        shift
-                                        ;;
-
-        --$BACKUPNAME_CUSTOMIZED_INTERVAL=*)
-
-                                        processCustomizedIntervalLongOpt "$1" 
-                                        shift
-                                        ;;
-
-        --$BACKUPNAME_CUSTOMIZED_HTTP=*)
-
-                                        processCustomizedHttpLongOpt "$1" 
-                                        shift
-                                        ;;
+        --$BACKUPNAME_CUSTOMIZED_HTTP=*)        processCustomizedHttpLongOpt "$1" 
+                                                shift
+                                                ;;
         
-        --$BACKUPNAME_CUSTOMIZED_ENABLED=*)
-        
-                                        processCustomizedEnabledLongOpt "$1" 
-                                        shift
-                                        ;;
+        --$BACKUPNAME_CUSTOMIZED_ENABLED=*)     processCustomizedEnabledLongOpt "$1" 
+                                                shift
+                                                ;;
 
         --$BACKUPNAME_CUSTOMIZED_PATH_ECOWITT=*)
-        
-                                        processCustomizedPathEcowittLongOpt "$1" 
-                                        shift
-                                        ;;
+                                                processCustomizedPathEcowittLongOpt "$1" 
+                                                shift
+                                                ;;
 
         --$BACKUPNAME_CUSTOMIZED_PATH_WUNDERGROUND=*)
+                                                processCustomizedPathWundergroundLongOpt "$1" 
+                                                shift
+                                                ;;
+
+        --$BACKUPNAME_SENSOR_WH65=*)            processSensorLongOpt 0 "$1"
+                                                shift
+                                                ;;
+    
+        --$BACKUPNAME_SENSOR_WH68=*)            processSensorLongOpt 1 "$1"
+                                                shift
+                                                ;;
+    
+        --$BACKUPNAME_SENSOR_WH80=*)            processSensorLongOpt 2 "$1"
+                                                shift
+                                                ;;
+
+        --$BACKUPNAME_SENSOR_RAINFALL=*)        processSensorLongOpt 3 "$1"
+                                                shift
+                                                ;;
         
-                                        processCustomizedPathWundergroundLongOpt "$1" 
-                                        shift
-                                        ;;
+        --$BACKUPNAME_SENSOR_OUTTEMP=*)         processSensorLongOpt 5 "$1"
+                                                shift
+                                                ;;
 
-        --$BACKUPNAME_SENSOR_WH65=*)    processSensorLongOpt 0 "$1"
-                                        shift
-                                        ;;
+        --$BACKUPNAME_SENSOR_TEMP?=*) 
+                                                local_ch=${1#--"$BACKUPNAME_SENSOR_TEMP"}
+                                                local_ch=${local_ch%=*}
+                                                processSensorLongOpt $(( 5 + local_ch)) "$1"
+                                                unset local_ch
+                                                shift
+                                                ;;
 
+        --$BACKUPNAME_SENSOR_SOILMOISTURE?=*) 
+                                                local_ch=${1#--"$BACKUPNAME_SENSOR_SOILMOISTURE"}
+                                                local_ch=${local_ch%=*}
+                                                processSensorLongOpt $(( 13 + local_ch)) "$1"
+                                                unset local_ch
+                                                shift
+                                                ;;
+
+        --$BACKUPNAME_SENSOR_PM25?=*) 
+                                                local_ch=${1#--"$BACKUPNAME_SENSOR_PM25"}
+                                                local_ch=${local_ch%=*}
+                                                processSensorLongOpt $(( 21 + local_ch)) "$1"
+                                                unset local_ch
+                                                shift
+                                                ;;
+   
+        --$BACKUPNAME_SENSOR_LIGHTNING=*)       processSensorLongOpt 26 "$1"
+                                                shift
+                                                ;;
+
+        --$BACKUPNAME_SENSOR_LEAK?=*) 
+                                                local_ch=${1#--"$BACKUPNAME_SENSOR_LEAK"}
+                                                local_ch=${local_ch%=*}
+                                                processSensorLongOpt $(( 26 + local_ch)) "$1"
+                                                unset local_ch
+                                                shift
+                                                ;;
+       
+        --$BACKUPNAME_SENSOR_SOILTEMP?=*) 
+                                                local_ch=${1#--"$BACKUPNAME_SENSOR_SOILTEMP"}
+                                                local_ch=${local_ch%=*}
+                                                processSensorLongOpt $(( 30 + local_ch)) "$1"
+                                                unset local_ch
+                                                shift
+                                                ;;
+
+        --$BACKUPNAME_SENSOR_CO2=*)             processSensorLongOpt 39 "$1"
+                                                shift
+                                                ;;
+        --$BACKUPNAME_SENSOR_LEAFWETNESS?=*) 
+                                                local_ch=${1#--"$BACKUPNAME_SENSOR_LEAFWETNESS"}
+                                                local_ch=${local_ch%=*}
+                                                processSensorLongOpt $(( 39 + local_ch)) "$1"
+                                                unset local_ch
+                                                shift
+                                                ;;                                                                                                  
 
           -c | --command)
 
