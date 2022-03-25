@@ -28,10 +28,10 @@ sendPacket()
       EXITCODE_SENDPACKET="$ERROR_NO_HOST_SPECIFIED"
       return "$EXITCODE_SENDPACKET"
     fi
-
+    
+    #init new packet for simple command without body
     if [ -z "$4" ]; then
 
-        #init new packet for simple command without body
         if  [ "$1" -eq "$CMD_BROADCAST" ] ||\
             [ "$1" -eq "$CMD_LIVEDATA" ] ||\
             [ "$1" -eq "$CMD_READ_CALIBRATION" ] ||\
@@ -504,13 +504,15 @@ sendSensorId()
 # $1 low sensortype, $2 high sensortype (optional ""), $3 sensorid, $4 host
 {
     DEBUG_SENDSENSORID=${DEBUG_SENDSENSORID:=$DEBUG_PACKET}
+    [ "$DEBUG_SENDSENSORID" -eq 1 ] &&  echo >&2 "sendSensorId: args lowtype:$1 hightype: $2 sensorid: $3 host: $4"
+
     newPacket "$CMD_WRITE_SENSOR_ID"
 
     # single sensor
     if [ -z "$2" ]; then 
-        [ "$DEBUG_SENDSENSORID" -eq 1 ] && printf >&2 "Writing sensor type %2d sensorid %x\n" "$1" "$3"
+        [ "$DEBUG_SENDSENSORID" -eq 1 ] && printf >&2 "sendSensorId: Writing sensor type %2d sensorid %x\n" "$1" "$3"
         writeUInt8 PACKET_TX_BODY "$1" sensortype
-        writeUInt32BE PACKET_TX_BODY"$3" sensorid
+        writeUInt32BE PACKET_TX_BODY "$3" sensorid
     else
          # multiple sensors
         local_n="$1"

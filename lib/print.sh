@@ -90,43 +90,7 @@ printWeatherServices()
     printCustomized
 }
 
-printSensorLine()
-#$1 - sensortype, $2 sensor id, $3 battery, $4 signal , $5 sensorid state, $6 battery state, $7signal unicode
-# in: SENSORNAME_WH
-# in: SENSORNAME_SHORT
-{
-#observation: leak sensor signal -> starts at level 1 after search state, then increases +1 each time a new rf message is received
 
-    unset VALUE_BATTERY_STATE style_sensor
-    
-   # TEST data 
-    #if [ "$1" -eq 40 ]; then
-    #   set -- "39" "$(( 0xfff ))" 4 4  # co2
-    #  set -- "40" "$(( 0xfff ))" 14 4 # leaf wetness
-    #fi
-
-    if [ "$2" -eq "$SENSORID_DISABLE" ]; then 
-        style_sensor=$STYLE_SENSOR_DISABLE
-    elif [ "$2" -eq "$SENSORID_SEARCH" ]; then
-        style_sensor=$STYLE_SENSOR_SEARCH
-    elif [ "$4" -eq 0 ]; then 
-        style_sensor=$STYLE_SENSOR_DISCONNECTED
-    else
-        style_sensor=$STYLE_SENSOR_CONNECTED
-    fi
-
-    if [ -n "$style_sensor" ]; then
-       style_sensor_off=$STYLE_RESET # insert end escape sequence only if sgi is used
-    fi
-    
-     # 1 battery unicode is field size 4 in printf format string. TEST printf  "🔋 1.3 V" | od -A n -t x1 | wc -w -> 10
-     # use \r\t\t\t workaround for unicode alignment
-  
-    appendBuffer "%6u %9x %3u %1u %4s %-17s $style_sensor%-12s$style_sensor_off\t%s\t%s\n"\
- "'$1' '$2' '$3' '$4'  '$SENSORNAME_WH' '$SENSORNAME_SHORT' '$5' '$6' '$7'"
-    
-    unset style_sensor_off style_sensor
-}
 
 printSensorHeader()
 {
@@ -168,6 +132,71 @@ printSensorMatch()
         if [ $printSensorMatch -eq 1 ]; then
             printSensorLine "$stype" "$SID" "$battery" "$signal" "$local_sensorstate" "$VALUE_BATTERY_STATE" "$VALUE_SIGNAL_UNICODE"
         fi
+}
+
+printSensorLine()
+#$1 - sensortype, $2 sensor id, $3 battery, $4 signal ,  $5 sensortypeWH, $6 sensordescription, $7 sensorid state, $8 battery state, $9 signal state unicode, 
+#observation: leak sensor signal -> starts at level 1 after search state, then increases +1 each time a new rf message is received
+{
+    unset VALUE_BATTERY_STATE style_sensor
+    
+   # TEST data 
+    #if [ "$1" -eq 40 ]; then
+    #   set -- "39" "$(( 0xfff ))" 4 4  # co2
+    #  set -- "40" "$(( 0xfff ))" 14 4 # leaf wetness
+    #fi
+
+    if [ "$2" -eq "$SENSORID_DISABLE" ]; then 
+        style_sensor=$STYLE_SENSOR_DISABLE
+    elif [ "$2" -eq "$SENSORID_SEARCH" ]; then
+        style_sensor=$STYLE_SENSOR_SEARCH
+    elif [ "$4" -eq 0 ]; then 
+        style_sensor=$STYLE_SENSOR_DISCONNECTED
+    else
+        style_sensor=$STYLE_SENSOR_CONNECTED
+    fi
+
+    if [ -n "$style_sensor" ]; then
+       style_sensor_off=$STYLE_RESET # insert end escape sequence only if sgi is used
+    fi
+    
+     # 1 battery unicode is field size 4 in printf format string. TEST printf  "🔋 1.3 V" | od -A n -t x1 | wc -w -> 10
+     # use \r\t\t\t workaround for unicode alignment
+  
+    appendBuffer "%6u %9x %3u %1u %4s %-17s $style_sensor%-12s$style_sensor_off\t%s\t%s\n"\
+ "'$1' '$2' '$3' '$4' '$5' '$6' '$7' '$8' '$9'"
+    
+    unset style_sensor_off style_sensor
+}
+
+printSensors()
+# print parsed sensors in SENSOR_*
+{
+   # set -x
+   resetAppendBuffer
+
+set -x
+    printf "%6u %9x %3u %1u %4s %-17s $style_sensor%-12s$style_sensor_off\t%s\t%s\n" 0 "$SENSOR_WH65_ID" "$SENSOR_WH65_BATTERY" "$SENSOR_WH65_SIGNAL" "WH65" "Weather station" "$SENSOR_WH65_ID_STATE" "$SENSOR_WH65_BATTERY_STATE" "$SENSOR_WH65_SIGNAL_STATE" 
+    printf "%6u %9x %3u %1u %4s %-17s $style_sensor%-12s$style_sensor_off\t%s\t%s\n" 1 "$SENSOR_WH68_ID" "$SENSOR_WH68_BATTERY" "$SENSOR_WH68_SIGNAL" "WH68" "Weather station"  "$SENSOR_WH68_ID_STATE" "$SENSOR_WH68_BATTERY_STATE" "$SENSOR_WH68_SIGNAL_STATE" 
+    printf "%6u %9x %3u %1u %4s %-17s $style_sensor%-12s$style_sensor_off\t%s\t%s\n" 2 "$SENSOR_WH80_ID" "$SENSOR_WH80_BATTERY" "$SENSOR_WH80_SIGNAL"  "WH80" "Weather station" "$SENSOR_WH80_ID_STATE" "$SENSOR_WH80_BATTERY_STATE" "$SENSOR_WH80_SIGNAL_STATE" 
+  set +x
+   # printSensorLine 3 "$SENSOR_RAINFALL_ID" "$SENSOR_RAINFALL_BATTERY" "$SENSOR_RAINFALL_SIGNAL" "WH40" "Rainfall" "$SENSOR_RAINFALL_ID_STATE" "$SENSOR_RAINFALL_BATTERY_STATE" "$SENSOR_RAINFALL_SIGNAL_STATE" 
+    #old sensor WH25 = 4
+    #old sensor WH26 = 5
+   # printSensorLine 5 "$SENSOR_OUTTEMP_ID" "$SENSOR_OUTTEMP_BATTERY" "$SENSOR_OUTTEMP_SIGNAL"  "WH32" "Outtemp" "$SENSOR_OUTTEMP_ID_STATE" "$SENSOR_OUTTEMP_BATTERY_STATE" "$SENSOR_OUTTEMP_SIGNAL_STATE"
+   # N=6
+   # while [ $N -lt $((SENSORTYPE_WH31TEMP + SENSORTYPE_WH31TEMP_MAXCH)) ]; do
+   #         #set -x
+   #         eval "prefix=SENSOR_TEMP${N}_"
+   #         #set +x
+   #         #eval echo "prefix \$${prefix}ID $((SENSORTYPE_WH31TEMP + SENSORTYPE_WH31TEMP_MAXCH))"
+   #         eval printSensorLine $N "\$${prefix}ID" "\$${prefix}BATTERY" "\$${prefix}SIGNAL" "\$${prefix}ID_STATE" "\$${prefix}BATTERY_STATE" "\$${prefix}SIGNAL_STATE" "WH31" "Temperature $N"
+   #         N=$((N + 1))
+   # done
+
+    printAppendBuffer
+
+    #set +x
 }
 
 printSensorBackup()

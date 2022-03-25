@@ -631,7 +631,7 @@ printLivedataSystem()
     fi
    
     printWHBatterySignal "WH65" "$LIVEDATA_WH65_BATTERY_STATE" "$LIVEDATA_WH65_SIGNAL_STATE"
-    #set in exportLivedataBattery
+    #set in setBattery
     #shellcheck disable=SC2153
     printWHBatterySignal "WH68" "$LIVEDATA_WH68_BATTERY_STATE" "$LIVEDATA_WH68_SIGNAL_STATE" #maybe multiple weather stations allowed?
     #shellcheck disable=SC2153

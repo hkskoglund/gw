@@ -285,81 +285,81 @@ getSensorNameShort()
               SENSORNAME_WH='WH??' # no system information, cannot determine WH24/WH65
             fi
             SENSORNAME_SHORT='Weather Station'
-            eval SENSORNAME_VAR="${SENSORVAR_PREFIX}WH65"
+            eval SENSORNAME_VAR="SENSOR_WH65"
             ;;
         1) SENSORNAME_WH='WH68'
            SENSORNAME_SHORT="Weather Station"
-            eval SENSORNAME_VAR="${SENSORVAR_PREFIX}WH68"
+            eval SENSORNAME_VAR="SENSOR_WH68"
             ;;
         2) SENSORNAME_WH="WH80"
            SENSORNAME_SHORT='Weather Station'
-            eval SENSORNAME_VAR="${SENSORVAR_PREFIX}WH80"
+            eval SENSORNAME_VAR="SENSOR_WH80"
             ;;
         3) SENSORNAME_WH="WH40"
            SENSORNAME_SHORT="Rainfall"
-            eval SENSORNAME_VAR="${SENSORVAR_PREFIX}RAINFALL"
+            eval SENSORNAME_VAR="SENSOR_RAINFALL"
             ;;
         5) SENSORNAME_WH='WH32'
            SENSORNAME_SHORT='Temperature out'
-            eval SENSORNAME_VAR="${SENSORVAR_PREFIX}OUTTEMP"
+            eval SENSORNAME_VAR="SENSOR_OUTTEMP"
 
             ;;
         6|7|8|9|10|11|12|13)
            SENSORNAME_WH='WH31'
            local_channel=$(( $1 -5 ))
            SENSORNAME_SHORT="Temperature $local_channel"
-           eval SENSORNAME_VAR="${SENSORVAR_PREFIX}TEMP$local_channel"
+           eval SENSORNAME_VAR="SENSOR_TEMP$local_channel"
            ;;
         14|15|16|17|18|19|20|21)
           SENSORNAME_WH='WH51'
           local_channel=$(( $1 - 13 ))
           SENSORNAME_SHORT="Soilmoisture $local_channel"
-          eval SENSORNAME_VAR="${SENSORVAR_PREFIX}SOILMOISTURE$local_channel"
+          eval SENSORNAME_VAR="SENSOR_SOILMOISTURE$local_channel"
 
           ;;
         22|23|24|25)
           SENSORNAME_WH='WH43'
           local_channel=$(($1 - 21))
           SENSORNAME_SHORT="PM2.5 AQ $local_channel"
-          eval SENSORNAME_VAR="${SENSORVAR_PREFIX}PM25$local_channel"
+          eval SENSORNAME_VAR="SENSOR_PM25$local_channel"
           ;;
         26)
           SENSORNAME_SHORT="Lightning"
           SENSORNAME_WH='WH57'
-          eval SENSORNAME_VAR="${SENSORVAR_PREFIX}LIGHTNING$local_channel"
+          eval SENSORNAME_VAR="SENSOR_LIGHTNING$local_channel"
           ;;
         27|28|29|30)
           SENSORNAME_WH='WH55'
           local_channel=$(($1 - 26))
           SENSORNAME_SHORT="Leak $local_channel"
-          eval SENSORNAME_VAR="${SENSORVAR_PREFIX}LEAK$local_channel"
+          eval SENSORNAME_VAR="SENSOR_LEAK$local_channel"
           ;;
         31|32|33|34|35|36|37|38)
 
           SENSORNAME_WH='WH34'
           local_channel=$(($1 - 30))
           SENSORNAME_SHORT="Soiltemperature $local_channel"
-          eval SENSORNAME_VAR="${SENSORVAR_PREFIX}SOILTEMP$local_channel"
+          eval SENSORNAME_VAR="SENSOR_SOILTEMP$local_channel"
           
           ;;
         39)
           SENSORNAME_WH='WH45'
           SENSORNAME_SHORT="CO2 PM2.5 PM10 AQ"
-          eval SENSORNAME_VAR="${SENSORVAR_PREFIX}CO2"
+          eval SENSORNAME_VAR="SENSOR_CO2"
 
           ;;
         40|41|42|43|44|45|46|47)
             SENSORNAME_WH='WH35'
             local_channel=$(($1 - 39))
             SENSORNAME_SHORT="Leafwetness $local_channel"
-            eval SENSORNAME_VAR="${SENSORVAR_PREFIX}LEAFWETNESS$local_channel"
+            eval SENSORNAME_VAR="SENSOR_LEAFWETNESS$local_channel"
 
            ;;
          *)
          echo >&2 "Warning: Unknown sensortype $1"
           SENSORNAME_WH='WH??' 
           SENSORNAME_SHORT='?'
-          eval SENSORNAME_VAR="${SENSORVAR_PREFIX}_UNKNOWN$1"
+          eval SENSORNAME_VAR="SENSOR_UNKNOWN$1"
           return 1
     esac
 
@@ -368,8 +368,9 @@ getSensorNameShort()
 
 parseSensorIdNew()
 # parse sensor id new
-# set SENSORBACKUP
+# set SENSORBACKUP - escaped string of sensortype=sensorid\n - printed to backup*.conf file during backup
 {
+    DEBUG_PARSE_SENSORID=${DEBUG_PARSE_SENSORID:=$DEBUG}
      export SENSORSTAT_SEARCHING=0
      export SENSORSTAT_CONNECTED=0
      export SENSORSTAT_DISCONNECTED=0
@@ -410,9 +411,8 @@ parseSensorIdNew()
         elif [ "$local_signal" -gt 0 ]; then
             SENSORSTAT_CONNECTED=$(( SENSORSTAT_CONNECTED + 1 ))
             local_sensorstate=$SENSORIDSTATE_CONNECTED
-            exportLivedataBattery "$local_type" "$local_battery" "$SENSORNAME_VAR"
+            setBattery "$local_type" "$local_battery" "$SENSORNAME_VAR" # set/export ${SENSORNAME_VAR}_BATTERY, ${SENSORNAME_VAR}_BATTERY_STATE
             getSignalUnicode "$local_signal"
-            export "$SENSORNAME_VAR"_SIGNAL="$local_signal" "$SENSORNAME_VAR"_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
         elif [ "$local_signal" -eq 0 ]; then
             local_sensorstate=$SENSORIDSTATE_DISCONNECTED
             SENSORSTAT_DISCONNECTED=$(( SENSORSTAT_DISCONNECTED + 1 ))
@@ -420,7 +420,10 @@ parseSensorIdNew()
 
         convertUInt32BEToHex "$local_id"
         
-        export "$SENSORNAME_VAR=$VALUE_UINT32BE_HEX" "$SENSORNAME_VAR"_ID="$local_id" "$SENSORNAME_VAR"_ID_STATE="$local_sensorstate" 
+        #eval "$SENSORNAME_VAR"_BATTERY=${"$SENSORNAME_VAR"_BATTERY:=$local_battery}
+        #if [ -z \$${SENSORNAME_VAR}_BATTERY ];
+
+        export "$SENSORNAME_VAR=$VALUE_UINT32BE_HEX" "$SENSORNAME_VAR"_ID="$local_id" "$SENSORNAME_VAR"_ID_STATE="$local_sensorstate" "$SENSORNAME_VAR"_SIGNAL="$local_signal" "$SENSORNAME_VAR"_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
     
         getBackupname "$local_type" 
         local_sensorname_backup=$VALUE_BACKUPNAME
@@ -437,9 +440,12 @@ parseSensorIdNew()
             SENSORBACKUP="$SENSORBACKUP$local_sensorname_backup$local_tabs$local_sensorstate_backup\n" #disable/search
         fi
 
-        [ "$DEBUG" -eq 1 ] && >&2 echo "type $local_type id $local_id battery $local_battery signal $local_signal"
+        [ "$DEBUG_PARSE_SENSORID" -eq 1 ] && >&2 eval echo "$local_type $SENSORNAME_WH \$$SENSORNAME_VAR \$${SENSORNAME_VAR}_ID_STATE $local_battery \$${SENSORNAME_VAR}_BATTERY_STATE \$${SENSORNAME_VAR}_SIGNAL \$${SENSORNAME_VAR}_SIGNAL_STATE"
+        # type $local_type id $VALUE_UINT32BE_HEX $local_sensorstate battery $local_battery $VALUE_BATTERY_STATE signal $local_signal"
     done
 
+    [ "$DEBUG_PARSE_SENSORID" -eq 1 ] && set | grep ^SENSOR_
+ 
     unset local_id local_type local_signal local_battery parseSensorIdNew_max_length local_sensorstate local_sensorstate_backup local_tabs
 }
 
@@ -1277,28 +1283,39 @@ getSignalUnicode()
     fi
 }
 
-exportLivedataBattery()
+setBattery()
 # $1 sensortype 0-48
 # $2 sensor battery value
 # $3 sensor export variable prefix
 # set VALUE_BATTERY_STATE
 {
-  # echo >&2 "exportLivedataBattery: args $*"
+  # echo >&2 "setBattery: args $*"
     #specification FOS_ENG-022-A, page 28
     unset VALUE_BATTERY_STATE
 
-    if [ "$1" -eq "$SENSORTYPE_WH65" ] || [ "$1" -eq "$SENSORTYPE_WH40" ] || [ "$1" -ge "$SENSORTYPE_WH32" ] && [ "$1" -lt $((SENSORTYPE_WH31TEMP + SENSORTYPE_WH31TEMP_MAXCH)) ]; then
-        setBatteryLowNormal "$3" "$2" # WH65,WH32,WH31
+    if  [ "$1" -eq "$SENSORTYPE_WH65" ] ||\
+        [ "$1" -eq "$SENSORTYPE_WH40" ] ||\
+        [ "$1" -ge "$SENSORTYPE_WH32" ] && [ "$1" -lt $((SENSORTYPE_WH31TEMP + SENSORTYPE_WH31TEMP_MAXCH)) ]; then
+       
+        setBatteryLowNormal "$3" "$2" 
+    
     elif [ "$1" -eq "$SENSORTYPE_WH68" ] || [ "$1" -eq "$SENSORTYPE_WH80" ]; then
+       
         setBatteryVoltageLevel002 "$3" "$2"
+    
     elif [ "$1" -ge "$SENSORTYPE_WH51SOILMOISTURE" ] && [ "$1" -lt $(( SENSORTYPE_WH51SOILMOISTURE + SENSORTYPE_WH51SOILMOISTURE_MAXCH)) ] ||\
-         [ "$1" -ge "$SENSORTYPE_WH34SOILTEMP" ] && [ "$1" -lt $(( SENSORTYPE_WH34SOILTEMP + SENSORTYPE_WH34SOILTEMP_MAXCH)) ] ||\
-         [ "$1" -ge "$SENSORTYPE_WH35LEAFWETNESS" ] && [ "$1" -lt $(( SENSORTYPE_WH35LEAFWETNESS + SENSORTYPE_WH35LEAFWETNESS_MAXCH)) ]; then
-            setBatteryVoltageLevel "$3" "$2"
+         [ "$1" -ge "$SENSORTYPE_WH34SOILTEMP" ]     && [ "$1" -lt $(( SENSORTYPE_WH34SOILTEMP + SENSORTYPE_WH34SOILTEMP_MAXCH)) ] ||\
+         [ "$1" -ge "$SENSORTYPE_WH35LEAFWETNESS" ]  && [ "$1" -lt $(( SENSORTYPE_WH35LEAFWETNESS + SENSORTYPE_WH35LEAFWETNESS_MAXCH)) ]; then
+         
+        setBatteryVoltageLevel "$3" "$2"
+    
     elif [ "$1" -ge "$SENSORTYPE_WH43PM25" ] && [ "$1" -lt $(( SENSORTYPE_WH55LEAK +  SENSORTYPE_WH55LEAK_MAXCH)) ] ||\
-        [ "$1" -eq "$SENSORTYPE_WH45CO2" ]; then
+         [ "$1" -eq "$SENSORTYPE_WH45CO2" ] ||\
+         [ "$1" -eq "$SENSORTYPE_WH57LIGHTNING" ]; then
+        
         setBatteryLevel "$3" "$2"
     fi
+
 }
 
 setBatteryLowNormal()
@@ -1441,23 +1458,23 @@ getSensorIdCommandForFW()
 # $1 integer - firmware version 
 # set VALUE_SENSOR_COMMAND
 {
-    unset VALUE_SENSORID_READ_COMMAND
+    unset VALUE_CMD_READ_SENSORID
     EXITCODE_GETSENSORIDCOMMAND=0
     DEBUG_GETSENSORIDCOMMAND=${DEBUG_GETSENSORIDCOMMAND:=$DEBUG}
 
     if [ -z "$1" ]; then # if version not available, fallback to read sensor
-       VALUE_SENSORID_READ_COMMAND="$CMD_READ_SENSOR_ID"
+       VALUE_CMD_READ_SENSORID="$CMD_READ_SENSOR_ID"
        EXITCODE_GETSENSORIDCOMMAND=0
     elif [ "$1" -ge "$FW_CMD_READ_SENSOR_ID_NEW" ]; then # Added in fw v 1.5.4 
-            VALUE_SENSORID_READ_COMMAND="$CMD_READ_SENSOR_ID_NEW"  #support soiltemp, co2, leafwetness
+            VALUE_CMD_READ_SENSORID="$CMD_READ_SENSOR_ID_NEW"  #support soiltemp, co2, leafwetness
     elif [ "$1" -ge "$FW_CMD_READ_SENSOR_ID" ]; then # Added in fw v 1.4.6
-            VALUE_SENSORID_READ_COMMAND="$CMD_READ_SENSOR_ID"
+            VALUE_CMD_READ_SENSORID="$CMD_READ_SENSOR_ID"
     else
             echo >&2 "Warning: Firmware $1 does not support command sensor id (dec $CMD_READ_SENSOR_ID)/sensor id new (dec $CMD_READ_SENSOR_ID_NEW)"
             EXITCODE_GETSENSORIDCOMMAND="$ERROR_SENSORID_COMMAND_NOT_SUPPORTED"
         fi
     
-    [ "$DEBUG_GETSENSORIDCOMMAND" -eq 1 ] && { getCommandName "$VALUE_SENSORID_READ_COMMAND"; printf >&2 "getSensorIdCommandForFW: firmware %s %d using %s dec: %d hex: %x \n" "$GW_VERSION" "$GW_VERSION_INT" "$VALUE_COMMAND_NAME" "$VALUE_SENSORID_READ_COMMAND" "$VALUE_SENSORID_READ_COMMAND"; }
+    [ "$DEBUG_GETSENSORIDCOMMAND" -eq 1 ] && { getCommandName "$VALUE_CMD_READ_SENSORID"; printf >&2 "getSensorIdCommandForFW: firmware %s %d using %s dec: %d hex: %x \n" "$GW_VERSION" "$GW_VERSION_INT" "$VALUE_COMMAND_NAME" "$VALUE_CMD_READ_SENSORID" "$VALUE_CMD_READ_SENSORID"; }
     
     return "$EXITCODE_GETSENSORIDCOMMAND"
 }

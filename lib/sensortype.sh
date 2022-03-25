@@ -53,9 +53,3 @@ SENSORIDSTATE_SEARCH=${SENSORIDSTATE_SEARCH:="search"}
 SENSORIDSTATE_DISABLE=${SENSORIDSTATE_DISABLE:="disable"}
 SENSORID_HEADER=${SENSORID_HEADER:="Sensor ID B S Type Name State Battery Signal"}
 
-SENSORVAR_PREFIX=SENSOR_ # prefix used on variables when parsing read sensor/new command
-
-SENSORNAME_WH65="sensor_wh65" #0
-SENSORNAME_WH68='sensor_wh68' #1
-SENSORNAME_WH80='sensor_wh80' #2
-

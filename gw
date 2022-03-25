@@ -627,7 +627,7 @@ processSensorOptions()
             SPATTERNID_RANGE_HIGH=$sensorType_high
             if [ $sentReadSensorIdCommand -eq 0 ]; then 
                 getSensorIdCommandForFW "$GW_VERSION_INT"
-                sendPacket $VALUE_SENSORID_READ_COMMAND "$GW_HOST" #only sent for first , expression
+                sendPacket $VALUE_CMD_READ_SENSORID "$GW_HOST" #only sent for first , expression
                 sentReadSensorIdCommand=1
             else # yet another read (for example -c sensor 1-10,40-47) use in-memory buffer backup 
                IFS=" " eval parsePacket \"\$"$VALUE_PARSEPACKET_BUFFERNAME"\" 
@@ -1201,6 +1201,15 @@ processWeatherServiceOptions()
     return $EXITCODE_PROCESSWEATHERSERVICE
 }
 
+processEcowittIntervalLongOpt()
+# $1  ecowitt_interval={interval}
+{
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $1
+    processEcowittIntervalOptions "$2"
+}
+
 processEcowittIntervalOptions()
 # $1 interval in minutes 0-5
 {
@@ -1215,6 +1224,215 @@ processEcowittIntervalOptions()
     fi
 
     return "$EXITCODE_PROCESS_ECOWITTOPTIONS"
+}
+
+processWundergroundIdLongOpt()
+{
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $1
+    if sendPacket $CMD_READ_WUNDERGROUND "$GW_HOST"; then
+         sendWeatherservice "$GW_HOST" $CMD_WRITE_WUNDERGROUND "$2" "$GW_WS_WUNDERGROUND_PASSWORD"
+    fi
+}
+
+processWundergroundPasswordLongOpt()
+{
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $1
+    if sendPacket $CMD_READ_WUNDERGROUND "$GW_HOST"; then
+         sendWeatherservice "$GW_HOST" $CMD_WRITE_WUNDERGROUND "$GW_WS_WUNDERGROUND_ID" "$2"
+    fi
+}
+
+processWowIdLongOpt()
+{
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $1
+    if sendPacket $CMD_READ_WOW "$GW_HOST"; then
+         sendWeatherservice "$GW_HOST" $CMD_WRITE_WOW "$2" "$GW_WS_WOW_PASSWORD"
+    fi
+}
+
+processWowPasswordLongOpt()
+{
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $1
+    if sendPacket $CMD_READ_WOW "$GW_HOST"; then
+         sendWeatherservice "$GW_HOST" $CMD_WRITE_WOW "$GW_WS_WOW_ID" "$2"
+    fi
+}
+
+processWeathercloudIdLongOpt()
+{
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $1
+    if sendPacket $CMD_READ_WEATHERCLOUD "$GW_HOST"; then
+         sendWeatherservice "$GW_HOST" $CMD_WRITE_WEATHERCLOUD "$2" "$GW_WS_WC_PASSWORD"
+    fi
+}
+
+processWeathercloudPasswordLongOpt()
+{
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $1
+    if sendPacket $CMD_READ_WEATHERCLOUD "$GW_HOST"; then
+         sendWeatherservice "$GW_HOST" $CMD_WRITE_WEATHERCLOUD "$GW_WS_WC_ID" "$2"
+    fi
+}
+
+processCustomizedIdLongOpt()
+{
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $1
+    if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+        GW_WS_CUSTOMIZED_ID=$2
+         sendCustomized "$GW_HOST"
+    fi
+}
+
+processCustomizedPasswordLongOpt()
+{
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $1
+    if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+        GW_WS_CUSTOMIZED_PASSWORD=$2
+         sendCustomized "$GW_HOST"
+    fi
+}
+
+processCustomizedServerLongOpt()
+{
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $1
+    if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+        GW_WS_CUSTOMIZED_SERVER=$2
+         sendCustomized "$GW_HOST"
+    fi
+}
+
+processCustomizedPortLongOpt()
+{
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $1
+    #if ! isNumber "$2"; then
+    #   echo >&2 Error:
+    #   return E
+    if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+        GW_WS_CUSTOMIZED_PORT=$2
+         sendCustomized "$GW_HOST"
+    fi
+}
+
+processCustomizedIntervalLongOpt()
+{
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $1
+    #if ! isNumber "$2"; then
+    #   echo >&2 Error:
+    #   return E
+    if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+        GW_WS_CUSTOMIZED_INTERVAL=$2
+         sendCustomized "$GW_HOST"
+    fi
+}
+
+processCustomizedHttpLongOpt()
+{
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $1
+    #if ! isNumber "$2"; then
+    #   echo >&2 Error:
+    #   return E
+    if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+        GW_WS_CUSTOMIZED_HTTP=$2
+         sendCustomized "$GW_HOST"
+    fi
+}
+
+processCustomizedEnabledLongOpt()
+{
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $1
+    #if ! isNumber "$2"; then
+    #   echo >&2 Error:
+    #   return E
+    if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+        GW_WS_CUSTOMIZED_ENABLED=$2
+         sendCustomized "$GW_HOST"
+    fi
+}
+
+processCustomizedPathEcowittLongOpt()
+{
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $1
+    #if ! isNumber "$2"; then
+    #   echo >&2 Error:
+    #   return E
+    if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+        GW_WS_CUSTOMIZED_PATH_ECOWITT=$2
+         sendCustomized "$GW_HOST"
+    fi
+}
+
+processCustomizedPathWundergroundLongOpt()
+{
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $1
+    #if ! isNumber "$2"; then
+    #   echo >&2 Error:
+    #   return E
+    if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+        GW_WS_CUSTOMIZED_PATH_WU=$2
+         sendCustomized "$GW_HOST"
+    fi
+}
+
+processSensorLongOpt()
+# $1 sensortype, $2 option (disable/search/hexid)
+# set EXITCODE_PROCESSSENSORLONGOPT
+{
+    EXITCODE_PROCESSSENSORLONGOPT=0
+    IFS='='
+    local_sensortype=$1
+    
+    #shellcheck disable=SC2086
+    set -- $2
+    
+    if getSensorIdCommandForFW "$GW_VERSION_INT" && sendPacket $VALUE_CMD_READ_SENSORID "$GW_HOST"; then
+
+        set | grep SENSOR_WH65
+
+        case "$2" in
+
+            disable|false|off)    sendSensorId "$local_sensortype" "" $SENSORID_DISABLE "$GW_HOST"
+                        ;;
+
+            search|true|on)     sendSensorId "$local_sensortype" "" $SENSORID_SEARCH "$GW_HOST"
+                        ;;
+                *)      echo >&2 "Error: Unknown sensor state, use disable |false | off,  search | true | on, hexid"
+                        EXITCODE_PROCESSSENSORLONGOPT=$ERROR_INVALID_SENSORID
+
+        esac
+
+    fi
+    unset local_sensortype
+    return "$EXITCODE_PROCESSSENSORLONGOPT"
 }
 
 processCommand()
@@ -1442,7 +1660,7 @@ processCommand()
             
             #get battery/signal info to merge into livedata view
             if isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
-                sendPacket "$VALUE_SENSORID_READ_COMMAND" "$GW_HOST" >/dev/null
+                sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST" >/dev/null
             fi
             
             if [ -z "$LOG_CMD" ]; then
@@ -1469,19 +1687,19 @@ processCommand()
                     case "$1" in 
                         connected|c)
                                         SPATTERNID=$SPATTERNID_CONNECTED #matches connected sensors
-                                        sendPacket "$VALUE_SENSORID_READ_COMMAND" "$GW_HOST"
+                                        sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
                                         ;;
                         disconnected)
                                         SPATTERNID=$SPATTERNID_DISCONNECTED
-                                        sendPacket "$VALUE_SENSORID_READ_COMMAND" "$GW_HOST"
+                                        sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
                                         ;;
                         searching|s)
                                         SPATTERNID=$SPATTERNID_SEARCHING
-                                        sendPacket "$VALUE_SENSORID_READ_COMMAND" "$GW_HOST"
+                                        sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
                                         ;;
                         disabled|d)
                                         SPATTERNID=$SPATTERNID_DISABLED
-                                        sendPacket "$VALUE_SENSORID_READ_COMMAND" "$GW_HOST"
+                                        sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
                                         ;;
                         
                         *) 
@@ -1490,7 +1708,8 @@ processCommand()
                     esac
 
                 else
-                    sendPacket "$VALUE_SENSORID_READ_COMMAND" "$GW_HOST"
+                    sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
+                    printSensors
                 fi
             fi
 
@@ -1640,7 +1859,7 @@ restoreBackup()
 
     unset SENSORRESTORE_TYPE # string of sensor types of found sensors in backup
     local_sensorprefix=$SENSORVAR_PREFIX
-    toLowercase $local_sensorprefix
+    toLowercase "$local_sensorprefix"
     local_sensorprefix=$VALUE_LOWERCASE
 
     while read -r backup_name backup_value; do
@@ -1766,6 +1985,105 @@ while [ $# -gt 0 ]; do
 
     case $KEY in
 
+        # use same properties as in backup file as long command line options - easier to remember syntax
+
+        --$BACKUPNAME_ECOWITT_INTERVAL=*) 
+                                        
+                                        processEcowittIntervalLongOpt "$1"
+                                        shift
+                                        ;;
+
+        --$BACKUPNAME_WUNDERGROUND_ID=*)  
+                                        
+                                        processWundergroundIdLongOpt "$1"
+                                        shift
+                                        ;;
+
+        --$BACKUPNAME_WUNDERGROUND_PASSWORD=*)  
+                                        
+                                        processWundergroundPasswordLongOpt "$1"
+                                        shift
+                                        ;;
+        
+        --$BACKUPNAME_WOW_ID=*)         processWowIdLongOpt "$1"
+                                        shift
+                                        ;;
+                                        
+        --$BACKUPNAME_WOW_PASSWORD=*)   processWowPasswordLongOpt "$1"
+                                        shift
+                                        ;;
+
+        --$BACKUPNAME_WEATHERCLOUD_ID=*)
+                                        
+                                        processWeathercloudIdLongOpt "$1"
+                                        shift
+                                        ;;
+                                        
+        --$BACKUPNAME_WEATHERCLOUD_PASSWORD=*)
+
+                                        processWeathercloudPasswordLongOpt "$1"
+                                        shift
+                                        ;;
+
+        --$BACKUPNAME_CUSTOMIZED_ID=*) 
+                                        
+                                        processCustomizedIdLongOpt "$1" 
+                                        shift
+                                        ;;
+                                        
+        --$BACKUPNAME_CUSTOMIZED_PASSWORD=*)        
+                                        
+                                        processCustomizedPasswordLongOpt "$1" 
+                                        shift
+                                        ;;
+
+        --$BACKUPNAME_CUSTOMIZED_SERVER=*)
+
+                                        processCustomizedServerLongOpt "$1" 
+                                        shift
+                                        ;;
+
+        --$BACKUPNAME_CUSTOMIZED_PORT=*)
+
+                                        processCustomizedPortLongOpt "$1" 
+                                        shift
+                                        ;;
+
+        --$BACKUPNAME_CUSTOMIZED_INTERVAL=*)
+
+                                        processCustomizedIntervalLongOpt "$1" 
+                                        shift
+                                        ;;
+
+        --$BACKUPNAME_CUSTOMIZED_HTTP=*)
+
+                                        processCustomizedHttpLongOpt "$1" 
+                                        shift
+                                        ;;
+        
+        --$BACKUPNAME_CUSTOMIZED_ENABLED=*)
+        
+                                        processCustomizedEnabledLongOpt "$1" 
+                                        shift
+                                        ;;
+
+        --$BACKUPNAME_CUSTOMIZED_PATH_ECOWITT=*)
+        
+                                        processCustomizedPathEcowittLongOpt "$1" 
+                                        shift
+                                        ;;
+
+        --$BACKUPNAME_CUSTOMIZED_PATH_WUNDERGROUND=*)
+        
+                                        processCustomizedPathWundergroundLongOpt "$1" 
+                                        shift
+                                        ;;
+
+        --$BACKUPNAME_SENSOR_WH65=*)    processSensorLongOpt 0 "$1"
+                                        shift
+                                        ;;
+
+
           -c | --command)
 
             toLowercase "$2"
@@ -1806,8 +2124,8 @@ while [ $# -gt 0 ]; do
 
                         if isGWdevice "$GW_VERSION"; then
                             getSensorIdCommandForFW "$GW_VERSION_INT"
-                            #backup_commands="$VALUE_SENSORID_READ_COMMAND $CMD_READ_SYSTEM $CMD_READ_RAINDATA $CMD_READ_GAIN $CMD_READ_CALIBRATION $CMD_READ_SOILHUMIAD"
-                            backup_commands="$VALUE_SENSORID_READ_COMMAND" 
+                            #backup_commands="$VALUE_CMD_READ_SENSORID $CMD_READ_SYSTEM $CMD_READ_RAINDATA $CMD_READ_GAIN $CMD_READ_CALIBRATION $CMD_READ_SOILHUMIAD"
+                            backup_commands="$VALUE_CMD_READ_SENSORID" 
                             #[ "$GW_VERSION_INT" -ge $FW_CMD_READ_MULCH_OFFSET ] && backup_commands="$backup_commands $CMD_READ_MULCH_OFFSET"
                             #[ "$GW_VERSION_INT" -ge $FW_CMD_READ_PM25_OFFSET ] && backup_commands="$backup_commands $CMD_READ_PM25_OFFSET"
                             #[ "$GW_VERSION_INT" -ge $FW_CMD_READ_CO2_OFFSET ] && backup_commands="$backup_commands $CMD_READ_CO2_OFFSET"
@@ -1863,8 +2181,8 @@ while [ $# -gt 0 ]; do
 
                             if isGWdevice "$GW_VERSION"; then
                                 getSensorIdCommandForFW "$GW_VERSION_INT"
-                                backup_commands="$VALUE_SENSORID_READ_COMMAND $CMD_READ_SYSTEM $CMD_READ_RAINDATA $CMD_READ_GAIN $CMD_READ_CALIBRATION $CMD_READ_SOILHUMIAD"
-                               #backup_commands="$VALUE_SENSORID_READ_COMMAND" 
+                                backup_commands="$VALUE_CMD_READ_SENSORID $CMD_READ_SYSTEM $CMD_READ_RAINDATA $CMD_READ_GAIN $CMD_READ_CALIBRATION $CMD_READ_SOILHUMIAD"
+                               #backup_commands="$VALUE_CMD_READ_SENSORID" 
                                 [ "$GW_VERSION_INT" -ge $FW_CMD_READ_MULCH_OFFSET ] && backup_commands="$backup_commands $CMD_READ_MULCH_OFFSET"
                                 [ "$GW_VERSION_INT" -ge $FW_CMD_READ_PM25_OFFSET ] && backup_commands="$backup_commands $CMD_READ_PM25_OFFSET"
                                 [ "$GW_VERSION_INT" -ge $FW_CMD_READ_CO2_OFFSET ] && backup_commands="$backup_commands $CMD_READ_CO2_OFFSET"
@@ -2112,6 +2430,7 @@ while [ $# -gt 0 ]; do
             ;;
 
         *)        # unknown option
+            echo "Unknown option $1"
             shift # past argument
             ;;
     esac
