@@ -17,26 +17,61 @@ printEcowittInterval()
     fi
 }
 
+printWundergroundId()
+{
+    printf "%s\r\t\t\t\t\t%s\n" "$WEATHERSERVICEHEADER_WUNDERGROUND_ID" "$GW_WS_WUNDERGROUND_ID"
+}
+
+printWundergroundPassword()
+{
+    printf "%s\r\t\t\t\t\t%s\n"  "$WEATHERSERVICEHEADER_WUNDERGROUND_PASSWORD" "$GW_WS_WUNDERGROUND_PASSWORD"
+
+}
+
 printWunderground() {
     if [ "$LIVEDATA_VIEW" -eq "$LIVEDATA_VIEW_NORMAL" ]; then
-        printf "%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n" "$WEATHERSERVICEHEADER_WUNDERGROUND_ID" "$GW_WS_WUNDERGROUND_ID" "$WEATHERSERVICEHEADER_WUNDERGROUND_PASSWORD" "$GW_WS_WUNDERGROUND_PASSWORD"
+        printWundergroundId
+        printWundergroundPassword
     elif  [ "$LIVEDATA_VIEW" -eq "$LIVEDATA_VIEW_BACKUP" ]; then
         printf "%-32s %s\n%-32s %s\n" "$BACKUPNAME_WUNDERGROUND_ID" "$GW_WS_WUNDERGROUND_ID" "$BACKUPNAME_WUNDERGROUND_PASSWORD" "$GW_WS_WUNDERGROUND_PASSWORD"
     fi
 }
 
+printWeathercloudId()
+{
+    printf "%s\r\t\t\t\t\t%s\n"  "$WEATHERSERVICEHEADER_WEATHERCLOUD_ID" "$GW_WS_WC_ID"
+}
+
+printWeathercloudPassword()
+{
+    printf "%s\r\t\t\t\t\t%s\n" "$WEATHERSERVICEHEADER_WEATHERCLOUD_PASSWORD" "$GW_WS_WC_PASSWORD"
+}
+
 printWeathercloud() {
     if [ "$LIVEDATA_VIEW" -eq "$LIVEDATA_VIEW_NORMAL" ]; then
-        printf "%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n" "$WEATHERSERVICEHEADER_WEATHERCLOUD_ID" "$GW_WS_WC_ID" "$WEATHERSERVICEHEADER_WEATHERCLOUD_PASSWORD" "$GW_WS_WC_PASSWORD"
+       printWeathercloudId
+       printWeathercloudPassword
     elif  [ "$LIVEDATA_VIEW" -eq "$LIVEDATA_VIEW_BACKUP" ]; then
         printf "%-32s %s\n%-32s %s\n" "$BACKUPNAME_WEATHERCLOUD_ID" "$GW_WS_WC_ID" "$BACKUPNAME_WEATHERCLOUD_PASSWORD" "$GW_WS_WC_PASSWORD"
     fi
 
 }
 
+printWowId()
+{
+    printf "%s\r\t\t\t\t\t%s\n" "$WEATHERSERVICEHEADER_WOW_ID" "$GW_WS_WOW_ID" 
+}
+
+printWowPassword()
+{
+     printf "%s\r\t\t\t\t\t%s\n" "$WEATHERSERVICEHEADER_WOW_PASSWORD" "$GW_WS_WOW_PASSWORD"
+}
+
+
 printWow() {
     if [ "$LIVEDATA_VIEW" -eq "$LIVEDATA_VIEW_NORMAL" ]; then
-        printf "%s\r\t\t\t\t\t%s\n%s\r\t\t\t\t\t%s\n" "$WEATHERSERVICEHEADER_WOW_ID" "$GW_WS_WOW_ID" "$WEATHERSERVICEHEADER_WOW_PASSWORD" "$GW_WS_WOW_PASSWORD"
+        printWowId
+        printWowPassword
     elif  [ "$LIVEDATA_VIEW" -eq "$LIVEDATA_VIEW_BACKUP" ]; then
         printf "%-32s %s\n%-32s %s\n" "$BACKUPNAME_WOW_ID" "$GW_WS_WOW_ID" "$BACKUPNAME_WOW_PASSWORD" "$GW_WS_WOW_PASSWORD"
     fi

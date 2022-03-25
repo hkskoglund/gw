@@ -130,22 +130,25 @@ Sensor        ID   B S Type Name              State             Battery Signal
 
 ## Weather service configuration
 ### Ecowitt interval 1 minute (https://www.ecowitt.net/)
-<code>./gw -g 192.168.3.16 -c ecowitt 1</code>
+<code>./gw -g 192.168.3.16 --ecowitt_interval=1</code>
 ### Weathercloud (https://weathercloud.net/en)
-<code>./gw -g 192.168.3.16 -c weathercloud id='id',password='passwd'</code>
+<code>./gw -g 192.168.3.16 --weathercloud_id=wcid --weathercloud_password=wcpw</code>
 ### Weather Observations Website  (https://wow.metoffice.gov.uk/)
-<code>./gw -g 192.168.3.16 -c wow id='id',password='passwd' </code>
+<code>./gw -g 192.168.3.16 --wow_id=wowid --wow_password=wowpw</code>
 ### Wundergrodund (https://www.wunderground.com/)
-<code>./gw -g 192.168.3.16 -c wunderground id='id',password='passwd'</code>
+<code>./gw -g 192.168.3.16 --wunderground_id=wuid --wunderground_password=wupw</code>
 ### Customized ecowitt (http://192.168.3.4:8082/)
-<code>./gw -g 192.168.3.16 -c customized id=id,password=passwd,server=192.168.3.4,port=8082,http=ecowitt,enabled=on,interval=16 -c customized</code>
+<code>./gw -g 192.168.3.16 /gw -g 192.168.3.16 --customized_id=id --customized_password=pw --customized_server=192.168.3.4 --customized_port=8082 -c customized</code>
 <pre>
-server             192.168.3.4
-port               8082
-interval           16
-http               0 ecowitt
-enabled            1 on
-path ecowitt  /
+customized wunderground id              id
+customized wunderground password        pw
+customized server                       192.168.3.4
+customized port                         8082
+customized interval                     16 seconds
+customized http protocol                0 ecowitt
+customized enabled                      1 on
+customized path ecowitt                 /path/ecowitt
+customized path wunderground            /path/wu
 </pre>
 
 ## Backup and restore of weather services, calibration and sensor configuration

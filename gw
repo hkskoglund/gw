@@ -1352,13 +1352,23 @@ processCustomizedHttpLongOpt()
     IFS='='
     #shellcheck disable=SC2086
     set -- $1
-    #if ! isNumber "$2"; then
-    #   echo >&2 Error:
-    #   return E
+
+    case "$2" in
+      ecowitt|0)        local_customized_http=0
+                        ;;
+      
+      wunderrgound|1)   local_customized_http=1
+                        ;;
+      *) echo >&2 "Error: Unknown http protocol '$2', use ecowitt | 0, wunderground | 1"              
+         return $ERROR_CUSTOMIZED_OPTION
+    esac
+
     if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
-        GW_WS_CUSTOMIZED_HTTP=$2
+        GW_WS_CUSTOMIZED_HTTP=$local_customized_http
          sendCustomized "$GW_HOST"
     fi
+
+    unset local_customized_http
 }
 
 processCustomizedEnabledLongOpt()
@@ -1366,11 +1376,17 @@ processCustomizedEnabledLongOpt()
     IFS='='
     #shellcheck disable=SC2086
     set -- $1
-    #if ! isNumber "$2"; then
-    #   echo >&2 Error:
-    #   return E
+    case "$2" in
+      on | 1 )  local_customized_enabled=1
+                ;;
+      off | 0)  local_customized_enabled=0
+                ;;
+            *) echo >&2 "Error: Unknown value for enabled, use on | 1, off | 0"
+                return "$ERROR_CUSTOMIZED_OPTION"
+    esac
+
     if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
-        GW_WS_CUSTOMIZED_ENABLED=$2
+        GW_WS_CUSTOMIZED_ENABLED=$local_customized_enabled
          sendCustomized "$GW_HOST"
     fi
 }
@@ -1997,7 +2013,25 @@ while [ $# -gt 0 ]; do
                                                 shift
                                                 ;;
 
+        --"$BACKUPNAME_ECOWITT_INTERVAL"|--ecowitt)       if sendPacket $CMD_READ_ECOWITT_INTERVAL "$GW_HOST"; then
+                                                    printEcowittInterval
+                                                fi
+                                                shift
+                                                ;;
+
+        --wunderground)                         if sendPacket $CMD_READ_WUNDERGROUND "$GW_HOST"; then
+                                                    printWunderground
+                                                fi
+                                                shift
+                                                ;;
+
         --$BACKUPNAME_WUNDERGROUND_ID=*)        processWundergroundIdLongOpt "$1"
+                                                shift
+                                                ;;
+        
+        --"$BACKUPNAME_WUNDERGROUND_ID")        if sendPacket $CMD_READ_WUNDERGROUND "$GW_HOST"; then
+                                                    printWundergroundId
+                                                fi
                                                 shift
                                                 ;;
 
@@ -2005,21 +2039,71 @@ while [ $# -gt 0 ]; do
                                                 shift
                                                 ;;
         
+        --"$BACKUPNAME_WUNDERGROUND_PASSWORD")  if sendPacket $CMD_READ_WUNDERGROUND "$GW_HOST"; then
+                                                    printWundergroundPassword
+                                                fi
+                                                shift
+                                                ;;
+
+        --wow)                                  if sendPacket $CMD_READ_WOW "$GW_HOST"; then
+                                                    printWow
+                                                fi
+                                                shift
+                                                ;;
+        
         --$BACKUPNAME_WOW_ID=*)                 processWowIdLongOpt "$1"
                                                 shift
                                                 ;;
+        
+        
+        --"$BACKUPNAME_WOW_ID")                 if sendPacket $CMD_READ_WOW "$GW_HOST"; then
+                                                    printWowId
+                                                fi
+                                                shift
+                                                ;;
+
                                         
         --$BACKUPNAME_WOW_PASSWORD=*)           processWowPasswordLongOpt "$1"
+                                                shift
+                                                ;;
+
+        --"$BACKUPNAME_WOW_PASSWORD")           if sendPacket $CMD_READ_WOW "$GW_HOST"; then
+                                                    printWowPassword
+                                                fi
+                                                shift
+                                                ;;
+
+        --weathercloud)                          if sendPacket $CMD_READ_WEATHERCLOUD "$GW_HOST"; then
+                                                    printWeathercloud
+                                                fi
                                                 shift
                                                 ;;
 
         --$BACKUPNAME_WEATHERCLOUD_ID=*)        processWeathercloudIdLongOpt "$1"
                                                 shift
                                                 ;;
-                                        
+           
+        --"$BACKUPNAME_WEATHERCLOUD_ID")         if sendPacket $CMD_READ_WEATHERCLOUD "$GW_HOST"; then
+                                                    printWeathercloudId
+                                                fi
+                                                shift
+                                                ;;            
+
         --$BACKUPNAME_WEATHERCLOUD_PASSWORD=*)  processWeathercloudPasswordLongOpt "$1"
                                                 shift
                                                 ;;
+
+        --"$BACKUPNAME_WEATHERCLOUD_PASSWORD")  if sendPacket $CMD_READ_WEATHERCLOUD "$GW_HOST"; then
+                                                    printWeathercloudPassword
+                                                fi
+                                                shift
+                                                ;;
+
+        --customized)                           if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+                                                    printCustomized
+                                                fi
+                                                shift
+                                                ;;            
 
         --$BACKUPNAME_CUSTOMIZED_ID=*)          processCustomizedIdLongOpt "$1" 
                                                 shift
