@@ -1382,6 +1382,7 @@ parseCustomizedHttpUrl()
 # $1 format: wunderground://192.168.3.3:8080/data/report
 # set GW_WS_CUSTOMIZED_SERVER, GW_WS_CUSTOMIZED_PORT, GW_WS_CUSTOMIZED_PATH
 {
+    DEBUG_PARSE_CUSTOMIZED_URL=${DEBUG_PARSE_CUSTOMIZED_URL:=$DEBUG}
    url="$1"
    unset server http port path
 
@@ -1440,7 +1441,7 @@ parseCustomizedHttpUrl()
                     ;;
     esac
 
-    [ $DEBUG -eq 1 ] && echo >&2 "server $GW_WS_CUSTOMIZED_SERVER port $GW_WS_CUSTOMIZED_PORT path_wu $GW_WS_CUSTOMIZED_PATH_WU path_ecowitt $GW_WS_CUSTOMIZED_PATH_ECOWITT"
+    [ "$DEBUG_PARSE_CUSTOMIZED_URL" -eq 1 ] && echo >&2 "server $GW_WS_CUSTOMIZED_SERVER port $GW_WS_CUSTOMIZED_PORT path_wu $GW_WS_CUSTOMIZED_PATH_WU path_ecowitt $GW_WS_CUSTOMIZED_PATH_ECOWITT"
 
     unset url server http port path
 }
@@ -1461,22 +1462,17 @@ parseCustomizedHttpQueryString()
             parseCustomizedHttpQueryStringProperty "$prop"
         done
     fi
-
 }
 
 processCustomizedServerLongOpt()
 #$1 query string
 #"ecowitt|wunderground://192.168.3.3:8080/data/report?id=wuid&passsword=wpass&interval=16&enabled=true"
-
 {
     # added parsing of query string for specifying multiple properties in one operation
 
-    parseCustomizedHttpQueryString "$1"
-
     if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
- 
-       #  sendCustomized "$GW_HOST"
-       :
+        parseCustomizedHttpQueryString "$1"
+        sendCustomized "$GW_HOST"
     fi
 }
 

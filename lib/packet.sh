@@ -329,6 +329,7 @@ checksumPacketTXOctalEscape()
 newCustomizedPacket()
 # creates a new customized packet
  {
+    #set | grep GW_WS_CUSTOMIZED
     newPacket       "$CMD_WRITE_CUSTOMIZED"
     writeString     PACKET_TX_BODY "$GW_WS_CUSTOMIZED_ID" "customized id"
     writeString     PACKET_TX_BODY "$GW_WS_CUSTOMIZED_PASSWORD" "customized password"
