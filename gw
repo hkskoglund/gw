@@ -1308,6 +1308,54 @@ processCustomizedPasswordLongOpt()
     fi
 }
 
+isValidPort()
+{
+    if ! isNumber "$1"; then
+        echo >&2 "Error: port '$1' is not a number"
+        return $ERROR_INVALID_VALUE
+    elif [ "$1" -le 0 ] || [ "$1" -ge 65535 ]; then
+       echo >&2 "Error: port '$1' invalid range, use 0-65535"
+       return $ERROR_INVALID_VALUE
+    fi
+}
+
+isValidInterval()
+{
+    if isNumber "$1"; then
+        if [ "$1" -lt 16 ]; then
+            echo >&2 "Error: interval '$1' invalid, minimum 16 seconds"
+            return $ERROR_INVALID_VALUE
+        fi
+    else
+        echo >&2 "Error: interval '$1' is not a number"
+        return $ERROR_INVALID_VALUE
+    fi
+}
+
+isValidEnabled()
+{
+    unset VALUE_SERVER_ENABLED
+    case "$1" in
+        true|1|y|yes) VALUE_SERVER_ENABLED=1 ;;
+        false|0|n|no) VALUE_SERVER_ENABLED=0 ;;
+        *) echo >&2 "Error: enabled '$1' invalid, use true | 1, false | 0"
+            return $ERROR_INVALID_VALUE
+            ;;
+    esac
+}
+
+isValidHttp()
+{
+    unset VALUE_SERVER_HTTP
+    case $http in 
+        ecowitt) VALUE_SERVER_HTTP=0 ;;
+        wunderground|wu) VALUE_SERVER_HTTP=1 ;;
+        *) echo >&2 "Error: http '$http' invalid, use ecowitt, wunderground | wu"
+            return $ERROR_INVALID_VALUE
+    esac
+
+}
+
 parseCustomizedHttpQueryStringProperty()
 # $1 prop=value
 {
@@ -1317,21 +1365,13 @@ parseCustomizedHttpQueryStringProperty()
     case "$1" in
         id) GW_WS_CUSTOMIZED_ID=$2 ;;
         password) GW_WS_CUSTOMIZED_PASSWORD=$2 ;;
-        interval) if isNumber "$2"; then
-                    if [ "$2" -ge 16 ]; then
+        interval) if isValidInterval "$2"; then
                         GW_WS_CUSTOMIZED_INTERVAL=$2
-                    else
-                        echo >&2 "Error: interval '$2' invalid, minimum 16 seconds"
-                    fi
-                  else
-                    echo >&2 "Error: interval '$2' is not a number"
                    fi
                   ;;
-        enabled|enable) case "$2" in
-                    true|1|y|yes) GW_WS_CUSTOMIZED_ENABLED=1 ;;
-                    false|0|n|no) GW_WS_CUSTOMIZED_ENABLED=0 ;;
-                    *) echo >&2 "Error: enabled '$2' invalid, use true | 1, false | 0"
-                 esac
+        enabled|enable) if isValidEnabled "$2"; then
+                             GW_WS_CUSTOMIZED_ENABLED=$VALUE_SERVER_ENABLED
+                        fi
                  ;;
             *) echo >&2 "Error: Unknown setting '$1', use id, password, interval, enabled"
                 ;;
@@ -1350,11 +1390,9 @@ parseCustomizedHttpUrl()
             *://*) http=${url%://*}
                     url=${url#"$http"://} # remove protocol
                     if [ -n "$url" ]; then
-                        case $http in 
-                            ecowitt) GW_WS_CUSTOMIZED_HTTP=0 ;;
-                            wunderground|wu) GW_WS_CUSTOMIZED_HTTP=1 ;;
-                            *) echo >&2 "Warning: Unknown protocol '$http', use ecowitt, wunderground | wu"
-                        esac
+                        if isValidHttp "$http"; then
+                           GW_WS_CUSTOMIZED_HTTP=$VALUE_SERVER_HTTP
+                        fi
                     else
                       echo >&2 "Error: no server in url"
                     fi
@@ -1385,11 +1423,8 @@ parseCustomizedHttpUrl()
     
     [ -n "$server" ] && GW_WS_CUSTOMIZED_SERVER=$server
 
-     if ! isNumber "$port"; then
-        echo >&2 "Error: port '$port', is not a number"
-        unset port
-    elif [ "$port" -le 0 ] || [ "$port" -ge 65535 ]; then
-       echo >&2 "Error: port '$port', not a valid port number, 0-65535"
+    if ! isValidPort "$port"; then
+      unset port
     fi
 
     [ -n "$port" ] && GW_WS_CUSTOMIZED_PORT=$port
@@ -1450,14 +1485,10 @@ processCustomizedPortLongOpt()
     IFS='='
     #shellcheck disable=SC2086
     set -- $1
-    #if ! isNumber "$2"; then
-    #   echo >&2 Error:
-    #   return E
-    if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
-    
+   
+    if isValidPort "$2" &&  sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
         GW_WS_CUSTOMIZED_PORT=$2
          sendCustomized "$GW_HOST"
-    set +x
     fi
 }
 
@@ -1466,10 +1497,7 @@ processCustomizedIntervalLongOpt()
     IFS='='
     #shellcheck disable=SC2086
     set -- $1
-    #if ! isNumber "$2"; then
-    #   echo >&2 Error:
-    #   return E
-    if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+    if isValidInterval "$2" && sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
         GW_WS_CUSTOMIZED_INTERVAL=$2
          sendCustomized "$GW_HOST"
     fi
@@ -1481,22 +1509,11 @@ processCustomizedHttpLongOpt()
     #shellcheck disable=SC2086
     set -- $1
 
-    case "$2" in
-      ecowitt|0)        local_customized_http=0
-                        ;;
-      
-      wunderground|1)   local_customized_http=1
-                        ;;
-      *) echo >&2 "Error: Unknown http protocol '$2', use ecowitt | 0, wunderground | 1"              
-         return $ERROR_CUSTOMIZED_OPTION
-    esac
-
-    if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
-        GW_WS_CUSTOMIZED_HTTP=$local_customized_http
+    if isValidHttp "$2" && sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+        GW_WS_CUSTOMIZED_HTTP=$VALUE_SERVER_HTTP
          sendCustomized "$GW_HOST"
     fi
 
-    unset local_customized_http
 }
 
 processCustomizedEnabledLongOpt()
@@ -1504,17 +1521,9 @@ processCustomizedEnabledLongOpt()
     IFS='='
     #shellcheck disable=SC2086
     set -- $1
-    case "$2" in
-      on | 1 )  local_customized_enabled=1
-                ;;
-      off | 0)  local_customized_enabled=0
-                ;;
-            *) echo >&2 "Error: Unknown value for enabled, use on | 1, off | 0"
-                return "$ERROR_CUSTOMIZED_OPTION"
-    esac
 
-    if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
-        GW_WS_CUSTOMIZED_ENABLED=$local_customized_enabled
+    if isValidEnabled "$2" && sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+        GW_WS_CUSTOMIZED_ENABLED=$VALUE_SERVER_ENABLED
          sendCustomized "$GW_HOST"
     fi
 }
@@ -1524,9 +1533,7 @@ processCustomizedPathEcowittLongOpt()
     IFS='='
     #shellcheck disable=SC2086
     set -- $1
-    #if ! isNumber "$2"; then
-    #   echo >&2 Error:
-    #   return E
+   
     if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
         GW_WS_CUSTOMIZED_PATH_ECOWITT=$2
          sendCustomized "$GW_HOST"
@@ -1538,9 +1545,7 @@ processCustomizedPathWundergroundLongOpt()
     IFS='='
     #shellcheck disable=SC2086
     set -- $1
-    #if ! isNumber "$2"; then
-    #   echo >&2 Error:
-    #   return E
+  
     if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
         GW_WS_CUSTOMIZED_PATH_WU=$2
          sendCustomized "$GW_HOST"
