@@ -1308,14 +1308,140 @@ processCustomizedPasswordLongOpt()
     fi
 }
 
-processCustomizedServerLongOpt()
+parseCustomizedHttpQueryStringProperty()
+# $1 prop=value
 {
     IFS='='
     #shellcheck disable=SC2086
     set -- $1
+    case "$1" in
+        id) GW_WS_CUSTOMIZED_ID=$2 ;;
+        password) GW_WS_CUSTOMIZED_PASSWORD=$2 ;;
+        interval) if isNumber "$2"; then
+                    if [ "$2" -ge 16 ]; then
+                        GW_WS_CUSTOMIZED_INTERVAL=$2
+                    else
+                        echo >&2 "Error: interval '$2' invalid, minimum 16 seconds"
+                    fi
+                  else
+                    echo >&2 "Error: interval '$2' is not a number"
+                   fi
+                  ;;
+        enabled|enable) case "$2" in
+                    true|1|y|yes) GW_WS_CUSTOMIZED_ENABLED=1 ;;
+                    false|0|n|no) GW_WS_CUSTOMIZED_ENABLED=0 ;;
+                    *) echo >&2 "Error: enabled '$2' invalid, use true | 1, false | 0"
+                 esac
+                 ;;
+            *) echo >&2 "Error: Unknown setting '$1', use id, password, interval, enabled"
+                ;;
+    esac
+}
+
+parseCustomizedHttpUrl()
+# $1 format: wunderground://192.168.3.3:8080/data/report
+# set GW_WS_CUSTOMIZED_SERVER, GW_WS_CUSTOMIZED_PORT, GW_WS_CUSTOMIZED_PATH
+{
+   url="$1"
+   unset server http port path
+
+   #url contains ://
+    case "$url" in
+            *://*) http=${url%://*}
+                    url=${url#"$http"://} # remove protocol
+                    if [ -n "$url" ]; then
+                        case $http in 
+                            ecowitt) GW_WS_CUSTOMIZED_HTTP=0 ;;
+                            wunderground|wu) GW_WS_CUSTOMIZED_HTTP=1 ;;
+                            *) echo >&2 "Warning: Unknown protocol '$http', use ecowitt, wunderground | wu"
+                        esac
+                    else
+                      echo >&2 "Error: no server in url"
+                    fi
+                    ;;
+    esac
+
+    case "$url" in
+        #url contains :port
+        *:*) port=${url#*:}
+             server=${url%%:*}
+             case "$port" in
+               */*) path=/${port#*/}
+                    port=${port%%/*} 
+                   
+              esac
+              ;;
+         *) case "$url" in # does not contain port
+              */*)  path=/${url#*/}
+                    server=${url%%/*}
+                    ;;
+                *)  server=$url
+                    ;;
+            esac
+            ;;
+    esac
+
+    #update server,port,http,path in configuration
+    
+    [ -n "$server" ] && GW_WS_CUSTOMIZED_SERVER=$server
+
+     if ! isNumber "$port"; then
+        echo >&2 "Error: port '$port', is not a number"
+        unset port
+    elif [ "$port" -le 0 ] || [ "$port" -ge 65535 ]; then
+       echo >&2 "Error: port '$port', not a valid port number, 0-65535"
+    fi
+
+    [ -n "$port" ] && GW_WS_CUSTOMIZED_PORT=$port
+
+    case "$http" in
+        ecowitt)    [ -n "$path" ] && GW_WS_CUSTOMIZED_PATH_ECOWITT=$path
+                    ;;
+        wunderground|wu)
+                    [ -n "$path" ] && GW_WS_CUSTOMIZED_PATH_WU=$path
+                    ;;
+                *) [ -n "$path" ] && echo >&2 "Warning: Path $path specified, unable to set protocol. Use ecowitt:// or wunderground:// in front of url"
+                    # default to ecowitt?
+                    ;;
+    esac
+
+    [ $DEBUG -eq 1 ] && echo >&2 "server $GW_WS_CUSTOMIZED_SERVER port $GW_WS_CUSTOMIZED_PORT path_wu $GW_WS_CUSTOMIZED_PATH_WU path_ecowitt $GW_WS_CUSTOMIZED_PATH_ECOWITT"
+
+    unset url server http port path
+}
+parseCustomizedHttpQueryString()
+# $1 query string
+{
+    IFS='?'
+    #shellcheck disable=SC2086
+    set -- $1
+    parseCustomizedHttpUrl "$1"
+    
+    if [ -n "$2" ]; then
+        
+        IFS='&'
+        #shellcheck disable=SC2086
+        set -- $2
+        for prop ; do
+            parseCustomizedHttpQueryStringProperty "$prop"
+        done
+    fi
+
+}
+
+processCustomizedServerLongOpt()
+#$1 query string
+#"ecowitt|wunderground://192.168.3.3:8080/data/report?id=wuid&passsword=wpass&interval=16&enabled=true"
+
+{
+    # added parsing of query string for specifying multiple properties in one operation
+
+    parseCustomizedHttpQueryString "$1"
+
     if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
-        GW_WS_CUSTOMIZED_SERVER=$2
-         sendCustomized "$GW_HOST"
+ 
+       #  sendCustomized "$GW_HOST"
+       :
     fi
 }
 
@@ -1328,8 +1454,10 @@ processCustomizedPortLongOpt()
     #   echo >&2 Error:
     #   return E
     if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+    
         GW_WS_CUSTOMIZED_PORT=$2
          sendCustomized "$GW_HOST"
+    set +x
     fi
 }
 
@@ -1357,7 +1485,7 @@ processCustomizedHttpLongOpt()
       ecowitt|0)        local_customized_http=0
                         ;;
       
-      wunderrgound|1)   local_customized_http=1
+      wunderground|1)   local_customized_http=1
                         ;;
       *) echo >&2 "Error: Unknown http protocol '$2', use ecowitt | 0, wunderground | 1"              
          return $ERROR_CUSTOMIZED_OPTION
@@ -1442,7 +1570,7 @@ processSensorLongOpt()
             search|true|on)         sendSensorId "$local_sensortype" "" $SENSORID_SEARCH "$GW_HOST"
                                     ;;
 
-                        *)        if isHex "$2";  then
+                        *)        if isHex "$2" && [ ${#2} -le 8 ];  then
                                         sendSensorId "$local_sensortype" "" $(( 0x$2 )) "$GW_HOST"
                                   else
                                         echo >&2 "Error: Invalid sensor id '$2', use disable |false | off,  search | true | on, hexid"
@@ -2009,7 +2137,7 @@ while [ $# -gt 0 ]; do
 
         # use same properties as in backup file as long command line options - easier to remember syntax
 
-        --$BACKUPNAME_ECOWITT_INTERVAL=*)       processEcowittIntervalLongOpt "$1"
+        --$BACKUPNAME_ECOWITT_INTERVAL=*|--ecowitt=*)       processEcowittIntervalLongOpt "$1"
                                                 shift
                                                 ;;
 
@@ -2099,46 +2227,50 @@ while [ $# -gt 0 ]; do
                                                 shift
                                                 ;;
 
-        --customized)                           if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+        --customized|--server)                  if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
                                                     printCustomized
                                                 fi
                                                 shift
                                                 ;;            
 
-        --$BACKUPNAME_CUSTOMIZED_ID=*)          processCustomizedIdLongOpt "$1" 
+        --$BACKUPNAME_CUSTOMIZED_ID=*|--id=*)          processCustomizedIdLongOpt "$1" 
                                                 shift
                                                 ;;
                                     
-        --$BACKUPNAME_CUSTOMIZED_PASSWORD=*)    processCustomizedPasswordLongOpt "$1" 
+        --$BACKUPNAME_CUSTOMIZED_PASSWORD=*|--password=*)    processCustomizedPasswordLongOpt "$1" 
                                                 shift
                                                 ;;
 
-        --$BACKUPNAME_CUSTOMIZED_SERVER=*)      processCustomizedServerLongOpt "$1" 
+        --$BACKUPNAME_CUSTOMIZED_SERVER=*|--server=*)     
+                                                lqueryString=${1#--"$BACKUPNAME_CUSTOMIZED_SERVER"=}
+                                                lqueryString=${1#--server=}
+                                                processCustomizedServerLongOpt "$lqueryString"
+                                                unset lqueryString
                                                 shift
                                                 ;;
 
-        --$BACKUPNAME_CUSTOMIZED_PORT=*)        processCustomizedPortLongOpt "$1" 
+        --$BACKUPNAME_CUSTOMIZED_PORT=*|--port=*)        processCustomizedPortLongOpt "$1" 
                                                 shift
                                                 ;;
 
-        --$BACKUPNAME_CUSTOMIZED_INTERVAL=*)    processCustomizedIntervalLongOpt "$1" 
+        --$BACKUPNAME_CUSTOMIZED_INTERVAL=*|--interval=*)    processCustomizedIntervalLongOpt "$1" 
                                                 shift
                                                 ;;
 
-        --$BACKUPNAME_CUSTOMIZED_HTTP=*)        processCustomizedHttpLongOpt "$1" 
+        --$BACKUPNAME_CUSTOMIZED_HTTP=*|--http=*)        processCustomizedHttpLongOpt "$1" 
                                                 shift
                                                 ;;
         
-        --$BACKUPNAME_CUSTOMIZED_ENABLED=*)     processCustomizedEnabledLongOpt "$1" 
+        --$BACKUPNAME_CUSTOMIZED_ENABLED=*|--enabled=*)     processCustomizedEnabledLongOpt "$1" 
                                                 shift
                                                 ;;
 
-        --$BACKUPNAME_CUSTOMIZED_PATH_ECOWITT=*)
+        --$BACKUPNAME_CUSTOMIZED_PATH_ECOWITT=*|--path_ecowitt=*)
                                                 processCustomizedPathEcowittLongOpt "$1" 
                                                 shift
                                                 ;;
 
-        --$BACKUPNAME_CUSTOMIZED_PATH_WUNDERGROUND=*)
+        --$BACKUPNAME_CUSTOMIZED_PATH_WUNDERGROUND=*|--path_wunderground=*)
                                                 processCustomizedPathWundergroundLongOpt "$1" 
                                                 shift
                                                 ;;
