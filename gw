@@ -1336,8 +1336,8 @@ isValidEnabled()
 {
     unset VALUE_SERVER_ENABLED
     case "$1" in
-        true|1|y|yes) VALUE_SERVER_ENABLED=1 ;;
-        false|0|n|no) VALUE_SERVER_ENABLED=0 ;;
+        true|1) VALUE_SERVER_ENABLED=1 ;;
+        false|0) VALUE_SERVER_ENABLED=0 ;;
         *) echo >&2 "Error: enabled '$1' invalid, use true | 1, false | 0"
             return $ERROR_INVALID_VALUE
             ;;
@@ -1347,10 +1347,10 @@ isValidEnabled()
 isValidHttp()
 {
     unset VALUE_SERVER_HTTP
-    case $http in 
-        ecowitt) VALUE_SERVER_HTTP=0 ;;
-        wunderground|wu) VALUE_SERVER_HTTP=1 ;;
-        *) echo >&2 "Error: http '$http' invalid, use ecowitt, wunderground | wu"
+    case "$1" in 
+        ecowitt|0) VALUE_SERVER_HTTP=0 ;;
+        wunderground|wu|1) VALUE_SERVER_HTTP=1 ;;
+        *) echo >&2 "Error: http '$http' invalid, use ecowitt | 0 , wunderground | wu | 1"
             return $ERROR_INVALID_VALUE
     esac
 
@@ -1464,13 +1464,15 @@ parseCustomizedHttpQueryString()
     fi
 }
 
+
+
 processCustomizedServerLongOpt()
 #$1 query string
 #"ecowitt|wunderground://192.168.3.3:8080/data/report?id=wuid&passsword=wpass&interval=16&enabled=true"
 {
     # added parsing of query string for specifying multiple properties in one operation
 
-    if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+    if readCustomizedAndPath "$GW_HOST"; then
         parseCustomizedHttpQueryString "$1"
         sendCustomized "$GW_HOST"
     fi
@@ -1508,6 +1510,8 @@ processCustomizedHttpLongOpt()
     if isValidHttp "$2" && sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
         GW_WS_CUSTOMIZED_HTTP=$VALUE_SERVER_HTTP
          sendCustomized "$GW_HOST"
+    else
+      echo >&2 Error: failed !
     fi
 
 }
@@ -1530,7 +1534,7 @@ processCustomizedPathEcowittLongOpt()
     #shellcheck disable=SC2086
     set -- $1
    
-    if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+    if readCustomizedAndPath "$GW_HOST"; then
         GW_WS_CUSTOMIZED_PATH_ECOWITT=$2
          sendCustomized "$GW_HOST"
     fi
@@ -1542,7 +1546,7 @@ processCustomizedPathWundergroundLongOpt()
     #shellcheck disable=SC2086
     set -- $1
   
-    if sendPacket $CMD_READ_CUSTOMIZED "$GW_HOST"; then
+    if readCustomizedAndPath "$GW_HOST"; then
         GW_WS_CUSTOMIZED_PATH_WU=$2
          sendCustomized "$GW_HOST"
     fi

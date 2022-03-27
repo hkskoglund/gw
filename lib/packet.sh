@@ -329,7 +329,7 @@ checksumPacketTXOctalEscape()
 newCustomizedPacket()
 # creates a new customized packet
  {
-    #set | grep GW_WS_CUSTOMIZED
+    #set | grep GW_WS_CUSTOMIZED | grep -v GW_WS_CUSTOMIZED_PATH
     newPacket       "$CMD_WRITE_CUSTOMIZED"
     writeString     PACKET_TX_BODY "$GW_WS_CUSTOMIZED_ID" "customized id"
     writeString     PACKET_TX_BODY "$GW_WS_CUSTOMIZED_PASSWORD" "customized password"
@@ -343,6 +343,7 @@ newCustomizedPacket()
 newPathPacket()
 # creates a new path packet
 {
+    #set | grep GW_WS_CUSTOMIZED_PATH
     newPacket "$CMD_WRITE_PATH"
     writeString PACKET_TX_BODY "$GW_WS_CUSTOMIZED_PATH_ECOWITT" "customized path ecowitt"
     writeString PACKET_TX_BODY "$GW_WS_CUSTOMIZED_PATH_WU" "customized path wunderground"
@@ -467,6 +468,14 @@ sendWeatherservice()
     [ "$DEBUG_SENDWEATHERSERVICE" -eq 1 ] && echo >&2 "Sending weather service command: $2 id: $3 length: ${#3} password: $4 length: ${#4}"
 
     sendPacket "$2" "$GW_HOST"
+}
+
+readCustomizedAndPath()
+# read customized and path
+#$1 host
+{
+    sendPacket "$CMD_READ_CUSTOMIZED" "$1"
+    sendPacket "$CMD_READ_PATH" "$1"
 }
 
 sendCustomized()

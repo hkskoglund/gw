@@ -169,7 +169,6 @@ parsePath() {
     export GW_WS_CUSTOMIZED_PATH_ECOWITT="$VALUE_STRING"
     readString "$VALUE_PARSEPACKET_BUFFERNAME" "path wunderground"
     export GW_WS_CUSTOMIZED_PATH_WU="$VALUE_STRING"
-
 }
 
 
