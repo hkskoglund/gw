@@ -1561,7 +1561,6 @@ processSensorLongOpt()
     EXITCODE_PROCESSSENSORLONGOPT=0
     echo >&2 "processSensorLongOpt $*"
     IFS='='
-    set -x
     local_sensortype=$1
     local_sensortype_max=$2
     
@@ -1574,7 +1573,6 @@ processSensorLongOpt()
         *.) echo >&2 Glob "$1"
             local_glob=1
     esac
-    set +x
     
     if getSensorIdCommandForFW "$GW_VERSION_INT" && sendPacket $VALUE_CMD_READ_SENSORID "$GW_HOST"; then
 
