@@ -32,19 +32,19 @@ BACKUPNAME_SENSOR_SOILTEMP="sensor_soiltemp"
 BACKUPNAME_SENSOR_CO2="sensor_co2"
 BACKUPNAME_SENSOR_LEAFWETNESS="sensor_leafwetness"
 
-#N=1
-#while [ "$N" -le 8 ]; do 
-#    if [ "$N" -le 4 ]; then
-#        eval "BACKUPNAME_SENSOR_PM25$N=sensor_pm25$N"
-#        eval "BACKUPNAME_SENSOR_LEAK$N=sensor_leak$N"
-#    fi
-#    eval "BACKUPNAME_SENSOR_TEMP$N=sensor_temp$N"
-#    eval "BACKUPNAME_SENSOR_SOILMOISTURE$N=sensor_soilmoisture$N"
-#    eval "BACKUPNAME_SENSOR_SOILTEMP$N=sensor_soiltemp$N"
-#    eval "BACKUPNAME_SENSOR_LEAFWETNESS$N=sensor_leafwetness$N"
-#    N=$(( N + 1 ))
-#done
-#unset N
+N=1
+while [ "$N" -le 8 ]; do 
+    if [ "$N" -le 4 ]; then
+        eval "BACKUPNAME_SENSOR_PM25$N=sensor_pm25$N"
+        eval "BACKUPNAME_SENSOR_LEAK$N=sensor_leak$N"
+    fi
+    eval "BACKUPNAME_SENSOR_TEMP$N=sensor_temp$N"
+    eval "BACKUPNAME_SENSOR_SOILMOISTURE$N=sensor_soilmoisture$N"
+    eval "BACKUPNAME_SENSOR_SOILTEMP$N=sensor_soiltemp$N"
+    eval "BACKUPNAME_SENSOR_LEAFWETNESS$N=sensor_leafwetness$N"
+    N=$(( N + 1 ))
+done
+unset N
 
 BACKUPNAME_RAINDAY="rain_day"
 BACKUPNAME_RAINWEEK="rain_week"
@@ -85,3 +85,5 @@ getBackupname()
     fi
     
 }
+
+#set | grep BACKUPNAME_

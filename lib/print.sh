@@ -145,47 +145,23 @@ printSensorHeader()
     fi
 }
 
-printSensorMatch()
-{
-      #pattern matching
-        printSensorMatch=0
-
-        if [ "$SPATTERNID" = "$SPATTERNID_CONNECTED" ] && [ "$SID" -ne "$SENSORID_SEARCH" ] && [ "$SID" -ne "$SENSORID_DISABLE" ]; then # connected sensor
-            printSensorMatch=1
-        elif [ "$SPATTERNID" = "$SPATTERNID_DISCONNECTED" ] && [ "$SID" -ne "$SENSORID_SEARCH" ] && [ "$SID" -ne "$SENSORID_DISABLE" ] && [ "$signal" -eq 0 ]; then
-            printSensorMatch=1
-        elif [ "$SPATTERNID" = "$SPATTERNID_RANGE" ] && [ -n "$SPATTERNID_RANGE_LOW" ] && [ -n "$SPATTERNID_RANGE_HIGH" ] && [ "$stype" -ge "$SPATTERNID_RANGE_LOW" ] && [ "$stype" -le "$SPATTERNID_RANGE_HIGH" ]; then 
-            printSensorMatch=1
-        elif [ "$SPATTERNID" = "$SPATTERNID_SEARCHING" ] && [ "$SID" -eq "$SENSORID_SEARCH"  ]; then 
-            printSensorMatch=1
-        elif [ "$SPATTERNID" = "$SPATTERNID_DISABLED" ] && [ "$SID" -eq "$SENSORID_DISABLE" ]; then
-            printSensorMatch=1
-        elif [ -z "$SPATTERNID" ]; then #all sensors
-            printSensorMatch=1
-        fi
-
-        if [ $printSensorMatch -eq 1 ]; then
-            printSensorLine "$stype" "$SID" "$battery" "$signal" "$local_sensorstate" "$VALUE_BATTERY_STATE" "$VALUE_SIGNAL_UNICODE"
-        fi
-}
-
 printSensorLine()
-#$1 - sensortype, $2 sensor id, $3 battery, $4 signal ,  $5 sensortypeWH, $6 sensordescription, $7 sensorid state, $8 battery state, $9 signal state unicode, 
+#$1 backupname, $2 sensortype, $3 sensor id, $4 battery, $5 signal  $6 sensorid state, $7 battery state, $8 signal state unicode, 
 #observation: leak sensor signal -> starts at level 1 after search state, then increases +1 each time a new rf message is received
 {
     unset VALUE_BATTERY_STATE style_sensor
-    
+
    # TEST data 
     #if [ "$1" -eq 40 ]; then
     #   set -- "39" "$(( 0xfff ))" 4 4  # co2
     #  set -- "40" "$(( 0xfff ))" 14 4 # leaf wetness
     #fi
 
-    if [ "$2" -eq "$SENSORID_DISABLE" ]; then 
+    if [ "$3" -eq "$SENSORID_DISABLE" ]; then 
         style_sensor=$STYLE_SENSOR_DISABLE
-    elif [ "$2" -eq "$SENSORID_SEARCH" ]; then
+    elif [ "$3" -eq "$SENSORID_SEARCH" ]; then
         style_sensor=$STYLE_SENSOR_SEARCH
-    elif [ "$4" -eq 0 ]; then 
+    elif [ "$5" -eq 0 ]; then 
         style_sensor=$STYLE_SENSOR_DISCONNECTED
     else
         style_sensor=$STYLE_SENSOR_CONNECTED
@@ -194,12 +170,12 @@ printSensorLine()
     if [ -n "$style_sensor" ]; then
        style_sensor_off=$STYLE_RESET # insert end escape sequence only if sgi is used
     fi
-    
+
      # 1 battery unicode is field size 4 in printf format string. TEST printf  "🔋 1.3 V" | od -A n -t x1 | wc -w -> 10
      # use \r\t\t\t workaround for unicode alignment
   
-    appendBuffer "%6u %9x %3u %1u %4s %-17s $style_sensor%-12s$style_sensor_off\t%s\t%s\n"\
- "'$1' '$2' '$3' '$4' '$5' '$6' '$7' '$8' '$9'"
+    appendBuffer "%-20s %2u %8x %3u %1u $style_sensor%-12s$style_sensor_off\t%s\t%s\n"\
+ "'$1' '$2' '$3' '$4' '$5' '$6' '$7' '$8'"
     
     unset style_sensor_off style_sensor
 }
@@ -207,31 +183,85 @@ printSensorLine()
 printSensors()
 # print parsed sensors in SENSOR_*
 {
-   # set -x
-   resetAppendBuffer
+    resetAppendBuffer
+    
+    printSensorLine "$BACKUPNAME_SENSOR_WH65" 0 "$SENSOR_WH65_ID" "$SENSOR_WH65_BATTERY_INT" "$SENSOR_WH65_SIGNAL"  "$SENSOR_WH65_ID_STATE" "$SENSOR_WH65_BATTERY_STATE" "$SENSOR_WH65_SIGNAL_STATE"
 
-set -x
-    printf "%6u %9x %3u %1u %4s %-17s $style_sensor%-12s$style_sensor_off\t%s\t%s\n" 0 "$SENSOR_WH65_ID" "$SENSOR_WH65_BATTERY" "$SENSOR_WH65_SIGNAL" "WH65" "Weather station" "$SENSOR_WH65_ID_STATE" "$SENSOR_WH65_BATTERY_STATE" "$SENSOR_WH65_SIGNAL_STATE" 
-    printf "%6u %9x %3u %1u %4s %-17s $style_sensor%-12s$style_sensor_off\t%s\t%s\n" 1 "$SENSOR_WH68_ID" "$SENSOR_WH68_BATTERY" "$SENSOR_WH68_SIGNAL" "WH68" "Weather station"  "$SENSOR_WH68_ID_STATE" "$SENSOR_WH68_BATTERY_STATE" "$SENSOR_WH68_SIGNAL_STATE" 
-    printf "%6u %9x %3u %1u %4s %-17s $style_sensor%-12s$style_sensor_off\t%s\t%s\n" 2 "$SENSOR_WH80_ID" "$SENSOR_WH80_BATTERY" "$SENSOR_WH80_SIGNAL"  "WH80" "Weather station" "$SENSOR_WH80_ID_STATE" "$SENSOR_WH80_BATTERY_STATE" "$SENSOR_WH80_SIGNAL_STATE" 
-  set +x
-   # printSensorLine 3 "$SENSOR_RAINFALL_ID" "$SENSOR_RAINFALL_BATTERY" "$SENSOR_RAINFALL_SIGNAL" "WH40" "Rainfall" "$SENSOR_RAINFALL_ID_STATE" "$SENSOR_RAINFALL_BATTERY_STATE" "$SENSOR_RAINFALL_SIGNAL_STATE" 
-    #old sensor WH25 = 4
-    #old sensor WH26 = 5
-   # printSensorLine 5 "$SENSOR_OUTTEMP_ID" "$SENSOR_OUTTEMP_BATTERY" "$SENSOR_OUTTEMP_SIGNAL"  "WH32" "Outtemp" "$SENSOR_OUTTEMP_ID_STATE" "$SENSOR_OUTTEMP_BATTERY_STATE" "$SENSOR_OUTTEMP_SIGNAL_STATE"
-   # N=6
-   # while [ $N -lt $((SENSORTYPE_WH31TEMP + SENSORTYPE_WH31TEMP_MAXCH)) ]; do
-   #         #set -x
-   #         eval "prefix=SENSOR_TEMP${N}_"
-   #         #set +x
-   #         #eval echo "prefix \$${prefix}ID $((SENSORTYPE_WH31TEMP + SENSORTYPE_WH31TEMP_MAXCH))"
-   #         eval printSensorLine $N "\$${prefix}ID" "\$${prefix}BATTERY" "\$${prefix}SIGNAL" "\$${prefix}ID_STATE" "\$${prefix}BATTERY_STATE" "\$${prefix}SIGNAL_STATE" "WH31" "Temperature $N"
-   #         N=$((N + 1))
-   # done
+    printSensorLine "$BACKUPNAME_SENSOR_WH68" 1 "$SENSOR_WH68_ID" "$SENSOR_WH68_BATTERY_INT" "$SENSOR_WH68_SIGNAL"  "$SENSOR_WH68_ID_STATE" "$SENSOR_WH68_BATTERY_STATE" "$SENSOR_WH68_SIGNAL_STATE"
 
+    printSensorLine "$BACKUPNAME_SENSOR_WH80" 2 "$SENSOR_WH80_ID" "$SENSOR_WH80_BATTERY_INT" "$SENSOR_WH80_SIGNAL"  "$SENSOR_WH80_ID_STATE" "$SENSOR_WH80_BATTERY_STATE" "$SENSOR_WH80_SIGNAL_STATE" 
+  
+   printSensorLine "$BACKUPNAME_SENSOR_RAINFALL" 3 "$SENSOR_RAINFALL_ID" "$SENSOR_RAINFALL_BATTERY_INT" "$SENSOR_RAINFALL_SIGNAL" "$SENSOR_RAINFALL_ID_STATE" "$SENSOR_RAINFALL_BATTERY_STATE" "$SENSOR_RAINFALL_SIGNAL_STATE"
+    #old sensor WH25 = 4 WH26 = 5
+   printSensorLine "$BACKUPNAME_SENSOR_OUTTEMP" 5 "$SENSOR_OUTTEMP_ID" "$SENSOR_OUTTEMP_BATTERY" "$SENSOR_OUTTEMP_SIGNAL"  "$SENSOR_OUTTEMP_ID_STATE" "$SENSOR_OUTTEMP_BATTERY_STATE" "$SENSOR_OUTTEMP_SIGNAL_STATE"
+   
+    # use eval "'*'" to prevent word split on space -> leads to additional arguments to printSensorLine
+
+    local_ch=1
+    while [ $local_ch -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
+        eval "prefix=SENSOR_TEMP${local_ch}_"
+        local_n=$(( SENSORTYPE_WH31TEMP + local_ch - 1))
+        eval printSensorLine "\$BACKUPNAME_SENSOR_TEMP$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "\$${prefix}ID_STATE" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
+        local_ch=$((local_ch + 1))
+    done
+
+    local_ch=1
+    while [ $local_ch -le "$SENSORTYPE_WH51SOILMOISTURE_MAXCH" ]; do
+        eval "prefix=SENSOR_SOILMOISTURE${local_ch}_"
+        local_n=$(( SENSORTYPE_WH51SOILMOISTURE + local_ch - 1))
+        eval printSensorLine "\$BACKUPNAME_SENSOR_SOILMOISTURE$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "\$${prefix}ID_STATE" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
+        local_ch=$((local_ch + 1))
+    done
+
+    local_ch=1
+    while [ $local_ch -le "$SENSORTYPE_WH43PM25_MAXCH" ]; do
+        eval "prefix=SENSOR_PM25${local_ch}_"
+        #eval echo "prefix \$${prefix}ID $((SENSORTYPE_WH31TEMP + SENSORTYPE_WH31TEMP_MAXCH))"
+        local_n=$(( SENSORTYPE_WH43PM25 + local_ch - 1))
+        eval printSensorLine "\$BACKUPNAME_SENSOR_PM25$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "\$${prefix}ID_STATE" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
+        local_ch=$((local_ch + 1))
+    done
+
+    printSensorLine "$BACKUPNAME_SENSOR_LIGHTNING" 26 "$SENSOR_LIGHTNING_ID" "$SENSOR_LIGHTNING_BATTERY" "$SENSOR_LIGHTNING_SIGNAL"  "$SENSOR_LIGHTNING_ID_STATE" "$SENSOR_LIGHTNING_BATTERY_STATE" "$SENSOR_LIGHTNING_SIGNAL_STATE"
+
+    local_ch=1
+    while [ $local_ch -le "$SENSORTYPE_WH55LEAK_MAXCH" ]; do
+        eval "prefix=SENSOR_LEAK${local_ch}_"
+        #eval echo "prefix \$${prefix}ID $((SENSORTYPE_WH31TEMP + SENSORTYPE_WH31TEMP_MAXCH))"
+        local_n=$(( SENSORTYPE_WH55LEAK + local_ch - 1))
+        eval printSensorLine "\$BACKUPNAME_SENSOR_LEAK$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "\$${prefix}ID_STATE" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
+        local_ch=$((local_ch + 1))
+    done
+
+    #sensortype >30 available for CMD_READ_SENSORID_NEW
+
+    if [ -n "$SENSOR_SOILTEMP1_ID" ]; then
+        local_ch=1
+        while [ $local_ch -le "$SENSORTYPE_WH34SOILTEMP_MAXCH" ]; do
+            eval "prefix=SENSOR_SOILTEMP${local_ch}_"
+            local_n=$(( SENSORTYPE_WH34SOILTEMP + local_ch - 1))
+            eval printSensorLine "\$BACKUPNAME_SENSOR_SOILTEMP$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "\$${prefix}ID_STATE" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
+            local_ch=$((local_ch + 1))
+        done
+   fi
+
+    if [ -n "$SENSOR_CO2" ]; then
+       printSensorLine "$BACKUPNAME_SENSOR_CO2" 39 "$SENSOR_CO2_ID" "$SENSOR_CO2_BATTERY" "$SENSOR_CO2_SIGNAL"  "$SENSOR_CO2_ID_STATE" "$SENSOR_CO2_BATTERY_STATE" "$SENSOR_CO2_SIGNAL_STATE"
+    fi
+
+    if [ -n "$SENSOR_LEAFWETNESS1_ID" ]; then
+        local_ch=1
+        while [ $local_ch -le "$SENSORTYPE_WH35LEAFWETNESS_MAXCH" ]; do
+            eval "prefix=SENSOR_SOILTEMP${local_ch}_"
+            local_n=$(( SENSORTYPE_WH35LEAFWETNESS + local_ch - 1))
+            eval printSensorLine "\$BACKUPNAME_SENSOR_LEAFWETNESS$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "\$${prefix}ID_STATE" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
+            local_ch=$((local_ch + 1))
+        done
+   fi
+    
     printAppendBuffer
 
-    #set +x
+    unset local_ch local_n
 }
 
 printSensorBackup()

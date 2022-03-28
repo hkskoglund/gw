@@ -399,6 +399,9 @@ parseSensorIdNew()
        
         unset VALUE_BATTERY_STATE VALUE_SIGNAL_UNICODE local_sensorstate local_sensorstate_backup local_sensorname_backup
 
+        eval "${SENSORNAME_VAR}"_BATTERY_INT="$local_battery"
+        eval "${SENSORNAME_VAR}"_BATTERY=\"\"
+
         if [ "$local_id" -eq "$SENSORID_SEARCH" ]; then
             SENSORSTAT_SEARCHING=$(( SENSORSTAT_SEARCHING + 1 ))
             local_sensorstate=$SENSORIDSTATE_SEARCH
@@ -419,11 +422,8 @@ parseSensorIdNew()
 
         convertUInt32BEToHex "$local_id"
         
-        #eval "$SENSORNAME_VAR"_BATTERY=${"$SENSORNAME_VAR"_BATTERY:=$local_battery}
-        #if [ -z \$${SENSORNAME_VAR}_BATTERY ];
-
         export "$SENSORNAME_VAR=$VALUE_UINT32BE_HEX" "$SENSORNAME_VAR"_ID="$local_id" "$SENSORNAME_VAR"_ID_STATE="$local_sensorstate" "$SENSORNAME_VAR"_SIGNAL="$local_signal" "$SENSORNAME_VAR"_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
-    
+        
         getBackupname "$local_type" 
         local_sensorname_backup=$VALUE_BACKUPNAME
         # align in columns
@@ -443,6 +443,8 @@ parseSensorIdNew()
         # type $local_type id $VALUE_UINT32BE_HEX $local_sensorstate battery $local_battery $VALUE_BATTERY_STATE signal $local_signal"
     done
 
+    SENSORSTAT_TOTAL=$((SENSORSTAT_CONNECTED + SENSORSTAT_DISABLED + SENSORSTAT_DISCONNECTED + SENSORSTAT_SEARCHING))
+    # 30 for CMD_READ_SENSORID, 47 for CMD_READ_SENSORID_NEW ( sensor 4 missing GW-1000 fw 1.6.8)
     [ "$DEBUG_PARSE_SENSORID" -eq 1 ] && set | grep ^SENSOR_
  
     unset local_id local_type local_signal local_battery parseSensorIdNew_max_length local_sensorstate local_sensorstate_backup local_tabs
@@ -850,8 +852,8 @@ parseLivedata()
             eval "export LIVEDATA_TF_USR$channel=$VALUE_SCALE10_FLOAT"
 
             readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "tf_usr$channel battery"
-            eval "export LIVEDATA_TF_USR${channel}_BATTERY_INTS10=$VALUE_UINT8"
-            eval "convertScale10ToFloat \$LIVEDATA_TF_USR${channel}_BATTERY_INTS10"
+            eval "export LIVEDATA_TF_USR${channel}_BATTERY_INT=$VALUE_UINT8"
+            eval "convertScale10ToFloat \$LIVEDATA_TF_USR${channel}_BATTERY_INT"
             eval "export LIVEDATA_TF_USR${channel}_BATTERY=$VALUE_SCALE10_FLOAT"
             getBatteryVoltageScale10State "$VALUE_UINT8"
             eval "export LIVEDATA_TF_USR${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
@@ -1286,7 +1288,7 @@ setBattery()
 # $1 sensortype 0-48
 # $2 sensor battery value
 # $3 sensor export variable prefix
-# set VALUE_BATTERY_STATE
+# set SENSOR*_BATTERY_INT, SENSOR*_BATTERY, SENSOR*_BATTERY_STATE,
 {
   # echo >&2 "setBattery: args $*"
     #specification FOS_ENG-022-A, page 28
@@ -1320,8 +1322,7 @@ setBattery()
 setBatteryLowNormal()
 {
      getBatteryLowOrNormal "$2"
-    eval "export $1_BATTERY=$2"
-    eval "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'"
+    eval "export $1_BATTERY_INT=$2" "export $1_BATTERY=$2" "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'"
 }
 
 setBatteryVoltageLevel()
@@ -1329,16 +1330,13 @@ setBatteryVoltageLevel()
 # $2 voltage x 10
 {
     getBatteryVoltageScale10State "$2"
-    eval "export $1_BATTERY_INTS10=$2"
-    eval "export $1_BATTERY=$VALUE_BATTERY_VOLTAGE"
-    eval "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'"
+    eval "export $1_BATTERY_INT=$2" "export $1_BATTERY=$VALUE_BATTERY_VOLTAGE" "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'"
 }
 
 setBatteryLevel()
 {
     getBatteryLevelState "$2"
-    eval "export $1_BATTERY=$2"
-    eval "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'"
+    eval "export $1_BATTERY_INT=$2" "export $1_BATTERY=$2" "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'"
 }
 
 setBatteryVoltageLevel002()
@@ -1455,7 +1453,7 @@ getBatteryLowOrNormal() {
 getSensorIdCommandForFW()
 # get sensor id command based on firmware version
 # $1 integer - firmware version 
-# set VALUE_SENSOR_COMMAND
+# set VALUE_CMD_READ_SENSORID
 {
     unset VALUE_CMD_READ_SENSORID
     EXITCODE_GETSENSORIDCOMMAND=0

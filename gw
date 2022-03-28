@@ -1350,7 +1350,7 @@ isValidHttp()
     case "$1" in 
         ecowitt|0) VALUE_SERVER_HTTP=0 ;;
         wunderground|wu|1) VALUE_SERVER_HTTP=1 ;;
-        *) echo >&2 "Error: http '$http' invalid, use ecowitt | 0 , wunderground | wu | 1"
+        *) echo >&2 "Error: Protocol '$http' invalid, use ecowitt | 0 , wunderground | wu | 1"
             return $ERROR_INVALID_VALUE
     esac
 
@@ -1567,20 +1567,21 @@ processSensorLongOpt()
     
     if getSensorIdCommandForFW "$GW_VERSION_INT" && sendPacket $VALUE_CMD_READ_SENSORID "$GW_HOST"; then
 
-        set | grep SENSOR_WH65
-
         case "$2" in
 
-            disable|false|off)      sendSensorId "$local_sensortype" "" $SENSORID_DISABLE "$GW_HOST"
+            disable|disconnect|false|off)  sendSensorId "$local_sensortype" "" $SENSORID_DISABLE "$GW_HOST"
+                                           sendPacket $VALUE_CMD_READ_SENSORID "$GW_HOST" #reparse SENSOR_*
                                     ;;
 
-            search|true|on)         sendSensorId "$local_sensortype" "" $SENSORID_SEARCH "$GW_HOST"
+            search|connect|true|on)      sendSensorId "$local_sensortype" "" $SENSORID_SEARCH "$GW_HOST"
+                                         sendPacket $VALUE_CMD_READ_SENSORID "$GW_HOST"
                                     ;;
 
                         *)        if isHex "$2" && [ ${#2} -le 8 ];  then
                                         sendSensorId "$local_sensortype" "" $(( 0x$2 )) "$GW_HOST"
+                                         sendPacket $VALUE_CMD_READ_SENSORID "$GW_HOST"
                                   else
-                                        echo >&2 "Error: Invalid sensor id '$2', use disable |false | off,  search | true | on, hexid"
+                                        echo >&2 "Error: Invalid sensor id '$2', use disable |false | off | disconnect,  search | true | on | connect, hexid"
                                        EXITCODE_PROCESSSENSORLONGOPT=$ERROR_INVALID_SENSORID_COMMAND
                                   fi
                                   ;;
@@ -2355,7 +2356,14 @@ while [ $# -gt 0 ]; do
                                                 processSensorLongOpt $(( 39 + local_ch)) "$1"
                                                 unset local_ch
                                                 shift
-                                                ;;                                                                                                  
+                                                ;;
+
+        --sensor)                               if  isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
+                                                    sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
+                                                    printSensors
+                                                fi
+                                                shift
+                                                ;;                                                                                             
 
           -c | --command)
 
