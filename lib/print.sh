@@ -252,7 +252,7 @@ printSensors()
     if [ -n "$SENSOR_LEAFWETNESS1_ID" ]; then
         local_ch=1
         while [ $local_ch -le "$SENSORTYPE_WH35LEAFWETNESS_MAXCH" ]; do
-            eval "prefix=SENSOR_SOILTEMP${local_ch}_"
+            eval "prefix=SENSOR_LEAFWETNESS${local_ch}_"
             local_n=$(( SENSORTYPE_WH35LEAFWETNESS + local_ch - 1))
             eval printSensorLine "\$BACKUPNAME_SENSOR_LEAFWETNESS$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "\$${prefix}ID_STATE" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
             local_ch=$((local_ch + 1))
