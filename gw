@@ -1424,22 +1424,24 @@ parseCustomizedHttpUrl()
     
     [ -n "$server" ] && GW_WS_CUSTOMIZED_SERVER=$server
 
-    if ! isValidPort "$port"; then
+    if [ -z "$port" ] || ! isValidPort "$port"; then
       unset port
     fi
 
     [ -n "$port" ] && GW_WS_CUSTOMIZED_PORT=$port
 
-    case "$http" in
-        ecowitt)    [ -n "$path" ] && GW_WS_CUSTOMIZED_PATH_ECOWITT=$path
-                    ;;
-        wunderground|wu)
-                    [ -n "$path" ] && GW_WS_CUSTOMIZED_PATH_WU=$path
-                    ;;
-                *) [ -n "$path" ] && echo >&2 "Warning: Path $path specified, unable to set protocol. Use ecowitt:// or wunderground:// in front of url"
-                    # default to ecowitt?
-                    ;;
-    esac
+   if [ -n "$path" ]; then
+        case "$http" in
+            ecowitt)   GW_WS_CUSTOMIZED_PATH_ECOWITT=$path
+                        ;;
+            wunderground|wu)
+                        GW_WS_CUSTOMIZED_PATH_WU=$path
+                        ;;
+                    *) echo >&2 "Warning: Path '$path' specified, unable to set protocol. Use ecowitt:// or wunderground:// in front of url"
+                        # default to ecowitt?
+                        ;;
+        esac
+    fi
 
     [ "$DEBUG_PARSE_CUSTOMIZED_URL" -eq 1 ] && echo >&2 "server $GW_WS_CUSTOMIZED_SERVER port $GW_WS_CUSTOMIZED_PORT path_wu $GW_WS_CUSTOMIZED_PATH_WU path_ecowitt $GW_WS_CUSTOMIZED_PATH_ECOWITT"
 
