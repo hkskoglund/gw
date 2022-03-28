@@ -365,8 +365,8 @@ getSensorNameShort()
     unset local_channel
 }
 
-parseSensorIdNew()
-# parse sensor id new
+parseSensorId()
+# parse sensor id
 # set SENSORBACKUP - escaped string of sensortype=sensorid\n - printed to backup*.conf file during backup
 {
     DEBUG_PARSE_SENSORID=${DEBUG_PARSE_SENSORID:=$DEBUG}
@@ -376,9 +376,9 @@ parseSensorIdNew()
      export SENSORSTAT_DISABLED=0
      export SENSORBACKUP="# sensor id alias disable=fffffffe search=ffffffff\n"
 
-     parseSensorIdNew_max_length=$(( OD_BUFFER_LENGTH - 1 ))
+     parseSensorId_max_length=$(( OD_BUFFER_LENGTH - 1 ))
 
-    while [ "$OD_BUFFER_HEAD" -lt $parseSensorIdNew_max_length ]; do
+    while [ "$OD_BUFFER_HEAD" -lt $parseSensorId_max_length ]; do
        
         readUInt8  "$VALUE_PARSEPACKET_BUFFERNAME" "sensor type"          #type
         local_type=$VALUE_UINT8
@@ -447,7 +447,7 @@ parseSensorIdNew()
     # 30 for CMD_READ_SENSORID, 47 for CMD_READ_SENSORID_NEW ( sensor 4 missing GW-1000 fw 1.6.8)
     [ "$DEBUG_PARSE_SENSORID" -eq 1 ] && set | grep ^SENSOR_
  
-    unset local_id local_type local_signal local_battery parseSensorIdNew_max_length local_sensorstate local_sensorstate_backup local_tabs
+    unset local_id local_type local_signal local_battery parseSensorId_max_length local_sensorstate local_sensorstate_backup local_tabs
 }
 
 printSystem() 
@@ -1071,7 +1071,7 @@ parsePacket()
     elif [ "$PRX_CMD_UINT8" -eq "$CMD_READ_CUSTOMIZED" ]; then
         parseCustomized
     elif [ "$PRX_CMD_UINT8" -eq "$CMD_READ_SENSOR_ID_NEW" ] ||[ "$PRX_CMD_UINT8" -eq "$CMD_READ_SENSOR_ID" ]; then
-        parseSensorIdNew
+        parseSensorId
     else
         echo >&2 "Warning: Parsing of command $VALUE_COMMAND_NAME not implemented"
         EXITCODE_PARSEPACKET=$ERROR_PARSEPACKET_UNSUPPORTED_COMMAND
