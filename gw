@@ -1570,8 +1570,7 @@ processSensorLongOpt()
 
     unset local_glob
     case "$1" in
-        *.) echo >&2 Glob "$1"
-            local_glob=1
+        *.) local_glob=1
     esac
     
     if getSensorIdCommandForFW "$GW_VERSION_INT" && sendPacket $VALUE_CMD_READ_SENSORID "$GW_HOST"; then
