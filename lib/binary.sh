@@ -401,6 +401,7 @@ parseSensorId()
 
         eval "${SENSORNAME_VAR}"_BATTERY_INT="$local_battery"
         eval "${SENSORNAME_VAR}"_BATTERY=\"\"
+        eval "${SENSORNAME_VAR}"_BATTERY_STATE=\"\"
 
         if [ "$local_id" -eq "$SENSORID_SEARCH" ]; then
             SENSORSTAT_SEARCHING=$(( SENSORSTAT_SEARCHING + 1 ))

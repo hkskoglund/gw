@@ -149,7 +149,7 @@ printSensorLine()
 #$1 backupname, $2 sensortype, $3 sensor id, $4 battery, $5 signal  $6 sensorid state, $7 battery state, $8 signal state unicode, 
 #observation: leak sensor signal -> starts at level 1 after search state, then increases +1 each time a new rf message is received
 {
-    unset VALUE_BATTERY_STATE style_sensor
+    unset VALUE_BATTERY_STATE style_sensor style_sensor_off
 
    # TEST data 
     #if [ "$1" -eq 40 ]; then
@@ -157,24 +157,24 @@ printSensorLine()
     #  set -- "40" "$(( 0xfff ))" 14 4 # leaf wetness
     #fi
 
-    if [ "$3" -eq "$SENSORID_DISABLE" ]; then 
-        style_sensor=$STYLE_SENSOR_DISABLE
-    elif [ "$3" -eq "$SENSORID_SEARCH" ]; then
-        style_sensor=$STYLE_SENSOR_SEARCH
-    elif [ "$5" -eq 0 ]; then 
-        style_sensor=$STYLE_SENSOR_DISCONNECTED
-    else
-        style_sensor=$STYLE_SENSOR_CONNECTED
-    fi
+    #if [ "$3" -eq "$SENSORID_DISABLE" ]; then 
+    #    style_sensor=$STYLE_SENSOR_DISABLE
+    #elif [ "$3" -eq "$SENSORID_SEARCH" ]; then
+    #    style_sensor=$STYLE_SENSOR_SEARCH
+    #elif [ "$5" -eq 0 ]; then 
+    #    style_sensor=$STYLE_SENSOR_DISCONNECTED
+    #else
+    #    style_sensor=$STYLE_SENSOR_CONNECTED
+    #fi
 
-    if [ -n "$style_sensor" ]; then
-       style_sensor_off=$STYLE_RESET # insert end escape sequence only if sgi is used
-    fi
+    #if [ -n "$style_sensor" ]; then
+    #   style_sensor_off=$STYLE_RESET # insert end escape sequence only if sgi is used
+    #fi
 
      # 1 battery unicode is field size 4 in printf format string. TEST printf  "🔋 1.3 V" | od -A n -t x1 | wc -w -> 10
      # use \r\t\t\t workaround for unicode alignment
   
-    appendBuffer "%-20s %2u %8x %3u %1u $style_sensor%-12s$style_sensor_off\t%s\t%s\n"\
+    appendBuffer "%-20s %2u %8x %3u %1u $style_sensor%s$style_sensor_off\t%s\t%s\n"\
  "'$1' '$2' '$3' '$4' '$5' '$6' '$7' '$8'"
     
     unset style_sensor_off style_sensor
@@ -202,7 +202,7 @@ printSensors()
         eval "prefix=SENSOR_TEMP${local_ch}_"
         local_n=$(( SENSORTYPE_WH31TEMP + local_ch - 1))
         #shellcheck disable=SC2154
-        eval printSensorLine "\$BACKUPNAME_SENSOR_TEMP$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "\$${prefix}ID_STATE" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
+        eval printSensorLine "\$BACKUPNAME_SENSOR_TEMP$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "'\$${prefix}ID_STATE'" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
         local_ch=$((local_ch + 1))
     done
 
@@ -210,7 +210,7 @@ printSensors()
     while [ $local_ch -le "$SENSORTYPE_WH51SOILMOISTURE_MAXCH" ]; do
         eval "prefix=SENSOR_SOILMOISTURE${local_ch}_"
         local_n=$(( SENSORTYPE_WH51SOILMOISTURE + local_ch - 1))
-        eval printSensorLine "\$BACKUPNAME_SENSOR_SOILMOISTURE$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "\$${prefix}ID_STATE" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
+        eval printSensorLine "\$BACKUPNAME_SENSOR_SOILMOISTURE$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "'\$${prefix}ID_STATE'" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
         local_ch=$((local_ch + 1))
     done
 
@@ -219,7 +219,7 @@ printSensors()
         eval "prefix=SENSOR_PM25${local_ch}_"
         #eval echo "prefix \$${prefix}ID $((SENSORTYPE_WH31TEMP + SENSORTYPE_WH31TEMP_MAXCH))"
         local_n=$(( SENSORTYPE_WH43PM25 + local_ch - 1))
-        eval printSensorLine "\$BACKUPNAME_SENSOR_PM25$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "\$${prefix}ID_STATE" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
+        eval printSensorLine "\$BACKUPNAME_SENSOR_PM25$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "'\$${prefix}ID_STATE'" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
         local_ch=$((local_ch + 1))
     done
 
@@ -230,7 +230,7 @@ printSensors()
         eval "prefix=SENSOR_LEAK${local_ch}_"
         #eval echo "prefix \$${prefix}ID $((SENSORTYPE_WH31TEMP + SENSORTYPE_WH31TEMP_MAXCH))"
         local_n=$(( SENSORTYPE_WH55LEAK + local_ch - 1))
-        eval printSensorLine "\$BACKUPNAME_SENSOR_LEAK$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "\$${prefix}ID_STATE" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
+        eval printSensorLine "\$BACKUPNAME_SENSOR_LEAK$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "'\$${prefix}ID_STATE'" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
         local_ch=$((local_ch + 1))
     done
 
@@ -241,7 +241,7 @@ printSensors()
         while [ $local_ch -le "$SENSORTYPE_WH34SOILTEMP_MAXCH" ]; do
             eval "prefix=SENSOR_SOILTEMP${local_ch}_"
             local_n=$(( SENSORTYPE_WH34SOILTEMP + local_ch - 1))
-            eval printSensorLine "\$BACKUPNAME_SENSOR_SOILTEMP$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "\$${prefix}ID_STATE" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
+            eval printSensorLine "\$BACKUPNAME_SENSOR_SOILTEMP$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "'\$${prefix}ID_STATE'" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
             local_ch=$((local_ch + 1))
         done
    fi
@@ -255,7 +255,7 @@ printSensors()
         while [ $local_ch -le "$SENSORTYPE_WH35LEAFWETNESS_MAXCH" ]; do
             eval "prefix=SENSOR_LEAFWETNESS${local_ch}_"
             local_n=$(( SENSORTYPE_WH35LEAFWETNESS + local_ch - 1))
-            eval printSensorLine "\$BACKUPNAME_SENSOR_LEAFWETNESS$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "\$${prefix}ID_STATE" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
+            eval printSensorLine "\$BACKUPNAME_SENSOR_LEAFWETNESS$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "'\$${prefix}ID_STATE'" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
             local_ch=$((local_ch + 1))
         done
    fi

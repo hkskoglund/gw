@@ -24,7 +24,7 @@ if [ -z "$LIVEDATAHEADER_INTEMP" ]; then # assume lib not loaded
   . "$GWDIR/lib/livedata-header.sh"
 fi
 
-if [ -z "$CSI" ]; then 
+if [ -z "$CSI" ] && [ -z "$NO_COLOR" ]; then 
 # shellcheck source=../style/ansiesc.sh
     . "$GWDIR/style/ansiesc.sh"
 fi

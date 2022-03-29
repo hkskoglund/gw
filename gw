@@ -1565,7 +1565,6 @@ isValidRange()
 processSensorLongOptRange()
 #$1 opt $2 sensoropt $3 sensortype $4 maxch
 {
-    set -x
     EXITCODE_PROCESS_SENSORLONGOPTRANGE=0
     local_range=${1#--"$2"}
     local_range=${local_range%=*}
@@ -1578,7 +1577,6 @@ processSensorLongOptRange()
     fi
     local_type=$(( $3 - 1 + local_ch)) # map from ch to sensortype
     local_type_max=$(($3 -1 + local_ch_max))
-    set +x
     if isValidRange "$local_ch" "$local_ch_max"; then
         processSensorLongOpt $local_type $local_type_max "$1"
     else
@@ -1601,20 +1599,23 @@ processSensorLongOpt()
     set -- $3
     local_sensorname=${1#--}
 
-    unset local_glob
     case "$1" in
-        *.) local_glob=1
+        *.=*) local_glob=1 ;;
+        *) local_glob=0 ;;
     esac
     
     if getSensorIdCommandForFW "$GW_VERSION_INT" && sendPacket $VALUE_CMD_READ_SENSORID "$GW_HOST"; then
 
+        local_disable_pattern="disable | disbled | disconnect | false | off"
+        local_search_pattern="search | searching | connect | true | on"
+
         case "$2" in
 
-            disable|disbled|disconnect|false|off|n|N|no|NO)  sendSensorId "$local_sensortype" "$local_sensortype_max" $SENSORID_DISABLE "$GW_HOST"
+            disable | disbled | disconnect | false | off)  sendSensorId "$local_sensortype" "$local_sensortype_max" $SENSORID_DISABLE "$GW_HOST"
                                            sendPacket $VALUE_CMD_READ_SENSORID "$GW_HOST" #reparse SENSOR_*
                                     ;;
 
-            search|searching|connect|true|on|y|Y|yes|YES)      sendSensorId "$local_sensortype" "$local_sensortype_max" $SENSORID_SEARCH "$GW_HOST"
+            search | searching | connect | true | on)      sendSensorId "$local_sensortype" "$local_sensortype_max" $SENSORID_SEARCH "$GW_HOST"
                                          sendPacket $VALUE_CMD_READ_SENSORID "$GW_HOST"
                                     ;;
 
@@ -1636,14 +1637,14 @@ processSensorLongOpt()
                                         fi
                                         unset local_writeSensorId
                                   else
-                                        echo >&2 "Error: Invalid sensor id '$2', use disable |false | off | disconnect,  search | true | on | connect, hexid"
+                                        echo >&2 "Error: Invalid sensor id '$2', $local_disable_pattern,  $local_search_pattern, hexid"
                                        EXITCODE_PROCESSSENSORLONGOPT=$ERROR_INVALID_SENSORID_COMMAND
                                   fi
                                   ;;
         esac
     fi
 
-    unset local_sensortype local_sensortype_max local_sensorname
+    unset local_sensortype local_sensortype_max local_sensorname local_glob local_disable_pattern local_search_pattern
 
     return "$EXITCODE_PROCESSSENSORLONGOPT"
 }
