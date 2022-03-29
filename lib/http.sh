@@ -298,36 +298,36 @@ parseEcowittHttpRequest()
             wh65batt)
 
                 getBatteryLowOrNormal "$value"
-                export LIVEDATASENSOR_WH65_BATTERY="$value"
-                export LIVEDATASENSOR_WH65_BATTERY_STATE="$VALUE_BATTERY_STATE"
+                export SENSOR_WH65_BATTERY="$value"
+                export SENSOR_WH65_BATTERY_STATE="$VALUE_BATTERY_STATE"
                 ;;
 
             wh68batt)
                 setHttpBatteryState "$value"
-                export LIVEDATASENSOR_WH68_BATTERY="$value"
-                export LIVEDATASENSOR_WH68_BATTERY_STATE="$VALUE_BATTERY_STATE${value}V"
+                export SENSOR_WH68_BATTERY="$value"
+                export SENSOR_WH68_BATTERY_STATE="$VALUE_BATTERY_STATE${value}V"
                 ;;
 
             wh80batt)
                 setHttpBatteryState "$value"
-                export LIVEDATASENSOR_WH80_BATTERY="$value"
-                export LIVEDATASENSOR_WH80_BATTERY_STATE="$VALUE_BATTERY_STATE${value}V"
+                export SENSOR_WH80_BATTERY="$value"
+                export SENSOR_WH80_BATTERY_STATE="$VALUE_BATTERY_STATE${value}V"
                ;;
 
             batt?)
 
                 channel=${key##batt}
                 getBatteryLowOrNormal "$value"
-                eval "export LIVEDATASENSOR_TEMP${channel}_BATTERY=$value"
-                eval "export LIVEDATASENSOR_TEMP${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
+                eval "export SENSOR_TEMP${channel}_BATTERY=$value"
+                eval "export SENSOR_TEMP${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
                 ;;
 
             pm25batt?)
             
                 channel=${key##pm25batt}
                 getBatteryLevelState "$value"
-                eval "export LIVEDATASENSOR_PM25${channel}_BATTERY=$value"
-                eval "export LIVEDATASENSOR_PM25${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
+                eval "export SENSOR_PM25${channel}_BATTERY=$value"
+                eval "export SENSOR_PM25${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
                 ;;
 
             soilbatt?)
@@ -336,17 +336,17 @@ parseEcowittHttpRequest()
                 getFloatAsIntDecmial "$value"
                 getBatteryVoltageScale10State "$FLOAT_AS_INT"
                 
-                eval "export LIVEDATASENSOR_SOILMOISTURE${channel}_BATTERY_INT=$FLOAT_AS_INT"  
-                eval "export LIVEDATASENSOR_SOILMOISTURE${channel}_BATTERY=$value"
-                eval "export LIVEDATASENSOR_SOILMOISTURE${channel}_BATTERY_STATE=\"$VALUE_BATTERY_STATE\""  
+                eval "export SENSOR_SOILMOISTURE${channel}_BATTERY_INT=$FLOAT_AS_INT"  
+                eval "export SENSOR_SOILMOISTURE${channel}_BATTERY=$value"
+                eval "export SENSOR_SOILMOISTURE${channel}_BATTERY_STATE=\"$VALUE_BATTERY_STATE\""  
                 ;;
 
             leakbatt?)
                 
                 channel=${key##leakbatt}
                 getBatteryLevelState "$value"
-                eval "export LIVEDATASENSOR_LEAK${channel}_BATTERY=$value"
-                eval "export LIVEDATASENSOR_LEAK${channel}_BATTERY_STATE=\"$VALUE_BATTERY_STATE\""
+                eval "export SENSOR_LEAK${channel}_BATTERY=$value"
+                eval "export SENSOR_LEAK${channel}_BATTERY_STATE=\"$VALUE_BATTERY_STATE\""
                 ;;
 
             stationtype)

@@ -73,7 +73,7 @@ printLivedataLineFinal()
 
     # \r\t horizontal/absolute positioning is compatible with unicode in string
     if [ -n "$LIVEVIEW_HIDE_HEADERS" ] && [ "$LIVEVIEW_HIDE_HEADERS" -eq 1 ]; then 
-        header_fmt="%-24s\t" 
+        header_fmt="%-32s\t" 
     else
        header_fmt=" %s\r\t\t\t\t"
     fi
@@ -162,7 +162,7 @@ printLivedata()
          setLivedataValueStyleLtGt "$LIVEDATA_OUTTEMP_INTS10" "$LIVEDATALIMIT_OUTTEMP_LOW" "$LIVEDATALIMIT_OUTTEMP_HIGH" "$STYLE_LIVEDATALIMIT_OUTTEMP" "$STYLE_LIVEDATALIMIT_OUTTEMP_HIGH"
          #WH32 battery and state may be set by injectWH32 testdata or if available
          #shellcheck disable=SC2153
-         printLivedataLine "$LIVEDATAHEADER_OUTTEMP" "$LIVEDATA_OUTTEMP" "%6.1f" "$LIVEDATAUNIT_TEMP" "%s" 'out' '' "$LIVEDATASENSOR_OUTTEMP_BATTERY"  "$LIVEDATASENSOR_OUTTEMP_BATTERY_STATE" "" "$LIVEDATASENSOR_OUTTEMP_SIGNAL" "$LIVEDATASENSOR_OUTTEMP_SIGNAL_STATE"
+         printLivedataLine "$LIVEDATAHEADER_OUTTEMP" "$LIVEDATA_OUTTEMP" "%6.1f" "$LIVEDATAUNIT_TEMP" "%s" 'out' '' "$SENSOR_OUTTEMP_BATTERY"  "$SENSOR_OUTTEMP_BATTERY_STATE" "" "$SENSOR_OUTTEMP_SIGNAL" "$SENSOR_OUTTEMP_SIGNAL_STATE"
      fi
  
      if [ -n "$LIVEDATA_WINDCHILL" ]; then
@@ -181,11 +181,11 @@ printLivedata()
         while [ "$n" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
         #shellcheck disable=SC2153
         {
-            #eval echo !!!!!!!!!!!!!!!!! \"\$LIVEDATASENSOR_TEMP${n}_SIGNAL_STATE\" n=$n
+            #eval echo !!!!!!!!!!!!!!!!! \"\$SENSOR_TEMP${n}_SIGNAL_STATE\" n=$n
             #set -x
             eval " if [ -n ''"\$LIVEDATA_TEMP$n" ]; then
-                       # setSGIBatteryLowNormal "\$LIVEDATASENSOR_TEMP${n}_BATTERY"
-                        printLivedataLine \"\$LIVEDATAHEADER_TEMP$n\" \"\$LIVEDATA_TEMP$n\" '%6.1f'  \"\$LIVEDATAUNIT_TEMP\" '%2s' 'temp$n' '' \"\$LIVEDATASENSOR_TEMP${n}_BATTERY\" \"\$LIVEDATASENSOR_TEMP${n}_BATTERY_STATE\" '' \"\$LIVEDATASENSOR_TEMP${n}_SIGNAL\" \"\$LIVEDATASENSOR_TEMP${n}_SIGNAL_STATE\"
+                       # setSGIBatteryLowNormal "\$SENSOR_TEMP${n}_BATTERY"
+                        printLivedataLine \"\$LIVEDATAHEADER_TEMP$n\" \"\$LIVEDATA_TEMP$n\" '%6.1f'  \"\$LIVEDATAUNIT_TEMP\" '%2s' 'temp$n' '' \"\$SENSOR_TEMP${n}_BATTERY\" \"\$SENSOR_TEMP${n}_BATTERY_STATE\" '' \"\$SENSOR_TEMP${n}_SIGNAL\" \"\$SENSOR_TEMP${n}_SIGNAL_STATE\"
                    fi "
             #set +x
         }
@@ -353,7 +353,7 @@ printLivedata()
         [ -n "$LIVEDATA_RAINDAY" ]      && printLivedataRainLine "$LIVEDATA_RAINDAY_INTS10"   "$LIVEDATALIMIT_RAINDAY"   "$LIVEDATAHEADER_RAINDAY"   "$LIVEDATA_RAINDAY"  "$LIVEDATAUNIT_RAIN" 'rday' "" "$STYLE_LIVEDATALIMIT_RAINDAY"
         [ -n "$LIVEDATA_RAINEVENT" ]    && printLivedataRainLine "$LIVEDATA_RAINEVENT_INTS10" "$LIVEDATALIMIT_RAINEVENT" "$LIVEDATAHEADER_RAINEVENT" "$LIVEDATA_RAINEVENT" "$LIVEDATAUNIT_RAIN" 'revent' "" "$STYLE_LIVEDATALIMIT_RAINEVENT"
 
-        [ -n "$LIVEDATA_RAINWEEK" ]     && printLivedataLine "$LIVEDATAHEADER_RAINWEEK" "$LIVEDATA_RAINWEEK"    "$VALUE_RAIN_FMT" "$LIVEDATAUNIT_RAIN" "%3s" 'rweek' ''  "$LIVEDATASENSOR_RAINFALL_BATTERY" "$LIVEDATASENSOR_RAINFALL_BATTERY_STATE" "" "$LIVEDATASENSOR_RAINFALL_SIGNAL" "$LIVEDATASENSOR_RAINFALL_SIGNAL_STATE"
+        [ -n "$LIVEDATA_RAINWEEK" ]     && printLivedataLine "$LIVEDATAHEADER_RAINWEEK" "$LIVEDATA_RAINWEEK"    "$VALUE_RAIN_FMT" "$LIVEDATAUNIT_RAIN" "%3s" 'rweek' ''  "$SENSOR_RAINFALL_BATTERY" "$SENSOR_RAINFALL_BATTERY_STATE" "" "$SENSOR_RAINFALL_SIGNAL" "$SENSOR_RAINFALL_SIGNAL_STATE"
         [ -n "$LIVEDATA_RAINMONTH" ]    && printLivedataLine "$LIVEDATAHEADER_RAINMONTH" "$LIVEDATA_RAINMONTH"  "$VALUE_RAIN_FMT" "$LIVEDATAUNIT_RAIN" "%3s" 'rmonth' "$VALUE_RAIN_FMT"
         [ -n "$LIVEDATA_RAINYEAR" ]     && printLivedataLine "$LIVEDATAHEADER_RAINYEAR" "$LIVEDATA_RAINYEAR"    "$VALUE_RAIN_FMT" "$LIVEDATAUNIT_RAIN" "%3s" 'ryear'
         [ -n "$LIVEDATA_RAINTOTAL" ]    && printLivedataLine "$LIVEDATAHEADER_RAINTOTAL" "$LIVEDATA_RAINTOTAL"  "$VALUE_RAIN_FMT" "$LIVEDATAUNIT_RAIN" "%3s" 'rtotal' "$VALUE_RAIN_FMT"
@@ -364,7 +364,7 @@ printLivedata()
         n=1
         while [ "$n" -le "$SENSORTYPE_WH51SOILMOISTURE_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_SOILMOISTURE$n" ]; then
-                    printLivedataLine  \"\$LIVEDATAHEADER_SOILMOISTURE$n\" \"\$LIVEDATA_SOILMOISTURE$n\" \"%6u\" \"%\" \"%4s\" \"sm$n\" \"%3u\" \"\$LIVEDATASENSOR_SOILMOISTURE${n}_BATTERY\" \"\$LIVEDATASENSOR_SOILMOISTURE${n}_BATTERY_STATE\" '' \"\$LIVEDATASENSOR_SOILMOISTURE${n}_SIGNAL\" \"\$LIVEDATASENSOR_SOILMOISTURE${n}_SIGNAL_STATE\"
+                    printLivedataLine  \"\$LIVEDATAHEADER_SOILMOISTURE$n\" \"\$LIVEDATA_SOILMOISTURE$n\" \"%6u\" \"%\" \"%4s\" \"sm$n\" \"%3u\" \"\$SENSOR_SOILMOISTURE${n}_BATTERY\" \"\$SENSOR_SOILMOISTURE${n}_BATTERY_STATE\" '' \"\$SENSOR_SOILMOISTURE${n}_SIGNAL\" \"\$SENSOR_SOILMOISTURE${n}_SIGNAL_STATE\"
                   fi "
             n=$((n + 1))
         done
@@ -376,7 +376,7 @@ printLivedata()
         n=1
         while [ "$n" -le "$SENSORTYPE_WH34SOILTEMP_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_SOILTEMP$n" ]; then
-                    printLivedataLine \"\$LIVEDATAHEADER_SOILTEMP$n\" \"\$LIVEDATA_SOILTEMP$n\" \"%6.1f\" \"$LIVEDATAUNIT_TEMP\" \"%2s\" \"st$n\" '' \"\$LIVEDATASENSOR_SOILTEMP${n}_BATTERY\" \"\$LIVEDATASENSOR_SOILTEMP${n}_BATTERY_STATE\" '' \"\$LIVEDATASENSOR_SOILTEMP${n}_SIGNAL\" \"\$LIVEDATASENSOR_SOILTEMP${n}_SIGNAL_STATE\"
+                    printLivedataLine \"\$LIVEDATAHEADER_SOILTEMP$n\" \"\$LIVEDATA_SOILTEMP$n\" \"%6.1f\" \"$LIVEDATAUNIT_TEMP\" \"%2s\" \"st$n\" '' \"\$SENSOR_SOILTEMP${n}_BATTERY\" \"\$SENSOR_SOILTEMP${n}_BATTERY_STATE\" '' \"\$SENSOR_SOILTEMP${n}_SIGNAL\" \"\$SENSOR_SOILTEMP${n}_SIGNAL_STATE\"
                   fi"
             n=$((n + 1))
         done
@@ -404,7 +404,7 @@ printLivedata()
             VALUE_LEAK=$LIVEDATAHEADER_LEAK_NO
             eval "if [ -n ''"\$LIVEDATA_LEAK$n" ]; then
                         [ \"\$LIVEDATA_LEAK$n\" -ne 0 ] && STYLE_LIVE_VALUE=\"$STYLE_LEAK\" && VALUE_LEAK=$LIVEDATAHEADER_LEAK_YES
-                        printLivedataLine \"\$LIVEDATAHEADER_LEAK$n \$LV_DELIMITER \$VALUE_LEAK\" \"\$LIVEDATA_LEAK$n\" \"%6u\" \"\" \"%4s\" \"leak$n\" '' \"\$LIVEDATASENSOR_LEAK${n}_BATTERY\" \"\$LIVEDATASENSOR_LEAK${n}_BATTERY_STATE\" '' \"\$LIVEDATASENSOR_LEAK${n}_SIGNAL\" \"\$LIVEDATASENSOR_LEAK${n}_SIGNAL_STATE\"
+                        printLivedataLine \"\$LIVEDATAHEADER_LEAK$n \$LV_DELIMITER \$VALUE_LEAK\" \"\$LIVEDATA_LEAK$n\" \"%6u\" \"\" \"%4s\" \"leak$n\" '' \"\$SENSOR_LEAK${n}_BATTERY\" \"\$SENSOR_LEAK${n}_BATTERY_STATE\" '' \"\$SENSOR_LEAK${n}_SIGNAL\" \"\$SENSOR_LEAK${n}_SIGNAL_STATE\"
                 fi"
             n=$((n + 1))
         done
@@ -417,7 +417,7 @@ printLivedata()
         while [ "$n" -le "$SENSORTYPE_WH43PM25_MAXCH" ]; do
             #shellcheck disable=SC2153
             eval "if [ -n ''"\$LIVEDATA_PM25$n" ]; then
-                            #setSGIBatteryLowNormal \"\$LIVEDATASENSOR_PM25${n}_BATTERY\"
+                            #setSGIBatteryLowNormal \"\$SENSOR_PM25${n}_BATTERY\"
                             if [ -z \"\$LIVEVIEW_HIDE_PM25AQI\" ]; then
                                 setAQI \"\$LIVEDATA_PM25${n}_INTS10\"
                                 if type setStyleAQI >/dev/null; then
@@ -429,7 +429,7 @@ printLivedata()
                             fi
                             export LIVEDATA_PM25${n}_AQI=\"\$VALUE_PM25_AQI\"
                             padSpaceRight \"\$VALUE_PM25_AQI\" 13
-                            printLivedataLine \"\$LIVEDATAHEADER_PM25$n \$LV_DELIMITER \$VALUE_PADSPACERIGHT\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$LIVEDATAUNIT_PM25\" \"%6s\" \"pm25$n\" '' \"\$LIVEDATASENSOR_PM25${n}_BATTERY\" \"\$LIVEDATASENSOR_PM25${n}_BATTERY_STATE\" '' \"\$LIVEDATASENSOR_PM25${n}_SIGNAL\" \"\$LIVEDATASENSOR_PM25${n}_SIGNAL_STATE\"
+                            printLivedataLine \"\$LIVEDATAHEADER_PM25$n \$LV_DELIMITER \$VALUE_PADSPACERIGHT\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$LIVEDATAUNIT_PM25\" \"%6s\" \"pm25$n\" '' \"\$SENSOR_PM25${n}_BATTERY\" \"\$SENSOR_PM25${n}_BATTERY_STATE\" '' \"\$SENSOR_PM25${n}_SIGNAL\" \"\$SENSOR_PM25${n}_SIGNAL_STATE\"
                  fi"
             n=$((n + 1))
         done
@@ -486,7 +486,7 @@ printLivedata()
 
         if [ -n "$LIVEDATA_LIGHTNING_DISTANCE" ]; then
             printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_LIGHTNING"
-            printLivedataLine "$LIVEDATAHEADER_LIGHTNING_DISTANCE" "$LIVEDATA_LIGHTNING_DISTANCE"    "%6u" "km" "%5s" 'ldist' '' "$LIVEDATASENSOR_LIGHTNING_BATTERY" "$LIVEDATASENSOR_LIGHTNING_BATTERY_STATE" '' "$LIVEDATASENSOR_LIGHTNING_SIGNAL" "$LIVEDATASENSOR_LIGHTNING_SIGNAL_STATE" 
+            printLivedataLine "$LIVEDATAHEADER_LIGHTNING_DISTANCE" "$LIVEDATA_LIGHTNING_DISTANCE"    "%6u" "km" "%5s" 'ldist' '' "$SENSOR_LIGHTNING_BATTERY" "$SENSOR_LIGHTNING_BATTERY_STATE" '' "$SENSOR_LIGHTNING_SIGNAL" "$SENSOR_LIGHTNING_SIGNAL_STATE" 
         fi
         [ -n "$LIVEDATA_LIGHTNING_TIME" ]       && printLivedataLine "$LIVEDATAHEADER_LIGHTNING_TIME_UTC" "$LIVEDATA_LIGHTNING_TIME_UTC"    "%19s" "" "%5s" "lightningutc" 
         [ -n "$LIVEDATA_LIGHTNING_POWER" ]      && printLivedataLine "$LIVEDATAHEADER_LIGHTNING_POWER" "$LIVEDATA_LIGHTNING_POWER"          "%6u" "" "%5s" 'lpower' "%6u"
@@ -498,7 +498,7 @@ printLivedata()
         n=1
         while [ "$n" -le "$SENSORTYPE_WH35LEAFWETNESS_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_LEAFWETNESS$n" ]; then
-                    printLivedataLine \"\$LIVEDATAHEADER_LEAFWETNESS$n\" \"\$LIVEDATA_LEAFWETNESS$n\" \"%6u\" \"%\" \"%4s\"  \"leaf$n\" '' \"\$LIVEDATASENSOR_LEAFWETNESS${n}_BATTERY\" \"\$LIVEDATASENSOR_LEAFWETNESS${n}_BATTERY_STATE\" '' \"\$LIVEDATASENSOR_LEAFWETNESS${n}_SIGNAL\" \"\$LIVEDATASENSOR_LEAFWETNESS${n}_SIGNAL_STATE\"
+                    printLivedataLine \"\$LIVEDATAHEADER_LEAFWETNESS$n\" \"\$LIVEDATA_LEAFWETNESS$n\" \"%6u\" \"%\" \"%4s\"  \"leaf$n\" '' \"\$SENSOR_LEAFWETNESS${n}_BATTERY\" \"\$SENSOR_LEAFWETNESS${n}_BATTERY_STATE\" '' \"\$SENSOR_LEAFWETNESS${n}_SIGNAL\" \"\$SENSOR_LEAFWETNESS${n}_SIGNAL_STATE\"
             fi"
             n=$((n + 1))
         done
@@ -508,11 +508,11 @@ printLivedata()
 
     if [ -z "$HIDE_BATTERY_LIVEDATA" ]; then
       :
-       # printLivedataBatteryLowNormal "$LIVEDATASENSOR_WH65_BATTERY" "$LIVEDATASENSOR_WH65_BATTERY_STATE" "LIVEDATAHEADER_WH65_BATTERY" 'bwh65'
-       # printLivedataBatteryVoltage   "$LIVEDATASENSOR_WH68_BATTERY" "$LIVEDATASENSOR_WH68_BATTERY_STATE" "LIVEDATAHEADER_WH68_BATTERY" 'bwh68'
-       # printLivedataBatteryVoltage   "$LIVEDATASENSOR_WH80_BATTERY" "$LIVEDATASENSOR_WH80_BATTERY_STATE" "LIVEDATAHEADER_WH68_BATTERY"  'bwh80'
-       # printLivedataBatteryLowNormal "$LIVEDATASENSOR_OUTTEMP_BATTERY" "$LIVEDATASENSOR_WH32TEMP_BATTERY_STATE" "LIVEDATAHEADER_OUTTEMP_BATTERY" 'btout' 
-       # printLivedataBatteryLowNormal "$LIVEDATASENSOR_RAINFALL_BATTERY" "$LIVEDATA_RAINFALL_BATTERY_STATE" "LIVEDATAHEADER_RAINFALL_BATTERY" 'brain'
+       # printLivedataBatteryLowNormal "$SENSOR_WH65_BATTERY" "$SENSOR_WH65_BATTERY_STATE" "LIVEDATAHEADER_WH65_BATTERY" 'bwh65'
+       # printLivedataBatteryVoltage   "$SENSOR_WH68_BATTERY" "$SENSOR_WH68_BATTERY_STATE" "LIVEDATAHEADER_WH68_BATTERY" 'bwh68'
+       # printLivedataBatteryVoltage   "$SENSOR_WH80_BATTERY" "$SENSOR_WH80_BATTERY_STATE" "LIVEDATAHEADER_WH68_BATTERY"  'bwh80'
+       # printLivedataBatteryLowNormal "$SENSOR_OUTTEMP_BATTERY" "$SENSOR_WH32TEMP_BATTERY_STATE" "LIVEDATAHEADER_OUTTEMP_BATTERY" 'btout' 
+       # printLivedataBatteryLowNormal "$SENSOR_RAINFALL_BATTERY" "$LIVEDATA_RAINFALL_BATTERY_STATE" "LIVEDATAHEADER_RAINFALL_BATTERY" 'brain'
         #printLivedataBatteryLowNormal "$LIVEDATA_LIGHTNING_BATTERY" "$LIVEDATA_LIGHTNING_BATTERY_STATE" "LIVEDATAHEADER_LIGHTNING_BATTERY" 'bwh57'
      
     fi
