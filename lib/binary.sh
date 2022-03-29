@@ -156,9 +156,9 @@ parseCustomized() {
 
     export GW_WS_CUSTOMIZED_ENABLED="$VALUE_UINT8"
     if [ "$GW_WS_CUSTOMIZED_ENABLED" -eq 1 ]; then
-        export GW_WS_CUSTOMIZED_ENABLED_STATE="on"
+        export GW_WS_CUSTOMIZED_ENABLED_STATE="true"
     elif [ "$GW_WS_CUSTOMIZED_ENABLED" -eq 0 ]; then
-        export GW_WS_CUSTOMIZED_ENABLED_STATE="off"
+        export GW_WS_CUSTOMIZED_ENABLED_STATE="false"
     fi
 
 }

@@ -1336,8 +1336,8 @@ isValidEnabled()
 {
     unset VALUE_SERVER_ENABLED
     case "$1" in
-        true|1) VALUE_SERVER_ENABLED=1 ;;
-        false|0) VALUE_SERVER_ENABLED=0 ;;
+        true|1|on) VALUE_SERVER_ENABLED=1 ;;
+        false|0|off) VALUE_SERVER_ENABLED=0 ;;
         *) echo >&2 "Error: enabled '$1' invalid, use true | 1, false | 0"
             return $ERROR_INVALID_VALUE
             ;;

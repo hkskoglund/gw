@@ -182,6 +182,7 @@ printSensorLine()
 
 printSensors()
 # print parsed sensors in SENSOR_*
+# test in terminal: watch -n 1 './gw -g 192.168.3.16 --sensor'
 {
     resetAppendBuffer
     

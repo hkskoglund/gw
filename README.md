@@ -73,59 +73,59 @@ System sensors searching         <span style="color:green">29</span>
 System sensors disabled          <span style="color: red">11</span>
 </pre>
 
-## Viewing current sensor configuration
+## Monitoring current sensor configuration
 
-<code>./gw -g 192.168.3.16 -c sensor</code>
+<code>watch ./gw -g 192.168.3.16 --sensor</code>
 <pre>
-Sensor        ID   B S Type Name              State             Battery Signal
-───────────────────────────────────────────────────────────────────────────────
-     0        f1   0 4 WH65 Weather Station   connected         🔋      📶 100%
-     1  ffffffff 255 0 WH68 Weather Station   <span style="color: green">searching</span>
-     2  ffffffff 255 0 WH80 Weather Station   <span style="color: green">searching</span>
-     3  ffffffff  31 0 WH40 Rainfall          <span style="color: green">searching</span>
-     5  ffffffff   0 0 WH32 Temperature out    <span style="color: green">searching</span>
-     6        ba   0 4 WH31 Temperature1      connected         🔋      📶 100%
-     7        db   0 4 WH31 Temperature2      connected         🔋      📶 100%
-     8        6e   0 4 WH31 Temperature3      connected         🔋      📶 100%
-     9  ffffffff   0 0 WH31 Temperature4      <span style="color: green">searching</span>
-    10  ffffffff   0 0 WH31 Temperature5      <span style="color: green">searching</span>
-    11  ffffffff   0 0 WH31 Temperature6      <span style="color: green">searching</span>
-    12  ffffffff   0 0 WH31 Temperature7      <span style="color: green">searching</span>
-    13  ffffffff   0 0 WH31 Temperature8      <span style="color: green">searching</span>
-    14    40c6e3  13 4 WH51 Soilmoisture1     connected         🔋 1.3V 📶 100%
-    15  ffffffff  31 0 WH51 Soilmoisture2     <span style="color: green">searching</span>
-    16  ffffffff  31 0 WH51 Soilmoisture3     <span style="color: green">searching</span>
-    17  ffffffff  31 0 WH51 Soilmoisture4     <span style="color: green">searching</span>
-    18  ffffffff  31 0 WH51 Soilmoisture5     <span style="color: green">searching</span>
-    19  ffffffff  31 0 WH51 Soilmoisture6     <span style="color: green">searching</span>
-    20  ffffffff  31 0 WH51 Soilmoisture7     <span style="color: green">searching</span>
-    21  ffffffff  31 0 WH51 Soilmoisture8     <span style="color: green">searching</span>
-    22      c51f   6 4 WH43 PM2.5 AQ 1        connected         🔌      📶 100%
-    23  fffffffe  15 0 WH43 PM2.5 AQ 2        disabled
-    24  fffffffe  15 0 WH43 PM2.5 AQ 3        disabled
-    25  fffffffe  15 0 WH43 PM2.5 AQ 4        disabled
-    26  ffffffff  15 0 WH57 Lightning         <span style="color: green">searching</span>
-    27      e41a   4 4 WH55 Leak1             connected         🔋 4    📶 100%
-    28  ffffffff  15 0 WH55 Leak2             <span style="color: green">searching</span>
-    29  ffffffff  15 0 WH55 Leak3             <span style="color: green">searching</span>
-    30  ffffffff  15 0 WH55 Leak4             <span style="color: green">searching</span>
-    31  ffffffff 255 0 WH34 Soiltemperature1  <span style="color: green">searching</span>
-    32  ffffffff 255 0 WH34 Soiltemperature2  <span style="color: green">searching</span>
-    33  ffffffff 255 0 WH34 Soiltemperature3  <span style="color: green">searching</span>
-    34  ffffffff 255 0 WH34 Soiltemperature4  <span style="color: green">searching</span>
-    35  ffffffff 255 0 WH34 Soiltemperature5  <span style="color: green">searching</span>
-    36  ffffffff 255 0 WH34 Soiltemperature6  <span style="color: green">searching</span>
-    37  ffffffff 255 0 WH34 Soiltemperature7  <span style="color: green">searching</span>
-    38  ffffffff 255 0 WH34 Soiltemperature8  <span style="color: green">searching</span>
-    39  ffffffff  15 0 WH45 CO2 PM2.5 PM10 AQ <span style="color: green">searching</span>
-    40  ffffffff 255 0 WH35 Leafwetness1      <span style="color: green">searching</span>
-    41  ffffffff 255 0 WH35 Leafwetness2      <span style="color: green">searching</span>
-    42  ffffffff 255 0 WH35 Leafwetness3      <span style="color: green">searching</span>
-    43  ffffffff 255 0 WH35 Leafwetness4      <span style="color: green">searching</span>
-    44  ffffffff 255 0 WH35 Leafwetness5      <span style="color: green">searching</span>
-    45  ffffffff 255 0 WH35 Leafwetness6      <span style="color: green">searching</span>
-    46  ffffffff 255 0 WH35 Leafwetness7      <span style="color: green">searching</span>
-    47  ffffffff 255 0 WH35 Leafwetness8      <span style="color: green">searching</span>
+Every 2.0s: ./gw -g 192.168.3.16 --sensor           ideapadpro: Tue Mar 29 11:30:52 2022
+
+sensor_wh65           0       f1   0 4 ✅ connected     🔋      📶 4/4
+sensor_wh68           1 fffffffe 255 0 ⛔ disabled
+sensor_wh80           2 fffffffe 255 0 ⛔ disabled
+sensor_rainfall       3 fffffffe  31 0 ⛔ disabled
+sensor_outtemp        5 fffffffe   0 0 ⛔ disabled
+sensor_temp1          6       ba   0 4 ✅ connected     🔋      📶 4/4
+sensor_temp2          7       db   0 4 ✅ connected     🔋      📶 4/4
+sensor_temp3          8       6e   0 4 ✅ connected     🔋      📶 4/4
+sensor_temp4          9 fffffffe   0 0 ⛔ disabled
+sensor_temp5         10 fffffffe   0 0 ⛔ disabled
+sensor_temp6         11 fffffffe   0 0 ⛔ disabled
+sensor_temp7         12 fffffffe   0 0 ⛔ disabled
+sensor_temp8         13 fffffffe   0 0 ⛔ disabled
+sensor_soilmoisture1 14   40c6e3  13 4 ✅ connected     🔋 1.3V 📶 4/4
+sensor_soilmoisture2 15 fffffffe  31 0 ⛔ disabled
+sensor_soilmoisture3 16 fffffffe  31 0 ⛔ disabled
+sensor_soilmoisture4 17 fffffffe  31 0 ⛔ disabled
+sensor_soilmoisture5 18 fffffffe  31 0 ⛔ disabled
+sensor_soilmoisture6 19 fffffffe  31 0 ⛔ disabled
+sensor_soilmoisture7 20 fffffffe  31 0 ⛔ disabled
+sensor_soilmoisture8 21 fffffffe  31 0 ⛔ disabled
+sensor_pm251         22     c50e   6 4 ✅ connected     🔌      📶 4/4
+sensor_pm252         23 fffffffe  15 0 ⛔ disabled
+sensor_pm253         24 fffffffe  15 0 ⛔ disabled
+sensor_pm254         25 fffffffe  15 0 ⛔ disabled
+sensor_lightning     26 fffffffe   0 0 ⛔ disabled
+sensor_leak1         27 fffffffe  15 0 ⛔ disabled
+sensor_leak2         28 fffffffe  15 0 ⛔ disabled
+sensor_leak3         29 fffffffe  15 0 ⛔ disabled
+sensor_leak4         30 fffffffe  15 0 ⛔ disabled
+sensor_soiltemp1     31 fffffffe 255 0 ⛔ disabled
+sensor_soiltemp2     32 fffffffe 255 0 ⛔ disabled
+sensor_soiltemp3     33 fffffffe 255 0 ⛔ disabled
+sensor_soiltemp4     34 fffffffe 255 0 ⛔ disabled
+sensor_soiltemp5     35 fffffffe 255 0 ⛔ disabled
+sensor_soiltemp6     36 fffffffe 255 0 ⛔ disabled
+sensor_soiltemp7     37 fffffffe 255 0 ⛔ disabled
+sensor_soiltemp8     38 fffffffe 255 0 ⛔ disabled
+sensor_co2           39 fffffffe   0 0 ⛔ disabled
+sensor_leafwetness1  40 fffffffe 255 0 ⛔ disabled
+sensor_leafwetness2  41 fffffffe 255 0 ⛔ disabled
+sensor_leafwetness3  42 fffffffe 255 0 ⛔ disabled
+sensor_leafwetness4  43 fffffffe 255 0 ⛔ disabled
+sensor_leafwetness5  44 fffffffe 255 0 ⛔ disabled
+sensor_leafwetness6  45 fffffffe 255 0 ⛔ disabled
+sensor_leafwetness7  46 fffffffe 255 0 ⛔ disabled
+sensor_leafwetness8  47 fffffffe 255 0 ⛔ disabled
 </pre>
 
 ## Weather service configuration
@@ -137,16 +137,16 @@ Sensor        ID   B S Type Name              State             Battery Signal
 <code>./gw -g 192.168.3.16 --wow_id=wowid --wow_password=wowpw</code>
 ### Wundergrodund (https://www.wunderground.com/)
 <code>./gw -g 192.168.3.16 --wunderground_id=wuid --wunderground_password=wupw</code>
-### Customized ecowitt (http://192.168.3.4:8082/)
-<code>./gw -g 192.168.3.16 /gw -g 192.168.3.16 --customized_id=id --customized_password=pw --customized_server=192.168.3.4 --customized_port=8082 -c customized</code>
+### Customized server  (http://192.168.3.4:8082/)
+<code>./gw -g 192.168.3.16 --server="ecowitt://192.168.3.3:8080/path/ecowitt?interval=16&enabled=true&id=id&password=pw"  --server</code>
 <pre>
 customized wunderground id              id
 customized wunderground password        pw
-customized server                       192.168.3.4
+customized server                       192.168.3.3
 customized port                         8082
 customized interval                     16 seconds
 customized http protocol                0 ecowitt
-customized enabled                      1 on
+customized enabled                      1 true
 customized path ecowitt                 /path/ecowitt
 customized path wunderground            /path/wu
 </pre>
