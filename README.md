@@ -128,21 +128,21 @@ sensor_leafwetness7  46 fffffffe 255 0 ⛔ disabled
 sensor_leafwetness8  47 fffffffe 255 0 ⛔ disabled
 </pre>
 
-## Setting all leafwetness sensors to disabled and disable temperature sensor 1, next reset temp sensor 1 to id 'ba'.
+## Setting all leafwetness sensors to searching and disable temperature sensor 1, reset temp sensor 1 to id 'ba'.
 
 . is glob pattern matching all channels.
 
-<code>./gw  -g 192.168.3.16 --sensor_leafwetness.=off --sensor_temp1=off --sensor_temp1=ba --sensor | grep -E "_temp1|_leafwetness"</code>
+<code>./gw  -g 192.168.3.16 --sensor_leafwetness.=on --sensor_temp1=off --sensor_temp1=ba --sensor | grep -E "_temp1|_leafwetness"</code>
 <pre>
 sensor_temp1          6       ba   0 0 🚫 disconnected
-sensor_leafwetness1  40 fffffffe 255 0 ⛔ disabled
-sensor_leafwetness2  41 fffffffe 255 0 ⛔ disabled
-sensor_leafwetness3  42 fffffffe 255 0 ⛔ disabled
-sensor_leafwetness4  43 fffffffe 255 0 ⛔ disabled
-sensor_leafwetness5  44 fffffffe 255 0 ⛔ disabled
-sensor_leafwetness6  45 fffffffe 255 0 ⛔ disabled
-sensor_leafwetness7  46 fffffffe 255 0 ⛔ disabled
-sensor_leafwetness8  47 fffffffe 255 0 ⛔ disabled
+sensor_leafwetness1  40 ffffffff 255 0 🔎 searching
+sensor_leafwetness2  41 ffffffff 255 0 🔎 searching
+sensor_leafwetness3  42 ffffffff 255 0 🔎 searching
+sensor_leafwetness4  43 ffffffff 255 0 🔎 searching
+sensor_leafwetness5  44 ffffffff 255 0 🔎 searching
+sensor_leafwetness6  45 ffffffff 255 0 🔎 searching
+sensor_leafwetness7  46 ffffffff 255 0 🔎 searching
+sensor_leafwetness8  47 ffffffff 255 0 🔎 searching
 </pre>
 
 ## Weather service configuration
