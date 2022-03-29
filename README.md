@@ -128,6 +128,23 @@ sensor_leafwetness7  46 fffffffe 255 0 ⛔ disabled
 sensor_leafwetness8  47 fffffffe 255 0 ⛔ disabled
 </pre>
 
+## Setting all leafwetness sensors to disabled and disable temperature sensor 1, next reset temp sensor 1 to id 'ba'.
+
+. is glob pattern matching all channels.
+
+<code>./gw  -g 192.168.3.16 --sensor_leafwetness.=off --sensor_temp1=off --sensor_temp1=ba --sensor | grep -E "_temp1|_leafwetness"</code>
+<pre>
+sensor_temp1          6       ba   0 0 🚫 disconnected
+sensor_leafwetness1  40 fffffffe 255 0 ⛔ disabled
+sensor_leafwetness2  41 fffffffe 255 0 ⛔ disabled
+sensor_leafwetness3  42 fffffffe 255 0 ⛔ disabled
+sensor_leafwetness4  43 fffffffe 255 0 ⛔ disabled
+sensor_leafwetness5  44 fffffffe 255 0 ⛔ disabled
+sensor_leafwetness6  45 fffffffe 255 0 ⛔ disabled
+sensor_leafwetness7  46 fffffffe 255 0 ⛔ disabled
+sensor_leafwetness8  47 fffffffe 255 0 ⛔ disabled
+</pre>
+
 ## Weather service configuration
 ### Ecowitt interval 1 minute (https://www.ecowitt.net/)
 <code>./gw -g 192.168.3.16 --ecowitt_interval=1</code>
@@ -163,25 +180,6 @@ customized path wunderground            /path/wu
 
 <code>./gw -l 8080</code>
 
-## Setting all leafwetness sensors to disabled and disable temperature sensor 6, next reset temp sensor 6 to id 'ba'.
-
-The signal will increase to 100% if 4 packets are received during 4 consequtive periods.
-
-<code>./gw -g 192.168.3.16 -c s 40-47=d,40-47,6=d,6=ba,6</code>
-
-<pre>    
-Sensor        ID   B S Type Name              State             Battery Signal
-───────────────────────────────────────────────────────────────────────────────
-    40  fffffffe 255 0 WH35 Leafwetness1      <span style="color:red">disabled</span>
-    41  fffffffe 255 0 WH35 Leafwetness2      <span style="color:red">disabled</span>
-    42  fffffffe 255 0 WH35 Leafwetness3      <span style="color:red">disabled</span>
-    43  fffffffe 255 0 WH35 Leafwetness4      <span style="color:red">disabled</span>
-    44  fffffffe 255 0 WH35 Leafwetness5      <span style="color:red">disabled</span>
-    45  fffffffe 255 0 WH35 Leafwetness6      <span style="color:red">disabled</span>
-    46  fffffffe 255 0 WH35 Leafwetness7      <span style="color:red">disabled</span>
-    47  fffffffe 255 0 WH35 Leafwetness8      <span style="color:red">disabled</span>
-     6        ba   0 0 WH31 Temperature1      <span style="color:magenta">disconnected</span>      🔋      🛑
-</pre>
 
 ## Subnet scanning for devices on LAN
 
@@ -211,8 +209,6 @@ enabled            1 on
 path ecowitt       /weatherstation/updateweatherstation.php?
 path wunderground  /data/report/
 </pre>
-
-
 
 ## Setting manual timezone
 <code>./gw -g 192.168.3.16  -c system auto=off,tz=43,dst=1 -c system</code>
