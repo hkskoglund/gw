@@ -39,6 +39,18 @@ if [ -z "$WIND_DIRECTION_N" ]; then
     . "$GWDIR/lib/wind.sh"
 fi
 
+#shellcheck source=../lib/beufort.sh
+. "$GWDIR/lib/beufort.sh"
+
+#shellcheck source=../lib/uvi.sh
+. "$GWDIR/lib/uvi.sh"
+
+#shellcheck source=../lib/pm25.sh
+. "$GWDIR/lib/pm25.sh"
+
+#shellcheck source=../lib/rainintensity.sh
+. "$GWDIR/lib/rainintensity.sh"
+
 printLivedataLine()
 #allows to intercept/disable printing during debugging
 {
@@ -61,7 +73,7 @@ printLivedataLineFinal()
 
     # \r\t horizontal/absolute positioning is compatible with unicode in string
     if [ -n "$LIVEVIEW_HIDE_HEADERS" ] && [ "$LIVEVIEW_HIDE_HEADERS" -eq 1 ]; then 
-        header_fmt="%s\r\t\t\t\t" 
+        header_fmt="%-24s\t" 
     else
        header_fmt=" %s\r\t\t\t\t"
     fi
@@ -215,9 +227,11 @@ printLivedata()
          
         if [ -n "$LIVEDATA_WINDSPEED" ]; then
             if [ -z "$LIVEVIEW_HIDE_BEUFORT" ]; then
-                setStyleBeufort "$LIVEDATA_WINDSPEED_INTS10"
-                STYLE_LIVE_VALUE=$STYLE_BEUFORT
-                export LIVEDATASTYLE_WINDSPEED="$STYLE_BEUFORT"
+               if type setStyleBeufort >/dev/null; then
+                    setStyleBeufort "$LIVEDATA_WINDSPEED_INTS10"
+                    STYLE_LIVE_VALUE=$STYLE_BEUFORT
+                    export LIVEDATASTYLE_WINDSPEED="$STYLE_BEUFORT"
+                fi
             fi
             printLivedataLine "$LIVEDATAHEADER_WINDSPEED" "$LIVEDATA_WINDSPEED" "%6.1f" "$LIVEDATAUNIT_WIND"  "%4s" 'wspd' "%6.1f" '' '' "\t%s$LIVEDATA_WINDDIRECTION_COMPASS_N_FMT" 
            
@@ -225,10 +239,12 @@ printLivedata()
 
         if [ -n "$LIVEDATA_WINDGUSTSPEED" ]; then
            if [ -z "$LIVEVIEW_HIDE_BEUFORT" ]; then
-                setBeufort "$LIVEDATA_WINDGUSTSPEED_INTS10"
+              setBeufort "$LIVEDATA_WINDGUSTSPEED_INTS10"
+              if type setStyleBeufort >/dev/null; then
                 setStyleBeufort "$LIVEDATA_WINDGUSTSPEED_INTS10"
                 STYLE_LIVE_VALUE=$STYLE_BEUFORT
                 export LIVEDATASTYLE_WINDGUSTSPEED="$STYLE_BEUFORT"
+              fi
            else
              unset LV_DELIMITER
             fi
@@ -245,10 +261,12 @@ printLivedata()
         
         if [ -n "$LIVEDATA_WINDDAILYMAX" ]; then
             if [ -z "$LIVEVIEW_HIDE_BEUFORT" ]; then
+              if type setStyleBeufort >/dev/null; then
                 setBeufort "$LIVEDATA_WINDDAILYMAX_INTS10"
                 setStyleBeufort "$LIVEDATA_WINDDAILYMAX_INTS10"
                 STYLE_LIVE_VALUE=$STYLE_BEUFORT
                 export LIVEDATASTYLE_WINDDAILYMAX="$STYLE_BEUFORT"
+              fi
             else
                 unset LV_DELIMITER
             fi
@@ -284,11 +302,13 @@ printLivedata()
         if [ -n "$LIVEDATA_SOLAR_UVI" ]; then
            if [ -z "$LIVEVIEW_HIDE_UVI" ]; then
                 setUVRisk "$LIVEDATA_SOLAR_UVI"
-                export LIVEDATA_SOLAR_UVI_DESCRIPTION="$VALUE_UV_RISK"
-                setStyleUVI "$LIVEDATA_SOLAR_UVI"
-                #shellcheck disable=SC2153
-                STYLE_LIVE_VALUE=$STYLE_UVI
-                export LIVEDATASTYLE_SOLAR_UVI="$STYLE_UVI"
+                if type setStyleUVI >/dev/null; then
+                    export LIVEDATA_SOLAR_UVI_DESCRIPTION="$VALUE_UV_RISK"
+                    setStyleUVI "$LIVEDATA_SOLAR_UVI"
+                    #shellcheck disable=SC2153
+                    STYLE_LIVE_VALUE=$STYLE_UVI
+                    export LIVEDATASTYLE_SOLAR_UVI="$STYLE_UVI"
+                fi
             else
               unset LV_DELIMITER
             fi
@@ -310,10 +330,12 @@ printLivedata()
 
                setRainIntensity "$LIVEDATA_RAINRATE_INTS10"
                export LIVEDATA_RAINRATE_STATE_DESCRIPTION="$VALUE_RAININTENSITY"
-               setStyleRainIntensity "$LIVEDATA_RAINRATE_INTS10"
+               if type setStyleRainIntensity >/dev/null; then
+                    setStyleRainIntensity "$LIVEDATA_RAINRATE_INTS10"
+                    STYLE_LIVE_VALUE=$STYLE_RAININTENSITY
+               fi
                setRainIntensityStatus "$LIVEDATA_RAINRATE_INTS10"
                export LIVEDATA_RAINRATE_STATE="$VALUE_RAININTENSITY_STATUS"
-               STYLE_LIVE_VALUE=$STYLE_RAININTENSITY
               
                if [ "$LIVEDATA_RAINRATE_INTS10" -gt 0 ]; then
                     delimiter=$LV_DELIMITER 
@@ -398,8 +420,10 @@ printLivedata()
                             #setSGIBatteryLowNormal \"\$LIVEDATASENSOR_PM25${n}_BATTERY\"
                             if [ -z \"\$LIVEVIEW_HIDE_PM25AQI\" ]; then
                                 setAQI \"\$LIVEDATA_PM25${n}_INTS10\"
-                                setStyleAQI \"\$LIVEDATA_PM25${n}_INTS10\"
-                                STYLE_LIVE_VALUE=\$STYLE_AQI
+                                if type setStyleAQI >/dev/null; then
+                                    setStyleAQI \"\$LIVEDATA_PM25${n}_INTS10\"
+                                    STYLE_LIVE_VALUE=\$STYLE_AQI
+                                fi
                             else
                               unset LV_DELIMITER
                             fi
@@ -415,8 +439,10 @@ printLivedata()
             eval "if [ -n ''"\$LIVEDATA_PM25${n}_24HAVG" ]; then
                         if [ -z \"\$LIVEVIEW_HIDE_PM25AQI\" ]; then
                             setAQI \"\$LIVEDATA_PM25${n}_24HAVG_INTS10\"
-                            setStyleAQI \"\$LIVEDATA_PM25${n}_24HAVG_INTS10\"
-                            STYLE_LIVE_VALUE=\$STYLE_AQI
+                            if type setStyleAQI >/dev/null; then
+                                setStyleAQI \"\$LIVEDATA_PM25${n}_24HAVG_INTS10\"
+                                STYLE_LIVE_VALUE=\$STYLE_AQI
+                            fi
                         else
                             unset LV_DELIMITER
                         fi

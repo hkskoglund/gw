@@ -2019,9 +2019,10 @@ convertSensorBackupIdToHex()
 # set VALUE_SENSORID
 {
     unset VALUE_SENSORID
-     if [ "$1" = $SENSORIDSTATE_DISABLE ]; then
+    # TODO: check if sensoridstate still compatible after inserting unicode...
+     if [ "$1" = "$SENSORIDSTATE_DISABLE" ]; then
         VALUE_SENSORID=$SENSORID_DISABLE_HEXTEXT
-     elif [ "$1" = $SENSORIDSTATE_SEARCH ]; then
+     elif [ "$1" = "$SENSORIDSTATE_SEARCH" ]; then
         VALUE_SENSORID=$SENSORID_SEARCH_HEXTEXT
     fi
 }
