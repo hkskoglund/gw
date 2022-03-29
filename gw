@@ -1554,6 +1554,40 @@ processCustomizedPathWundergroundLongOpt()
     fi
 }
 
+isValidRange()
+{
+    if [ "$1" -gt "$2" ]; then
+       echo >&2 "Error: Not a valid range $1-$2"
+       return $ERROR_INVALID_VALUE
+    fi
+}
+
+processSensorLongOptRange()
+#$1 opt $2 sensoropt $3 sensortype $4 maxch
+{
+    set -x
+    EXITCODE_PROCESS_SENSORLONGOPTRANGE=0
+    local_range=${1#--"$2"}
+    local_range=${local_range%=*}
+    local_ch=${local_range%-*}
+    if [ "$local_ch" = "." ]; then # glob = max range
+      local_ch=1
+      local_ch_max=$4
+    else
+        local_ch_max=${local_range#*-}
+    fi
+    local_type=$(( $3 - 1 + local_ch)) # map from ch to sensortype
+    local_type_max=$(($3 -1 + local_ch_max))
+    set +x
+    if isValidRange "$local_ch" "$local_ch_max"; then
+        processSensorLongOpt $local_type $local_type_max "$1"
+    else
+      EXITCODE_PROCESS_SENSORLONGOPTRANGE=$?
+    fi
+    unset local_ch local_ch_max local_type local_type_max
+    return $EXITCODE_PROCESS_SENSORLONGOPTRANGE
+}
+
 processSensorLongOpt()
 # $1 sensortype, $2 maxsensortype, $3 option --sensor=disable|search|hexid
 # set EXITCODE_PROCESSSENSORLONGOPT
@@ -2324,98 +2358,47 @@ while [ $# -gt 0 ]; do
                                                 shift
                                                 ;;
 
-         --"$BACKUPNAME_SENSOR_TEMP".=*)         local_type=6
-                                                processSensorLongOpt $local_type $((local_type + 7)) "$1"
-                                                unset local_ch local_type
+         --"$BACKUPNAME_SENSOR_TEMP".=*|--"$BACKUPNAME_SENSOR_TEMP"[1-8]=*|--"$BACKUPNAME_SENSOR_TEMP"[1-8]-[1-8]=*)
+                                                
+                                                processSensorLongOptRange "$1" "$BACKUPNAME_SENSOR_TEMP" $SENSORTYPE_WH31TEMP $SENSORTYPE_WH31TEMP_MAXCH
                                                 shift
                                                 ;;
 
-        --"$BACKUPNAME_SENSOR_TEMP"[1-8]=*)     local_ch=${1#--"$BACKUPNAME_SENSOR_TEMP"}
-                                                local_ch=${local_ch%=*}
-                                                local_type=$(( 5 + local_ch))
-                                                processSensorLongOpt $local_type $local_type "$1"
-                                                unset local_ch local_type
+        --"$BACKUPNAME_SENSOR_SOILMOISTURE".=*|--"$BACKUPNAME_SENSOR_SOILMOISTURE"[1-8]=*|--"$BACKUPNAME_SENSOR_SOILMOISTURE"[1-8]-[1-8]=*) 
+                                               
+                                                processSensorLongOptRange "$1" "$BACKUPNAME_SENSOR_SOILMOISTURE" $SENSORTYPE_WH51SOILMOISTURE $SENSORTYPE_WH51SOILMOISTURE_MAXCH
                                                 shift
                                                 ;;
 
-        --"$BACKUPNAME_SENSOR_SOILMOISTURE".=*) local_type=14
-                                                processSensorLongOpt $local_type $((local_type + 7)) "$1"
-                                                unset local_ch local_type
-                                                shift
-                                                ;;
-
-        --"$BACKUPNAME_SENSOR_SOILMOISTURE"[1-8]=*) 
-                                                local_ch=${1#--"$BACKUPNAME_SENSOR_SOILMOISTURE"}
-                                                local_ch=${local_ch%=*}
-                                                local_type=$(( 13 + local_ch))
-                                                processSensorLongOpt $local_type $local_type "$1"
-                                                unset local_ch local_type
-                                                shift
-                                                ;;
-
-        --"$BACKUPNAME_SENSOR_PM25".=*)         local_type=22
-                                                processSensorLongOpt $local_type $((local_type + 3)) "$1"
-                                                unset local_ch local_type
-                                                shift
-                                                ;;
-
-        --"$BACKUPNAME_SENSOR_PM25"[1-4]=*) 
-                                                local_ch=${1#--"$BACKUPNAME_SENSOR_PM25"}
-                                                local_ch=${local_ch%=*}
-                                                local_type=$(( 21 + local_ch))
-                                                processSensorLongOpt $local_type $local_type "$1"
-                                                unset local_ch local_typoe
+        --"$BACKUPNAME_SENSOR_PM25".=*|--"$BACKUPNAME_SENSOR_PM25"[1-4]=*|--"$BACKUPNAME_SENSOR_PM25"[1-4]-[1-4]=*) 
+                                              
+                                                processSensorLongOptRange "$1" "$BACKUPNAME_SENSOR_PM25" $SENSORTYPE_WH43PM25 $SENSORTYPE_WH43PM25_MAXCH
                                                 shift
                                                 ;;
    
         --$BACKUPNAME_SENSOR_LIGHTNING=*)       processSensorLongOpt 26 26 "$1"
                                                 shift
                                                 ;;
-        
-        --"$BACKUPNAME_SENSOR_LEAK"[1-4]=*)         local_type=27
-                                                processSensorLongOpt $local_type $((local_type + 3)) "$1"
-                                                unset local_ch local_type
-                                                shift
-                                                ;;
 
-        --$BACKUPNAME_SENSOR_LEAK?=*) 
-                                                local_ch=${1#--"$BACKUPNAME_SENSOR_LEAK"}
-                                                local_ch=${local_ch%=*}
-                                                local_type=$(( 26 + local_ch))
-                                                processSensorLongOpt $local_type $local_type "$1"
-                                                unset local_ch local_type
+        --"$BACKUPNAME_SENSOR_LEAK".=*|--"$BACKUPNAME_SENSOR_LEAK"[1-4]=*|--"$BACKUPNAME_SENSOR_LEAK"[1-4]-[1-4]=*) 
+
+                                                processSensorLongOptRange "$1" "$BACKUPNAME_SENSOR_LEAK" $SENSORTYPE_WH55LEAK $SENSORTYPE_WH55LEAK_MAXCH
                                                 shift
                                                 ;;
     
-         --"$BACKUPNAME_SENSOR_SOILTEMP".=*)    local_type=31
-                                                processSensorLongOpt $local_type $((local_type + 7)) "$1"
-                                                unset local_ch local_type
-                                                shift
-                                            ;;
-       
-        --"$BACKUPNAME_SENSOR_SOILTEMP"[1-8]=*)       local_ch=${1#--"$BACKUPNAME_SENSOR_SOILTEMP"}
-                                                local_ch=${local_ch%=*}
-                                                local_type=$(( 30 + local_ch))
-                                                processSensorLongOpt $local_type $local_type "$1"
-                                                unset local_ch local_type
+        --"$BACKUPNAME_SENSOR_SOILTEMP".=*|--"$BACKUPNAME_SENSOR_SOILTEMP"[1-8]=*|--"$BACKUPNAME_SENSOR_SOILTEMP"[1-8]-[1-8]=*)       
+
+                                                processSensorLongOptRange "$1" "$BACKUPNAME_SENSOR_SOILTEMP" $SENSORTYPE_WH34SOILTEMP $SENSORTYPE_WH34SOILTEMP_MAXCH
                                                 shift
                                                 ;;
 
         --$BACKUPNAME_SENSOR_CO2=*)             processSensorLongOpt 39 39 "$1"
                                                 shift
                                                 ;;
-        
-        --"$BACKUPNAME_SENSOR_LEAFWETNESS".=*)  local_type=40
-                                                processSensorLongOpt $local_type $((local_type + 7)) "$1"
-                                                unset local_ch local_type
-                                                shift
-                                            ;;
 
-        --"$BACKUPNAME_SENSOR_LEAFWETNESS"[1-8]=*)    local_ch=${1#--"$BACKUPNAME_SENSOR_LEAFWETNESS"}
-                                                local_ch=${local_ch%=*}
-                                                local_type=$(( 39 + local_ch))
-                                                processSensorLongOpt $local_type $local_type "$1"
-                                                unset local_ch local_type
+        --"$BACKUPNAME_SENSOR_LEAFWETNESS".=*|--"$BACKUPNAME_SENSOR_LEAFWETNESS"[1-8]=*|--"$BACKUPNAME_SENSOR_LEAFWETNESS"[1-8]-[1-8]=*)
+                                                        
+                                                processSensorLongOptRange "$1" "$BACKUPNAME_SENSOR_LEAFWETNESS" $SENSORTYPE_WH35LEAFWETNESS $SENSORTYPE_WH35LEAFWETNESS_MAXCH
                                                 shift
                                                 ;;
        

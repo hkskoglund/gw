@@ -201,6 +201,7 @@ printSensors()
     while [ $local_ch -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
         eval "prefix=SENSOR_TEMP${local_ch}_"
         local_n=$(( SENSORTYPE_WH31TEMP + local_ch - 1))
+        #shellcheck disable=SC2154
         eval printSensorLine "\$BACKUPNAME_SENSOR_TEMP$local_ch" $local_n "\$${prefix}ID" "\$${prefix}BATTERY_INT" "\$${prefix}SIGNAL" "\$${prefix}ID_STATE" "'\$${prefix}BATTERY_STATE'" "'\$${prefix}SIGNAL_STATE'"
         local_ch=$((local_ch + 1))
     done
