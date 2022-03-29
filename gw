@@ -1559,7 +1559,6 @@ processSensorLongOpt()
 # set EXITCODE_PROCESSSENSORLONGOPT
 {
     EXITCODE_PROCESSSENSORLONGOPT=0
-    echo >&2 "processSensorLongOpt $*"
     IFS='='
     local_sensortype=$1
     local_sensortype_max=$2
@@ -1577,11 +1576,11 @@ processSensorLongOpt()
 
         case "$2" in
 
-            disable|disbled|disconnect|false|f|off|n|N|no|NO)  sendSensorId "$local_sensortype" "$local_sensortype_max" $SENSORID_DISABLE "$GW_HOST"
+            disable|disbled|disconnect|false|off|n|N|no|NO)  sendSensorId "$local_sensortype" "$local_sensortype_max" $SENSORID_DISABLE "$GW_HOST"
                                            sendPacket $VALUE_CMD_READ_SENSORID "$GW_HOST" #reparse SENSOR_*
                                     ;;
 
-            search|searching|connect|true|t|on|y|Y|yes|YES)      sendSensorId "$local_sensortype" "$local_sensortype_max" $SENSORID_SEARCH "$GW_HOST"
+            search|searching|connect|true|on|y|Y|yes|YES)      sendSensorId "$local_sensortype" "$local_sensortype_max" $SENSORID_SEARCH "$GW_HOST"
                                          sendPacket $VALUE_CMD_READ_SENSORID "$GW_HOST"
                                     ;;
 
@@ -2331,7 +2330,7 @@ while [ $# -gt 0 ]; do
                                                 shift
                                                 ;;
 
-        --$BACKUPNAME_SENSOR_TEMP?=*)           local_ch=${1#--"$BACKUPNAME_SENSOR_TEMP"}
+        --"$BACKUPNAME_SENSOR_TEMP"[1-8]=*)     local_ch=${1#--"$BACKUPNAME_SENSOR_TEMP"}
                                                 local_ch=${local_ch%=*}
                                                 local_type=$(( 5 + local_ch))
                                                 processSensorLongOpt $local_type $local_type "$1"
@@ -2345,7 +2344,7 @@ while [ $# -gt 0 ]; do
                                                 shift
                                                 ;;
 
-        --$BACKUPNAME_SENSOR_SOILMOISTURE?=*) 
+        --"$BACKUPNAME_SENSOR_SOILMOISTURE"[1-8]=*) 
                                                 local_ch=${1#--"$BACKUPNAME_SENSOR_SOILMOISTURE"}
                                                 local_ch=${local_ch%=*}
                                                 local_type=$(( 13 + local_ch))
@@ -2360,7 +2359,7 @@ while [ $# -gt 0 ]; do
                                                 shift
                                                 ;;
 
-        --$BACKUPNAME_SENSOR_PM25?=*) 
+        --"$BACKUPNAME_SENSOR_PM25"[1-4]=*) 
                                                 local_ch=${1#--"$BACKUPNAME_SENSOR_PM25"}
                                                 local_ch=${local_ch%=*}
                                                 local_type=$(( 21 + local_ch))
@@ -2373,7 +2372,7 @@ while [ $# -gt 0 ]; do
                                                 shift
                                                 ;;
         
-        --"$BACKUPNAME_SENSOR_LEAK".=*)         local_type=27
+        --"$BACKUPNAME_SENSOR_LEAK"[1-4]=*)         local_type=27
                                                 processSensorLongOpt $local_type $((local_type + 3)) "$1"
                                                 unset local_ch local_type
                                                 shift
@@ -2394,7 +2393,7 @@ while [ $# -gt 0 ]; do
                                                 shift
                                             ;;
        
-        --$BACKUPNAME_SENSOR_SOILTEMP?=*)       local_ch=${1#--"$BACKUPNAME_SENSOR_SOILTEMP"}
+        --"$BACKUPNAME_SENSOR_SOILTEMP"[1-8]=*)       local_ch=${1#--"$BACKUPNAME_SENSOR_SOILTEMP"}
                                                 local_ch=${local_ch%=*}
                                                 local_type=$(( 30 + local_ch))
                                                 processSensorLongOpt $local_type $local_type "$1"
@@ -2412,7 +2411,7 @@ while [ $# -gt 0 ]; do
                                                 shift
                                             ;;
 
-        --$BACKUPNAME_SENSOR_LEAFWETNESS?=*)    local_ch=${1#--"$BACKUPNAME_SENSOR_LEAFWETNESS"}
+        --"$BACKUPNAME_SENSOR_LEAFWETNESS"[1-8]=*)    local_ch=${1#--"$BACKUPNAME_SENSOR_LEAFWETNESS"}
                                                 local_ch=${local_ch%=*}
                                                 local_type=$(( 39 + local_ch))
                                                 processSensorLongOpt $local_type $local_type "$1"
