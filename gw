@@ -1565,7 +1565,9 @@ isValidRange()
 processSensorLongOptRange()
 #$1 opt $2 sensoropt $3 sensortype $4 maxch
 {
+    #echo >&2 args $*
     EXITCODE_PROCESS_SENSORLONGOPTRANGE=0
+    #set -x
     local_range=${1#--"$2"}
     local_range=${local_range%=*}
     local_ch=${local_range%-*}
@@ -1577,6 +1579,7 @@ processSensorLongOptRange()
     fi
     local_type=$(( $3 - 1 + local_ch)) # map from ch to sensortype
     local_type_max=$(($3 -1 + local_ch_max))
+    #set +x
     if isValidRange "$local_ch" "$local_ch_max"; then
         processSensorLongOpt $local_type $local_type_max "$1"
     else
@@ -2402,6 +2405,10 @@ while [ $# -gt 0 ]; do
                                                 processSensorLongOptRange "$1" "$BACKUPNAME_SENSOR_LEAFWETNESS" $SENSORTYPE_WH35LEAFWETNESS $SENSORTYPE_WH35LEAFWETNESS_MAXCH
                                                 shift
                                                 ;;
+        
+        --sensor.=*)                             processSensorLongOptRange "$1" "sensor" 0 48
+                                                shift
+                                                ;;                              
        
         --sensor)                               if  isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
                                                     sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
