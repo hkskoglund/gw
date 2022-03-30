@@ -280,7 +280,7 @@ printLDWind()
         local_compassfmt="\t%s$LIVEDATA_WINDDIRECTION_COMPASS_N_FMT"
 
         if [ -n "$LIVEDATA_WINDSPEED" ]; then
-               if type setStyleBeufort >/dev/null; then
+               if type setStyleBeufort >/dev/null 2>/dev/null; then
                     setStyleBeufort "$LIVEDATA_WINDSPEED_INTS10"
                     STYLE_LIVE_VALUE=$STYLE_BEUFORT
                     export LIVEDATASTYLE_WINDSPEED="$STYLE_BEUFORT"
@@ -292,7 +292,7 @@ printLDWind()
 
         if [ -n "$LIVEDATA_WINDGUSTSPEED" ]; then
               setBeufort "$LIVEDATA_WINDGUSTSPEED_INTS10"
-              if type setStyleBeufort >/dev/null; then
+              if type setStyleBeufort >/dev/null 2>/dev/null; then
                 setStyleBeufort "$LIVEDATA_WINDGUSTSPEED_INTS10"
                 STYLE_LIVE_VALUE=$STYLE_BEUFORT
                 export LIVEDATASTYLE_WINDGUSTSPEED="$STYLE_BEUFORT"
@@ -312,7 +312,7 @@ printLDWind()
  printLivedataLine "$LIVEDATAHEADER_WINDDIRECTION" "$LIVEDATA_WINDDIRECTION"  "%6u" "$LIVEDATAUNIT_WIND_DEGREE_UNIT" "%5s" "$LIVEDATA_WINDDIRECTION" "" "$local_compassfmt"; }
         
         if [ -n "$LIVEDATA_WINDDAILYMAX" ]; then
-              if type setStyleBeufort >/dev/null; then
+              if type setStyleBeufort >/dev/null 2>/dev/null; then
                 setBeufort "$LIVEDATA_WINDDAILYMAX_INTS10"
                 setStyleBeufort "$LIVEDATA_WINDDAILYMAX_INTS10"
                 STYLE_LIVE_VALUE=$STYLE_BEUFORT
@@ -346,7 +346,7 @@ printLDSolar()
     if [ -n "$LIVEDATA_SOLAR_UVI" ]; then
             setUVRisk "$LIVEDATA_SOLAR_UVI"
             export LIVEDATA_SOLAR_UVI_DESCRIPTION="$VALUE_UV_RISK"
-            if type setStyleUVI >/dev/null; then
+            if type setStyleUVI >/dev/null 2>/dev/null; then
                 setStyleUVI "$LIVEDATA_SOLAR_UVI"
                 #shellcheck disable=SC2153
                 STYLE_LIVE_VALUE=$STYLE_UVI
@@ -375,7 +375,7 @@ printLDRain()
 
             setRainIntensity "$LIVEDATA_RAINRATE_INTS10"
             export LIVEDATA_RAINRATE_STATE_DESCRIPTION="$VALUE_RAININTENSITY"
-            if type setStyleRainIntensity >/dev/null; then
+            if type setStyleRainIntensity >/dev/null 2>/dev/null; then
                 setStyleRainIntensity "$LIVEDATA_RAINRATE_INTS10"
                 STYLE_LIVE_VALUE=$STYLE_RAININTENSITY
             fi
@@ -454,7 +454,7 @@ printLDPM25()
             eval "if [ -n ''"\$LIVEDATA_PM25$n" ]; then
                             #setSGIBatteryLowNormal \"\$SENSOR_PM25${n}_BATTERY\"
                                 setAQI \"\$LIVEDATA_PM25${n}_INTS10\"
-                                if type setStyleAQI >/dev/null; then
+                                if type setStyleAQI >/dev/null 2>/dev/null; then
                                     setStyleAQI \"\$LIVEDATA_PM25${n}_INTS10\"
                                     STYLE_LIVE_VALUE=\$STYLE_AQI
                                 fi
@@ -470,7 +470,7 @@ printLDPM25()
         while [ "$n" -le "$SENSORTYPE_WH43PM25_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_PM25${n}_24HAVG" ]; then
                             setAQI \"\$LIVEDATA_PM25${n}_24HAVG_INTS10\"
-                            if type setStyleAQI >/dev/null; then
+                            if type setStyleAQI >/dev/null 2>/dev/null; then
                                 setStyleAQI \"\$LIVEDATA_PM25${n}_24HAVG_INTS10\"
                                 STYLE_LIVE_VALUE=\$STYLE_AQI
                             fi
