@@ -448,7 +448,7 @@ parseSensorId()
     # 30 for CMD_READ_SENSORID, 47 for CMD_READ_SENSORID_NEW ( sensor 4 missing GW-1000 fw 1.6.8)
     [ "$DEBUG_PARSE_SENSORID" -eq 1 ] && set | grep ^SENSOR_
  
-    unset local_id local_type local_signal local_battery parseSensorId_max_length local_sensorstate local_sensorstate_backup local_tabs
+    unset local_id local_type local_signal local_battery parseSensorId_max_length local_sensorstate local_sensorstate_backup local_tabs local_sensorname_backup
 }
 
 printSystem() 
@@ -844,21 +844,21 @@ parseLivedata()
             readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 battery"
             export LIVEDATA_CO2_BATTERY="$VALUE_UINT8"
 
-        elif [ "$ldf" -ge "$LDF_TF_USR1" ] && [ "$ldf" -le "$LDF_TF_USR8" ]; then
-            channel=$((ldf - LDF_TF_USR1 + 1))
-            readInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "tf_usr$channel"
-            convertTemperatureLivedata "$VALUE_INT16BE"
+    #    elif [ "$ldf" -ge "$LDF_TF_USR1" ] && [ "$ldf" -le "$LDF_TF_USR8" ]; then
+    #        channel=$((ldf - LDF_TF_USR1 + 1))
+    #        readInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "tf_usr$channel"
+    #        convertTemperatureLivedata "$VALUE_INT16BE"
 
-            eval "export LIVEDATA_TF_USR${channel}_INT16=$VALUE_INT16"
-            eval "export LIVEDATA_TF_USR$channel=$VALUE_SCALE10_FLOAT"
+    #        eval "export LIVEDATA_TF_USR${channel}_INT16=$VALUE_INT16"
+    #        eval "export LIVEDATA_TF_USR$channel=$VALUE_SCALE10_FLOAT"
 
-            readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "tf_usr$channel battery"
-            eval "export LIVEDATA_TF_USR${channel}_BATTERY_INT=$VALUE_UINT8"
-            eval "convertScale10ToFloat \$LIVEDATA_TF_USR${channel}_BATTERY_INT"
-            eval "export LIVEDATA_TF_USR${channel}_BATTERY=$VALUE_SCALE10_FLOAT"
-            getBatteryVoltageScale10State "$VALUE_UINT8"
-            eval "export LIVEDATA_TF_USR${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
-            
+    #        readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "tf_usr$channel battery"
+    #        eval "export LIVEDATA_TF_USR${channel}_BATTERY_INT=$VALUE_UINT8"
+    #        eval "convertScale10ToFloat \$LIVEDATA_TF_USR${channel}_BATTERY_INT"
+    #        eval "export LIVEDATA_TF_USR${channel}_BATTERY=$VALUE_SCALE10_FLOAT"
+    #        getBatteryVoltageScale10State "$VALUE_UINT8"
+    #        eval "export LIVEDATA_TF_USR${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
+    #        
         elif [ "$ldf" -ge "$LDF_LIGHTNING" ]; then
 
             readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "lightning distance"
@@ -891,8 +891,6 @@ parseLivedata()
     done
 
     [ "$DEBUG_OPTION_TESTSENSOR" -eq 1 ] && injectTestSensorLivedata
-
-    printOrLogLivedata
 
     unset ldf ldf_hex channel DEBUG_FUNC parselivedata_max_length
 }

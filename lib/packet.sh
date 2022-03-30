@@ -77,6 +77,7 @@ sendPacketnc()
 # DEBUG_OPTION_OD_BUFFER=1      print od buffer
 # DEBUG_OPTION_TRACEPACKET=1    create tx/rx files in .hex binary format
 # DEBUG_SENDPACKETNC=1          debug only this function
+# out: VALUE_ODBUFFER
 { 
     EXITCODE_SENDPACKETNC=0
     DEBUG_SENDPACKETNC=${DEBUG_SENDPACKETNC:=$DEBUG_PACKET}
@@ -209,6 +210,7 @@ sendPacketnc()
 
        #maybe use: https://stackoverflow.com/questions/1550933/catching-error-codes-in-a-shell-pipe
        if [ -z "$3" ] && [ -z "$4" ]; then
+            VALUE_ODBUFFER=$local_od_buffer # share, maybe disable call of parsePacket here
             parsePacket "$local_od_buffer"
       # else
       #      echo >> "$3" #append newline | 0xa

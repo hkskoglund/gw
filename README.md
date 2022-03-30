@@ -73,7 +73,7 @@ System sensors searching         <span style="color:green">29</span>
 System sensors disabled          <span style="color: red">11</span>
 </pre>
 
-## Monitoring current sensor configuration
+## Monitoring sensors
 
 <code>watch ./gw -g 192.168.3.16 --sensor</code>
 <pre>
@@ -179,7 +179,6 @@ customized path wunderground            /path/wu
 ## Listen for Ecowitt/Wunderground http request on port 8080
 
 <code>./gw -l 8080</code>
-
 
 ## Subnet scanning for devices on LAN
 

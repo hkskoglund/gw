@@ -547,132 +547,6 @@ printCommands() {
     unset cmd commands
 }
 
-processSensorOptions()
-# process -c sensor command option; format: 31-38=disable,40-47=disable
-{
-    if [ "$SHELL_SUPPORT_TYPESET" -eq 1 ]; then
-       #shellcheck disable=SC3044
-       {
-        typeset f  sensortypeexpr cmdexpr sentReadSensorIdCommand
-        case "$KSH_VERSION" in
-
-          *MIRBSD?KSH*) typeset -iU sensorid sensorid_hex
-                        ;;
-                    *) typeset sensorid sensorid_hex
-                    ;;
-        esac
-       }  
-    fi
-
-    [ "$DEBUG" -eq 1 ] && echo >&2 processSensorOptions "$*"
-
-    sentReadSensorIdCommand=0
-
-     IFS=,
-
-     for f in $1; do #parse , expressions
-       IFS='='
-       #shellcheck disable=SC2086
-       set -- $f #parse = expression -> set to $1 $2 ...
-       sensortypeexpr=$1
-       cmdexpr=$2
-
-       unset sensorType_low sensorType_high 
-
-        case $sensortypeexpr in
-            *-*)    parseRangeExpression "$sensortypeexpr" 
-                    sensorType_low=$VALUE_RANGE_LOW
-                    sensorType_high=$VALUE_RANGE_HIGH
-                    [ "$DEBUG" -eq 1 ] &&  >&2 echo "Sensor type low $sensorType_low sensor type high $sensorType_high"
-                    ;;
-            all)    sensorType_low=0
-                    sensorType_high=$SENSORTYPE_MAX
-                    ;;
-            *)      sensorType_low=$sensortypeexpr # only a single sensortype
-                    ;;
-       esac
-
-       #validation
-
-       if [ -z "$sensorType_low" ]; then
-          echo >&2 "Error: Empty sensor id low $sensorType_low"
-          return "$ERROR_INVALID_SENSORID"
-       fi
-       
-       if [ -n "$sensorType_low" ] && ! isNumber "$sensorType_low" || [ "$sensorType_low" -gt "$SENSORTYPE_MAX" ]; then
-          echo >&2 "Error: Not a valid sensor type $sensorType_low, max sensortype $SENSORTYPE_MAX"
-          return "$ERROR_INVALID_SENSORID"
-       fi
-       
-       if [ -n "$sensorType_high" ]; then
-          if  ! isNumber "$sensorType_high" || [ "$sensorType_high" -gt "$SENSORTYPE_MAX" ]; then
-            echo >&2 "Error: Not a valid sensor id $sensorType_high, max sensortype $SENSORTYPE_MAX"
-            return "$ERROR_INVALID_SENSORID"
-          fi
-
-          if [ "$sensorType_low" -gt "$sensorType_high" ]; then
-            echo >&2 "Error: Sensor id low $sensorType_low is greather than sensorid high $sensorType_high"
-            return "$ERROR_INVALID_SENSORID"
-          fi
-
-       fi
-
-        if [ -n "$sensorType_low" ] && [ -z "$sensorType_high" ]; then #single sensortype
-            sensorType_high=$sensorType_low
-        fi
-
-        if [ -n "$sensorType_low" ] && [ -n "$sensorType_high" ] && [ -z "$cmdexpr" ]; then #only range without command
-            SPATTERNID=$SPATTERNID_RANGE
-            SPATTERNID_RANGE_LOW=$sensorType_low
-            SPATTERNID_RANGE_HIGH=$sensorType_high
-            if [ $sentReadSensorIdCommand -eq 0 ]; then 
-                getSensorIdCommandForFW "$GW_VERSION_INT"
-                sendPacket $VALUE_CMD_READ_SENSORID "$GW_HOST" #only sent for first , expression
-                sentReadSensorIdCommand=1
-            else # yet another read (for example -c sensor 1-10,40-47) use in-memory buffer backup 
-               IFS=" " eval parsePacket \"\$"$VALUE_PARSEPACKET_BUFFERNAME"\" 
-            fi
-            SENSORVIEW_HIDE_HEADER=1 #disabled header for next , expression
-            continue
-        fi
-
-       sentReadSensorIdCommand=0 #reset for WRITE
-       sensorid_hex=0
-       
-       case $cmdexpr in 
-
-          disable|d|disabled)                   sensorid=$SENSORID_DISABLE
-                                                 ;;
-
-          search|s|enable|e|searching|enabled)  sensorid=$SENSORID_SEARCH
-                                                 ;;
-
-          '')                                   echo >&2 "Error: Empty command, use sensortype=disable|search|d|s"
-                                                return "$ERROR_INVALID_SENSORID_COMMAND"
-                                                ;;
-          *) 
-                                                if ! isHex "$cmdexpr"; then
-                                                echo >&2 "Error: Invalid hex number for sensor id $cmdexpr"
-                                                return "$ERROR_INVALID_SENSORID_COMMAND"
-                                                else
-                                                    sensorid_hex=1
-                                                    sensorid=$(( 0x$cmdexpr ))
-                                                fi
-                                                ;;
-       esac
-
-        if [ "$sensorid_hex" -eq 1 ] && [ "$sensorType_low" -lt "$sensorType_high" ]; then
-            echo >&2 "Error: Cannot set sensortype range to same sensorid $cmdexpr"
-            return $ERROR_INVALID_SENSORID
-        fi
-
-       sendSensorId "$sensorType_low" "$sensorType_high" "$sensorid" "$GW_HOST"
-          
-    done
-
-    unset f sensorid sensortypeexpr cmdexpr sensorid_hex
-}
-
 parseRaindataOptions()
 #parse options to -c rain command
 {
@@ -1019,109 +893,6 @@ processDebugOptions()
         esac
     done
     unset opt 
-}
-
-processOptionsLiveview()
-{
-     #default is show all information gathered, these options allows to filter output/turn off display of sensors
-
-    IFS=,
-
-    for hide_liveview in $1; do 
-
-        case "$hide_liveview" in
-
-            uvi)
-                LIVEVIEW_HIDE_UVI=1
-                ;;
-
-            pm25aqi)
-                #shellcheck disable=SC2034
-                LIVEVIEW_HIDE_PM25AQI=1 #hides PM 2.5 AQI  styling/description
-                ;;
-
-            b|beufort)
-                LIVEVIEW_HIDE_BEUFORT=1 # hides beufort styling and description
-                ;;
-
-            status) #battery/signal status unicode icons
-                LIVEVIEW_HIDE_STATUSLINE=1
-                ;;
-
-            c | compass)
-                LIVEVIEW_HIDE_COMPASS=1
-                ;;
-
-            sh | sensor-header)
-                SENSORVIEW_HIDE_HEADER=1
-                ;;
-
-            h | headers)
-                LIVEVIEW_HIDE_HEADERS=1
-                ;;
-
-            # b | battery)
-            #    HIDE_BATTERY_LIVEDATA=1
-                #  ;;
-                
-            s | system)
-                LIVEVIEW_HIDE_SYSTEM=1
-                ;;
-
-            r | rain)
-                LIVEVIEW_HIDE_RAIN=1
-                ;;
-
-            l | light)
-                LIVEVIEW_HIDE_LIGHT=1
-                ;;
-                
-            t | temperature | temp)
-                LIVEVIEW_HIDE_TEMP=1
-                ;;
-
-            w | wind)
-                LIVEVIEW_HIDE_WIND=1
-                ;;
-
-            sm | soilmoisture | soilm)
-                LIVEVIEW_HIDE_SOILMOISTURE=1
-                ;;
-
-            st | soiltemperature | soilt)
-                LIVEVIEW_HIDE_SOILTEMPERATURE=1
-                ;;
-
-            leak)
-                LIVEVIEW_HIDE_LEAK=1
-                ;;
-
-            tusr | tempusr)
-                LIVEVIEW_HIDE_TEMPUSR=1
-                ;;
-
-            pm25)
-                LIVEVIEW_HIDE_PM25=1
-                ;;
-
-            co2)
-                LIVEVIEW_HIDE_CO2=1
-                ;;
-
-            leafw | leafwetness)
-                LIVEVIEW_HIDE_LEAFWETNESS=1
-                ;;
-
-            lightning)
-                LIVEVIEW_HIDE_LIGHTNING=1
-                ;;
-
-            *) echo >&2 "Warning: Unknown hide_liveview option $hide_liveview; use sensor-header | sh, headers | h, rain | r, wind | w,temperature | t,light | l, system | s, soilmoisture | sm, soiltemperature | st, leak, co2, pm25, leafwetness | leafw, lightning, tempusr | tusr, compass | c, status, beufort | b, pm25aqi, uvi"
-                ;;
-            esac
-    done
-
-    unset hide_liveview
 }
 
 processWeatherServiceOptions()
@@ -1884,6 +1655,7 @@ processCommand()
 
                 sendPacket $CMD_LIVEDATA "$GW_HOST"
                 EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
+                printOrLogLivedata
             else
               
                 while true; do
@@ -2416,8 +2188,11 @@ while [ $# -gt 0 ]; do
                                                     printSensors
                                                 fi
                                                 shift
-                                                ;;                                                                                             
-
+                                                ;;
+        
+         -G | group)                            LIVEVIEW_SHOW_GROUPHEADERS=1 # grep "^ " will filter headers
+                                                shift
+                                                ;;
           -c | --command)
 
             toLowercase "$2"
@@ -2604,14 +2379,6 @@ while [ $# -gt 0 ]; do
            shift 2
            ;;
 
-       -H | --hide-liveview)
-
-            processOptionsLiveview "$2"
-            
-            [ -n "$2" ] && shift
-            shift
-
-            ;;
 
        -n | --log-interval)
 

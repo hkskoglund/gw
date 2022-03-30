@@ -130,19 +130,8 @@ printWeatherServices()
 printSensorHeader()
 {
     resetAppendBuffer
-
-    printSensorHeaderState=0
-
-    if [ -z "$SENSORVIEW_HIDE_HEADER" ];  then 
-       printSensorHeaderState=1
-    elif [ "$SENSORVIEW_HIDE_HEADER" -eq 0 ]; then
-       printSensorHeaderState=1
-    fi
-
-    if [ $printSensorHeaderState -eq 1 ]; then
                       #1:Sensortype 2:sid 3:battery 4:signal 5:type 6:name 7:state 8:battery 9:signal
         appendBuffer "%6s %9s %3s %1s %-4s %-17s %-12s\t%s\t%s\n%s\n" "$SENSORID_HEADER ───────────────────────────────────────────────────────────────────────────────"
-    fi
 }
 
 printSensorLine()

@@ -36,7 +36,6 @@ printAppendBuffer()
     fi
 
     eval printf \""$APPEND_FORMAT"\" "$APPEND_ARGS"
-
     resetAppendBuffer
 }
 

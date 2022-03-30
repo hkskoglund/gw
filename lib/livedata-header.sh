@@ -45,7 +45,6 @@ export LIVEDATAGROUPHEADER_SOILMOISTURE="${LIVEDATAGROUPHEADER_SOILMOISTURE:="�
         export LIVEDATAGROUPHEADER_SOILTEMP="${LIVEDATAGROUPHEADER_SOILTEMP:="ＳＯＩＬＴＥＭＰＥＲＡＴＵＲＥ"}"
                 export LIVEDATAGROUPHEADER_PM25="${LIVEDATAGROUPHEADER_PM25:="ＰＭ２.５ ＡＩＲ ＱＵＡＬＩＴＹ"}"
   export LIVEDATAGROUPHEADER_LEAFWETNESS="${LIVEDATAGROUPHEADER_LEAFWETNESS:="ＬＥＡＦＷＥＴＮＥＳＳ"}"
-          export LIVEDATAGROUPHEADER_TEMPUSR="${LIVEDATAGROUPHEADER_TEMPUSR:="ＴＥＭＰＵＳＲ"}"
           export LIVEDATAGROUPHEADER_CO2="${LIVEDATAGROUPHEADER_CO2:="ＣＯ２"}"
       export LIVEDATAGROUPHEADER_LIGHTNING="${LIVEDATAGROUPHEADER_LIGHTNING:="ＬＩＧＨＴＮＩＮＧ"}"
                 export LIVEDATAGROUPHEADER_LEAK="${LIVEDATAGROUPHEADER_LEAK:="ＬＥＡＫ"}"

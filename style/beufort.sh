@@ -1,8 +1,8 @@
 #!/bin/sh
 
 #colors
-STYLE_BEUFORT_0="$CSI$SGI_BACKGC$SGI_COLOR_BLACK"m                                          #  0.5 m/s
-STYLE_BEUFORT_1="$CSI$SGI_BACKGC$SGI_COLOR_BLUE"m                                           #  1.6 m/s
+STYLE_BEUFORT_0=""                                                                          #  0.5 m/s
+STYLE_BEUFORT_1="$CSI$SGI_BACKGC$SGI_COLOR_BLUE;$SGI_FOREGC${SGI_COLOR_BRIGHT_WHITE}m"      #  1.6 m/s
 STYLE_BEUFORT_2="$CSI$SGI_BACKGC$SGI_COLOR_BRIGHT_BLUE"m                                    #  3.4 m/s
 STYLE_BEUFORT_3="$CSI$SGI_BACKGC$SGI_COLOR_CYAN"m                                           #  5.5 m/s
 STYLE_BEUFORT_4="$CSI$SGI_BACKGC$SGI_COLOR_BRIGHT_CYAN;$SGI_FOREGC${SGI_COLOR_BLACK}m"      #  8.0 m/s
