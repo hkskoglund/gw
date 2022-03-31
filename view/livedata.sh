@@ -112,9 +112,11 @@ printLivedataLineFinal()
 
     # \r\t horizontal/absolute positioning is compatible with unicode in string
     if [ -n "$NO_COLOR" ]; then
-      l_headerfmt="%-32s\t"
+      l_headerfmt="%-32s"
     else
-       l_headerfmt=" %s\r\t\t\t\t"
+      l_headerfmt="%-32s"
+    
+       #l_headerfmt=" %s\r\t\t\t\t"
     fi
     # l_unitfmt="\r\t\t\t\t\t%s" 
     l_unitfmt="%s" #override !
@@ -145,6 +147,7 @@ printLivedataLineFinal()
     #merge icons for compact format
     l_batteryline="$l_batteryline$signal_line" 
     unset signal_line
+    unset l_batteryline #disable - icons draws attention away from weather data
 
     if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_APPEND" -eq 1 ]; then 
         appendFormat " $l_headerfmt %s %s %s %s\n"
@@ -172,6 +175,10 @@ printLivedataLineFinal()
   #  appendArgs "'$1' '$2' '$4' '$l_batteryline' '$signal_line' '${11}'"
   l_args="'$l_header' '$l_value' '$l_unit' '$l_batteryline'"
   appendArgs "$l_args"
+
+  # echo l_headerfmt "$l_headerfmt"
+  # echo l_args "$l_args"
+  # echo l_format "$l_format"
    
     unset l_headerfmt ch l_statusfmt l_unitfmt l_batteryline l_signalfmt signal_line\
         l_format l_args l_space l_batterystatus l_batterystatusfmt l_batteryvalue l_header l_signalstate l_signalvalue l_unit l_value l_valuefmt l_style l_styleoff
@@ -269,7 +276,6 @@ printLDPressure()
              [ -n "$LIVEDATA_PRESSURE_ABSBARO" ] && printLivedataLine "$LIVEDATAHEADER_PRESSURE_ABSBARO" "$LIVEDATA_PRESSURE_ABSBARO" "%6.2f" "$LIVEDATAUNIT_PRESSURE" "%4s" 
          fi
      fi
- 
 }
 
 printLDWind()
@@ -282,7 +288,7 @@ printLDWind()
         if [ -n "$LIVEDATA_WINDSPEED" ]; then
                if type setStyleBeufort >/dev/null 2>/dev/null; then
                     setStyleBeufort "$LIVEDATA_WINDSPEED_INTS10"
-                    STYLE_LIVE_VALUE=$STYLE_BEUFORT
+                    #STYLE_LIVE_VALUE=$STYLE_BEUFORT
                     export LIVEDATASTYLE_WINDSPEED="$STYLE_BEUFORT"
                 fi
             unset local_compassfmt # disable
@@ -294,39 +300,45 @@ printLDWind()
               setBeufort "$LIVEDATA_WINDGUSTSPEED_INTS10"
               if type setStyleBeufort >/dev/null 2>/dev/null; then
                 setStyleBeufort "$LIVEDATA_WINDGUSTSPEED_INTS10"
-                STYLE_LIVE_VALUE=$STYLE_BEUFORT
+                #STYLE_LIVE_VALUE=$STYLE_BEUFORT
                 export LIVEDATASTYLE_WINDGUSTSPEED="$STYLE_BEUFORT"
               fi
             # unset LV_DELIMITER
             export LIVEDATA_WINDGUSTSPEED_BEUFORT="$VALUE_BEUFORT"
             export LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION="$VALUE_BEUFORT_DESCRIPTION"
 
-            padSpaceRight "$LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION" 15
+            #padSpaceRight "$LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION" 15
 
             local_compassfmt="\t%s$LIVEDATA_WINDDIRECTION_COMPASS_WE_FMT"
             unset local_compassfmt # disable
-            printLivedataLine  "$LIVEDATAHEADER_WINDGUSTSPEED $LV_DELIMITER $VALUE_BEUFORT $VALUE_PADSPACERIGHT" "$LIVEDATA_WINDGUSTSPEED" "%6.1f" "$LIVEDATAUNIT_WIND" "%4s" "" "" "$local_compassfmt"
+            printLivedataLine  "$LIVEDATAHEADER_WINDGUSTSPEED" "$LIVEDATA_WINDGUSTSPEED" "%6.1f" "$LIVEDATAUNIT_WIND" "%s" "" "" "$local_compassfmt"
+            printLivedataLine  "$LIVEDATAHEADER_WINDGUSTSPEED_BEUFORT" "$LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION ($LIVEDATA_WINDGUSTSPEED_BEUFORT)" "%s" "" "%s" "" "" "$local_compassfmt"
+
         fi
 
-        [ -n "$LIVEDATA_WINDDIRECTION" ] && { local_compassfmt="\t%s$LIVEDATA_WINDDIRECTION_COMPASS_S_FMT"; local_compassfmt="\t%s$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE $LIVEDATA_WINDDIRECTION_COMPASS";\
- printLivedataLine "$LIVEDATAHEADER_WINDDIRECTION" "$LIVEDATA_WINDDIRECTION"  "%6u" "$LIVEDATAUNIT_WIND_DEGREE_UNIT" "%5s" "$LIVEDATA_WINDDIRECTION" "" "$local_compassfmt"; }
-        
+        if [ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]; then
+            printLivedataLine "$LIVEDATAHEADER_WINDDIRECTION_COMPASS" "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE $LIVEDATA_WINDDIRECTION_COMPASS ($LIVEDATA_WINDDIRECTION$LIVEDATAUNIT_WIND_DEGREE_UNIT)"  "%s" "$LIVEDATAUNIT_WINDDIRECTION_COMPASS" "%5s" "$LIVEDATA_WINDDIRECTION_COMPASS" "" ""
+        fi
+
+         #       [ -n "$LIVEDATA_WINDDIRECTION" ] && { local_compassfmt="\t%s$LIVEDATA_WINDDIRECTION_COMPASS_S_FMT"; local_compassfmt="\t%s$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE $LIVEDATA_WINDDIRECTION_COMPASS";\
+ #printLivedataLine "$LIVEDATAHEADER_WINDDIRECTION" "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE _COMPASS"  "%8s" "$LIVEDATAUNIT_WINDDIRECTION_COMPASS" "%5s" "$LIVEDATA_WINDDIRECTION_COMPASS" "" ""; }
+
+    
         if [ -n "$LIVEDATA_WINDDAILYMAX" ]; then
               if type setStyleBeufort >/dev/null 2>/dev/null; then
                 setBeufort "$LIVEDATA_WINDDAILYMAX_INTS10"
                 setStyleBeufort "$LIVEDATA_WINDDAILYMAX_INTS10"
-                STYLE_LIVE_VALUE=$STYLE_BEUFORT
+               # STYLE_LIVE_VALUE=$STYLE_BEUFORT
                 export LIVEDATASTYLE_WINDDAILYMAX="$STYLE_BEUFORT"
              #   unset LV_DELIMITER
               fi
             export LIVEDATA_WINDDAILYMAX_BEUFORT="$VALUE_BEUFORT"
             export LIVEDATA_WINDDAILYMAX_BEUFORT_DESCRIPTION="$VALUE_BEUFORT_DESCRIPTION"
 
-            padSpaceRight "$LIVEDATA_WINDDAILYMAX_BEUFORT_DESCRIPTION" 15
+            #padSpaceRight "$LIVEDATA_WINDDAILYMAX_BEUFORT_DESCRIPTION" 15
 
-         #   printLivedataLine  "$LIVEDATAHEADER_WINDDAILYMAX $LV_DELIMITER $VALUE_BEUFORT $VALUE_PADSPACERIGHT"   "$LIVEDATA_WINDDAILYMAX"  "%6.1f" "$LIVEDATAUNIT_WIND" "%4s"
+            printLivedataLine  "$LIVEDATAHEADER_WINDDAILYMAX"   "$LIVEDATA_WINDDAILYMAX"  "%6.1f" "$LIVEDATAUNIT_WIND" "%4s"
          fi 
-      
 }
 
 printLDSolar()
@@ -355,8 +367,8 @@ printLDSolar()
         
          #   unset LV_DELIMITER
         
-        padSpaceRight "$VALUE_UV_RISK" 10
-        printLivedataLine "$LIVEDATAHEADER_SOLAR_UVI" "$LIVEDATA_SOLAR_UVI" "%6u" "    " "%4s" "" "$LIVEDATA_SOLAR_UVI_DESCRIPTION" 
+        #padSpaceRight "$VALUE_UV_RISK" 10
+        printLivedataLine "$LIVEDATAHEADER_SOLAR_UVI" "$LIVEDATA_SOLAR_UVI_DESCRIPTION ($LIVEDATA_SOLAR_UVI)" "%s" "" "%4s" "" "" 
     fi
 }
 
@@ -460,8 +472,8 @@ printLDPM25()
                                 fi
                               #unset LV_DELIMITER
                             export LIVEDATA_PM25${n}_AQI=\"\$VALUE_PM25_AQI\"
-                            padSpaceRight \"\$VALUE_PM25_AQI\" 13
-                            printLivedataLine \"\$LIVEDATAHEADER_PM25$n \$LV_DELIMITER \$VALUE_PADSPACERIGHT\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$LIVEDATAUNIT_PM25\" \"%6s\"  \"\$SENSOR_PM25${n}_BATTERY\" \"\$SENSOR_PM25${n}_BATTERY_STATE\" '' \"\$SENSOR_PM25${n}_SIGNAL\" \"\$SENSOR_PM25${n}_SIGNAL_STATE\"
+                            #padSpaceRight \"\$VALUE_PM25_AQI\" 13
+                            printLivedataLine \"\$LIVEDATAHEADER_PM25$n\" \"\$LIVEDATA_PM25$n\" \"%6.1f\" \"\$LIVEDATAUNIT_PM25\" \"%6s\"  \"\$SENSOR_PM25${n}_BATTERY\" \"\$SENSOR_PM25${n}_BATTERY_STATE\" '' \"\$SENSOR_PM25${n}_SIGNAL\" \"\$SENSOR_PM25${n}_SIGNAL_STATE\"
                  fi"
             n=$((n + 1))
         done
@@ -476,8 +488,8 @@ printLDPM25()
                             fi
                             #unset LV_DELIMITER
                         export LIVEDATA_PM25${n}_AQI_24HAVG=\"\$VALUE_PM25_AQI\"
-                        padSpaceRight \"\$VALUE_PM25_AQI\" 13
-                        printLivedataLine \"\$LIVEDATAHEADER_PM25${n}_24HAVG \$LV_DELIMITER \$VALUE_PADSPACERIGHT\" \"\$LIVEDATA_PM25${n}_24HAVG\" \"%6.1f\" \"\$LIVEDATAUNIT_PM25\" \"%6s\"  \"\$VALUE_PADSPACERIGHT\"
+                       # padSpaceRight \"\$VALUE_PM25_AQI\" 13
+                        printLivedataLine \"\$LIVEDATAHEADER_PM25${n}_24HAVG\" \"\$LIVEDATA_PM25${n}_24HAVG\" \"%6.1f\" \"\$LIVEDATAUNIT_PM25\" \"%6s\"  \"\$VALUE_PADSPACERIGHT\"
              fi"
             n=$((n + 1))
         done
@@ -602,7 +614,7 @@ printLivedata()
     printLDCO2
     printLDLightning
     printLDLeafwetness
-    printLDSystem
+    #printLDSystem
   
     printAppendBuffer
 
