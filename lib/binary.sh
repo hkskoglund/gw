@@ -1320,7 +1320,7 @@ setBattery()
 setBatteryLowNormal()
 {
      getBatteryLowOrNormal "$2"
-    eval "export $1_BATTERY_INT=$2" "export $1_BATTERY=$2" "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'"
+    eval "export $1_BATTERY_INT=$2" "export $1_BATTERY=$2" "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'"  "export $1_BATTERY_LOW='$VALUE_BATTERY_LOW'"
 }
 
 setBatteryVoltageLevel()
@@ -1439,13 +1439,19 @@ getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
     unset  l
 }
 
-getBatteryLowOrNormal() {
+getBatteryLowOrNormal()
+# set VALUE_BATTERY_STATE
+# set VALUE_BATTERY_LOW 0 - normal 1 = low
+
+{
     
     unset VALUE_BATTERY_STATE
 
     if [ "$1" -eq "$BATTERY_NORMAL" ]; then
+       VALUE_BATTERY_LOW=0
        appendBatteryState
     elif [ "$1" -eq "$BATTERY_LOW" ]; then
+        VALUE_BATTERY_LOW=1
         appendLowBatteryState
     fi
 }

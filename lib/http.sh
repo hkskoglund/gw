@@ -297,7 +297,11 @@ parseEcowittHttpRequest()
 
             wh65batt)
                 getBatteryLowOrNormal "$value"
-                export  SENSOR_WH65_ID_STATE="$SENSORIDSTATE_CONNECTED"  SENSOR_WH65_BATTERY="$value" SENSOR_WH65_BATTERY_STATE="$VALUE_BATTERY_STATE" SENSOR_WH65_SIGNAL_STATE="$UNICODE_SIGNAL"
+                export SENSOR_WH65_ID_STATE="$SENSORIDSTATE_CONNECTED" 
+                export SENSOR_WH65_BATTERY_LOW="$VALUE_BATTERY_LOW"
+                export SENSOR_WH65_BATTERY="$value"
+                export SENSOR_WH65_BATTERY_STATE="$VALUE_BATTERY_STATE"
+                export SENSOR_WH65_SIGNAL_STATE="$UNICODE_SIGNAL"
                 ;;
 
             wh68batt)
@@ -320,6 +324,7 @@ parseEcowittHttpRequest()
 
                 channel=${key##batt}
                 getBatteryLowOrNormal "$value"
+                eval "export SENSOR_TEMP${channel}_BATTERY_LOW=$VALUE_BATTERY_LOW"
                 eval "export SENSOR_TEMP${channel}_BATTERY=$value"
                 eval "export SENSOR_TEMP${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
                 eval "export SENSOR_TEMP${channel}_ID_STATE='$SENSORIDSTATE_CONNECTED'"
