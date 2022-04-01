@@ -370,6 +370,7 @@ parseSensorId()
 # set SENSORBACKUP - escaped string of sensortype=sensorid\n - printed to backup*.conf file during backup
 {
     DEBUG_PARSE_SENSORID=${DEBUG_PARSE_SENSORID:=$DEBUG}
+    [ "$DEBUG_PARSE_SENSORID" -eq 1 ] && echo >&2 parseSensorId
      export SENSORSTAT_SEARCHING=0
      export SENSORSTAT_CONNECTED=0
      export SENSORSTAT_DISCONNECTED=0
@@ -524,8 +525,6 @@ parseSystem() {
         GW_SYSTEM_TIMEZONE_AUTO_BIT=0
     fi
     export GW_SYSTEM_TIMEZONE_AUTO_BIT
-
-     [ -z "$GW_NOPRINT" ] && printSystem
 
 }
 
@@ -1365,6 +1364,7 @@ appendBatteryState()
 # appends unicode for battery or +
 # set VALUE_BATTERY_STATE
 {
+    unset VALUE_BATTERY_STATE
    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
         VALUE_BATTERY_STATE=$VALUE_BATTERY_STATE$UNICODE_BATTERY
    else
@@ -1376,6 +1376,7 @@ appendLowBatteryState()
 # appends unicode for battery low or LOW
 # set VALUE_BATTERY_STATE
 {
+    unset VALUE_BATTERY_STATE
     if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
     #https://emojipedia.org/low-battery/ "Coming to major platforms in late 2021 and throughout 2022".
          VALUE_BATTERY_STATE=$VALUE_BATTERY_STATE$UNICODE_BATTERY_LOW 

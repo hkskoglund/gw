@@ -1381,7 +1381,7 @@ processSensorLongOpt()
     if getSensorIdCommandForFW "$GW_VERSION_INT" && sendPacket $VALUE_CMD_READ_SENSORID "$GW_HOST"; then
 
         local_disable_pattern="disable | disbled | disconnect | false | off"
-        local_search_pattern="search | searching | connect | true | on"
+        local_search_pattern="search | searching | connect | true | on | enable"
 
         case "$2" in
 
@@ -1389,7 +1389,7 @@ processSensorLongOpt()
                                            sendPacket $VALUE_CMD_READ_SENSORID "$GW_HOST" #reparse SENSOR_*
                                     ;;
 
-            search | searching | connect | true | on)      sendSensorId "$local_sensortype" "$local_sensortype_max" $SENSORID_SEARCH "$GW_HOST"
+            search | searching | connect | true | on | enable)      sendSensorId "$local_sensortype" "$local_sensortype_max" $SENSORID_SEARCH "$GW_HOST"
                                          sendPacket $VALUE_CMD_READ_SENSORID "$GW_HOST"
                                     ;;
 
@@ -1521,10 +1521,9 @@ processCommand()
 
             if argEmptyOrOption "$1"; then
                 sendPacket $CMD_READ_SYSTEM "$GW_HOST"
+                printSystem
             else
-                GW_NOPRINT=1
                 sendPacket $CMD_READ_SYSTEM "$GW_HOST"
-                unset GW_NOPRINT
                 parseSystemOption "$1"
                 EXITCODE_PROCESSCOMMAND=$EXITCODE_PARSESYSTEMOPTIONS
             fi
@@ -1960,6 +1959,7 @@ DEBUG_MAIN=${DEBUG_MAIN:=$DEBUG}
 
 # parse options
     EXITCODE_MAIN=0
+
 
 while [ $# -gt 0 ]; do
 
@@ -2446,13 +2446,13 @@ while [ $# -gt 0 ]; do
 
         -g | --gw)
 
-
             GW_HOST="$2"
-            sendPacket "$CMD_READ_MAC"  "$GW_HOST">/dev/null
-            sendPacket "$CMD_READ_VERSION" "$GW_HOST" >/dev/null 
+
+            sendPacket "$CMD_READ_MAC"  "$GW_HOST"
+            sendPacket "$CMD_READ_VERSION" "$GW_HOST" 
 
             case "$GW_VERSION" in
-                GW*)    sendPacket "$CMD_READ_SYSTEM" "$GW_HOST" >/dev/null  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
+                GW*)    sendPacket "$CMD_READ_SYSTEM" "$GW_HOST"  # find sensor type WH65/WH24 - &> redirect stderr+stdout - read_system not available on EasyWeather
                        ;;
             esac
 
@@ -2526,7 +2526,7 @@ while [ $# -gt 0 ]; do
             #set -x
               eval "$2"
              # set +x
-              shift
+              shift 2
             fi
             ;;
 

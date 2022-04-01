@@ -296,22 +296,24 @@ parseEcowittHttpRequest()
                 ;;
 
             wh65batt)
-
                 getBatteryLowOrNormal "$value"
-                export SENSOR_WH65_BATTERY="$value"
-                export SENSOR_WH65_BATTERY_STATE="$VALUE_BATTERY_STATE"
+                export  SENSOR_WH65_ID_STATE="$SENSORIDSTATE_CONNECTED"  SENSOR_WH65_BATTERY="$value" SENSOR_WH65_BATTERY_STATE="$VALUE_BATTERY_STATE" SENSOR_WH65_SIGNAL_STATE="$UNICODE_SIGNAL"
                 ;;
 
             wh68batt)
                 setHttpBatteryState "$value"
                 export SENSOR_WH68_BATTERY="$value"
                 export SENSOR_WH68_BATTERY_STATE="$VALUE_BATTERY_STATE${value}V"
+                export SENSOR_WH68_ID_STATE="$SENSORIDSTATE_CONNECTED"
+                export SENSOR_WH68_SIGNAL_STATE="$UNICODE_SIGNAL"
                 ;;
 
             wh80batt)
                 setHttpBatteryState "$value"
                 export SENSOR_WH80_BATTERY="$value"
                 export SENSOR_WH80_BATTERY_STATE="$VALUE_BATTERY_STATE${value}V"
+                export SENSOR_WH80_ID_STATE="$SENSORIDSTATE_CONNECTED"
+                export SENSOR_WH80_SIGNAL_STATE="$UNICODE_SIGNAL"
                ;;
 
             batt?)
@@ -320,6 +322,9 @@ parseEcowittHttpRequest()
                 getBatteryLowOrNormal "$value"
                 eval "export SENSOR_TEMP${channel}_BATTERY=$value"
                 eval "export SENSOR_TEMP${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
+                eval "export SENSOR_TEMP${channel}_ID_STATE='$SENSORIDSTATE_CONNECTED'"
+                eval "export SENSOR_TEMP${channel}_SIGNAL_STATE=$UNICODE_SIGNAL"
+                
                 ;;
 
             pm25batt?)
@@ -328,6 +333,8 @@ parseEcowittHttpRequest()
                 getBatteryLevelState "$value"
                 eval "export SENSOR_PM25${channel}_BATTERY=$value"
                 eval "export SENSOR_PM25${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
+                eval "export SENSOR_PM25${channel}_ID_STATE='$SENSORIDSTATE_CONNECTED'"
+                eval "export SENSOR_PM25${channel}_SIGNAL_STATE=$UNICODE_SIGNAL"
                 ;;
 
             soilbatt?)
@@ -338,7 +345,9 @@ parseEcowittHttpRequest()
                 
                 eval "export SENSOR_SOILMOISTURE${channel}_BATTERY_INT=$FLOAT_AS_INT"  
                 eval "export SENSOR_SOILMOISTURE${channel}_BATTERY=$value"
-                eval "export SENSOR_SOILMOISTURE${channel}_BATTERY_STATE=\"$VALUE_BATTERY_STATE\""  
+                eval "export SENSOR_SOILMOISTURE${channel}_BATTERY_STATE=\"$VALUE_BATTERY_STATE\""
+                eval "export SENSOR_SOILMOISTURE${channel}_ID_STATE='$SENSORIDSTATE_CONNECTED'"
+                eval "export SENSOR_SOILMOISTURE${channel}_SIGNAL_STATE=$UNICODE_SIGNAL"
                 ;;
 
             leakbatt?)
@@ -347,6 +356,8 @@ parseEcowittHttpRequest()
                 getBatteryLevelState "$value"
                 eval "export SENSOR_LEAK${channel}_BATTERY=$value"
                 eval "export SENSOR_LEAK${channel}_BATTERY_STATE=\"$VALUE_BATTERY_STATE\""
+                eval "export SENSOR_LEAK${channel}_ID_STATE='$SENSORIDSTATE_CONNECTED'"
+                eval "export SENSOR_LEAK${channel}_SIGNAL_STATE=$UNICODE_SIGNAL"
                 ;;
 
             stationtype)
