@@ -1,4 +1,5 @@
 #!/bin/sh
+#shellcheck disable=SC2034
 BEUFORT_0=5  #0.5 m/s
 BEUFORT_1=16
 BEUFORT_2=34

@@ -729,14 +729,14 @@ printOrLogLivedata()
     fi
 
     if [ -z "$LOG_CMD" ]; then
-       if [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NORMAL ]; then
+       if [ $LIVEDATAVIEW -eq $LIVEDATAVIEW_NORMAL ]; then
        #https://stackoverflow.com/questions/10411616/grep-regex-not-containing-string
             #set | grep ^LIVEDATA | grep -v _HEADER
             printLivedata
-       elif [ $LIVEDATA_VIEW -eq $LIVEDATA_VIEW_NULL ]; then
+       elif [ $LIVEDATAVIEW -eq $LIVEDATAVIEW_NULL ]; then
           :
        else
-          echo >&2 Not implemented liveview $LIVEDATA_VIEW
+          echo >&2 Not implemented liveview $LIVEDATAVIEW
        fi
     else
       eval "$LOG_CMD" # would allow executing of anything inside 
@@ -1900,15 +1900,21 @@ disposeVariable()
 # $1 prefix
 # unset all variables starting with prefix 
 {
-    echo >&2 "disposeVariable $1"
      #https://unix.stackexchange.com/questions/3510/how-to-print-only-defined-variables-shell-and-or-environment-variables-in-bash
      IFS='='
-    while read -r line_var line_value; do
+     #only variables for bash
+     # shellcheck disable=SC3040
+     [ -n "$BASH_VERSION" ] && set -o posix
+     #shellcheck disable=SC2034
+       while read -r line_var line_value; do
         #echo "$line_var=$line_value ${#line_var}"
-        [ -n "$line_var" ] && { echo >&2 "unset $line_var"; unset "$line_var"; }
+        [ -n "$line_var" ] && { # [ "$DEBUG" -eq 1 ]} && echo >&2 "unset $line_var"
+         unset "$line_var"; }
     done << EOF
 $(set | grep "\b$1.*=")
 EOF
+# shellcheck disable=SC3040
+    [ -n "$BASH_VERSION" ] && set +o posix
 
 }
 #read -r -u 0 -t 0 STDIN
@@ -2212,7 +2218,7 @@ while [ $# -gt 0 ]; do
             
             ;;
         -b | --backup) #exec 6>&1 >backup.config
-                        LIVEDATA_VIEW=$LIVEDATA_VIEW_BACKUP
+                        LIVEDATAVIEW=$LIVEDATAVIEW_BACKUP
                         
                         for cmd in $CMD_READ_ECOWITT_INTERVAL $CMD_READ_WUNDERGROUND $CMD_READ_WOW $CMD_READ_WEATHERCLOUD $CMD_READ_CUSTOMIZED $CMD_READ_PATH; do
                                 if sendBackupCommand "$cmd" "$GW_HOST"; then
@@ -2235,7 +2241,7 @@ while [ $# -gt 0 ]; do
                             done
                         fi
 
-                        LIVEDATA_VIEW=$LIVEDATA_VIEW_NORMAL
+                        LIVEDATAVIEW=$LIVEDATAVIEW_NORMAL
                         unset backup_commands
 
                         shift
@@ -2334,14 +2340,14 @@ while [ $# -gt 0 ]; do
        -v | --view) IFS=,
                     for liveview in $2; do
                        case "$liveview" in
-                           0 | null) LIVEDATA_VIEW=$LIVEDATA_VIEW_NULL
+                           0 | null) LIVEDATAVIEW=$LIVEDATAVIEW_NULL
                                 ;;
-                           n | normal) LIVEDATA_VIEW=$LIVEDATA_VIEW_NORMAL
+                           n | normal) LIVEDATAVIEW=$LIVEDATAVIEW_NORMAL
                                 exec 1>&6 6>&- # &- close fd
                                 ;;
-                           t | terse) LIVEDATA_VIEW=$LIVEDATA_VIEW_TERSE
+                           t | terse) LIVEDATAVIEW=$LIVEDATAVIEW_TERSE
                                 ;;
-                           b | backup) LIVEDATA_VIEW=$LIVEDATA_VIEW_BACKUP
+                           b | backup) LIVEDATAVIEW=$LIVEDATAVIEW_BACKUP
                            #https://tldp.org/LDP/abs/html/x17974.html "Using exec"
                                exec 6>&1 >backup.conf # fd6=stdout, stdout=backup.conf
                                     ;;

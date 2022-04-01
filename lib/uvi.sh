@@ -1,5 +1,5 @@
 #!/bin/sh
-
+#shellcheck disable=SC2034
 export          UV_RISK_UNICODE="${UV_RISK_UNICODE:="😎"}"
 export          UV_RISK_LOW="${UV_RISK_LOW:="LOW "}"
 export UV_RISK_MODERATE="${UV_RISK_MODERATE:="MODERATE $UV_RISK_UNICODE"}"
