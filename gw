@@ -724,7 +724,7 @@ processCalibrationOptions()
 
 printOrLogLivedata()
 {
-    if [ $LIVEDATA_SYSTEM_PROTOCOL = $LIVEDATA_PROTOCOL_ECOWITT_BINARY ]; then
+    if [ $LIVEDATA_SYSTEM_PROTOCOL = $LIVEDATAPROTOCOL_ECOWITT_BINARY ]; then
          copySystemToLivedata
     fi
 
@@ -1646,6 +1646,7 @@ processCommand()
 
         livedata | l)
             
+            disposeVariable "LIVEDATA_"
             #get battery/signal info to merge into livedata view
             if isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
                 sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST" >/dev/null
@@ -1670,36 +1671,8 @@ processCommand()
 
             if  isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
 
-                if ! argEmptyOrOption "$1"; then
-                #filter for senorid; -c sensor connected|-c s co
-
-                    case "$1" in 
-                        connected|c)
-                                        SPATTERNID=$SPATTERNID_CONNECTED #matches connected sensors
-                                        sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
-                                        ;;
-                        disconnected)
-                                        SPATTERNID=$SPATTERNID_DISCONNECTED
-                                        sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
-                                        ;;
-                        searching|s)
-                                        SPATTERNID=$SPATTERNID_SEARCHING
-                                        sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
-                                        ;;
-                        disabled|d)
-                                        SPATTERNID=$SPATTERNID_DISABLED
-                                        sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
-                                        ;;
-                        
-                        *) 
-                                        processSensorOptions "$1"
-                        ;;
-                    esac
-
-                else
                     sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
                     printSensors
-                fi
             fi
 
             ;;
@@ -1923,6 +1896,21 @@ path_wunderground=$GWBACKUP_WS_CUSTOMIZED_PATH_WU"
 
 }
 
+disposeVariable()
+# $1 prefix
+# unset all variables starting with prefix 
+{
+    echo >&2 "disposeVariable $1"
+     #https://unix.stackexchange.com/questions/3510/how-to-print-only-defined-variables-shell-and-or-environment-variables-in-bash
+     IFS='='
+    while read -r line_var line_value; do
+        #echo "$line_var=$line_value ${#line_var}"
+        [ -n "$line_var" ] && { echo >&2 "unset $line_var"; unset "$line_var"; }
+    done << EOF
+$(set | grep "\b$1.*=")
+EOF
+
+}
 #read -r -u 0 -t 0 STDIN
 
 #if [ -n "$STDIN" ]; then
@@ -2183,7 +2171,8 @@ while [ $# -gt 0 ]; do
                                                 shift
                                                 ;;                              
        
-        --sensor)                               if  isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
+        --sensor)                               disposeVariable "SENSOR_"
+                                                if  isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
                                                     sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
                                                     printSensors
                                                 fi
@@ -2446,6 +2435,7 @@ while [ $# -gt 0 ]; do
             ;;
 
         -g | --gw)
+
 
             GW_HOST="$2"
             sendPacket "$CMD_READ_MAC"  "$GW_HOST">/dev/null

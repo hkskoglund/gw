@@ -112,11 +112,11 @@ sendPacketnc()
       local_rxpipecmd="$local_rxpipecmd | tee -a \"$3\""
     fi
 
-    local_TCPport=$GW_PORT_TCP
+    local_TCPport=$PORT_TCP
 
     if [ "$1" -eq "$CMD_BROADCAST" ]; then
         local_ncUDPopt='-u' # udp mode
-        local_TCPport=$GW_PORT_UDP
+        local_TCPport=$PORT_UDP
         local_timeout_nc=$local_timeout_udp_broadcast
         local_useTimeout=1
     elif [ "$1" -eq "$CMD_WRITE_RESET" ] || [ "$1" -eq "$CMD_WRITE_SSID" ]; then
