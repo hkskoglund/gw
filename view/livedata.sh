@@ -451,7 +451,7 @@ printLDLeak()
             VALUE_LEAK=$LIVEDATAHEADER_LEAK_NO
             eval "if [ -n ''"\$LIVEDATA_LEAK$n" ]; then
                         [ \"\$LIVEDATA_LEAK$n\" -ne 0 ] && STYLE_LIVE_VALUE=\"$STYLE_LEAK\" && VALUE_LEAK=$LIVEDATAHEADER_LEAK_YES
-                        printLivedataLine \"\$LIVEDATAHEADER_LEAK$n \$LV_DELIMITER \$VALUE_LEAK\" \"\$LIVEDATA_LEAK$n\" \"%6u\" \"\" \"%4s\"  \"\$SENSOR_LEAK${n}_BATTERY\" \"\$SENSOR_LEAK${n}_BATTERY_STATE\" '' \"\$SENSOR_LEAK${n}_SIGNAL\" \"\$SENSOR_LEAK${n}_SIGNAL_STATE\"
+                        printLivedataLine \"\$LIVEDATAHEADER_LEAK$n\" \"\$VALUE_LEAK (\$LIVEDATA_LEAK$n)\" \"%6s\" \"\" \"%4s\"  \"\$SENSOR_LEAK${n}_BATTERY\" \"\$SENSOR_LEAK${n}_BATTERY_STATE\" '' \"\$SENSOR_LEAK${n}_SIGNAL\" \"\$SENSOR_LEAK${n}_SIGNAL_STATE\"
                 fi"
             n=$((n + 1))
         done
