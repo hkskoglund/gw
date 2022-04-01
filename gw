@@ -1899,6 +1899,7 @@ path_wunderground=$GWBACKUP_WS_CUSTOMIZED_PATH_WU"
 disposeVariable()
 # $1 prefix
 # unset all variables starting with prefix 
+# multiple request for livedata/sensors populates LIVEDATA_ or SENSOR_ variables
 {
      #https://unix.stackexchange.com/questions/3510/how-to-print-only-defined-variables-shell-and-or-environment-variables-in-bash
      IFS='='
@@ -1906,16 +1907,19 @@ disposeVariable()
      # shellcheck disable=SC3040
      [ -n "$BASH_VERSION" ] && set -o posix
      #shellcheck disable=SC2034
-       while read -r line_var line_value; do
-        #echo "$line_var=$line_value ${#line_var}"
-        [ -n "$line_var" ] && { # [ "$DEBUG" -eq 1 ]} && echo >&2 "unset $line_var"
-         unset "$line_var"; }
+      unset l_var
+       while read -r l_name l_value; do
+        #echo "$l_name=$l_value ${#l_name}"
+        [ -n "$l_name" ] && { # [ "$DEBUG" -eq 1 ]} && echo >&2 "unset $l_name"
+         l_var="$l_var $l_name"; }
     done << EOF
 $(set | grep "\b$1.*=")
 EOF
+    eval unset "$l_var"
 # shellcheck disable=SC3040
     [ -n "$BASH_VERSION" ] && set +o posix
 
+  unset l_name l_value l_var
 }
 #read -r -u 0 -t 0 STDIN
 
