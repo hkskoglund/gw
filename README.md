@@ -1,12 +1,14 @@
-# gw - view weather data, sensor management and configuration backup for gw-1000 or compatible devices
+# gw - view weather data and edit configuration
 
-gw reads weather data from gw-1000 and shows it in a live view. Data can be filtered for example hiding rain. It supports the binary protocol (*client*-mode) and http requests (*server*-mode). Settings on the device can be configured. For example gw can receive Ecowitt or Wunderground http requests by configuring the **customized server**.
+gw is a tool for displaying weather data from gw-1000 and editing the configuration using command line options. Text file editing of the configuratrion is planned. 
 
-The sensor view lists current battery, signal status and state (searching/disabled/hexid) to all sensors. Setting a new sensor state, for example from searching to disabled is supported.
+## Features
+* view livedata
+* http server for viewing ecowitt/wunderground weather data
+* view/configure sensors
+* backup/restore of configuration using text file (*planned*)
 
-Backup and restore of the entire weather service, calibration and sensor configuration is supported. 
-
-It is designed with *portability* in mind and tested on bash, zsh, ksh93, mksh and **dash**. Ansi escape codes are used to style wind, uv index, and pm25 air quality index. 
+It is designed with *portability* in mind and tested on **dash**, bash, zsh, ksh93, and mksh.
 
 The script uses the standard **nc** and  **od** utilities available on most systems.
 
