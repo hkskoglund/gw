@@ -1320,7 +1320,7 @@ setBattery()
 setBatteryLowNormal()
 {
      getBatteryLowOrNormal "$2"
-    eval "export $1_BATTERY_INT=$2" "export $1_BATTERY=$2" "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'"  "export $1_BATTERY_LOW='$VALUE_BATTERY_LOW'"
+    eval "export $1_BATTERY_INT=$2" "export $1_BATTERY=$2" "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'"  "export $1_BATTERY_LOW=$VALUE_BATTERY_LOW"
 }
 
 setBatteryVoltageLevel()
@@ -1328,7 +1328,7 @@ setBatteryVoltageLevel()
 # $2 voltage x 10
 {
     getBatteryVoltageScale10State "$2"
-    eval "export $1_BATTERY_INT=$2" "export $1_BATTERY=$VALUE_BATTERY_VOLTAGE" "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'"
+    eval "export $1_BATTERY_INT=$2" "export $1_BATTERY=$VALUE_BATTERY_VOLTAGE" "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'" "export $1_BATTERY_LOW=$VALUE_BATTERY_LOW"
 }
 
 setBatteryLevel()
@@ -1342,13 +1342,15 @@ setBatteryVoltageLevel002()
 # $1 sensor name WH80/WH68
 # $2 value - this is a x100 scale value
 {
-    unset VALUE_BATTERY_STATE
+    unset VALUE_BATTERY_STATE VALUE_BATTERY_LOW
 
     local_voltage_s100=$(( $2 * 2 )) # scale x 100 - for 2 AA batteries
 
     if [ "$2" -le $(( BATTERY_VOLTAGE_LOW * 10 )) ]; then # [ -le 120]
+       VALUE_BATTERY_LOW=0
        appendLowBatteryState
     else
+       VALUE_BATTERY_LOW=1
        appendBatteryState
     fi
 
@@ -1356,6 +1358,7 @@ setBatteryVoltageLevel002()
     eval "export $1_BATTERY=$local_voltage" 
     VALUE_BATTERY_STATE=$VALUE_BATTERY_STATE"${local_voltage}V"
     eval "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'"
+    eval "export $1_BATTERY_LOW=$VALUE_BATTERY_LOW"
 
     unset local_voltage local_voltage_s100
 }
@@ -1390,12 +1393,15 @@ getBatteryVoltageScale10State()
 # $1 voltage scaled * 10
 # set VALUE_BATTERY_VOLTAGE
 # set VALUE_BATTERY_STATE
+# set VALUE_BATTERY_LOW
 {
    unset VALUE_BATTERY_STATE
 
    if [ "$1" -le "$BATTERY_VOLTAGE_LOW" ]; then
+      VALUE_BATTERY_LOW=1
       appendLowBatteryState
    else
+      VALUE_BATTERY_LOW=0
       appendBatteryState
    fi
 
