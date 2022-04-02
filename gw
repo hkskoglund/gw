@@ -2488,6 +2488,7 @@ while [ $# -gt 0 ]; do
 
             if [ -z "$LOG_CMD" ]; then
                httpServer "$2"
+               printOrLogLivedata
                EXITCODE_MAIN=$?
             else
                while true; do

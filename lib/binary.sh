@@ -1334,7 +1334,7 @@ setBatteryVoltageLevel()
 setBatteryLevel()
 {
     getBatteryLevelState "$2"
-    eval "export $1_BATTERY_INT=$2" "export $1_BATTERY=$2" "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'"
+    eval "export $1_BATTERY_INT=$2" "export $1_BATTERY=$2" "export $1_BATTERY_STATE='$VALUE_BATTERY_STATE'" "export $1_BATTERY_LOW=$VALUE_BATTERY_LOW"
 }
 
 setBatteryVoltageLevel002()
@@ -1407,7 +1407,7 @@ getBatteryVoltageScale10State()
 
 getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
     
-    unset VALUE_BATTERY_STATE
+    unset VALUE_BATTERY_STATE VALUE_BATTERY_LOW
    
     #set -- 0     #debug  set $1 to 0
     if [ "$1" -eq 6 ]; then
@@ -1417,6 +1417,7 @@ getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
       else
         VALUE_BATTERY_STATE="dc" # for example PM 2.5 indoor
       fi
+      
     else
        # l=1
        # while [ "$l" -le 5 ] ; do
@@ -1428,8 +1429,10 @@ getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
        #     l=$((l + 1))
        # done
        if [ "$1" -le 1 ]; then
+          VALUE_BATTERY_LOW=1
           appendLowBatteryState
        else
+          VALUE_BATTERY_LOW=0
           appendBatteryState
        fi
 
@@ -1442,7 +1445,6 @@ getBatteryLevelState() { # $1 - battery level 0-6, 6 = dc, <=1 low
 getBatteryLowOrNormal()
 # set VALUE_BATTERY_STATE
 # set VALUE_BATTERY_LOW 0 - normal 1 = low
-
 {
     
     unset VALUE_BATTERY_STATE
