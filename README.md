@@ -182,7 +182,7 @@ customized path wunderground            /path/wu
 
 ## Subnet scanning for devices on LAN
 
-<code>./gw -s 192.168.3</code>
+<code>./gw --scan 192.168.3</code>
 <pre>
 192.168.3.14 8c:aa:b5:c7:24:b1 192.168.3.14 45000 EasyWeather-WIFI24B1 V1.6.1
 192.168.3.16 48:3f:da:54:14:ec 192.168.3.16 45000 GW1000A-WIFI14EC V1.6.8
@@ -258,35 +258,65 @@ calibration wind direction offset           0
 
 # Usage
 ### Basic
-./gw [ -g **ip** ] [ -c **command** ] [-l **port** ] 
+./gw [ -g **IP** ] [ -c **command** ] [-l **PORT** ] [ -s | --sensor ] [ --sensor_**TYPE**=disable|search] [ --server]
 <br>
-### Filtering/unit conversion
-./gw [ -H **HEADERS** ] [ u- **UNITS**] ...
+### Unit conversion
+./gw [ -u **UNITS**] ...
 <br>
 ### Scan subnet for gw
-./gw [ -s **xxx.xxx.xxx** ]<br>
+./gw [ --scan **xxx.xxx.xxx** ]<br>
 
 # Options
 
 ## -g, --gw IP - ip adress to device<br>
 ## -c, --command COMMAND [OPTIONS] - send command to device
 ## -l, --listen PORT - listen for incoming ecowitt/wunderground http requests
-## -b, --backup - backup of weather services, calibration and sensor configuration
-## -s, --scan SUBNET - scan for devices on xxx.xxx.xxx 
-## -H, --hide-headers HEADERS - hide headers in livedata view
+## -s, --sensor - print list of sensors
+## -b, --backup - backup of weather services, calibration and sensors
+## -B - binary backup
+## -r, --restore - restore backup
+## -R - restore binary backup
+## --scan SUBNET - scan for devices on xxx.xxx.xxx 
 ## -u, --unit UNITS - set unit conversion for pressure,rain and wind
+## -G, --group-header - print group header in livedata view
 ## -d, --debug [OPTIONS] - print debug information<br><br>
 
 # option -c
 
-## livedata | l - get livedata from gw<br><br>
+## livedata | l - get livedata from gw
+Print all weather data received from sensors
 
-## sensor | s **[OPTIONS]** - get/set sensor state (searching/disabled/hexid)
+# option -s
+## --sensor | -s
+Print a list of sensors. Each sensor has a unique name starting with prefix <b>sensor_</b>that can be used as an long option (--) to set desired state. Multiple sensors can be set to searching/disabled using glob pattern <b>sensor_TYPE.=</b> 
+### Setting single sensor state
+sensor_TYPE1=disable | off,  search 
+* disable | off
+* search | on
+* HEXID
+### Setting multiple sensor using glob . pattern
+sensor_TYPE.=search
 
-### **OPTIONS** -  range *lowtype*-*hightype*=[ searching | s | connected | c | disconnected ] or [ single sensor *type*=*hexid* ].<br> For example to disable sensors 40-47 (leafwetnetness), use -c sensor 40-47=disable. The command following = is optional, in this case only sensors matching the range will be printed. To list only connected sensors, use -c sensor connected or shortform -c s c.<br><br>
-
-## customized | c **[OPTIONS]** - get/set customized server configuration 
-### **OPTIONS** comma delimited list [ key=value, ... ];: id=, password | pw=, server | s=, port | p= , interval | i=, http | h=, enabled | e=, path_wunderground | p_w=, path_ecowitt | p_e=<br><br>
+# option --server
+Print customized server settings
+## --server="PROTOCOL://IP:PORT/PATH?interval=N&enabled=true|false&id=ID&password=PASSWORD"
+Set multiple settings using query string format. 
+## --id=ID
+Set customized id
+## --password=PASSWORD
+Set customized password
+## --port=PORT
+Set customized port
+## --http=ecowitt | wunderground
+Set customized http protocol.
+## --path_ecowitt=PATH
+Set customized http ecowitt request path
+## --path_wunderground=PATH
+Set customized http wunderground request path
+## --interval=INTERVAL
+Set customized interval in seconds
+## --enabled=true | false
+Set customized enabled state
 
 ## system | sys **[OPTIONS]** - get/set system manual/auto timezone,daylight saving, system type (wh24/wh65)<br>
 ### **OPTIONS** comma delimited list [ key=value, ... ]; auto=on | off |1 | 0, dst= on |off | 1 | 0, tz=*tzindex*|?, type=wh24 | wh65 | 0 |1.<br>
@@ -310,34 +340,11 @@ reset will set all calibration offsets to 0. Calibration is updated on the devic
 Reboot takes about 5 seconds. Time is synchronized with cn.pool.ntp.org each hour. Timezone, utcoffset, sunrise/sunset are fetched from rtpdate.ecowitt.net. Wind daily max is reset during reboot.
 ## reset - reset device to default settings<br><br>
 
-# Option: -b | --backup - backup of weather sevice, calibration and sensor configuration
+# Option: -B | --backup - backup of weather sevice, calibration and sensor configuration
 Takes a binary backup of entire configuration including weather services, calibration offsets and sensor configuration.
 
-# Option -r | --restore BACKUPFILE - restore weather service, calibration and sensor configuration
+# Option -R | --restore BACKUPFILE - restore weather service, calibration and sensor configuration
 Restores binary backup from backupfile
-
-# Option: -H - hide/filter groups in livedata view
-Comma separated list of headers groups and styling: for example <code>-H headers,rain</code> hides group headers/compact view and rain group
-## headers | h - hides group headers, resulting in a compact view
-## rain | r
-## wind | w
-## temperature | t
-## light | l
-## system | s
-## soilmoisture | sm
-## soiltemperature | st
-## leak
-## co2
-## pm25
-## pm25aqi
-## leafwetness | leafw
-## lightning
-## tempusr | tusr
-## compass | c
-## status - hide status line with battery and signal information 
-## sensor-header | sh - hides sensor header in sensor view
-## beufort | b - hides beufort styling
-## uvi - hides uvi styling<br><br>
 
 # Option -u [k=v,...]
 ## pressure | p = inhg | hpa

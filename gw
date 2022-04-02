@@ -2181,7 +2181,7 @@ while [ $# -gt 0 ]; do
                                                 shift
                                                 ;;                              
        
-        --sensor)                               disposeVariable "SENSOR_"
+        --sensor|-s)                               disposeVariable "SENSOR_"
                                                 if  isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
                                                     sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
                                                     printSensors
@@ -2506,7 +2506,7 @@ Powershell: iex 'netsh interface portproxy add v4tov4 listenport=\$port listenad
             shift 2
             ;;
    
-        -s | --scan)
+        --scan)
 
             if argEmptyOrOption "$2"; then
                 discovery
