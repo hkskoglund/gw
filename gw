@@ -2461,14 +2461,17 @@ while [ $# -gt 0 ]; do
             shift 2
             ;;
 
-        -l | --listen)
-            #WSL2
-            #open TCP 8080 in windows firewall -> add rule to open
-            #add portproxy from hostos to WSL2 distro/ubuntu
-            #netsh interface portproxy add v4tov4 listenport=8080 listenaddress=192.168.3.3 connectaddress=172.22.134.109 connectport=8080
-            # iex "netsh interface portproxy add v4tov4 listenport=8080 listenaddress=(Get-NetIPAddress -InterfaceAlias Wi-Fi -AddressFamily IPv4).IPAddress connectaddress=$(wsl -e hostname -I) connectport=8080"
-            # iex = invoke-expression cmdlet
+        --help-portproxy)
             #https://github.com/microsoft/WSL/issues/4150#issuecomment-504209723
+            printf "\
+Listening for http requests inside Windows Subsystem for Linux WSL2\n\
+TCP \$port to listen to must be opened in windows firewall - press Win+I - Firewall - Advanced settings - Create incoming rule \n\
+Powershell: netsh interface portproxy reset (optional)\n\
+Powershell: iex 'netsh interface portproxy add v4tov4 listenport=\$port listenaddress=(Get-NetIPAddress -InterfaceAlias Wi-Fi -AddressFamily IPv4).IPAddress connectaddress=\$(wsl -e hostname -I) connectport=\$port'\n"
+          shift
+          ;;
+
+        -l | --listen)
             
             # Wunderground
             #GET /wundergroundID=testid&PASSWORD=testpassword&tempf=63.0&humidity=82&dewptf=57.4&windchillf=63.0&winddir=355&windspeedmph=3.36&windgustmph=4.47&rainin=0.000&dailyrainin=0.020&weeklyrainin=0.051&monthlyrainin=0.311&yearlyrainin=4.811&solarradiation=206.87&UV=2&indoortempf=74.3&indoorhumidity=61&baromin=29.760&soilmoisture=16&lowbatt=0&dateutc=now&softwaretype=GW1000A_V1.6.8&action=updateraw&realtime=1&rtfreq=5 HTTP/1.0
