@@ -79,53 +79,53 @@ System sensors disabled          <span style="color: red">11</span>
 <pre>
 Every 2.0s: ./gw -g 192.168.3.16 --sensor           ideapadpro: Tue Mar 29 11:30:52 2022
 
-sensor_wh65           0       f1   0 4 ✅ connected     🔋      📶 4/4
-sensor_wh68           1 fffffffe 255 0 ⛔ disabled
-sensor_wh80           2 fffffffe 255 0 ⛔ disabled
-sensor_rainfall       3 fffffffe  31 0 ⛔ disabled
-sensor_outtemp        5 fffffffe   0 0 ⛔ disabled
-sensor_temp1          6       ba   0 4 ✅ connected     🔋      📶 4/4
-sensor_temp2          7       db   0 4 ✅ connected     🔋      📶 4/4
-sensor_temp3          8       6e   0 4 ✅ connected     🔋      📶 4/4
-sensor_temp4          9 fffffffe   0 0 ⛔ disabled
-sensor_temp5         10 fffffffe   0 0 ⛔ disabled
-sensor_temp6         11 fffffffe   0 0 ⛔ disabled
-sensor_temp7         12 fffffffe   0 0 ⛔ disabled
-sensor_temp8         13 fffffffe   0 0 ⛔ disabled
-sensor_soilmoisture1 14   40c6e3  13 4 ✅ connected     🔋 1.3V 📶 4/4
-sensor_soilmoisture2 15 fffffffe  31 0 ⛔ disabled
-sensor_soilmoisture3 16 fffffffe  31 0 ⛔ disabled
-sensor_soilmoisture4 17 fffffffe  31 0 ⛔ disabled
-sensor_soilmoisture5 18 fffffffe  31 0 ⛔ disabled
-sensor_soilmoisture6 19 fffffffe  31 0 ⛔ disabled
-sensor_soilmoisture7 20 fffffffe  31 0 ⛔ disabled
-sensor_soilmoisture8 21 fffffffe  31 0 ⛔ disabled
-sensor_pm251         22     c50e   6 4 ✅ connected     🔌      📶 4/4
-sensor_pm252         23 fffffffe  15 0 ⛔ disabled
-sensor_pm253         24 fffffffe  15 0 ⛔ disabled
-sensor_pm254         25 fffffffe  15 0 ⛔ disabled
-sensor_lightning     26 fffffffe   0 0 ⛔ disabled
-sensor_leak1         27 fffffffe  15 0 ⛔ disabled
-sensor_leak2         28 fffffffe  15 0 ⛔ disabled
-sensor_leak3         29 fffffffe  15 0 ⛔ disabled
-sensor_leak4         30 fffffffe  15 0 ⛔ disabled
-sensor_soiltemp1     31 fffffffe 255 0 ⛔ disabled
-sensor_soiltemp2     32 fffffffe 255 0 ⛔ disabled
-sensor_soiltemp3     33 fffffffe 255 0 ⛔ disabled
-sensor_soiltemp4     34 fffffffe 255 0 ⛔ disabled
-sensor_soiltemp5     35 fffffffe 255 0 ⛔ disabled
-sensor_soiltemp6     36 fffffffe 255 0 ⛔ disabled
-sensor_soiltemp7     37 fffffffe 255 0 ⛔ disabled
-sensor_soiltemp8     38 fffffffe 255 0 ⛔ disabled
-sensor_co2           39 fffffffe   0 0 ⛔ disabled
-sensor_leafwetness1  40 fffffffe 255 0 ⛔ disabled
-sensor_leafwetness2  41 fffffffe 255 0 ⛔ disabled
-sensor_leafwetness3  42 fffffffe 255 0 ⛔ disabled
-sensor_leafwetness4  43 fffffffe 255 0 ⛔ disabled
-sensor_leafwetness5  44 fffffffe 255 0 ⛔ disabled
-sensor_leafwetness6  45 fffffffe 255 0 ⛔ disabled
-sensor_leafwetness7  46 fffffffe 255 0 ⛔ disabled
-sensor_leafwetness8  47 fffffffe 255 0 ⛔ disabled
+sensor_wh65                 f1 ✅ connected     🔋      📶 4/4
+sensor_wh68           fffffffe ⛔ disabled
+sensor_wh80           fffffffe ⛔ disabled
+sensor_rainfall       fffffffe ⛔ disabled
+sensor_outtemp        fffffffe ⛔ disabled
+sensor_temp1                ba ✅ connected     🔋      📶 4/4
+sensor_temp2                db ✅ connected     🔋      📶 4/4
+sensor_temp3                6e ✅ connected     🔋      📶 4/4
+sensor_temp4          fffffffe ⛔ disabled
+sensor_temp5          fffffffe ⛔ disabled
+sensor_temp6          fffffffe ⛔ disabled
+sensor_temp7          fffffffe ⛔ disabled
+sensor_temp8          fffffffe ⛔ disabled
+sensor_soilmoisture1   40c6e3   connected     🔋 1.3V 📶 4/4
+sensor_soilmoisture2  fffffffe ⛔ disabled
+sensor_soilmoisture3  fffffffe ⛔ disabled
+sensor_soilmoisture4  fffffffe ⛔ disabled
+sensor_soilmoisture5  fffffffe ⛔ disabled
+sensor_soilmoisture6  fffffffe ⛔ disabled
+sensor_soilmoisture7  fffffffe ⛔ disabled
+sensor_soilmoisture8  fffffffe ⛔ disabled
+sensor_pm251              c50e ✅ connected     🔌      📶 4/4
+sensor_pm252          fffffffe ⛔ disabled
+sensor_pm253          fffffffe ⛔ disabled
+sensor_pm254          fffffffe ⛔ disabled
+sensor_lightning      fffffffe ⛔ disabled
+sensor_leak1          fffffffe ⛔ disabled
+sensor_leak2          fffffffe ⛔ disabled
+sensor_leak3          fffffffe ⛔ disabled
+sensor_leak4          fffffffe ⛔ disabled
+sensor_soiltemp1      fffffffe ⛔ disabled
+sensor_soiltemp2      fffffffe ⛔ disabled
+sensor_soiltemp3      fffffffe ⛔ disabled
+sensor_soiltemp4      fffffffe ⛔ disabled
+sensor_soiltemp5      fffffffe ⛔ disabled
+sensor_soiltemp6      fffffffe ⛔ disabled
+sensor_soiltemp7      fffffffe ⛔ disabled
+sensor_soiltemp8      fffffffe ⛔ disabled
+sensor_co2            fffffffe ⛔ disabled
+sensor_leafwetness1   fffffffe ⛔ disabled
+sensor_leafwetness2   fffffffe ⛔ disabled
+sensor_leafwetness3   fffffffe ⛔ disabled
+sensor_leafwetness4   fffffffe ⛔ disabled
+sensor_leafwetness5   fffffffe ⛔ disabled
+sensor_leafwetness6   fffffffe ⛔ disabled
+sensor_leafwetness7   fffffffe ⛔ disabled
+sensor_leafwetness8   fffffffe ⛔ disabled
 </pre>
 
 ## Setting all leafwetness sensors to searching and disable temperature sensor 1, reset temp sensor 1 to id 'ba'.
@@ -169,12 +169,9 @@ customized path wunderground            /path/wu
 </pre>
 
 ## Backup and restore of weather services, calibration and sensor configuration
-<code>./gw -g 192.168.3.16 -b</code>
+<code>./gw -g 192.168.3.16 -B</code>
 <pre>Created backup-192.168.3.16-GW1000A_V1.6.8-11-00-04-914237195.hex</pre>
-<code>./gw -g 192.168.3.16 -r backup-192.168.3.16-GW1000A_V1.6.8-11-00-04-914237195.hex</code>
-
-## Continous monitoring each 1 minute -H option to hide groups (rain, system, temperature and leak)
-<code> while true; do clear;./gw -g 192.168.3.16 -H rain,system,t,leak  -c l; sleep 60; done</code>
+<code>./gw -g 192.168.3.16 -R backup-192.168.3.16-GW1000A_V1.6.8-11-00-04-914237195.hex</code>
 
 ## Listen for Ecowitt/Wunderground http request on port 8080
 
@@ -193,21 +190,6 @@ customized path wunderground            /path/wu
 ## Changing units for temperature, pressure, wind and rain
 
 <code>./gw -u p=inhg,t=farenheit,r=in -g 192.168.3.16 -c l</code>
-
-## Viewing customized server settings
-
-<code>./gw -g 192.168.3.16 -c customized</code>
-<pre>
-id
-password
-server             192.168.3.3
-port               8080
-interval           16
-protocol           0 ecowitt
-enabled            1 on
-path ecowitt       /weatherstation/updateweatherstation.php?
-path wunderground  /data/report/
-</pre>
 
 ## Setting manual timezone
 <code>./gw -g 192.168.3.16  -c system auto=off,tz=43,dst=1 -c system</code>
