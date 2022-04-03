@@ -1,6 +1,6 @@
 # gw - view weather data and edit configuration
 
-gw is a tool for displaying weather data from gw-1000 and editing the configuration using command line options. Text file editing of the configuratrion is planned. 
+gw is a tool for displaying weather data from gw-1000 and editing the configuration using command line options. Text file editing of the configuration is planned. 
 
 **Features**
 * view livedata
