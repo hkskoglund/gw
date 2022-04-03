@@ -1644,6 +1644,8 @@ processCommand()
             ;;
 
         livedata | l)
+
+            [ "$LIVEDATASTAT_COUNTER" -gt 0 ] &&  copyVariables "LIVEDATA_" "LIVEDATA${LIVEDATASTAT_COUNTER}_"
            
             #get battery/signal info to merge into livedata view
             if isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
@@ -1656,8 +1658,7 @@ processCommand()
                 EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
                 printOrLogLivedata
 
-                LIVEDATASTAT_COUNTER=$(( LIVEDATASTAT_COUNTER + 1 ))
-                copyVariables "LIVEDATA_" "LIVEDATA${LIVEDATASTAT_COUNTER}_"
+               
             else
               
                 while true; do
@@ -1665,6 +1666,8 @@ processCommand()
                   sleep "$LOG_INTERVAL"
                 done
             fi
+
+            LIVEDATASTAT_COUNTER=$(( LIVEDATASTAT_COUNTER + 1 ))
 
             ;;
 
@@ -1948,6 +1951,9 @@ initTimezones
 initUnit
 initWinddirectionCompass
 
+LIVEDATASTAT_COUNTER=0
+SENSORSTAT_COUNTER=0
+
 #https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
 #useful CLI info: https://clig.dev/#arguments-and-flags
 
@@ -2188,12 +2194,11 @@ while [ $# -gt 0 ]; do
                                                 shift
                                                 ;;                              
        
-        --sensor|-s)                              
-                                                if  isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
+        --sensor|-s)                            if isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
+                                                    [ "$SENSORSTAT_COUNTER" -gt 0 ] && copyVariables "SENSOR_" "SENSOR${SENSORSTAT_COUNTER}_"
                                                     sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
                                                     printSensors
                                                     SENSORSTAT_COUNTER=$(( SENSORSTAT_COUNTER + 1))
-                                                    copyVariables "SENSOR_" "SENSOR${SENSORSTAT_COUNTER}_"
                                                 fi
                                                 shift
                                                 ;;
