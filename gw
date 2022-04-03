@@ -1644,8 +1644,7 @@ processCommand()
             ;;
 
         livedata | l)
-            
-            disposeVariable "LIVEDATA_"
+           
             #get battery/signal info to merge into livedata view
             if isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
                 sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST" >/dev/null
@@ -1656,6 +1655,9 @@ processCommand()
                 sendPacket $CMD_LIVEDATA "$GW_HOST"
                 EXITCODE_PROCESSCOMMAND=$EXITCODE_SENDPACKET
                 printOrLogLivedata
+
+                LIVEDATASTAT_COUNTER=$(( LIVEDATASTAT_COUNTER + 1 ))
+                copyVariables "LIVEDATA_" "LIVEDATA${LIVEDATASTAT_COUNTER}_"
             else
               
                 while true; do
@@ -1895,9 +1897,10 @@ path_wunderground=$GWBACKUP_WS_CUSTOMIZED_PATH_WU"
 
 }
 
-disposeVariable()
-# $1 prefix
-# unset all variables starting with prefix 
+copyVariables()
+# $1 prefix of variables
+# $2 copyprefix
+# unset all variables starting with prefix, copy all variables starting with copyprefix
 # multiple request for livedata/sensors populates LIVEDATA_ or SENSOR_ variables
 {
      #https://unix.stackexchange.com/questions/3510/how-to-print-only-defined-variables-shell-and-or-environment-variables-in-bash
@@ -1909,8 +1912,12 @@ disposeVariable()
       unset l_var
        while read -r l_name l_value; do
         #echo "$l_name=$l_value ${#l_name}"
-        [ -n "$l_name" ] && { # [ "$DEBUG" -eq 1 ]} && echo >&2 "unset $l_name"
-         l_var="$l_var $l_name"; }
+            if [ -n "$l_name" ]; then
+                l_copyvar=$2${l_name#"$1"}
+                [ "$DEBUG" -eq 1 ] && echo >&2 "Copy variable $l_copyvar=$l_value"
+                eval "$l_copyvar=$l_value"
+                l_var="$l_var $l_name"
+            fi
     done << EOF
 $(set | grep "\b$1.*=")
 EOF
@@ -1918,7 +1925,7 @@ EOF
 # shellcheck disable=SC3040
     [ -n "$BASH_VERSION" ] && set +o posix
 
-  unset l_name l_value l_var
+  unset l_name l_value l_var l_copyvar
 }
 #read -r -u 0 -t 0 STDIN
 
@@ -2181,10 +2188,12 @@ while [ $# -gt 0 ]; do
                                                 shift
                                                 ;;                              
        
-        --sensor|-s)                               disposeVariable "SENSOR_"
+        --sensor|-s)                              
                                                 if  isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
                                                     sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
                                                     printSensors
+                                                    SENSORSTAT_COUNTER=$(( SENSORSTAT_COUNTER + 1))
+                                                    copyVariables "SENSOR_" "SENSOR${SENSORSTAT_COUNTER}_"
                                                 fi
                                                 shift
                                                 ;;

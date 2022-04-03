@@ -179,6 +179,14 @@ customized path wunderground            /path/wu
 
 <code>./gw -l 8080</code>
 
+## Advanced CSV logging, comparing WH65 and WH80 wind data
+<code>echo "Time,WH65WindSpeed,WH80WindSpeed,WH65WindGust,WH80WindGust,WH65Winddirection,WH80Winddirection"; while true; do ./gw -v null -g 192.168.3.16 -c l -g 192.168.3.26 -c l -x 'echo $(date +"%X"),$LIVEDATA1_WINDSPEED,$LIVEDATA2_WINDSPEED,$LIVEDATA1_WINDGUSTSPEED,$LIVEDATA2_WINDGUSTSPEED,$LIVEDATA1_WINDDIRECTION,$LIVEDATA2_WINDDIRECTION'; sleep 5; done
+<pre>
+09:13:36,0.8,1.1,1.0,1.6,76,35
+09:13:42,0.3,0.9,0.5,1.6,76,52
+09:13:47,0.3,0.9,0.5,1.6,76,88
+</pre>
+
 ## Subnet scanning for devices on LAN
 
 <code>./gw --scan 192.168.3</code>

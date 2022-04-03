@@ -395,15 +395,15 @@ printLDRain()
             export LIVEDATA_RAINRATE_STATE="$VALUE_RAININTENSITY_STATUS"
             
             if [ "$LIVEDATA_RAINRATE_INTS10" -gt 0 ]; then
-                delimiter=$LV_DELIMITER 
+                l_delimiter=$LV_DELIMITER 
             else
-                delimiter=" "
+                l_delimiter=" "
             fi
         
         #added space at end when doing when refreshing screen with printf \e[H, otherwise status is merged with previous value if changed
             padSpaceRight "$VALUE_RAININTENSITY" 8 
             
-            printLivedataLine "$LIVEDATAHEADER_RAINRATE $delimiter $VALUE_PADSPACERIGHT"  "$LIVEDATA_RAINRATE" "$VALUE_RAIN_FMT"  "$LIVEDATAUNIT_RAINRATE" "%4s"  '' "$VALUE_RAININTENSITY_STATUS" 
+            printLivedataLine "$LIVEDATAHEADER_RAINRATE $l_delimiter $VALUE_PADSPACERIGHT"  "$LIVEDATA_RAINRATE" "$VALUE_RAIN_FMT"  "$LIVEDATAUNIT_RAINRATE" "%4s"  '' "$VALUE_RAININTENSITY_STATUS" 
     fi
     # rainhour available in Ecowitt http request
     [ -n "$LIVEDATA_RAINHOUR" ]     && printLivedataRainLine "$LIVEDATA_RAINHOUR_INTS10"  "$LIVEDATALIMIT_RAINHOUR"  "$LIVEDATAHEADER_RAINHOUR"  "$LIVEDATA_RAINHOUR" "$LIVEDATAUNIT_RAIN" "$STYLE_LIVEDATALIMIT_RAINHOUR"
@@ -415,6 +415,7 @@ printLDRain()
     [ -n "$LIVEDATA_RAINYEAR" ]     && printLivedataLine "$LIVEDATAHEADER_RAINYEAR" "$LIVEDATA_RAINYEAR"    "$VALUE_RAIN_FMT" "$LIVEDATAUNIT_RAIN" "%3s" 
     [ -n "$LIVEDATA_RAINTOTAL" ]    && printLivedataLine "$LIVEDATAHEADER_RAINTOTAL" "$LIVEDATA_RAINTOTAL"  "$VALUE_RAIN_FMT" "$LIVEDATAUNIT_RAIN" "%3s" "$VALUE_RAIN_FMT"
 
+    unset l_delimiter
 }
 
 printLDSoilmoisture()
