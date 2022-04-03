@@ -2,7 +2,7 @@
 
 gw is a tool for displaying weather data from gw-1000 and editing the configuration using command line options. Text file editing of the configuratrion is planned. 
 
-## Features
+**Features**
 * view livedata
 * http server for viewing ecowitt/wunderground weather data
 * view/configure sensors
