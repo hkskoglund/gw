@@ -10,7 +10,7 @@ gw is a tool for displaying weather data from gw-1000 and editing the configurat
 
 It is designed with *portability* in mind and tested on **dash**, bash, zsh, ksh93, and mksh.
 
-The script uses the standard **nc** and  **od** utilities available on most systems.
+The script uses the standard **nc** and  **od** utilities.
 
 # Screenshot Windows Terminal/WSL 2
 ![Screenshot Liveview with headings - Windows Terminal v1.11.3471.0 - WSL2](./img/Skjermbilde%202022-01-26%20144206.png)
