@@ -735,6 +735,8 @@ printOrLogLivedata()
             printLivedata
        elif [ $LIVEDATAVIEW -eq $LIVEDATAVIEW_NULL ]; then
           :
+       elif [ $LIVEDATAVIEW -eq $LIVEDATAVIEW_HTML ]; then
+            printLivedataHTML
        else
           echo >&2 Not implemented liveview $LIVEDATAVIEW
        fi
@@ -1930,6 +1932,7 @@ EOF
 
   unset l_name l_value l_var l_copyvar
 }
+
 #read -r -u 0 -t 0 STDIN
 
 #if [ -n "$STDIN" ]; then
@@ -1972,6 +1975,10 @@ DEBUG_MAIN=${DEBUG_MAIN:=$DEBUG}
 
 # parse options
     EXITCODE_MAIN=0
+
+  while true; do
+     nc -l 8000 -q 1 < index.html
+    done &
 
 
 while [ $# -gt 0 ]; do
@@ -2368,6 +2375,8 @@ while [ $# -gt 0 ]; do
                            b | backup) LIVEDATAVIEW=$LIVEDATAVIEW_BACKUP
                            #https://tldp.org/LDP/abs/html/x17974.html "Using exec"
                                exec 6>&1 >backup.conf # fd6=stdout, stdout=backup.conf
+                                    ;;
+                           h | html)    LIVEDATAVIEW=$LIVEDATAVIEW_HTML
                                     ;;
                             *) >&2 echo "Warning: Unknown livedata view $liveview, use 0 | null, n | normal, b | backup"
                             ;;
