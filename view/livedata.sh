@@ -591,6 +591,25 @@ printLDSystem()
 
 }
 
+
+
+printLivedataHTML()
+{
+    printf "HTTP/1.1 200 OK\n\
+Server: gw\n\
+Content-Type: text/html; charset=UTF-8\n\
+\n\
+<HTML>\n\
+<HEAD>\n\
+<TITLE>Test</TITLE>\n\
+</HEAD>\n\
+<BODY>\n\
+%s\n\
+</BODY>\n\
+</HTML>\n" "$LIVEDATA_WINDSPEED"
+
+}
+
 printLivedata()
 # print all LIVEDATA grouped in a table
 # debugging: call printLivedataFinal directly for problematic line and set DEBUG_LIVEDATA_LINE=1, also can use: printAppendbuffer; return 
