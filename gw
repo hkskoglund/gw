@@ -1976,11 +1976,6 @@ DEBUG_MAIN=${DEBUG_MAIN:=$DEBUG}
 # parse options
     EXITCODE_MAIN=0
 
-  while true; do
-     nc -l 8000 -q 1 < index.html
-    done &
-
-
 while [ $# -gt 0 ]; do
 
     if [ $EXITCODE_MAIN -ne 0 ]; then
@@ -2571,6 +2566,8 @@ done
 [ $DEBUG_OPTION_EXPORT -eq 1 ] && export 
 
 cleanup
+
+[ "$DEBUG_MAIN" -eq 1 ] && { jobs -l; ps -efj; }
 
 [ "$DEBUG_MAIN" -eq 1 ] && echo >&2 "main: Exit/return code $EXITCODE_MAIN"
 

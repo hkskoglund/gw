@@ -1,5 +1,7 @@
 #!/bin/sh
 
+DEBUG=${DEBUG:=0}
+
 httpServer()
 #$1 - port number 
 {
@@ -9,6 +11,7 @@ httpServer()
 
     [ "$DEBUG_HTTPSERVER" -eq 1 ] && >&2 echo $DEBUG_FUNC: Listening on port "$1"
 
+set -x
     if [ "$NC_VERSION" = "$NC_NMAP" ]; then 
         http_message=$("$NC_CMD" -l -i 0.1 "$1" 2>/dev/null) # - idle timeout to exit early, not waiting for client to close/FIN
         EXITCODE_HTTPSERVER=$? 
@@ -25,6 +28,7 @@ httpServer()
         echo >&2 Error: Listen unsupported for nc version "$NC_VERSION"
         EXITCODE_HTTPSERVER=$ERROR_LISTEN_UNSUPPORTED_NC
     fi
+    set +x
 
     if [ -z "$http_message" ]; then
         [ "$DEBUG_HTTPSERVER" -eq 1 ] && echo >&2 $DEBUG_FUNC: Empty http message from nc
@@ -58,12 +62,13 @@ httpServer()
 
 parseHttpHeader()
 {
-    [ "$DEBUG" -eq 1 ] &&  echo >&2 "parseHttpHeader $1"
+    #[ "$DEBUG" -eq 1 ] &&  
+    echo >&2 "parseHttpHeader $1"
     
     IFS=: read -r HTTP_KEY HTTP_VALUE <<EOH
 $1
 EOH
-   #echo "KEY $HTTP_KEY VALUE $HTTP_VALUE"
+   echo >&2 "KEY $HTTP_KEY VALUE $HTTP_VALUE"
     case $HTTP_KEY in
         *-*) 
                 IFS=-
@@ -87,6 +92,14 @@ EOH
    #IFS=- set -- $HTTP_KEY
 }
 
+parseHttpRequestLine()
+{
+     # shellcheck disable=SC2034
+      IFS=' ' read -r HTTP_METHOD HTTP_URL HTTP_VERSION <<EOL
+$1
+EOL
+}
+
 parseHttpLines()
 {
     #http://mywiki.wooledge.org/BashFAQ/001
@@ -102,10 +115,7 @@ $1
 EOF
 
      if [ -n "$HTTP_LINE1" ]; then
-           #shellcheck disable=SC2034
-           IFS=' ' read -r HTTP_METHOD HTTP_URL HTTP_VERSION <<EOL
-$HTTP_LINE1
-EOL
+           parseHttpRequestLine "$HTTP_LINE1"
     fi
 
     if [ "$NBODY" -gt 2 ]; then

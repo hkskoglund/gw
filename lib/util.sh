@@ -1,6 +1,8 @@
 #!/bin/sh
 # shellcheck disable=SC2034
 
+SHELL_SUPPORT_TYPESET=${SHELL_SUPPORT_TYPESET:=0}
+
 isNumber() {
     #https://stackoverflow.com/questions/806906/how-do-i-test-if-a-variable-is-a-number-in-bash?page=1&tab=votes#tab-top
     isnumber_int=$1
