@@ -173,8 +173,14 @@ printLivedataGroupheader()
 # $1 style format 
 # $2 group header
 {
+    if [ -z "$NO_COLOR" ]; then
+        l_style=$STYLE_LIVEVIEW_NORMAL_HEADER
+        l_stylereset=$STYLE_RESET
+    fi
+    
     if [ -n "$LIVEVIEW_SHOW_GROUPHEADERS" ]; then
-        [ -z "$1" ] && set -- "\n$STYLE_LIVEVIEW_NORMAL_HEADER%s$STYLE_RESET\n\n" "$2"  #use default when "" used as $1
+        
+            [ -z "$1" ] && set -- "\n$l_style%s$l_stylereset\n\n" "$2"  #use default when "" used as $1
 
         appendBuffer "$1" "'$2'"
     fi
@@ -184,7 +190,7 @@ printLDIntemp()
 {
      if [ -n "$LIVEDATA_INTEMP" ]; then
 
-         printLivedataGroupheader "$STYLE_LIVEVIEW_NORMAL_HEADER%s$STYLE_RESET\n\n" "$LIVEDATAGROUPHEADER_TEMPERATURE"
+         printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_TEMPERATURE"
          
          setLivedataValueStyleLtGt "$LIVEDATA_INTEMP_INTS10" "$LIVEDATALIMIT_INTEMP_LOW" "$LIVEDATALIMIT_INTEMP_HIGH" "$STYLE_LIVEDATALIMIT_INTEMP_LOW" "$STYLE_LIVEDATALIMIT_INTEMP_HIGH"
          printLivedataLine "$LIVEDATAHEADER_INTEMP"  "$LIVEDATA_INTEMP" "%6.1f" "$LIVEDATAUNIT_TEMP" "%s"
