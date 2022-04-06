@@ -65,31 +65,31 @@ parseHttpHeader()
     #[ "$DEBUG" -eq 1 ] &&  
     echo >&2 "parseHttpHeader $1"
     
-    IFS=: read -r HTTP_KEY HTTP_VALUE <<EOH
+    IFS=: read -r l_HTTP_KEY l_HTTP_VALUE <<EOH
 $1
 EOH
-   echo >&2 "KEY $HTTP_KEY VALUE $HTTP_VALUE"
-    case $HTTP_KEY in
+   echo >&2 "KEY $l_HTTP_KEY VALUE $l_HTTP_VALUE"
+    case $l_HTTP_KEY in
         *-*) 
                 IFS=-
                 #shellcheck disable=SC2086
-                set -- $HTTP_KEY
+                set -- $l_HTTP_KEY
                 #echo KEY PART1 "$1" KEY PART2 "$2"
                 toLowercase "$1"
-                HTTP_KEY_PART1=$VALUE_LOWERCASE
+                l_HTTP_KEY_PART1=$VALUE_LOWERCASE
                 toLowercase "$2"
-                HTTP_KEY_PART2=$VALUE_LOWERCASE
-                eval "HTTP_HEADER_${HTTP_KEY_PART1}_$HTTP_KEY_PART2=${HTTP_VALUE# }"
+                l_HTTP_KEY_PART2=$VALUE_LOWERCASE
+                eval "HTTP_HEADER_${l_HTTP_KEY_PART1}_${l_HTTP_KEY_PART2}=${l_HTTP_VALUE# }"
                 ;;
         *)         
-                toLowercase "$HTTP_KEY"
-                HTTP_KEY=$VALUE_LOWERCASE
-                eval "HTTP_HEADER_$HTTP_KEY=${HTTP_VALUE# }" # trim 1 leading space
+                toLowercase "$l_HTTP_KEY"
+                l_HTTP_KEY=$VALUE_LOWERCASE
+                eval "HTTP_HEADER_$l_HTTP_KEY=${l_HTTP_VALUE# }" # trim 1 leading space
                ;;
     esac
 
-    unset HTTP_KEY HTTP_VALUE
-   #IFS=- set -- $HTTP_KEY
+    unset l_HTTP_KEY l_HTTP_VALUE l_HTTP_KEY_PART1 l_HTTP_KEY_PART2
+   #IFS=- set -- $l_HTTP_KEY
 }
 
 parseHttpRequestLine()

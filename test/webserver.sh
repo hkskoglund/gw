@@ -54,27 +54,28 @@ sendHttpResponseCode()
 }
 
 webserver()
+# process runs in a subshell (function call in end of pipeline), pid can be accessed by $BASHPID/$$ is invoking shell, pstree -pal gives overview
 {
-        
         # read request and headers including newline
-        lno=0
-        while IFS= read -r REPLY; do
-           lno=$(( lno + 1 ))
+        l_no=0
+        while IFS= read -r l_http_response_line; do
+
+           l_no=$(( l_no + 1 ))
            
               set -x
-              eval HTTP_LINE$lno=\""$REPLY"\"
-              if [ $lno -gt 1 ] && [ "$REPLY" != "$CRLF" ]; then
-                eval parseHttpHeader \"\$HTTP_LINE$lno\"
+              eval HTTP_LINE$l_no=\""$l_http_response_line"\"
+              if [ "$l_http_response_line" = "$CRLF" ]; then
+                    echo >&2 http newline CRLF
+                    break
+               elif [ $l_no -gt 1 ] ; then
+                eval parseHttpHeader \"\$HTTP_LINE$l_no\"
               fi
               set +x
-              
-            case "$REPLY" in 
-                "$CRLF") break
-                        ;;
-            esac
+
         done
       
         # send response to client to terminate connection
+
         case "$HTTP_LINE1" in 
                 HEAD*)                          sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                                 ;;
@@ -96,12 +97,18 @@ webserver()
                         *)                      sendHttpResponseCode "$HTTP_RESPONSE_501_NOTIMPLEMENTED"
                                                 ;;
         esac
+
+
+    set
+    unset l_no l_http_response_line
 }
 
 
 startwebserver()
 # $1 port
 {
+    echo >&2 "Webserver PID $$"
+
     CRLF=$(printf "\r\n")
     if [ -z "$1" ]; then
         echo >&2 Error: No port specified for web server
@@ -113,11 +120,13 @@ startwebserver()
     GWWEBSERVER_PORT=$1
     ! [ -p "$GWFIFO" ] && mkfifo "$GWFIFO"
     while true; do 
+       set
        tail -f "$GWFIFO" | nc -v -4 -l "$GWWEBSERVER_PORT" | webserver  #nc openbsd -N closes connection
         #all processes in pipeline runs in same process group, commands to manage: ps -efj, kill -- -PGID, jobs, kill %+, kill %-
         #https://www.baeldung.com/linux/kill-members-process-group
     done
 }
+
 trap
 
 set -x
