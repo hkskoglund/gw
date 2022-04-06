@@ -2,7 +2,6 @@
 # shellcheck disable=SC2034
 GWDIR=${GWDIR:="."}
 DEBUG=${DEBUG:=0}
-DEBUG_OPTION_APPEND=${DEBUG_OPTION_APPEND:=0}
 SHELL_SUPPORT_UNICODE=${SHELL_SUPPORT_UNICODE:=1}
 HIDE_RAIN_LIVEDATA_AUTO=${HIDE_RAIN_LIVEDATA_AUTO:=0} # auto hide_liveview when 0 today (0=off)
 HIDE_LIGHT_LIVEDATA_AUTO=${HIDE_LIGHT_LIVEDATA_AUTO:=0} # auto hide_liveview when 0/dark
@@ -103,8 +102,10 @@ printLivedataLineFinal()
     l_batterystatusfmt=$8
     l_signalvalue=$9
     l_signalstate=${10}
-    l_style=$STYLE_LIVE_VALUE
-    l_styleoff=$STYLE_RESET
+    if [ -z "$NO_COLOR" ]; then
+        l_style=$STYLE_LIVE_VALUE
+        l_styleoff=$STYLE_RESET
+    fi
     
     if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_LIVEDATA_LINE" ]; then
         echo >&2 "printLivedataLine $* length $#"
@@ -149,29 +150,10 @@ printLivedataLineFinal()
     unset signal_line
     unset l_batteryline #disable - icons draws attention away from weather data
 
-    if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_APPEND" -eq 1 ]; then 
-        appendFormat " $l_headerfmt %s %s %s %s\n"
-    fi
-    
-    if [ -n "$STYLE_LIVE_VALUE" ]; then
-        [ -z "$l_unit" ] && unset l_space # skip space if unit empty
-      #  appendFormat "$l_headerfmt $STYLE_LIVE_VALUE$l_valuefmt$l_space$l_unitfmt$STYLE_RESET $l_statusfmt $l_signalfmt %s\n"
-      
-    else
-        unset l_style l_styleoff
-        #appendFormat "$l_headerfmt $l_valuefmt $l_unitfmt $l_statusfmt $l_signalfmt %s\n"
-
-    fi
-
-        l_format="$l_headerfmt $l_style$l_valuefmt$l_space$l_unitfmt$l_styleoff $l_statusfmt\n"
-        appendFormat "$l_format"
+    l_format="$l_headerfmt $l_style$l_valuefmt$l_space$l_unitfmt$l_styleoff $l_statusfmt\n"
+    appendFormat "$l_format"
 
     unset STYLE_LIVE_VALUE
-
-   # if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_APPEND" -eq 1 ]; then 
-   #     appendArgs "'$l_headerfmt' '$3' '$l_unitfmt' '$l_statusfmt' '$l_signalfmt' '${11}'"
-   # fi
-
   #  appendArgs "'$1' '$2' '$4' '$l_batteryline' '$signal_line' '${11}'"
   l_args="'$l_header' '$l_value' '$l_unit' '$l_batteryline'"
   appendArgs "$l_args"
@@ -181,7 +163,8 @@ printLivedataLineFinal()
   # echo l_format "$l_format"
    
     unset l_headerfmt ch l_statusfmt l_unitfmt l_batteryline l_signalfmt signal_line\
-        l_format l_args l_space l_batterystatus l_batterystatusfmt l_batteryvalue l_header l_signalstate l_signalvalue l_unit l_value l_valuefmt l_style l_styleoff
+        l_format l_args l_space l_batterystatus l_batterystatusfmt l_batteryvalue l_header\
+        l_signalstate l_signalvalue l_unit l_value l_valuefmt l_style l_styleoff
     
 }
 
@@ -685,7 +668,9 @@ printLivedataRainLine()
    l_header=$3
    l_float=$4
    l_unit=$5
-   l_style=$6
+   if [ -z "$NO_COLOR" ]; then
+        l_style=$6
+   fi
 
     #printArgs "printLivedataRainLine" "$@"
 

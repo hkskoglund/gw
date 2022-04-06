@@ -13,19 +13,19 @@ sendHttpResponse()
     printf "%b" "$APPEND_HTTP_RESPONSE" >"$GWFIFO"
 }
 
-appendHttpHeader()
+appendHttpResponseHeader()
 {
     APPEND_HTTP_RESPONSE="${APPEND_HTTP_RESPONSE}$1: $2\n"
 }
 
 appendHttpDefaultHeaders()
 {
-    appendHttpHeader "Date" "$(date)"
-    appendHttpHeader "Server" "gw"
-    appendHttpHeader "Connection" "close"
+    appendHttpResponseHeader "Date" "$(date)"
+    appendHttpResponseHeader "Server" "gw"
+    appendHttpResponseHeader "Connection" "close"
 }
 
-appendHttpnewLine()
+appendHttpResponsenewline()
 {
     APPEND_HTTP_RESPONSE="$APPEND_HTTP_RESPONSE\r\n"
 }
@@ -35,7 +35,7 @@ appendHttpResponseCode()
     APPEND_HTTP_RESPONSE="${APPEND_HTTP_RESPONSE}$1\n"
 }
 
-appendHttpBody()
+appendHttpResponseneBody()
 {
     APPEND_HTTP_RESPONSE="$APPEND_HTTP_RESPONSE$1"
 }
@@ -76,30 +76,41 @@ webserver()
       
         # send response to client to terminate connection
 
-        case "$HTTP_LINE1" in 
-                HEAD*)                          sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
-                                                ;;
+        if [ -z "$HTTP_LINE1" ]; then
+            echo >&2 "webserver: http request of length 0"
+            return 1
+        fi
 
-                "GET / "*|"GET /livedata"*)     #sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
-                                                resetHttpResponse
-                                                appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
-                                                appendHttpDefaultHeaders
-                                                appendHttpHeader "Content-Type: application/json"
-                                                appendHttpnewLine
-                                                appendHttpBody '{"success":"true"}'
-                                                sendHttpResponse
+        parseHttpRequestLine "$HTTP_LINE1"
 
-                                                ;;
+        case "$HTTP_REQUEST_METHOD" in
+            HEAD)                   sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
+                                    ;;
+            GET)
+                case "$HTTP_REQUEST_URL" in
+                  /|/livedata)
+                                    #sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
+                                    resetHttpResponse
+                                    appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
+                                    appendHttpDefaultHeaders
+                                    appendHeader "Content-Type: text/plain"
+                                    appendHttpResponsenewline
+                                    appendHttpResponseneBody 'test\t\ttest\t\ttest\n'
+                                    #appendHttpResponseHeader "Content-Type: application/json"
+                                    #appendHttpResponsenewline
+                                    #appendHttpResponseneBody '{"success":"true"}'
+                                    sendHttpResponse
+                                    ;;
 
-                "GET /"*)                       sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
-                                                ;;
-
-                        *)                      sendHttpResponseCode "$HTTP_RESPONSE_501_NOTIMPLEMENTED"
-                                                ;;
+                            *)      sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
+                                    ;;
+                esac
+                ;;
+            *)                      sendHttpResponseCode "$HTTP_RESPONSE_501_NOTIMPLEMENTED"
+                                    ;;
         esac
 
-
-    set
+   # set
     unset l_no l_http_response_line
 }
 
@@ -114,13 +125,14 @@ startwebserver()
         echo >&2 Error: No port specified for web server
         return 1
     fi
-    TMPFIFODIR=$(mktemp -d) 
-   # trap 'rm -rf "$TMPFIFODIR; exit"'
+    TMPFIFODIR=$(mktemp -d)
     GWFIFO="$TMPFIFODIR/fifo"
+    mkfifo "$GWFIFO"
+    trap 'echo >&2 "webserver INT trap handler"; rm -rf "$TMPFIFODIR"; exit' INT # INT catches ctrl-c -> triggers exit trap handler
+    #trap 'echo >&2 webserver EXIT TERM HUP trap handler; rm -rf "$TMPFIFODIR"' EXIT INT TERM HUP
     GWWEBSERVER_PORT=$1
-    ! [ -p "$GWFIFO" ] && mkfifo "$GWFIFO"
     while true; do 
-       set
+       #set
        tail -f "$GWFIFO" | nc -v -4 -l "$GWWEBSERVER_PORT" | webserver  #nc openbsd -N closes connection
         #all processes in pipeline runs in same process group, commands to manage: ps -efj, kill -- -PGID, jobs, kill %+, kill %-
         #https://www.baeldung.com/linux/kill-members-process-group
@@ -131,7 +143,7 @@ trap
 
 set -x
 #echo Args $0
-startwebserver "$1"
+startwebserver "$1" 
 #echo Background PID $!
-jobs
+#jobs
 set +x

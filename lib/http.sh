@@ -62,13 +62,12 @@ set -x
 
 parseHttpHeader()
 {
-    #[ "$DEBUG" -eq 1 ] &&  
-    echo >&2 "parseHttpHeader $1"
+    [ "$DEBUG" -eq 1 ] &&  echo >&2 "parseHttpHeader $1"
     
     IFS=: read -r l_HTTP_KEY l_HTTP_VALUE <<EOH
 $1
 EOH
-   echo >&2 "KEY $l_HTTP_KEY VALUE $l_HTTP_VALUE"
+    [ "$DEBUG" -eq 1 ] && echo >&2 "KEY $l_HTTP_KEY VALUE $l_HTTP_VALUE"
     case $l_HTTP_KEY in
         *-*) 
                 IFS=-
@@ -95,9 +94,10 @@ EOH
 parseHttpRequestLine()
 {
      # shellcheck disable=SC2034
-      IFS=' ' read -r HTTP_METHOD HTTP_URL HTTP_VERSION <<EOL
+      IFS=' ' read -r HTTP_REQUEST_METHOD HTTP_REQUEST_URL HTTP_REQUEST_VERSION <<EOL
 $1
 EOL
+    [ $DEBUG -eq 1 ] && echo >&2 "method: $HTTP_REQUEST_METHOD url: $HTTP_REQUEST_URL version: $HTTP_REQUEST_VERSION"
 }
 
 parseHttpLines()
@@ -156,7 +156,7 @@ parseEcowittHttpRequest()
 
     export LIVEDATA_SYSTEM_PROTOCOL="$LIVEDATAPROTOCOL_ECOWITT_HTTP"
     export LIVEDATA_SYSTEM_PROTOCOL_LONG="$LIVEDATAPROTOCOL_ECOWITT_HTTP_LONG"
-    export LIVEDATA_SYSTEM_PROTOCOL_VERSION="$HTTP_VERSION"
+    export LIVEDATA_SYSTEM_PROTOCOL_VERSION="$HTTP_REQUEST_VERSION"
     
     [ "$DEBUG_HTTP" -eq 1 ] && printf "HTTP BODY\n%s\n" "$HTTP_BODY"
     IFS='&'
@@ -439,7 +439,7 @@ parseWundergroundHttpReqest()
    #shellcheck disable=SC2034
    {
    LIVEDATA_SYSTEM_PROTOCOL_LONG=$LIVEDATAPROTOCOL_WUNDERGROUND_HTTP_LONG
-   LIVEDATA_SYSTEM_PROTOCOL_VERSION=$HTTP_VERSION
+   LIVEDATA_SYSTEM_PROTOCOL_VERSION=$HTTP_REQUEST_VERSION
    }
       #https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request
 
@@ -452,8 +452,8 @@ parseWundergroundHttpReqest()
     #http_request="ID="$http_request
 
     IFS='&'
-    local_httpprefix=${HTTP_URL%ID=*}
-    for f in ${HTTP_URL#"$local_httpprefix"}; do 
+    local_httpprefix=${HTTP_REQUEST_URL%ID=*}
+    for f in ${HTTP_REQUEST_URL#"$local_httpprefix"}; do 
 
         value=${f##*=}
         key=${f%%=*}

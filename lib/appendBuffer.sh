@@ -31,7 +31,7 @@ printAppendBuffer()
 {
     #special characters like 'æøå' gives wrong adjustment in %s 
 
-    if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_OPTION_APPEND" -eq 1 ]; then 
+    if [ "$DEBUG" -eq 1 ]; then 
         printf >&2 "%s\n" "APPEND_FORMAT/APPEND_ARGS printf '$APPEND_FORMAT' $APPEND_ARGS"
     fi
 

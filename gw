@@ -733,6 +733,9 @@ printOrLogLivedata()
        #https://stackoverflow.com/questions/10411616/grep-regex-not-containing-string
             #set | grep ^LIVEDATA | grep -v _HEADER
             printLivedata
+            export LIVEDATA_TEXTPLAIN
+            LIVEDATA_TEXTPLAIN=$(NO_COLOR=1 printLivedata)
+            
        elif [ $LIVEDATAVIEW -eq $LIVEDATAVIEW_NULL ]; then
           :
        elif [ $LIVEDATAVIEW -eq $LIVEDATAVIEW_HTML ]; then
@@ -842,8 +845,6 @@ processDebugOptions()
             strict)     DEBUG_OPTION_STRICTPACKET=1 # check packet length and crc of received packets
                         ;;
             t|trace)    DEBUG_OPTION_TRACEPACKET=1 # trace tx/rx packets in hex format during sendpacketnc
-                        ;;
-            a|append)   DEBUG_OPTION_APPEND=1 # print append format/args - default livedata view/table layout
                         ;;
             b|buffer)   DEBUG_OPTION_OD_BUFFER=1 # show hex buffers of transmitted/received data
                         ;;
