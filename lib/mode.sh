@@ -23,6 +23,7 @@ UNIT_UNICODE_PRESSURE_HPA="hPa"
 UNIT_UNICODE_RAIN_MM="mm"
 UNIT_UNICODE_LIGHT_LUX="㏓"
 UNIT_UNICODE_M2="㎡"
+UNIT_UNICODE_WINDDIRECTION="°"
 
 setLightMode()
 # $1 mode
@@ -31,13 +32,13 @@ setLightMode()
     UNIT_LIGHT_MODE=$1
 
     if [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_LUX" ]; then
-        if [ "$SHELL_SUPPORT_UNICODE" ]; then
+        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
             LIVEDATAUNIT_SOLAR_LIGHT=$UNIT_UNICODE_LIGHT_LUX
         else
             LIVEDATAUNIT_SOLAR_LIGHT="lux"
         fi
     elif [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_WATTM2" ]; then
-        if [ "$SHELL_SUPPORT_UNICODE" ]; then
+        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
             LIVEDATAUNIT_SOLAR_LIGHT="W/"$UNIT_UNICODE_M2
         else
             LIVEDATAUNIT_SOLAR_LIGHT="W/m2"
@@ -46,7 +47,7 @@ setLightMode()
 
     export LIVEDATAUNIT_SOLAR_LIGHT
 
-    if [ "$SHELL_SUPPORT_UNICODE" ]; then
+    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
         LIVEDATAUNIT_SOLAR_LIGHT_UV="µW/$UNIT_UNICODE_M2"
     else
         LIVEDATAUNIT_SOLAR_LIGHT_UV="µW/m2"

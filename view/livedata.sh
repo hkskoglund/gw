@@ -3,8 +3,6 @@
 GWDIR=${GWDIR:="."}
 DEBUG=${DEBUG:=0}
 SHELL_SUPPORT_UNICODE=${SHELL_SUPPORT_UNICODE:=1}
-HIDE_RAIN_LIVEDATA_AUTO=${HIDE_RAIN_LIVEDATA_AUTO:=0} # auto hide_liveview when 0 today (0=off)
-HIDE_LIGHT_LIVEDATA_AUTO=${HIDE_LIGHT_LIVEDATA_AUTO:=0} # auto hide_liveview when 0/dark
 LV_DELIMITER='-'
  
  if  ! type appendBuffer >/dev/null 2>/dev/null; then 
@@ -190,7 +188,11 @@ printLDIntemp()
 {
      if [ -n "$LIVEDATA_INTEMP" ]; then
 
-         printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_TEMPERATURE"
+        if [ -z "$NO_COLOR" ]; then
+             printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_TEMPERATURE"
+        else
+             printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_TEMPERATURE_NO_COLOR"
+        fi
          
          setLivedataValueStyleLtGt "$LIVEDATA_INTEMP_INTS10" "$LIVEDATALIMIT_INTEMP_LOW" "$LIVEDATALIMIT_INTEMP_HIGH" "$STYLE_LIVEDATALIMIT_INTEMP_LOW" "$STYLE_LIVEDATALIMIT_INTEMP_HIGH"
          printLivedataLine "$LIVEDATAHEADER_INTEMP"  "$LIVEDATA_INTEMP" "%6.1f" "$LIVEDATAUNIT_TEMP" "%s"
@@ -252,7 +254,12 @@ printLDPressure()
 {
        if [ -n "$LIVEDATA_PRESSURE_RELBARO" ]; then
             
-            printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_PRESSURE"
+            if [ -z "$NO_COLOR" ]; then
+                printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_PRESSURE"
+            else
+                printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_PRESSURE_NO_COLOR"
+            fi
+
              setLivedataValueStyleLt "$LIVEDATA_PRESSURE_RELBARO_INTS10" "$LIVEDATALIMIT_PRESSURE_RELBARO_LOW"
          
          if [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_HPA" ]; then
@@ -269,7 +276,10 @@ printLDPressure()
 
 printLDWind()
 {
-       [ -n "$LIVEDATA_WINDSPEED" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_WIND"
+       if [ -n "$LIVEDATA_WINDSPEED" ]; then
+          [ -z "$NO_COLOR" ] &&  printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_WIND"
+          [ -n "$NO_COLOR" ]  &&  printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_WIND_NO_COLOR"
+        fi
 
        [ -n "$LIVEDATA_WINDSPEED" ] && [ -n "$LIVEDATA_WINDGUSTSPEED" ] && [ -n "$LIVEDATA_WINDDIRECTION" ] && newLivedataCompass "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE" "$VALUE_COMPASS" &&\
         local_compassfmt="\t%s$LIVEDATA_WINDDIRECTION_COMPASS_N_FMT"
@@ -332,7 +342,10 @@ printLDWind()
 
 printLDSolar()
 {
-    [ -n "$LIVEDATA_SOLAR_LIGHT" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_SOLAR"
+    if [ -n "$LIVEDATA_SOLAR_LIGHT" ]; then
+      [ -z "$NO_COLOR" ] &&  printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_SOLAR"
+      [ -n "$NO_COLOR" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_SOLAR_NO_COLOR"
+    fi
 
     if [ -n "$LIVEDATA_SOLAR_LIGHT" ]; then
         if [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_WATTM2" ]; then
@@ -372,7 +385,10 @@ printLDRain()
     setRainValueFormat # 2 decimals for inch or 1 decimals for mm
        
     if [ -n "$LIVEDATA_RAINRATE" ]; then
-            printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_RAIN"
+     
+            [ -z "$NO_COLOR" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_RAIN"
+            [ -n "$NO_COLOR" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_RAIN_NO_COLOR"
+
 
             setRainIntensity "$LIVEDATA_RAINRATE_INTS10"
             export LIVEDATA_RAINRATE_STATE_DESCRIPTION="$VALUE_RAININTENSITY"
@@ -409,7 +425,12 @@ printLDRain()
 
 printLDSoilmoisture()
 {
-        [ -n "$LIVEDATA_SOILMOISTURE1" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_SOILMOISTURE"
+        if [ -z "$NO_COLOR" ]; then
+            [ -n "$LIVEDATA_SOILMOISTURE1" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_SOILMOISTURE"
+        else
+            [ -n "$LIVEDATA_SOILMOISTURE1" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_SOILMOISTURE_NO_COLOR"
+        fi
+            
         n=1
         while [ "$n" -le "$SENSORTYPE_WH51SOILMOISTURE_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_SOILMOISTURE$n" ]; then
@@ -421,7 +442,12 @@ printLDSoilmoisture()
 
 printLDSoiltemperature()
 {
-        [ -n "$LIVEDATA_SOILTEMP1" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_SOILTEMP"
+        if [ -z "$NO_COLOR" ]; then
+            [ -n "$LIVEDATA_SOILTEMP1" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_SOILTEMP"
+        else
+             [ -n "$LIVEDATA_SOILTEMP1" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_SOILTEMP_NO_COLOR"
+        fi
+        
         n=1
         while [ "$n" -le "$SENSORTYPE_WH34SOILTEMP_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_SOILTEMP$n" ]; then
@@ -433,7 +459,12 @@ printLDSoiltemperature()
 
 printLDLeak()
 {
-        [ -n "$LIVEDATA_LEAK1" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_LEAK"
+        if [ -z "$NO_COLOR" ]; then
+            [ -n "$LIVEDATA_LEAK1" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_LEAK"
+        else
+            [ -n "$LIVEDATA_LEAK1" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_LEAK_NO_COLOR"
+        fi
+        
         n=1
         while [ "$n" -le "$SENSORTYPE_WH55LEAK_MAXCH" ]; do
             #TEST eval LIVEDATA_LEAK$n=1
@@ -449,7 +480,12 @@ printLDLeak()
 
 printLDPM25()
 {
-        [ -n "$LIVEDATA_PM251" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_PM25"
+        if [ -z "$NO_COLOR" ]; then
+            [ -n "$LIVEDATA_PM251" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_PM25"
+        else
+            [ -n "$LIVEDATA_PM251" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_PM25_NO_COLOR"
+        fi
+
         n=1
         while [ "$n" -le "$SENSORTYPE_WH43PM25_MAXCH" ]; do
             #shellcheck disable=SC2153
@@ -491,7 +527,9 @@ printLDCO2()
         #WH45
         if [ -n "$LIVEDATA_CO2_TEMPF" ]; then
              #setSGIBatteryLowNormal "$LIVEDATA_CO2_BATTERY"
-             printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_CO2"
+             [ -z "$NO_COLOR" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_CO2"
+             [ -n "$NO_COLOR" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_CO2_NO_COLOR"
+             
              printLivedataLine "$LIVEDATAHEADER_CO2_TEMPF" "$LIVEDATA_CO2_TEMPF"  "%6.1f" "$LIVEDATAUNIT_TEMP" "%2s" 'temp' '' "$LIVEDATA_CO2_BATTERY" "$LIVEDATA_CO2_BATTERY_STATE" "" "$LIVEDATA_CO2_SIGNAL" "$LIVEDATA_CO2_SIGNAL_STATE"
         fi
 
@@ -518,7 +556,9 @@ printLDCO2()
 printLDLightning()
 {
         if [ -n "$LIVEDATA_LIGHTNING_DISTANCE" ]; then
-            printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_LIGHTNING"
+            [ -z "$NO_COLOR" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_LIGHTNING"
+            [ -n "$NO_COLOR" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_LIGHTNING_NO_COLOR"
+            
             printLivedataLine "$LIVEDATAHEADER_LIGHTNING_DISTANCE" "$LIVEDATA_LIGHTNING_DISTANCE"    "%6u" "km" "%5s" 'ldist' '' "$SENSOR_LIGHTNING_BATTERY" "$SENSOR_LIGHTNING_BATTERY_STATE" '' "$SENSOR_LIGHTNING_SIGNAL" "$SENSOR_LIGHTNING_SIGNAL_STATE" 
         fi
         [ -n "$LIVEDATA_LIGHTNING_TIME" ]       && printLivedataLine "$LIVEDATAHEADER_LIGHTNING_TIME_UTC" "$LIVEDATA_LIGHTNING_TIME_UTC"    "%19s" "" "%5s" 
@@ -528,7 +568,10 @@ printLDLightning()
 
 printLDLeafwetness()
 {
-        [ -n "$LIVEDATA_LEAFWETNESS1" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_LEAFWETNESS"
+        if [ -n "$LIVEDATA_LEAFWETNESS1" ]; then
+            [ -z "$NO_COLOR" ] &&  printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_LEAFWETNESS"
+            [ -n "$NO_COLOR" ] &&  printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_LEAFWETNESS_NO_COLOR"
+        fi
         n=1
         while [ "$n" -le "$SENSORTYPE_WH35LEAFWETNESS_MAXCH" ]; do
             eval "if [ -n ''"\$LIVEDATA_LEAFWETNESS$n" ]; then
@@ -541,7 +584,10 @@ printLDLeafwetness()
 printLDSystem()
 {
         
-       [ -n "$LIVEDATA_SYSTEM_VERSION" ] &&  printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_SYSTEM"
+       if [ -n "$LIVEDATA_SYSTEM_VERSION" ]; then
+          [ -z "$NO_COLOR" ] &&  printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_SYSTEM"
+           [ -n "$NO_COLOR" ] &&  printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_SYSTEM_NO_COLOR"
+        fi
 
         [ -n "$LIVEDATA_SYSTEM_HOST" ] && printLivedataLine "$LIVEDATAHEADER_SYSTEM_HOST"   "$LIVEDATA_SYSTEM_HOST"   "%-14s" "" "%5s"
         [ -n "$LIVEDATA_SYSTEM_MAC" ] && printLivedataLine "$LIVEDATAHEADER_SYSTEM_MAC"   "$LIVEDATA_SYSTEM_MAC"   "%-14s" "" "%5s" 
