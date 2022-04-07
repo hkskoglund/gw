@@ -94,7 +94,7 @@ initShell() {
     
     #https://stackoverflow.com/questions/602912/how-do-you-echo-a-4-digit-unicode-character-in-bash/602924#602924
 
-    SHELL_SUPPORT_UNICODE=0 # assume shell supports unicode
+    SHELL_SUPPORT_UNICODE=1 # assume shell supports unicode
    
      [ "$DEBUG" -eq 1 ] && >&2 echo Shell support unicode "$SHELL_SUPPORT_UNICODE"
 
@@ -733,10 +733,7 @@ printOrLogLivedata()
        #https://stackoverflow.com/questions/10411616/grep-regex-not-containing-string
             #set | grep ^LIVEDATA | grep -v _HEADER
             printLivedata
-            export LIVEDATA_TEXTPLAIN
-            set -x
-            LIVEDATA_TEXTPLAIN=$(NO_COLOR=1 printLivedata)
-            set +x
+            export "LIVEDATA_TEXTPLAIN=$(NO_COLOR=1 initUnit; NO_COLOR=1 printLivedata)"
             
        elif [ $LIVEDATAVIEW -eq $LIVEDATAVIEW_NULL ]; then
           :

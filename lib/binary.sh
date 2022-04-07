@@ -189,7 +189,7 @@ calibration absolute pressure offset        $GW_CALIBRATION_ABSOFFSET $LIVEDATAU
 calibration relative pressure offset        $GW_CALIBRATION_RELOFFSET $LIVEDATAUNIT_PRESSURE
 calibration out temperature offset          $GW_CALIBRATION_OUTTEMPOFFSET $LIVEDATAUNIT_TEMP
 calibration out humidity offset             $GW_CALIBRATION_OUTHUMIDITYOFFSET   %
-calibration wind direction offset           $GW_CALIBRATION_WINDDIROFFSET $LIVEDATAUNIT_WIND_DEGREE_UNIT"
+calibration wind direction offset           $GW_CALIBRATION_WINDDIROFFSET $LIVEDATAUNIT_WIND_DIRECTION"
    # fi
 
 }
@@ -608,7 +608,7 @@ parseLivedata()
             convertWindDirectionToCompassDirection "$LIVEDATA_WINDDIRECTION"
             export LIVEDATA_WINDDIRECTION_COMPASS="$VALUE_COMPASS_DIRECTION"
             export LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE="$VALUE_COMPASS_DIRECTION_UNICODE"
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex winddirection uint16be $LIVEDATA_WINDDIRECTION $LIVEDATAUNIT_WIND_DEGREE_UNIT"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex winddirection uint16be $LIVEDATA_WINDDIRECTION $LIVEDATAUNIT_WIND_DIRECTION"
 
 
         elif [ "$ldf" -eq "$LDF_WINDSPEED" ]; then
@@ -1277,8 +1277,10 @@ isWriteCommand() {
 
 getSignalUnicode()
 {
-    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ] && [ -z "$NO_COLOR" ]; then
         eval VALUE_SIGNAL_UNICODE="\$UNICODE_SIGNAL_LEVEL$1"
+    else
+      eval VALUE_SIGNAL_UNICODE="\$SIGNAL_LEVEL$1"
     fi
 }
 
