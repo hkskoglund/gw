@@ -256,6 +256,7 @@ printSensorLeafwetness()
 
 printSensorHTML()
 {
+    l_sysinfo="$LIVEDATA_SYSTEM_HOST $LIVEDATA_SYSTEM_VERSION $LIVEDATA_SYSTEM_UTC"
      printf "HTTP/1.1 200 OK
 Server: gw
 Content-Type: text/html; charset=\"UTF-8\"
@@ -265,12 +266,15 @@ Refresh: 16
 <html>
 <head>
 <meta charset=\"UTF-8\">
-<title>Sensor overview %s %s %s</title>
+<title>Sensor overview %s</title>
 </head>
 <body>
+<h1>Sensor overview</h1>
+<h3>%s</h3>
 <pre>%s</pre>
 </body>
-</html>" "$LIVEDATA_SYSTEM_HOST" "$LIVEDATA_SYSTEM_VERSION" "$LIVEDATA_SYSTEM_UTC"  "$SENSOR_TEXTPLAIN"
+</html>"   "$l_sysinfo" "$l_sysinfo" "$SENSOR_TEXT_UTF8"
+ unset l_sysinfo
 
 }
 
@@ -278,6 +282,8 @@ printSensors()
 # print parsed sensors in SENSOR_*
 # test in terminal: watch -n 1 './gw -g 192.168.3.16 --sensor'
 {
+    
+
     resetAppendBuffer
     
     #standard sensors
@@ -300,6 +306,8 @@ printSensors()
     printSensorLeafwetness
     
     printAppendBuffer
+
+    copySystemToLivedata
 }
 
 printSensorBackup()
