@@ -32,13 +32,13 @@ setLightMode()
     UNIT_LIGHT_MODE=$1
 
     if [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_LUX" ]; then
-        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ] && [ -z "$NO_COLOR" ]; then
             LIVEDATAUNIT_SOLAR_LIGHT=$UNIT_UNICODE_LIGHT_LUX
         else
             LIVEDATAUNIT_SOLAR_LIGHT="lux"
         fi
     elif [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_WATTM2" ]; then
-        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ] && [ -z "$NO_COLOR" ]; then
             LIVEDATAUNIT_SOLAR_LIGHT="W/"$UNIT_UNICODE_M2
         else
             LIVEDATAUNIT_SOLAR_LIGHT="W/m2"
@@ -47,7 +47,7 @@ setLightMode()
 
     export LIVEDATAUNIT_SOLAR_LIGHT
 
-    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ] && [ -z "$NO_COLOR" ]; then
         LIVEDATAUNIT_SOLAR_LIGHT_UV="µW/$UNIT_UNICODE_M2"
     else
         LIVEDATAUNIT_SOLAR_LIGHT_UV="µW/m2"
@@ -88,14 +88,14 @@ setTemperatureMode()
     UNIT_TEMPERATURE_MODE=$1
 
     if [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_CELCIUS" ]; then 
-        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ] && [ -z "$NO_COLOR" ]; then
             LIVEDATAUNIT_TEMP="$UNIT_UNICODE_CELCIUS " # append 1 space -> otherwise styling is only on the first byte of unicode character; unicode : \xe2\x84\x83
         else
             LIVEDATAUNIT_TEMP="C"
         fi
        
     elif [ "$UNIT_TEMPERATURE_MODE" -eq "$UNIT_TEMPERATURE_FARENHEIT" ]; then
-        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ] && [ -z "$NO_COLOR" ]; then
             LIVEDATAUNIT_TEMP="$UNIT_UNICODE_FARENHEIT "
         else
             LIVEDATAUNIT_TEMP="F"
@@ -115,7 +115,13 @@ setPressureMode()
     UNIT_PRESSURE_MODE=$1
 
     if  [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_HPA" ]; then
-        LIVEDATAUNIT_PRESSURE=$UNIT_UNICODE_PRESSURE_HPA
+    
+        if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ] && [ -z "$NO_COLOR" ]; then
+             LIVEDATAUNIT_PRESSURE=$UNIT_UNICODE_PRESSURE_HPA
+        else
+                 LIVEDATAUNIT_PRESSURE="hPa"
+        fi
+        
     elif [ "$UNIT_PRESSURE_MODE" -eq "$UNIT_PRESSURE_INHG" ]; then
         LIVEDATAUNIT_PRESSURE="inHg"
     fi
@@ -147,7 +153,7 @@ setRainMode()
 }
 
 initUnit()
-# export LIVEDATAUNIT_PM25 LIVEDATAUNIT_CO2="ppm" LIVEDATAUNIT_HUMIDITY="%" LIVEDATAUNIT_WIND_DEGREE_UNIT
+# export LIVEDATAUNIT_PM25 LIVEDATAUNIT_CO2="ppm" LIVEDATAUNIT_HUMIDITY="%" LIVEDATAUNIT_WIND_DIRECTION
 {
     if [ -z "$UNIT_TEMPERATURE_MODE" ]; then 
         setTemperatureMode "$UNIT_TEMPERATURE_CELCIUS" # default
@@ -179,18 +185,22 @@ initUnit()
         setLightMode "$UNIT_LIGHT_MODE"
     fi
 
-    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
+    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ] && [ -z "$NO_COLOR" ]; then
         LIVEDATAUNIT_PM25="µg/㎥"
     else
         LIVEDATAUNIT_PM25="µg/m3"
     fi
 
-    export LIVEDATAUNIT_PM25 LIVEDATAUNIT_CO2="ppm" LIVEDATAUNIT_HUMIDITY="%" LIVEDATAUNIT_WIND_DEGREE_UNIT
+    export LIVEDATAUNIT_PM25 LIVEDATAUNIT_CO2="ppm"
+    export LIVEDATAUNIT_HUMIDITY="%" 
+    export LIVEDATAUNIT_WIND_DIRECTION
 
-    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
-        LIVEDATAUNIT_WIND_DEGREE_UNIT=$UNIT_UNICODE_WINDDIRECTION
+    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ] && [ -z "$NO_COLOR" ]; then
+        LIVEDATAUNIT_WIND_DIRECTION=$UNIT_UNICODE_WINDDIRECTION
     else
-        LIVEDATAUNIT_WIND_DEGREE_UNIT="deg"
+        LIVEDATAUNIT_WIND_DIRECTION="deg"
     fi
+
+    #set | grep LIVEDATAUNIT
 
 }
