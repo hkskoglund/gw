@@ -90,6 +90,10 @@ printLivedataLineFinal()
 # optimized to just use one printf call builtin/external -> builds up entire format and argument strings for entire livedata view
 # in: STYLE_LIVE_VALUE
 {
+    if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_LIVEDATA_LINE" ]; then
+        echo >&2 "printLivedataLine $* length $#"
+    fi
+
     l_header=$1
     l_value=$2
     l_valuefmt=$3
@@ -100,32 +104,11 @@ printLivedataLineFinal()
     l_batterystatusfmt=$8
     l_signalvalue=$9
     l_signalstate=${10}
+
     if [ -z "$NO_COLOR" ]; then
         l_style=$STYLE_LIVE_VALUE
         l_styleoff=$STYLE_RESET
     fi
-    
-    if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_LIVEDATA_LINE" ]; then
-        echo >&2 "printLivedataLine $* length $#"
-    fi
-
-    # \r\t horizontal/absolute positioning is compatible with unicode in string
-    if [ -n "$NO_COLOR" ]; then
-      l_headerfmt="%-32s"
-    else
-      l_headerfmt="%-32s"
-    
-       #l_headerfmt=" %s\r\t\t\t\t"
-    fi
-    # l_unitfmt="\r\t\t\t\t\t%s" 
-    l_unitfmt="%s" #override !
-    #status_fmt="\r\t\t\t\t\t\t%s"
-    l_statusfmt=${l_batterystatusfmt}
-    l_statusfmt=${l_statusfmt:="\t%s"}
-    l_signalfmt="\t%s"
-    l_space=' ' #do not use space for unitless values
-
-    #TEST UTF-8: for f in $(seq -s' ' 255); do eval printf "\\\x$(printf "%x" "$f")"; done
 
     l_batteryline="$l_batterystatus"
      # only use UNICODE battery icon/skip detailed battery levels
@@ -136,23 +119,38 @@ printLivedataLineFinal()
                             ;;
     esac
 
-    signal_line="${l_signalstate}"
+    l_signalline="${l_signalstate}"
     # only use signal icon
-    case $signal_line in 
-            $UNICODE_SIGNAL*) signal_line=$UNICODE_SIGNAL
+    case $l_signalline in 
+            $UNICODE_SIGNAL*) l_signalline=$UNICODE_SIGNAL
                             ;;
     esac
     
     #merge icons for compact format
-    l_batteryline="$l_batteryline$signal_line" 
-    unset signal_line
-    unset l_batteryline #disable - icons draws attention away from weather data
+    l_batteryline="$l_batteryline$l_signalline" 
+    #[ -n "$NO_COLOR" ] && 
+    unset l_batteryline 
+
+     # \r\t horizontal/absolute positioning is compatible with unicode in string
+    if [ -n "$NO_COLOR" ]; then
+      l_headerfmt="%-32s"
+    else
+      l_headerfmt="%-32s"
+       #l_headerfmt=" %s\r\t\t\t\t"
+    fi
+    # l_unitfmt="\r\t\t\t\t\t%s" 
+    l_unitfmt="%s" #override !
+
+    l_statusfmt=${l_batterystatusfmt}
+    l_statusfmt=${l_statusfmt:="\t%s"}
+    
+    l_signalfmt="\t%s"
+    l_space=' ' #do not use space for unitless values
 
     l_format="$l_headerfmt $l_style$l_valuefmt$l_space$l_unitfmt$l_styleoff $l_statusfmt\n"
     appendFormat "$l_format"
 
     unset STYLE_LIVE_VALUE
-  #  appendArgs "'$1' '$2' '$4' '$l_batteryline' '$signal_line' '${11}'"
   l_args="'$l_header' '$l_value' '$l_unit' '$l_batteryline'"
   appendArgs "$l_args"
 
@@ -160,7 +158,7 @@ printLivedataLineFinal()
   # echo l_args "$l_args"
   # echo l_format "$l_format"
    
-    unset l_headerfmt ch l_statusfmt l_unitfmt l_batteryline l_signalfmt signal_line\
+    unset l_headerfmt ch l_statusfmt l_unitfmt l_batteryline l_signalfmt\
         l_format l_args l_space l_batterystatus l_batterystatusfmt l_batteryvalue l_header\
         l_signalstate l_signalvalue l_unit l_value l_valuefmt l_style l_styleoff
     
@@ -188,7 +186,7 @@ printLDIntemp()
 {
      if [ -n "$LIVEDATA_INTEMP" ]; then
 
-             printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_TEMPERATURE"
+             #printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_TEMPERATURE"
          
          setLivedataValueStyleLtGt "$LIVEDATA_INTEMP_INTS10" "$LIVEDATALIMIT_INTEMP_LOW" "$LIVEDATALIMIT_INTEMP_HIGH" "$STYLE_LIVEDATALIMIT_INTEMP_LOW" "$STYLE_LIVEDATALIMIT_INTEMP_HIGH"
          printLivedataLine "$LIVEDATAHEADER_INTEMP"  "$LIVEDATA_INTEMP" "%6.1f" "$LIVEDATAUNIT_TEMP" "%s"
@@ -246,7 +244,7 @@ printLDPressure()
 {
        if [ -n "$LIVEDATA_PRESSURE_RELBARO" ]; then
             
-            printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_PRESSURE"
+           # printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_PRESSURE"
 
              setLivedataValueStyleLt "$LIVEDATA_PRESSURE_RELBARO_INTS10" "$LIVEDATALIMIT_PRESSURE_RELBARO_LOW"
          
@@ -583,24 +581,25 @@ printLivedataHTML()
 # https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta
 # UTF-8 is necessary to show unicode
 {
-    l_sysinfo="$LIVEDATA_SYSTEM_VERSION $LIVEDATA_SYSTEM_UTC"
-    printf "HTTP/1.1 200 OK
+    l_sysinfo="$LIVEDATA_SYSTEM_HOST $LIVEDATA_SYSTEM_VERSION $LIVEDATA_SYSTEM_UTC"
+    printf 'HTTP/1.1 200 OK
 Server: gw
-Content-Type: text/html; charset=\"UTF-8\"
+Content-Type: text/html; charset=UTF-8
 Refresh: 16
 
 <!DOCTYPE html>
-<html>
+<html style="zoom:200%%">
 <head>
-<meta charset=\"UTF-8\">
+<meta charset="UTF-8">
 <title>Livedata %s</title>
 </head>
 <body>
-<h1>Livedata %s</h1>
-<h3>%s</h3>
+
 <pre>%s</pre>
+<pre>%s</pre>
+
 </body>
-</html>"  "$l_sysinfo" "$LIVEDATA_SYSTEM_HOST" "$l_sysinfo" "$LIVEDATA_TEXT_UTF8"
+</html>'  "$l_sysinfo" "$l_sysinfo"  "$LIVEDATA_TEXT_UTF8"  
     unset l_sysinfo
 }
 
