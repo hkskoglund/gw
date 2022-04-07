@@ -629,18 +629,18 @@ printLDSystem()
 
 printLivedataHTML()
 {
-    printf "HTTP/1.1 200 OK\n\
-Server: gw\n\
-Content-Type: text/html; charset=UTF-8\n\
-\n\
-<HTML>\n\
-<HEAD>\n\
-<TITLE>Test</TITLE>\n\
-</HEAD>\n\
-<BODY>\n\
-%s\n\
-</BODY>\n\
-</HTML>\n" "$LIVEDATA_WINDSPEED"
+    printf "HTTP/1.1 200 OK
+Server: gw
+Content-Type: text/html; charset=UTF-8
+
+<html>
+<head>
+<title>Livedata</title>
+</head>
+<body>
+<pre>%s</pre>
+</body>
+</html>" "$LIVEDATA_TEXTPLAIN"
 
 }
 
