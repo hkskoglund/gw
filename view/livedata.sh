@@ -222,13 +222,10 @@ printLDTempHumidity()
     while [ "$n" -le "$SENSORTYPE_WH31TEMP_MAXCH" ]; do
     #shellcheck disable=SC2153
     {
-        #eval echo !!!!!!!!!!!!!!!!! \"\$SENSOR_TEMP${n}_SIGNAL_STATE\" n=$n
-        #set -x
         eval " if [ -n ''"\$LIVEDATA_TEMP$n" ]; then
                     # setSGIBatteryLowNormal "\$SENSOR_TEMP${n}_BATTERY"
                     printLivedataLine \"\$LIVEDATAHEADER_TEMP$n\" \"\$LIVEDATA_TEMP$n\" '%6.1f'  \"\$LIVEDATAUNIT_TEMP\" '%2s' \"\$SENSOR_TEMP${n}_BATTERY\" \"\$SENSOR_TEMP${n}_BATTERY_STATE\" \"\"  \"\$SENSOR_TEMP${n}_SIGNAL\" \"\$SENSOR_TEMP${n}_SIGNAL_STATE\"
                 fi "
-        #set +x
     }
         n=$((n + 1))
     done
@@ -242,7 +239,6 @@ printLDTempHumidity()
     }
         n=$((n + 1))
     done
-
    
 }
 
@@ -293,11 +289,8 @@ printLDWind()
                 #STYLE_LIVE_VALUE=$STYLE_BEUFORT
                 export LIVEDATASTYLE_WINDGUSTSPEED="$STYLE_BEUFORT"
               fi
-            # unset LV_DELIMITER
             export LIVEDATA_WINDGUSTSPEED_BEUFORT="$VALUE_BEUFORT"
             export LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION="$VALUE_BEUFORT_DESCRIPTION"
-
-            #padSpaceRight "$LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION" 15
 
             local_compassfmt="\t%s$LIVEDATA_WINDDIRECTION_COMPASS_WE_FMT"
             unset local_compassfmt # disable
@@ -316,12 +309,9 @@ printLDWind()
                 setStyleBeufort "$LIVEDATA_WINDDAILYMAX_INTS10"
                # STYLE_LIVE_VALUE=$STYLE_BEUFORT
                 export LIVEDATASTYLE_WINDDAILYMAX="$STYLE_BEUFORT"
-             #   unset LV_DELIMITER
               fi
             export LIVEDATA_WINDDAILYMAX_BEUFORT="$VALUE_BEUFORT"
             export LIVEDATA_WINDDAILYMAX_BEUFORT_DESCRIPTION="$VALUE_BEUFORT_DESCRIPTION"
-
-            #padSpaceRight "$LIVEDATA_WINDDAILYMAX_BEUFORT_DESCRIPTION" 15
 
             printLivedataLine  "$LIVEDATAHEADER_WINDDAILYMAX"   "$LIVEDATA_WINDDAILYMAX"  "%6.1f" "$LIVEDATAUNIT_WIND" "%4s"
          fi 
@@ -382,17 +372,11 @@ printLDRain()
             fi
             setRainIntensityStatus "$LIVEDATA_RAINRATE_INTS10"
             export LIVEDATA_RAINRATE_STATE="$VALUE_RAININTENSITY_STATUS"
-            
-            if [ "$LIVEDATA_RAINRATE_INTS10" -gt 0 ]; then
-                l_delimiter=$LV_DELIMITER 
-            else
-                l_delimiter=" "
-            fi
         
         #added space at end when doing when refreshing screen with printf \e[H, otherwise status is merged with previous value if changed
-            padSpaceRight "$VALUE_RAININTENSITY" 8 
+            #padSpaceRight "$VALUE_RAININTENSITY" 8 
             
-            printLivedataLine "$LIVEDATAHEADER_RAINRATE $l_delimiter $VALUE_PADSPACERIGHT"  "$LIVEDATA_RAINRATE" "$VALUE_RAIN_FMT"  "$LIVEDATAUNIT_RAINRATE" "%4s"  '' "$VALUE_RAININTENSITY_STATUS" 
+            printLivedataLine "$LIVEDATAHEADER_RAINRATE" "$LIVEDATA_RAINRATE" "$VALUE_RAIN_FMT"  "$LIVEDATAUNIT_RAINRATE" "%4s"  '' "$VALUE_RAININTENSITY_STATUS" 
     fi
     # rainhour available in Ecowitt http request
     [ -n "$LIVEDATA_RAINHOUR" ]     && printLivedataRainLine "$LIVEDATA_RAINHOUR_INTS10"  "$LIVEDATALIMIT_RAINHOUR"  "$LIVEDATAHEADER_RAINHOUR"  "$LIVEDATA_RAINHOUR" "$LIVEDATAUNIT_RAIN" "$STYLE_LIVEDATALIMIT_RAINHOUR"
@@ -409,7 +393,7 @@ printLDRain()
 
 printLDSoilmoisture()
 {
-        [ -n "$LIVEDATA_SOILMOISTURE1" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_SOILMOISTURE"
+       [ -n "$LIVEDATA_SOILMOISTURE1$LIVEDATA_SOILMOISTURE2$LIVEDATA_SOILMOISTURE3$LIVEDATA_SOILMOISTURE4$LIVEDATA_SOILMOISTURE5$LIVEDATA_SOILMOISTURE6$LIVEDATA_SOILMOISTURE7$LIVEDATA_SOILMOISTURE8" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_SOILMOISTURE"
             
         n=1
         while [ "$n" -le "$SENSORTYPE_WH51SOILMOISTURE_MAXCH" ]; do
@@ -422,7 +406,7 @@ printLDSoilmoisture()
 
 printLDSoiltemperature()
 {
-        [ -n "$LIVEDATA_SOILTEMP1" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_SOILTEMP"
+        [ -n "$LIVEDATA_SOILTEMP1$LIVEDATA_SOILTEMP2$LIVEDATA_SOILTEMP3$LIVEDATA_SOILTEMP4$LIVEDATA_SOILTEMP5$LIVEDATA_SOILTEMP6$LIVEDATA_SOILTEMP7$LIVEDATA_SOILTEMP8" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_SOILTEMP"
         
         n=1
         while [ "$n" -le "$SENSORTYPE_WH34SOILTEMP_MAXCH" ]; do
@@ -435,7 +419,7 @@ printLDSoiltemperature()
 
 printLDLeak()
 {
-        [ -n "$LIVEDATA_LEAK1" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_LEAK"
+        [ -n "$LIVEDATA_LEAK1$LIVEDATA_LEAK2$LIVEDATA_LEAK3$LIVEDATA_LEAK4" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_LEAK"
         
         n=1
         while [ "$n" -le "$SENSORTYPE_WH55LEAK_MAXCH" ]; do
@@ -452,7 +436,7 @@ printLDLeak()
 
 printLDPM25()
 {
-        [ -n "$LIVEDATA_PM251" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_PM25"
+       [ -n "$LIVEDATA_PM251$LIVEDATA_PM252$LIVEDATA_PM253$LIVEDATA_PM254" ] && printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_PM25"
 
         n=1
         while [ "$n" -le "$SENSORTYPE_WH43PM25_MAXCH" ]; do
@@ -534,7 +518,7 @@ printLDLightning()
 
 printLDLeafwetness()
 {
-        if [ -n "$LIVEDATA_LEAFWETNESS1" ]; then
+        if [ -n "$LIVEDATA_LEAFWETNESS1$LIVEDATA_LEAFWETNESS2$LIVEDATA_LEAFWETNESS3$LIVEDATA_LEAFWETNESS4$LIVEDATA_LEAFWETNESS5$LIVEDATA_LEAFWETNESS6$LIVEDATA_LEAFWETNESS7$LIVEDATA_LEAFWETNESS8" ]; then
             printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_LEAFWETNESS"
         fi
         n=1
