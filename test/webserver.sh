@@ -56,7 +56,7 @@ sendHttpResponseCode()
 webserver()
 # process runs in a subshell (function call in end of pipeline), pid can be accessed by $BASHPID/$$ is invoking shell, pstree -pal gives overview
 {
-        # read request and headers including newline
+        # read request and headers including newline. read strips off LF=\n at the end of line -> only check for CR=\r
         l_no=0
         while IFS= read -r l_http_response_line; do
 
@@ -64,8 +64,8 @@ webserver()
            
               set -x
               eval HTTP_LINE$l_no=\""$l_http_response_line"\"
-              if [ "$l_http_response_line" = "$CRLF" ]; then
-                    echo >&2 http newline CRLF
+              if [ "$l_http_response_line" = "$CR" ]; then
+                    echo >&2 http newline CR
                     break
                elif [ $l_no -gt 1 ] ; then
                 eval parseHttpHeader \"\$HTTP_LINE$l_no\"
@@ -120,7 +120,7 @@ startwebserver()
 {
     echo >&2 "Webserver PID $$"
 
-    CRLF=$(printf "\r\n")
+    CR=$(printf "\r") 
     if [ -z "$1" ]; then
         echo >&2 Error: No port specified for web server
         return 1
