@@ -254,6 +254,26 @@ printSensorLeafwetness()
     [ -n "$SENSOR_LEAFWETNESS8_ID_STATE" ] && printSensorLine  "${BACKUPNAME_SENSOR_LEAFWETNESS}8" $((SENSORTYPE_WH35LEAFWETNESS + 7)) "$SENSOR_LEAFWETNESS8_ID" "$SENSOR_LEAFWETNESS8_BATTERY_INT" "$SENSOR_LEAFWETNESS8_SIGNAL" "$SENSOR_LEAFWETNESS8_ID_STATE" "$SENSOR_LEAFWETNESS8_BATTERY_STATE" "$SENSOR_LEAFWETNESS8_SIGNAL_STATE"
 }
 
+printSensorHTML()
+{
+     printf "HTTP/1.1 200 OK
+Server: gw
+Content-Type: text/html; charset=\"UTF-8\"
+Refresh: 16
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset=\"UTF-8\">
+<title>Sensor overview %s %s %s</title>
+</head>
+<body>
+<pre>%s</pre>
+</body>
+</html>" "$LIVEDATA_SYSTEM_HOST" "$LIVEDATA_SYSTEM_VERSION" "$LIVEDATA_SYSTEM_UTC"  "$SENSOR_TEXTPLAIN"
+
+}
+
 printSensors()
 # print parsed sensors in SENSOR_*
 # test in terminal: watch -n 1 './gw -g 192.168.3.16 --sensor'

@@ -736,7 +736,7 @@ printOrLogLivedata()
        elif [ $LIVEDATAVIEW -eq $LIVEDATAVIEW_NULL ]; then
           :
        elif [ $LIVEDATAVIEW -eq $LIVEDATAVIEW_HTML ]; then
-            export "LIVEDATA_TEXTPLAIN=$(NO_COLOR=1 initUnit; NO_COLOR=1 printLivedata)"
+            export "LIVEDATA_TEXTPLAIN=$(NO_COLOR=1 printLivedata)"
             printLivedataHTML
        else
           echo >&2 Not implemented liveview $LIVEDATAVIEW
@@ -748,6 +748,23 @@ printOrLogLivedata()
     #       ;;
     #    *) echo >&2 Error Valid log formats are: csv
      #esac
+    fi
+}
+
+printSensorView()
+{
+    if [ $LIVEDATAVIEW -eq $LIVEDATAVIEW_NORMAL ]; then
+       #https://stackoverflow.com/questions/10411616/grep-regex-not-containing-string
+            #set | grep ^LIVEDATA | grep -v _HEADER
+            printSensors
+       elif [ $LIVEDATAVIEW -eq $LIVEDATAVIEW_NULL ]; then
+          :
+       elif [ $LIVEDATAVIEW -eq $LIVEDATAVIEW_HTML ]; then
+           # export "LIVEDATA_TEXTPLAIN=$(NO_COLOR=1 initUnit; NO_COLOR=1 printLivedata)"
+            export "SENSOR_TEXTPLAIN=$(NO_COLOR=1 printSensors)"
+            printSensorHTML
+       else
+          echo >&2 Not implemented liveview $LIVEDATAVIEW 
     fi
 }
 
@@ -1677,7 +1694,7 @@ processCommand()
             if  isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
 
                     sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
-                    printSensors
+                    printSensorView
             fi
 
             ;;
@@ -2198,7 +2215,7 @@ while [ $# -gt 0 ]; do
         --sensor|-s)                            if isGWdevice "$GW_VERSION" && getSensorIdCommandForFW "$GW_VERSION_INT"; then
                                                     [ "$SENSORSTAT_COUNTER" -gt 0 ] && copyVariables "SENSOR_" "SENSOR${SENSORSTAT_COUNTER}_"
                                                     sendPacket "$VALUE_CMD_READ_SENSORID" "$GW_HOST"
-                                                    printSensors
+                                                    printSensorView
                                                     SENSORSTAT_COUNTER=$(( SENSORSTAT_COUNTER + 1))
                                                 fi
                                                 shift
