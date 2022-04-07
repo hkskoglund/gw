@@ -599,6 +599,7 @@ printLivedataHTML()
 # https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta
 # UTF-8 is necessary to show unicode
 {
+    l_sysinfo="$LIVEDATA_SYSTEM_HOST $LIVEDATA_SYSTEM_UTC"
     printf "HTTP/1.1 200 OK
 Server: gw
 Content-Type: text/html; charset=\"UTF-8\"
@@ -608,13 +609,15 @@ Refresh: 16
 <html>
 <head>
 <meta charset=\"UTF-8\">
-<title>Livedata %s %s %s</title>
+<title>Livedata %s</title>
 </head>
 <body>
+<h1>Livedata %s</h1>
+<h3>%s</h3>
 <pre>%s</pre>
 </body>
-</html>" "$LIVEDATA_SYSTEM_HOST" "$LIVEDATA_SYSTEM_VERSION" "$LIVEDATA_SYSTEM_UTC"  "$LIVEDATA_TEXT_UTF8"
-
+</html>"  "$l_sysinfo" "$LIVEDATA_SYSTEM_VERSION" "$l_sysinfo" "$LIVEDATA_TEXT_UTF8"
+    unset l_sysinfo
 }
 
 printLivedata()
