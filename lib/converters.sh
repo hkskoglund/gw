@@ -697,7 +697,7 @@ setWindDirHttpLivedata()
     eval export "$1_INTS10"="$2" 
     convertWindDirectionToCompassDirection "$2"
     eval export "$1"_COMPASS="$VALUE_COMPASS_DIRECTION"
-    eval export "$1"_COMPASS_UNICODE="$VALUE_COMPASS_DIRECTION_UNICODE"
+    eval export "$1"_COMPASS_NEEDLE="$VALUE_COMPASS_DIRECTION_UNICODE"
 
 }
 
