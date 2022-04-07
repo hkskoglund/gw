@@ -151,13 +151,6 @@ while [ "$N" -le "$SENSORTYPE_WH35LEAFWETNESS_MAXCH" ]; do
     N=$(( N + 1 ))
 done
 
-N=1
-while [ "$N" -le "$SENSORTYPE_TF_USR_MAXCH" ]; do 
-    eval export LIVEDATAHEADER_TEMPF_USR$N=\"\$\{LIVEDATAHEADER_TEMPF_USR$N:="Temperature USR $N"\}\"
-    eval export LIVEDATAHEADER_TEMPF_USR${N}_BATTERY=\"\$\{LIVEDATAHEADER_TEMPF_USR${N}_BATTERY:="Temperature USR $N battery"\}\"
-    N=$(( N + 1 ))
-done
-
 export LIVEDATAHEADER_SYSTEM_VERSION="${LIVEDATAHEADER_SYSTEM_VERSION:="System version"}"
 export LIVEDATAHEADER_SYSTEM_UTC="${LIVEDATAHEADER_SYSTEM_UTC:="System utc"}"
 export LIVEDATAHEADER_SYSTEM_FREQUENCY="${LIVEDATAHEADER_SYSTEM_FREQUENCY:="System frequency"}"

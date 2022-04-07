@@ -628,19 +628,24 @@ printLDSystem()
 
 
 printLivedataHTML()
+#https://developer.mozilla.org/en-US/docs/Web/HTML/Quirks_Mode_and_Standards_Mode
+# https://en.wikipedia.org/wiki/Meta_refresh <meta http-equiv=\"refresh\" content=\"5\">
+# https://stackoverflow.com/questions/32913226/auto-refresh-page-every-30-seconds
 {
     printf "HTTP/1.1 200 OK
 Server: gw
 Content-Type: text/html; charset=UTF-8
+Refresh: 16
 
+<!DOCTYPE html>
 <html>
 <head>
-<title>Livedata</title>
+<title>Livedata %s %s %s</title>
 </head>
 <body>
 <pre>%s</pre>
 </body>
-</html>" "$LIVEDATA_TEXTPLAIN"
+</html>" "$LIVEDATA_SYSTEM_HOST" "$LIVEDATA_SYSTEM_VERSION" "$LIVEDATA_SYSTEM_UTC"  "$LIVEDATA_TEXTPLAIN $(set | grep ^LIVEDATA)"
 
 }
 
