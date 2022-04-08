@@ -155,7 +155,6 @@ printLivedataLineFinal()
 
     l_statusfmt=${l_batterystatusfmt}
     
-    set -x
     if [ -z "$l_statusfmt" ]; then
         l_format="$l_headerfmt $l_STYLE$l_valuefmt $l_unitfmt$l_STYLE_OFF\n"
         l_args="'$l_header' '$l_value' '$l_unit'"
@@ -163,7 +162,6 @@ printLivedataLineFinal()
         l_format="$l_headerfmt $l_STYLE$l_valuefmt $l_unitfmt$l_STYLE_OFF $l_statusfmt\n"
         l_args="'$l_header' '$l_value' '$l_unit' '$l_statusline'"
     fi
-    set +x
 
     appendFormat "$l_format"
     appendArgs "$l_args"
