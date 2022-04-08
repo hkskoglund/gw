@@ -97,7 +97,7 @@ printLivedataLineFinal()
     fi
 
     l_header=$1
-    l_headerfmt="%-32s" # compatible with watch
+    l_headerfmt="%-31s" # compatible with watch
     # \r\t* horizontal/absolute positioning is compatible with unicode in string
     #l_headerfmt=" %s\r\t\t\t\t" # fails with watch
     #fi
