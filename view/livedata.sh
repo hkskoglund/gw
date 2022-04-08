@@ -95,10 +95,19 @@ printLivedataLineFinal()
     fi
 
     l_header=$1
+    #if [ -n "$NO_COLOR" ]; then
+    #  l_headerfmt="%-32s"
+    #else
+    #  l_headerfmt="%-32s"
+    # \r\t* horizontal/absolute positioning is compatible with unicode in string
+    l_headerfmt=" %s\r\t\t\t\t"
+    #fi
     l_value=$2
     l_valuefmt=$3
     l_unit=$4
     l_unitfmt=$5
+    # l_unitfmt="\r\t\t\t\t\t%s" 
+    l_unitfmt="%s" #override !
     l_batteryvalue=$6
     l_batterystatus=$7
     l_batterystatusfmt=$8
@@ -106,24 +115,30 @@ printLivedataLineFinal()
     l_signalstate=${10}
 
     if [ -z "$NO_COLOR" ]; then
-        l_style=$STYLE_LIVE_VALUE
-        l_styleoff=$STYLE_RESET
+        l_STYLE=$STYLE_LIVE_VALUE
+        unset STYLE_LIVE_VALUE
+        l_STYLE_OFF=$STYLE_RESET
     fi
 
-    l_batteryline="$l_batterystatus"
      # only use UNICODE battery icon/skip detailed battery levels
+
+    l_batteryline="$l_batterystatus"
     case $l_batteryline in
-            $UNICODE_BATTERY*) l_batteryline=$UNICODE_BATTERY
-                            ;;
+
+            $UNICODE_BATTERY*)      l_batteryline=$UNICODE_BATTERY
+                                    ;;
+    
             $UNICODE_BATTERY_LOW*) l_batteryline=$UNICODE_BATTERY_LOW 
-                            ;;
+                                    ;;
     esac
 
-    l_signalline="${l_signalstate}"
     # only use signal icon
+
+    l_signalline="${l_signalstate}"
     case $l_signalline in 
-            $UNICODE_SIGNAL*) l_signalline=$UNICODE_SIGNAL
-                            ;;
+
+            $UNICODE_SIGNAL*)   l_signalline=$UNICODE_SIGNAL
+                                ;;
     esac
     
     #merge icons for compact format
@@ -131,28 +146,16 @@ printLivedataLineFinal()
     #[ -n "$NO_COLOR" ] && 
     unset l_batteryline 
 
-     # \r\t horizontal/absolute positioning is compatible with unicode in string
-    if [ -n "$NO_COLOR" ]; then
-      l_headerfmt="%-32s"
-    else
-      l_headerfmt="%-32s"
-       #l_headerfmt=" %s\r\t\t\t\t"
-    fi
-    # l_unitfmt="\r\t\t\t\t\t%s" 
-    l_unitfmt="%s" #override !
-
     l_statusfmt=${l_batterystatusfmt}
     l_statusfmt=${l_statusfmt:="\t%s"}
     
     l_signalfmt="\t%s"
-    l_space=' ' #do not use space for unitless values
 
-    l_format="$l_headerfmt $l_style$l_valuefmt$l_space$l_unitfmt$l_styleoff $l_statusfmt\n"
+    l_format="$l_headerfmt $l_STYLE$l_valuefmt $l_unitfmt$l_STYLE_OFF $l_statusfmt\n"
     appendFormat "$l_format"
 
-    unset STYLE_LIVE_VALUE
-  l_args="'$l_header' '$l_value' '$l_unit' '$l_batteryline'"
-  appendArgs "$l_args"
+    l_args="'$l_header' '$l_value' '$l_unit' '$l_batteryline'"
+    appendArgs "$l_args"
 
   # echo l_headerfmt "$l_headerfmt"
   # echo l_args "$l_args"
@@ -160,7 +163,7 @@ printLivedataLineFinal()
    
     unset l_headerfmt ch l_statusfmt l_unitfmt l_batteryline l_signalfmt\
         l_format l_args l_space l_batterystatus l_batterystatusfmt l_batteryvalue l_header\
-        l_signalstate l_signalvalue l_unit l_value l_valuefmt l_style l_styleoff
+        l_signalstate l_signalvalue l_unit l_value l_valuefmt l_STYLE l_STYLE_OFF
     
 }
 
@@ -170,13 +173,13 @@ printLivedataGroupheader()
 # $2 group header
 {
     if [ -z "$NO_COLOR" ]; then
-        l_style=$STYLE_LIVEVIEW_NORMAL_HEADER
+        l_STYLE=$STYLE_LIVEVIEW_NORMAL_HEADER
         l_stylereset=$STYLE_RESET
     fi
     
     if [ -n "$LIVEVIEW_SHOW_GROUPHEADERS" ]; then
         
-            [ -z "$1" ] && set -- "\n$l_style%s$l_stylereset\n\n" "$2"  #use default when "" used as $1
+            [ -z "$1" ] && set -- "\n$l_STYLE%s$l_stylereset\n\n" "$2"  #use default when "" used as $1
 
         appendBuffer "$1" "'$2'"
     fi
@@ -679,17 +682,17 @@ printLivedataRainLine()
    l_float=$4
    l_unit=$5
    if [ -z "$NO_COLOR" ]; then
-        l_style=$6
+        l_STYLE=$6
    fi
 
     #printArgs "printLivedataRainLine" "$@"
 
     [ "$DEBUG" -eq 1 ] && echo >&2 printLivedataRainLine raw value : "$l_value" limit: "$l_limit"
 
-    setLivedataValueStyleGt "$l_value" "$l_limit" "$l_style"
+    setLivedataValueStyleGt "$l_value" "$l_limit" "$l_STYLE"
     printLivedataLine "$l_header" "$l_float" "$VALUE_RAIN_FMT" "$l_unit" "%5s" 
 
-    unset l_value l_limit l_header l_float l_unit l_style
+    unset l_value l_limit l_header l_float l_unit l_STYLE
 }
 
 setLivedataValueStyleLtGt()

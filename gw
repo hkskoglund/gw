@@ -124,6 +124,11 @@ initShell() {
    
 }
 
+initColor()
+{
+    NO_COLOR=1
+}
+
 initTerm()
 {
     
@@ -132,9 +137,9 @@ initTerm()
         TERM_COLUMNS=$COLUMNS
         TERM_LINES=$LINES
     elif type stty >/dev/null; then
-      size=$(stty size)
-      TERM_LINES=${size% *}
-      TERM_COLUMNS=${size#* }
+      l_size=$(stty size)
+      TERM_LINES=${l_size% *}
+      TERM_COLUMNS=${l_size#* }
     elif type tput >/dev/null; then
        #shellcheck disable=SC2034
        {
@@ -143,7 +148,7 @@ initTerm()
        }
     fi
 
-    unset size
+    unset l_size
 
 }
 
@@ -1961,6 +1966,7 @@ EOF
 
 initShell
 initTerm
+initColor
 initConfigDir
 initTrap
 if ! initnc; then
@@ -2219,6 +2225,10 @@ while [ $# -gt 0 ]; do
                                                     printSensorView
                                                     SENSORSTAT_COUNTER=$(( SENSORSTAT_COUNTER + 1))
                                                 fi
+                                                shift
+                                                ;;
+
+         --color)                               unset NO_COLOR # default to colorless, user ask for --color
                                                 shift
                                                 ;;
         
