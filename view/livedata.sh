@@ -92,9 +92,9 @@ printLivedataLineFinal()
 # optimized to just use one printf call builtin/external -> builds up entire format and argument strings for entire livedata view
 # in: STYLE_LIVE_VALUE
 {
-   # if [ "$DEBUG" -eq 1 ] || [ -n "$DEBUG_LIVEDATA_LINE" ]; then
+    if [ "$DEBUG" -eq 1 ] || [ -n "$DEBUG_LIVEDATA_LINE" ]; then
         printf >&2 "%s\r\t\t\t\t%s\r\t\t\t\t\t%s\r\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t\t\t\t\t\t%s length %d\n" "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" $#
-   # fi
+    fi
 
     l_header=$1
     #if [ -n "$NO_COLOR" ]; then
