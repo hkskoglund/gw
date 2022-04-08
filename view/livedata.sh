@@ -97,12 +97,9 @@ printLivedataLineFinal()
     fi
 
     l_header=$1
-    #if [ -n "$NO_COLOR" ]; then
-    #  l_headerfmt="%-32s"
-    #else
-    #  l_headerfmt="%-32s"
+    l_headerfmt="%-32s" # compatible with watch
     # \r\t* horizontal/absolute positioning is compatible with unicode in string
-    l_headerfmt=" %s\r\t\t\t\t"
+    #l_headerfmt=" %s\r\t\t\t\t" # fails with watch
     #fi
     l_value=$2
     l_valuefmt=$3
@@ -158,6 +155,7 @@ printLivedataLineFinal()
 
     l_statusfmt=${l_batterystatusfmt}
     
+    set -x
     if [ -z "$l_statusfmt" ]; then
         l_format="$l_headerfmt $l_STYLE$l_valuefmt $l_unitfmt$l_STYLE_OFF\n"
         l_args="'$l_header' '$l_value' '$l_unit'"
@@ -165,6 +163,7 @@ printLivedataLineFinal()
         l_format="$l_headerfmt $l_STYLE$l_valuefmt $l_unitfmt$l_STYLE_OFF $l_statusfmt\n"
         l_args="'$l_header' '$l_value' '$l_unit' '$l_statusline'"
     fi
+    set +x
 
     appendFormat "$l_format"
     appendArgs "$l_args"
