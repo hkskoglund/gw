@@ -417,6 +417,8 @@ parseSensorId()
             local_sensorstate=$SENSORIDSTATE_CONNECTED
             setBattery "$local_type" "$local_battery" "$SENSORNAME_VAR" # set/export ${SENSORNAME_VAR}_BATTERY, ${SENSORNAME_VAR}_BATTERY_STATE
             getSignalUnicode "$local_signal"
+             export "$SENSORNAME_VAR"_SIGNAL="$local_signal"\
+                    "$SENSORNAME_VAR"_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
         elif [ "$local_signal" -eq 0 ]; then
             local_sensorstate=$SENSORIDSTATE_DISCONNECTED
             SENSORSTAT_DISCONNECTED=$(( SENSORSTAT_DISCONNECTED + 1 ))
@@ -424,7 +426,9 @@ parseSensorId()
 
         convertUInt32BEToHex "$local_id"
         
-        export "$SENSORNAME_VAR=$VALUE_UINT32BE_HEX" "$SENSORNAME_VAR"_ID="$local_id" "$SENSORNAME_VAR"_ID_STATE="$local_sensorstate" "$SENSORNAME_VAR"_SIGNAL="$local_signal" "$SENSORNAME_VAR"_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
+        export "$SENSORNAME_VAR=$VALUE_UINT32BE_HEX"\
+         "$SENSORNAME_VAR"_ID="$local_id"\
+         "$SENSORNAME_VAR"_ID_STATE="$local_sensorstate"\
         
         getBackupname "$local_type" 
         local_sensorname_backup=$VALUE_BACKUPNAME
@@ -450,6 +454,7 @@ parseSensorId()
     [ "$DEBUG_PARSE_SENSORID" -eq 1 ] && set | grep ^SENSOR_
  
     unset local_id local_type local_signal local_battery parseSensorId_max_length local_sensorstate local_sensorstate_backup local_tabs local_sensorname_backup
+
 }
 
 printSystem() 

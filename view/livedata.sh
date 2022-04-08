@@ -90,9 +90,9 @@ printLivedataLineFinal()
 # optimized to just use one printf call builtin/external -> builds up entire format and argument strings for entire livedata view
 # in: STYLE_LIVE_VALUE
 {
-    if [ "$DEBUG" -eq 1 ] || [ "$DEBUG_LIVEDATA_LINE" ]; then
-        echo >&2 "printLivedataLine $* length $#"
-    fi
+   # if [ "$DEBUG" -eq 1 ] || [ -n "$DEBUG_LIVEDATA_LINE" ]; then
+        printf >&2 "%s\r\t\t\t\t%s\r\t\t\t\t\t%s\r\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t\t\t\t%s\r\t\t\t\t\t\t\t\t\t\t\t\t%s length %d\n" "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" $#
+   # fi
 
     l_header=$1
     #if [ -n "$NO_COLOR" ]; then
@@ -123,6 +123,7 @@ printLivedataLineFinal()
      # only use UNICODE battery icon/skip detailed battery levels
 
     l_batteryline="$l_batterystatus"
+   
     case $l_batteryline in
 
             $UNICODE_BATTERY*)      l_batteryline=$UNICODE_BATTERY
@@ -132,9 +133,10 @@ printLivedataLineFinal()
                                     ;;
     esac
 
-    # only use signal icon
+    # only use signal icon, filter levels
 
     l_signalline="${l_signalstate}"
+   
     case $l_signalline in 
 
             $UNICODE_SIGNAL*)   l_signalline=$UNICODE_SIGNAL
@@ -142,28 +144,43 @@ printLivedataLineFinal()
     esac
     
     #merge icons for compact format
-    l_batteryline="$l_batteryline$l_signalline" 
+    l_statusline="$l_batteryline$l_signalline" 
     #[ -n "$NO_COLOR" ] && 
-    unset l_batteryline 
+    unset l_statusline 
 
     l_statusfmt=${l_batterystatusfmt}
-    l_statusfmt=${l_statusfmt:="\t%s"}
     
-    l_signalfmt="\t%s"
+    if [ -z "$l_statusfmt" ]; then
+        l_format="$l_headerfmt $l_STYLE$l_valuefmt $l_unitfmt$l_STYLE_OFF\n"
+        l_args="'$l_header' '$l_value' '$l_unit'"
+    else
+        l_format="$l_headerfmt $l_STYLE$l_valuefmt $l_unitfmt$l_STYLE_OFF $l_statusfmt\n"
+        l_args="'$l_header' '$l_value' '$l_unit' '$l_statusline'"
+    fi
 
-    l_format="$l_headerfmt $l_STYLE$l_valuefmt $l_unitfmt$l_STYLE_OFF $l_statusfmt\n"
     appendFormat "$l_format"
-
-    l_args="'$l_header' '$l_value' '$l_unit' '$l_batteryline'"
     appendArgs "$l_args"
 
-  # echo l_headerfmt "$l_headerfmt"
-  # echo l_args "$l_args"
-  # echo l_format "$l_format"
-   
-    unset l_headerfmt ch l_statusfmt l_unitfmt l_batteryline l_signalfmt\
-        l_format l_args l_space l_batterystatus l_batterystatusfmt l_batteryvalue l_header\
-        l_signalstate l_signalvalue l_unit l_value l_valuefmt l_STYLE l_STYLE_OFF
+    unset l_headerfmt\
+        l_statusfmt\
+        l_unitfmt\
+        l_batteryline\
+        l_signalline\
+        l_format\
+        l_args\
+        l_batterystatus\
+        l_batterystatusfmt\
+        l_batteryvalue l_header\
+        l_signalstate\
+        l_signalvalue\
+        l_statusline\
+        l_unit\
+        l_value\
+        l_valuefmt\
+        l_STYLE\
+        l_STYLE_OFF
+
+    #echo >&2 "set l_*v vars : $(set | grep l_)" # any unset l_ (local vars?)
     
 }
 
@@ -200,9 +217,8 @@ printLDOuttemp()
 {
      if [ -n "$LIVEDATA_OUTTEMP" ]; then
          setLivedataValueStyleLtGt "$LIVEDATA_OUTTEMP_INTS10" "$LIVEDATALIMIT_OUTTEMP_LOW" "$LIVEDATALIMIT_OUTTEMP_HIGH" "$STYLE_LIVEDATALIMIT_OUTTEMP" "$STYLE_LIVEDATALIMIT_OUTTEMP_HIGH"
-         #WH32 battery and state may be set by injectWH32 testdata or if available
          #shellcheck disable=SC2153
-         printLivedataLine "$LIVEDATAHEADER_OUTTEMP" "$LIVEDATA_OUTTEMP" "%6.1f" "$LIVEDATAUNIT_TEMP" "%s" "$SENSOR_OUTTEMP_BATTERY"  "$SENSOR_OUTTEMP_BATTERY_STATE" "" "$SENSOR_OUTTEMP_SIGNAL" "$SENSOR_OUTTEMP_SIGNAL_STATE"
+         printLivedataLine "$LIVEDATAHEADER_OUTTEMP" "$LIVEDATA_OUTTEMP" "%6.1f" "$LIVEDATAUNIT_TEMP" "%s" 
      fi
 }
 
