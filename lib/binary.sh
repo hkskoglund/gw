@@ -847,22 +847,8 @@ parseLivedata()
 
             readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "CO2 battery"
             export LIVEDATA_CO2_BATTERY="$VALUE_UINT8"
+            setBatteryLevel "LIVEDATA_CO2_BATTERY" "$LIVEDATA_CO2_BATTERY"
 
-    #    elif [ "$ldf" -ge "$LDF_TF_USR1" ] && [ "$ldf" -le "$LDF_TF_USR8" ]; then
-    #        channel=$((ldf - LDF_TF_USR1 + 1))
-    #        readInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "tf_usr$channel"
-    #        convertTemperatureLivedata "$VALUE_INT16BE"
-
-    #        eval "export LIVEDATA_TF_USR${channel}_INT16=$VALUE_INT16"
-    #        eval "export LIVEDATA_TF_USR$channel=$VALUE_SCALE10_FLOAT"
-
-    #        readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "tf_usr$channel battery"
-    #        eval "export LIVEDATA_TF_USR${channel}_BATTERY_INT=$VALUE_UINT8"
-    #        eval "convertScale10ToFloat \$LIVEDATA_TF_USR${channel}_BATTERY_INT"
-    #        eval "export LIVEDATA_TF_USR${channel}_BATTERY=$VALUE_SCALE10_FLOAT"
-    #        getBatteryVoltageScale10State "$VALUE_UINT8"
-    #        eval "export LIVEDATA_TF_USR${channel}_BATTERY_STATE=$VALUE_BATTERY_STATE"
-    #        
         elif [ "$ldf" -ge "$LDF_LIGHTNING" ]; then
 
             readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "lightning distance"
@@ -1282,7 +1268,7 @@ isWriteCommand() {
 
 getSignalUnicode()
 {
-    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ] && [ -z "$NO_COLOR" ]; then
+    if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ]; then
         eval VALUE_SIGNAL_UNICODE="\$UNICODE_SIGNAL_LEVEL$1"
     else
       eval VALUE_SIGNAL_UNICODE="\$SIGNAL_LEVEL$1"
