@@ -13,7 +13,7 @@ printEcowittInterval()
         
         unset local_min
     elif [ "$LIVEDATAVIEW" -eq "$LIVEDATAVIEW_BACKUP" ]; then
-        printf "# ecowitt interval 0-5 minutes, 0=off\n%-31s %s\n" "$BACKUPNAME_ECOWITT_INTERVAL" "$GW_WS_ECOWITT_INTERVAL"
+        printf "# ecowitt interval 0-5 minutes, 0=off\n%-32s %s\n" "$BACKUPNAME_ECOWITT_INTERVAL" "$GW_WS_ECOWITT_INTERVAL"
     fi
 }
 
@@ -33,7 +33,7 @@ printWunderground() {
         printWundergroundId
         printWundergroundPassword
     elif  [ "$LIVEDATAVIEW" -eq "$LIVEDATAVIEW_BACKUP" ]; then
-        printf "%-31s %s\n%-31s %s\n" "$BACKUPNAME_WUNDERGROUND_ID" "$GW_WS_WUNDERGROUND_ID" "$BACKUPNAME_WUNDERGROUND_PASSWORD" "$GW_WS_WUNDERGROUND_PASSWORD"
+        printf "%-32s %s\n%-32s %s\n" "$BACKUPNAME_WUNDERGROUND_ID" "$GW_WS_WUNDERGROUND_ID" "$BACKUPNAME_WUNDERGROUND_PASSWORD" "$GW_WS_WUNDERGROUND_PASSWORD"
     fi
 }
 
@@ -52,7 +52,7 @@ printWeathercloud() {
        printWeathercloudId
        printWeathercloudPassword
     elif  [ "$LIVEDATAVIEW" -eq "$LIVEDATAVIEW_BACKUP" ]; then
-        printf "%-31s %s\n%-31s %s\n" "$BACKUPNAME_WEATHERCLOUD_ID" "$GW_WS_WC_ID" "$BACKUPNAME_WEATHERCLOUD_PASSWORD" "$GW_WS_WC_PASSWORD"
+        printf "%-32s %s\n%-32s %s\n" "$BACKUPNAME_WEATHERCLOUD_ID" "$GW_WS_WC_ID" "$BACKUPNAME_WEATHERCLOUD_PASSWORD" "$GW_WS_WC_PASSWORD"
     fi
 
 }
@@ -73,7 +73,7 @@ printWow() {
         printWowId
         printWowPassword
     elif  [ "$LIVEDATAVIEW" -eq "$LIVEDATAVIEW_BACKUP" ]; then
-        printf "%-31s %s\n%-31s %s\n" "$BACKUPNAME_WOW_ID" "$GW_WS_WOW_ID" "$BACKUPNAME_WOW_PASSWORD" "$GW_WS_WOW_PASSWORD"
+        printf "%-32s %s\n%-32s %s\n" "$BACKUPNAME_WOW_ID" "$GW_WS_WOW_ID" "$BACKUPNAME_WOW_PASSWORD" "$GW_WS_WOW_PASSWORD"
     fi
 }
 
@@ -86,7 +86,7 @@ printCustomized() {
                     "$WEATHERSERVICEHEADER_CUSTOMIZED_ENABLED" "$GW_WS_CUSTOMIZED_ENABLED" "$GW_WS_CUSTOMIZED_ENABLED_STATE"\
                     "$WEATHERSERVICEHEADER_CUSTOMIZED_PATH_ECOWITT" "$GW_WS_CUSTOMIZED_PATH_ECOWITT" "$WEATHERSERVICEHEADER_CUSTOMIZED_PATH_WUNDERGROUND" "$GW_WS_CUSTOMIZED_PATH_WU"
     elif [ "$LIVEDATAVIEW" -eq "$LIVEDATAVIEW_BACKUP" ]; then
-         printf "%-31s %s\n%-31s %s\n%-31s %s\n%-31s %s\n# interval in minutes from 16\n%-31s %s\n# http protocol 1=wunderground, 0=ecowitt\n%-31s %s\n# enabled 1=on,0=off\n%-31s %s\n"\
+         printf "%-32s %s\n%-32s %s\n%-32s %s\n%-32s %s\n# interval in minutes from 16\n%-32s %s\n# http protocol 1=wunderground, 0=ecowitt\n%-32s %s\n# enabled 1=on,0=off\n%-32s %s\n"\
                     "$BACKUPNAME_CUSTOMIZED_ID" "$GW_WS_CUSTOMIZED_ID"\
                     "$BACKUPNAME_CUSTOMIZED_PASSWORD" "$GW_WS_CUSTOMIZED_PASSWORD"\
                     "$BACKUPNAME_CUSTOMIZED_SERVER" "$GW_WS_CUSTOMIZED_SERVER"\
@@ -102,7 +102,7 @@ printPath() {
         echo "$WEATHERSERVICEHEADER_CUSTOMIZED_PATH_ECOWITT      $GW_WS_CUSTOMIZED_PATH_ECOWITT
 $WEATHERSERVICEHEADER_CUSTOMIZED_PATH_WUNDERGROUND $GW_WS_CUSTOMIZED_PATH_WU"
     elif [ "$LIVEDATAVIEW" -eq "$LIVEDATAVIEW_BACKUP" ]; then
-        printf "%-31s %s\n%-31s %s\n" "$BACKUPNAME_CUSTOMIZED_PATH_ECOWITT" "$GW_WS_CUSTOMIZED_PATH_ECOWITT" "$BACKUPNAME_CUSTOMIZED_PATH_WUNDERGROUND" "$GW_WS_CUSTOMIZED_PATH_WU"
+        printf "%-32s %s\n%-32s %s\n" "$BACKUPNAME_CUSTOMIZED_PATH_ECOWITT" "$GW_WS_CUSTOMIZED_PATH_ECOWITT" "$BACKUPNAME_CUSTOMIZED_PATH_WUNDERGROUND" "$GW_WS_CUSTOMIZED_PATH_WU"
     fi
 }
 
