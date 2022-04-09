@@ -583,9 +583,23 @@ printLDSystem()
 
 }
 
+printLivedataHTMLOuttemp()
+#https://www.w3schools.com/cssref/pr_margin.asp
+#for old ipad 1/safari -landscape mode
+{
+    l_sysinfo="$LIVEDATA_SYSTEM_HOST $LIVEDATA_SYSTEM_VERSION $LIVEDATA_SYSTEM_UTC"
+    l_htmlfmt=$(printf "HTTP/1.1 200 OK
+Server: gw
+Content-Type: text/html; charset=UTF-8
+Refresh: 60
+
+%s" "$(cat ./html/ipad1.html)")
+   eval printf \"\$l_htmlfmt\" \""$l_sysinfo"\" \""$LIVEDATA_OUTTEMP$LIVEDATAUNIT_TEMP"\"
+    unset l_sysinfo
+}
 
 
-printLivedataHTML()
+printLivedataHTMLAll()
 # https://developer.mozilla.org/en-US/docs/Web/HTML/Quirks_Mode_and_Standards_Mode
 # https://en.wikipedia.org/wiki/Meta_refresh <meta http-equiv=\"refresh\" content=\"5\">
 # https://stackoverflow.com/questions/32913226/auto-refresh-page-every-30-seconds
@@ -593,25 +607,21 @@ printLivedataHTML()
 # UTF-8 is necessary to show unicode
 {
     l_sysinfo="$LIVEDATA_SYSTEM_HOST $LIVEDATA_SYSTEM_VERSION $LIVEDATA_SYSTEM_UTC"
-    printf 'HTTP/1.1 200 OK
+    l_htmlfmt=$(printf 'HTTP/1.1 200 OK
 Server: gw
 Content-Type: text/html; charset=UTF-8
 Refresh: 16
 
-<!DOCTYPE html>
-<html style="zoom:200%%">
-<head>
-<meta charset="UTF-8">
-<title>Livedata %s</title>
-</head>
-<body>
+%s' "$(cat ./html/livedata.html)")
 
-<pre>%s</pre>
-<pre>%s</pre>
-
-</body>
-</html>'  "$l_sysinfo" "$l_sysinfo"  "$LIVEDATA_TEXT_UTF8"  
+    eval printf \"\$l_htmlfmt\" \""$l_sysinfo"\" \""$LIVEDATA_TEXT_UTF8"\"
     unset l_sysinfo
+}
+
+printLivedataHTML()
+{
+    printLivedataHTMLOuttemp
+    #printLivedataHTMLAll
 }
 
 printLivedata()
