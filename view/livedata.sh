@@ -594,8 +594,9 @@ Content-Type: text/html; charset=UTF-8
 Refresh: 60
 
 %s" "$(cat ./html/ipad1.html)")
-   eval printf \"\$l_htmlfmt\" \""$l_sysinfo"\" \""$LIVEDATA_OUTTEMP$LIVEDATAUNIT_TEMP"\"
+   eval printf \"\$l_htmlfmt\" \""$l_sysinfo"\" \""$LIVEDATA_OUTTEMP$LIVEDATAUNIT_TEMP"\" \""$LIVEDATA_WINDSPEED $LIVEDATAUNIT_WIND"\" \""$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE $LIVEDATA_WINDDIRECTION_COMPASS"\"
     unset l_sysinfo
+    
 }
 
 
