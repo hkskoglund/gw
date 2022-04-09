@@ -1,15 +1,25 @@
 <!DOCTYPE html>
-<html style="zoom:9">
+<html style="zoom:7">
 
 <head>
     <meta charset="UTF-8">
     <title>Livedata %s</title>
 </head>
 
-<body style="margin: 4px 0 0 8px">
-    <div id="outtemp" style="font-weight: bold; text-align: center">%s</div>
-    <div id="windspeed" style="font-weight: bold; text-align: center">%s</div>
-    <div id="winddirection" style="font-weight: bold; text-align: center">%s</div>
+<body>
+   <div style="font-weight: bold; text-align: center;">
+        <div id="temp">
+            <div id="intemp" style="display:inline">%s</div>
+            <div id="outtemp"style="display:inline">%s</div>
+            <div id="unittemp" style="display:inline">%s</div>
+        </div>
+         <div id="wind">
+            <div id="windspeed" style="display:inline">%s</div>
+            <div id="windgustspeed" style="display:inline">%s</div>
+            <div id="unitwind" style="display:inline">%s</div>
+            <div id="winddirection">%s</div>
+        </div>
+    </div>
 </body>
 
 </html>
