@@ -10,7 +10,7 @@ HTTP_RESPONSE_501_NOTIMPLEMENTED="HTTP/1.1 501"
 
 sendHttpResponse()
 {
-    printf "%b" "$APPEND_HTTP_RESPONSE" >"$GWFIFO"
+    printf "%b" "$APPEND_HTTP_RESPONSE" 
 }
 
 appendHttpResponseHeader()
@@ -127,13 +127,20 @@ startwebserver()
     fi
     TMPFIFODIR=$(mktemp -d)
     GWFIFO="$TMPFIFODIR/fifo"
+    # create kernel fifo, man fifo
     mkfifo "$GWFIFO"
     trap 'echo >&2 "webserver INT trap handler"; rm -rf "$TMPFIFODIR"; exit' INT # INT catches ctrl-c -> triggers exit trap handler
     #trap 'echo >&2 webserver EXIT TERM HUP trap handler; rm -rf "$TMPFIFODIR"' EXIT INT TERM HUP
     GWWEBSERVER_PORT=$1
     while true; do 
        #set
-       tail -f "$GWFIFO" | nc -v -4 -l "$GWWEBSERVER_PORT" | webserver  #nc openbsd -N closes connection
+       #tail -f "$GWFIFO" | nc -v -4 -l "$GWWEBSERVER_PORT" | webserver  #nc openbsd -N closes connection
+       #shellcheck disable=SC2094
+       nc -v -4 -l "$GWWEBSERVER_PORT" <"$GWFIFO" | webserver >"$GWFIFO" #openbsd
+       #from man fifo: "The FIFO must be opened on both ends (reading and
+       #writing) before data can be passed.  Normally, opening  the  FIFO  blocks  until  the
+       #other end is opened also."
+       #https://en.wikipedia.org/wiki/Netcat#Performing_an_HTTP_request
         #all processes in pipeline runs in same process group, commands to manage: ps -efj, kill -- -PGID, jobs, kill %+, kill %-
         #https://www.baeldung.com/linux/kill-members-process-group
     done
