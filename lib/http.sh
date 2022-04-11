@@ -12,7 +12,6 @@ httpServer()
 
     [ "$DEBUG_HTTPSERVER" -eq 1 ] && >&2 echo $DEBUG_FUNC: Listening on port "$1"
 
-set -x
     if [ "$NC_VERSION" = "$NC_NMAP" ]; then 
         http_message=$("$NC_CMD" -l -i 0.1 "$1" 2>/dev/null) # - idle timeout to exit early, not waiting for client to close/FIN
         EXITCODE_HTTPSERVER=$? 
@@ -29,7 +28,6 @@ set -x
         echo >&2 Error: Listen unsupported for nc version "$NC_VERSION"
         EXITCODE_HTTPSERVER=$ERROR_LISTEN_UNSUPPORTED_NC
     fi
-    set +x
 
     if [ -z "$http_message" ]; then
         [ "$DEBUG_HTTPSERVER" -eq 1 ] && echo >&2 $DEBUG_FUNC: Empty http message from nc
@@ -63,7 +61,8 @@ set -x
 
 parseHttpHeader()
 {
-    [ "$DEBUG" -eq 1 ] &&  >&2 echo "parseHttpHeader $1 length ${#1} $(printf "%s" "$1" | od -A n -t x1)"
+    #[ "$DEBUG" -eq 1 ] &&  
+    >&2 echo "parseHttpHeader $1"
     
     IFS=": $CR" read -r l_HTTP_KEY l_HTTP_VALUE <<EOH
 $1
@@ -72,6 +71,7 @@ EOH
 
     case $l_HTTP_KEY in
         *-*) 
+                # - not alloed in shell variable names -> substitute with _
                 IFS=-
                 #shellcheck disable=SC2086
                 set -- $l_HTTP_KEY
@@ -80,7 +80,14 @@ EOH
                 l_HTTP_KEY_PART1=$VALUE_LOWERCASE
                 toLowercase "$2"
                 l_HTTP_KEY_PART2=$VALUE_LOWERCASE
-                eval "HTTP_HEADER_${l_HTTP_KEY_PART1}_${l_HTTP_KEY_PART2}=\"$l_HTTP_VALUE\""
+                if [ -n "$3" ]; then
+                    toLowercase "$3"
+                    l_HTTP_KEY_PART3=$VALUE_LOWERCASE
+                    eval "HTTP_HEADER_${l_HTTP_KEY_PART1}_${l_HTTP_KEY_PART2}_${l_HTTP_KEY_PART3}=\"$l_HTTP_VALUE\""
+                else
+                    eval "HTTP_HEADER_${l_HTTP_KEY_PART1}_${l_HTTP_KEY_PART2}=\"$l_HTTP_VALUE\""
+                fi
+
                 ;;
         *)         
                 toLowercase "$l_HTTP_KEY"
@@ -99,7 +106,8 @@ parseHttpRequestLine()
       IFS=" $CR" read -r HTTP_REQUEST_METHOD HTTP_REQUEST_URL HTTP_REQUEST_VERSION <<EOL
 $1
 EOL
-    [ $DEBUG -eq 1 ] && echo >&2 "method: $HTTP_REQUEST_METHOD url: $HTTP_REQUEST_URL version: $HTTP_REQUEST_VERSION"
+    #[ $DEBUG -eq 1 ] && 
+    echo >&2 "method: $HTTP_REQUEST_METHOD url: $HTTP_REQUEST_URL version: $HTTP_REQUEST_VERSION"
 }
 
 parseHttpLines()

@@ -62,7 +62,6 @@ webserver()
 
            l_no=$(( l_no + 1 ))
            
-              set -x
               eval HTTP_LINE$l_no=\""$l_http_response_line"\"
               if [ "$l_http_response_line" = "$CR" ]; then
                     echo >&2 http newline CR
@@ -70,7 +69,6 @@ webserver()
                elif [ $l_no -gt 1 ] ; then
                     eval parseHttpHeader \"\$HTTP_LINE$l_no\"
               fi
-              set +x
 
         done
       
@@ -89,8 +87,20 @@ webserver()
             HEAD)                   sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                     ;;
             GET)
+                echo >&2 "Info: request url  $HTTP_REQUEST_URL"
                 case "$HTTP_REQUEST_URL" in
-                  /|/livedata)
+                  /livedata|/livedata.json) echo >&2 "Info: got request for livedata on /livedata"
+                                             appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
+                                            appendHttpDefaultHeaders
+                                            appendHttpResponseHeader "Content-Type" "application/json"
+                                            #https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
+                                            # for cross-origin request: 127.0.0.1:3000 Live Preview visual studio code -> webserver localhost:8000
+                                            appendHttpResponseHeader "Access-Control-Allow-Origin" "*"
+                                            appendHttpResponseNewline
+                                            appendHttpResponseBody '{"intemp":"21.2"}'
+                                            sendHttpResponse
+                                            ;;
+                  /)
                                     #sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                     #resetHttpResponse
 
@@ -98,6 +108,7 @@ webserver()
                                     appendHttpDefaultHeaders
 
                                     # shellcheck disable=SC2154
+                                    echo >&2 "!!!!!!!!!! Accept-header $HTTP_HEADER_accept"
                                     case "$HTTP_HEADER_accept" in
                                         application/json)
                                           
@@ -113,7 +124,7 @@ webserver()
                                             ;;
 
                                         *)   appendHttpResponseHeader "Content-Type" "text/plain"
-                                            appendHttpResponseBody 'test\t\ttest\t\ttest\n'
+                                            appendHttpResponseBody 'Hello from webserver'
                                             ;;
                                     esac
 
@@ -185,9 +196,9 @@ startwebserver()
 
 trap
 
-set -x
+#set -x
 #echo Args $0
 startwebserver "$1" 
 #echo Background PID $!
 #jobs
-set +x
+#set +x
