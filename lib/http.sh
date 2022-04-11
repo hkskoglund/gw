@@ -63,7 +63,7 @@ set -x
 
 parseHttpHeader()
 {
-    [ "$DEBUG" -eq 1 ] &&  >&2 echo "parseHttpHeader $1 length ${#1} $(printf "$1" | od -A n -t x1)"
+    [ "$DEBUG" -eq 1 ] &&  >&2 echo "parseHttpHeader $1 length ${#1} $(printf "%s" "$1" | od -A n -t x1)"
     
     IFS=": $CR" read -r l_HTTP_KEY l_HTTP_VALUE <<EOH
 $1
@@ -80,12 +80,12 @@ EOH
                 l_HTTP_KEY_PART1=$VALUE_LOWERCASE
                 toLowercase "$2"
                 l_HTTP_KEY_PART2=$VALUE_LOWERCASE
-                eval "HTTP_HEADER_${l_HTTP_KEY_PART1}_${l_HTTP_KEY_PART2}=$l_HTTP_VALUE"
+                eval "HTTP_HEADER_${l_HTTP_KEY_PART1}_${l_HTTP_KEY_PART2}=\"$l_HTTP_VALUE\""
                 ;;
         *)         
                 toLowercase "$l_HTTP_KEY"
                 l_HTTP_KEY=$VALUE_LOWERCASE
-                eval "HTTP_HEADER_$l_HTTP_KEY=$l_HTTP_VALUE" 
+                eval "HTTP_HEADER_$l_HTTP_KEY=\"$l_HTTP_VALUE\"" 
                ;;
     esac
 

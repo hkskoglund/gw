@@ -25,7 +25,7 @@ appendHttpDefaultHeaders()
     appendHttpResponseHeader "Connection" "close"
 }
 
-appendHttpResponsenewline()
+appendHttpResponseNewline()
 {
     APPEND_HTTP_RESPONSE="$APPEND_HTTP_RESPONSE\r\n"
 }
@@ -35,7 +35,7 @@ appendHttpResponseCode()
     APPEND_HTTP_RESPONSE="${APPEND_HTTP_RESPONSE}$1\n"
 }
 
-appendHttpResponseneBody()
+appendHttpResponseBody()
 {
     APPEND_HTTP_RESPONSE="$APPEND_HTTP_RESPONSE$1"
 }
@@ -47,7 +47,7 @@ resetHttpResponse()
 
 sendHttpResponseCode()
 {
-    resetHttpResponse
+    #resetHttpResponse
     appendHttpResponseCode "$1"
     appendHttpDefaultHeaders
     sendHttpResponse
@@ -83,6 +83,8 @@ webserver()
 
         parseHttpRequestLine "$HTTP_LINE1"
 
+        resetHttpResponse
+
         case "$HTTP_REQUEST_METHOD" in
             HEAD)                   sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                     ;;
@@ -90,30 +92,58 @@ webserver()
                 case "$HTTP_REQUEST_URL" in
                   /|/livedata)
                                     #sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
-                                    resetHttpResponse
+                                    #resetHttpResponse
+
                                     appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                     appendHttpDefaultHeaders
-                                    appendHttpResponsenewline
-                                    
-                                    echo "!!! $HTTP_HEADER_accept ${#HTTP_HEADER_accept}" >&2
 
+                                    # shellcheck disable=SC2154
                                     case "$HTTP_HEADER_accept" in
                                         application/json)
                                           
                                             appendHttpResponseHeader "Content-Type" "application/json"
-                                            appendHttpResponsenewline
-                                            appendHttpResponseneBody '{"success":"true"}'
+                                            appendHttpResponseNewline
+                                            appendHttpResponseBody '{"intemp":"21.2"}'
                                             ;;
+                                        
+                                        *text/html*)
+                                            appendHttpResponseHeader "Content-Type" "text/html"
+                                            appendHttpResponseNewline
+                                            appendHttpResponseBody "$(cat ../html/ipad1.html)"
+                                            ;;
+
                                         *)   appendHttpResponseHeader "Content-Type" "text/plain"
-                                            appendHttpResponseneBody 'test\t\ttest\t\ttest\n'
+                                            appendHttpResponseBody 'test\t\ttest\t\ttest\n'
                                             ;;
                                     esac
 
                                     sendHttpResponse
                                     ;;
                                        
-                            *)      sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
-                                    ;;
+                    *".js") >&2 echo "Info: script request url: $HTTP_REQUEST_URL"
+                            l_script_file=${HTTP_REQUEST_URL##*/}
+                            l_script_dir=${HTTP_REQUEST_URL%"$l_script_file"}
+                            l_server_root="../html"
+                            l_server_file="$l_server_root$l_script_dir$l_script_file"
+                            if [ -s "$l_server_file" ]; then
+                                >&2 echo "Info: found script $l_server_file"
+                                    appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
+                                    appendHttpDefaultHeaders
+                                    appendHttpResponseHeader "Content-Type" "application/javascript"
+                                    appendHttpResponseNewline
+                                    appendHttpResponseBody "$(cat "$l_server_file")"
+                                    sendHttpResponse
+                            else
+                                >&2 echo "Error: script not available file: $l_server_file"
+                                sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
+                            fi
+
+                            unset l_script_file l_script_dir l_server_root l_server_file
+
+                                ;;
+                    
+                    *)      sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
+                            ;;
                 esac
                 ;;
             *)                      sendHttpResponseCode "$HTTP_RESPONSE_501_NOTIMPLEMENTED"
