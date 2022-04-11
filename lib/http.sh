@@ -1,6 +1,7 @@
 #!/bin/sh
 
 DEBUG=${DEBUG:=0}
+CR=$(printf "\r")
 
 httpServer()
 #$1 - port number 
@@ -62,12 +63,13 @@ set -x
 
 parseHttpHeader()
 {
-    [ "$DEBUG" -eq 1 ] &&  echo >&2 "parseHttpHeader $1"
+    [ "$DEBUG" -eq 1 ] &&  >&2 echo "parseHttpHeader $1 length ${#1} $(printf "$1" | od -A n -t x1)"
     
-    IFS=: read -r l_HTTP_KEY l_HTTP_VALUE <<EOH
+    IFS=": $CR" read -r l_HTTP_KEY l_HTTP_VALUE <<EOH
 $1
 EOH
-    [ "$DEBUG" -eq 1 ] && echo >&2 "KEY $l_HTTP_KEY VALUE $l_HTTP_VALUE"
+    [ "$DEBUG" -eq 1 ] && echo >&2 "KEY $l_HTTP_KEY length ${#l_HTTP_KEY} VALUE $l_HTTP_VALUE length ${#l_HTTP_VALUE}"
+
     case $l_HTTP_KEY in
         *-*) 
                 IFS=-
@@ -78,12 +80,12 @@ EOH
                 l_HTTP_KEY_PART1=$VALUE_LOWERCASE
                 toLowercase "$2"
                 l_HTTP_KEY_PART2=$VALUE_LOWERCASE
-                eval "HTTP_HEADER_${l_HTTP_KEY_PART1}_${l_HTTP_KEY_PART2}=${l_HTTP_VALUE# }"
+                eval "HTTP_HEADER_${l_HTTP_KEY_PART1}_${l_HTTP_KEY_PART2}=$l_HTTP_VALUE"
                 ;;
         *)         
                 toLowercase "$l_HTTP_KEY"
                 l_HTTP_KEY=$VALUE_LOWERCASE
-                eval "HTTP_HEADER_$l_HTTP_KEY=${l_HTTP_VALUE# }" # trim 1 leading space
+                eval "HTTP_HEADER_$l_HTTP_KEY=$l_HTTP_VALUE" 
                ;;
     esac
 
@@ -94,7 +96,7 @@ EOH
 parseHttpRequestLine()
 {
      # shellcheck disable=SC2034
-      IFS=' ' read -r HTTP_REQUEST_METHOD HTTP_REQUEST_URL HTTP_REQUEST_VERSION <<EOL
+      IFS=" $CR" read -r HTTP_REQUEST_METHOD HTTP_REQUEST_URL HTTP_REQUEST_VERSION <<EOL
 $1
 EOL
     [ $DEBUG -eq 1 ] && echo >&2 "method: $HTTP_REQUEST_METHOD url: $HTTP_REQUEST_URL version: $HTTP_REQUEST_VERSION"
@@ -105,9 +107,9 @@ parseHttpLines()
     #http://mywiki.wooledge.org/BashFAQ/001
     N=0
     NBODY=0 #line number to body
-    while eval IFS= read -r HTTP_LINE$((N + 1)); do
+    while eval IFS="$CR" read -r HTTP_LINE$((N + 1)); do
         N=$(( N + 1 ))
-        [ $NBODY -eq 0 ] && eval HTTP_LINE$N="\${HTTP_LINE$N%?}" # remove trailing \r (\n removed by read), do not touch body
+       # [ $NBODY -eq 0 ] && eval HTTP_LINE$N="\${HTTP_LINE$N%?}" # remove trailing \r (\n removed by read), do not touch body
         eval "if [ \"\${#HTTP_LINE$N}\" -eq 0 ]; then NBODY=$((N + 1 )); fi" 
       [ "$DEBUG" -eq 1 ] &&  eval echo >&2 HTTP LINE $N \"\$HTTP_LINE$N\"
     done <<EOF
