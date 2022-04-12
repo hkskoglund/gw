@@ -84,11 +84,14 @@ webserver()
         resetHttpResponse
 
         case "$HTTP_REQUEST_METHOD" in
+
             HEAD)                   sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                     ;;
+
             GET)
-                echo >&2 "Info: request url  $HTTP_REQUEST_URL"
-                case "$HTTP_REQUEST_URL" in
+               
+                case "$HTTP_REQUEST_ABSPATH" in
+
                   /livedata|/livedata.json) echo >&2 "Info: got request for livedata on /livedata"
                                              appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                             appendHttpDefaultHeaders
@@ -110,6 +113,7 @@ webserver()
                                     # shellcheck disable=SC2154
                                     echo >&2 "!!!!!!!!!! Accept-header $HTTP_HEADER_accept"
                                     case "$HTTP_HEADER_accept" in
+
                                         application/json)
                                           
                                             appendHttpResponseHeader "Content-Type" "application/json"
@@ -118,6 +122,7 @@ webserver()
                                             ;;
                                         
                                         *text/html*)
+                                    
                                             appendHttpResponseHeader "Content-Type" "text/html"
                                             appendHttpResponseNewline
                                             appendHttpResponseBody "$(cat ../html/ipad1.html)"
@@ -131,9 +136,9 @@ webserver()
                                     sendHttpResponse
                                     ;;
                                        
-                    *".js") >&2 echo "Info: script request url: $HTTP_REQUEST_URL"
-                            l_script_file=${HTTP_REQUEST_URL##*/}
-                            l_script_dir=${HTTP_REQUEST_URL%"$l_script_file"}
+                    *".js")
+                            l_script_file=${HTTP_REQUEST_ABSPATH##*/}
+                            l_script_dir=${HTTP_REQUEST_ABSPATH%"$l_script_file"}
                             l_server_root="../html"
                             l_server_file="$l_server_root$l_script_dir$l_script_file"
                             if [ -s "$l_server_file" ]; then

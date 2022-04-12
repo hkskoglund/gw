@@ -102,12 +102,13 @@ EOH
 
 parseHttpRequestLine()
 {
+    #LF=\n stripped off by read
      # shellcheck disable=SC2034
-      IFS=" $CR" read -r HTTP_REQUEST_METHOD HTTP_REQUEST_URL HTTP_REQUEST_VERSION <<EOL
+      IFS=" $CR" read -r HTTP_REQUEST_METHOD HTTP_REQUEST_ABSPATH HTTP_REQUEST_VERSION <<EOL 
 $1
 EOL
     #[ $DEBUG -eq 1 ] && 
-    echo >&2 "method: $HTTP_REQUEST_METHOD url: $HTTP_REQUEST_URL version: $HTTP_REQUEST_VERSION"
+    echo >&2 "parseHttpRequestLine method: $HTTP_REQUEST_METHOD abspath: $HTTP_REQUEST_ABSPATH version: $HTTP_REQUEST_VERSION"
 }
 
 parseHttpLines()
@@ -462,8 +463,8 @@ parseWundergroundHttpReqest()
     #http_request="ID="$http_request
 
     IFS='&'
-    local_httpprefix=${HTTP_REQUEST_URL%ID=*}
-    for f in ${HTTP_REQUEST_URL#"$local_httpprefix"}; do 
+    local_httpprefix=${HTTP_REQUEST_ABSPATH%ID=*}
+    for f in ${HTTP_REQUEST_ABSPATH#"$local_httpprefix"}; do 
 
         value=${f##*=}
         key=${f%%=*}
