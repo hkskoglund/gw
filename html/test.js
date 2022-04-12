@@ -1,8 +1,10 @@
 
-//var host="192.168.3.3"
-var host="192.168.3.174"
-var port="8000"
-var url='http://'+host+':'+port+'/livedata'
+// by default functions are added to window object
+
+function newUrl(host,port)
+{ 
+    return 'http://'+host+':'+port+'/livedata'
+}
 
 function transferComplete(evt)
 {
@@ -29,11 +31,10 @@ function requestLivedata()
     req.send()
 }
 
+var url = newUrl('192.168.3.174',8000)
+
 // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest
 // https://stackoverflow.com/questions/1973140/parsing-json-from-xmlhttprequest-responsejson
 // https://developer.mozilla.org/en-US/docs/Web/API/setInterval
 requestLivedata()
 var intervalID=setInterval(requestLivedata,16000)
-
-
-

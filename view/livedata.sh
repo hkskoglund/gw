@@ -630,8 +630,7 @@ printLDOuttempJSON()
     #appendFormat 
     #https://doc.ecowitt.net/web/#/apiv3en?page_id=17
     # timestamp and value is a string value/using "*"
-   appendFormat '{"outdoor":{"temperature":{"time":"%s","value":"%s","unit":"%s"}}}' 
-   appendArgs "'$LIVEDATA_SYSTEM_TIMESTAMP' '$LIVEDATA_OUTTEMP' '$LIVEDATAUNIT_TEMP'"
+   printf '{"outdoor":{"temperature":{"time":"%s","value":"%s","unit":"%s"}}}'  "$LIVEDATA_SYSTEM_TIMESTAMP" "$LIVEDATA_OUTTEMP" "$LIVEDATAUNIT_TEMP"
     
 }
 
@@ -644,9 +643,7 @@ printLivedataJSON()
     #printLDIntempJSON
     printLDOuttempJSON
     
-    set -x
     printAppendBuffer
-    set +x
 
 }
 
