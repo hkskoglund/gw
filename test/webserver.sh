@@ -200,7 +200,9 @@ startwebserver()
     GWWEBSERVER_PORT=$1
     while true; do 
        #shellcheck disable=SC2094
-       nc -v -4 -l "$GWWEBSERVER_PORT" <"$GWFIFO" | webserver >"$GWFIFO" #openbsd
+      # nc -v -4 -l "$GWWEBSERVER_PORT" <"$GWFIFO" | webserver >"$GWFIFO" #openbsd
+      nc -4 -l "$GWWEBSERVER_PORT" <"$GWFIFO" | webserver >"$GWFIFO"
+      
     done
 }
 
