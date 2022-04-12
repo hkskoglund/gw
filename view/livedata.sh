@@ -625,6 +625,27 @@ printLivedataHTML()
     #printLivedataHTMLAll
 }
 
+printLDIntempJSON()
+{
+    #appendFormat 
+    #https://doc.ecowitt.net/web/#/apiv3en?page_id=17
+    # timestamp and value is a string value
+   printf '{"indoor":{"temperature":{"time":"%s","value":"%s","unit":"%s"}}}' "$LIVEDATA_SYSTEM_TIMESTAMP" "$LIVEDATA_INTEMP" "$LIVEDATAUNIT_TEMP"
+    
+}
+
+printLivedataJSON()
+{
+    resetAppendBuffer
+
+    #printf '{ "code": 0, "msg":'
+
+    printLDIntempJSON
+    
+    printAppendBuffer
+
+}
+
 printLivedata()
 # print all LIVEDATA grouped in a table
 # debugging: call printLivedataFinal directly for problematic line and set DEBUG_LIVEDATA_LINE=1, also can use: printAppendbuffer; return 

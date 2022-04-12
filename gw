@@ -238,6 +238,7 @@ copySystemToLivedata()
 {
     export LIVEDATA_SYSTEM_FREQUENCY=$GW_SYSTEM_FREQUENCY_STATE
     export LIVEDATA_SYSTEM_SENSORTYPE=$GW_SYSTEM_SENSORTYPE_STATE
+    export LIVEDATA_SYSTEM_TIMESTAMP="$GW_SYSTEM_UTC"
     export LIVEDATA_SYSTEM_UTC="$GW_SYSTEM_UTC_STATE" #local time 
     export LIVEDATA_SYSTEM_TIMEZONE="$GW_SYSTEM_TIMEZONE_INDEX_STATE"
     export LIVEDATA_SYSTEM_TIMEZONE_DST_BIT=$GW_SYSTEM_TIMEZONE_DST_BIT
@@ -743,6 +744,8 @@ printOrLogLivedata()
        elif [ $LIVEDATAVIEW -eq $LIVEDATAVIEW_HTML ]; then
             export "LIVEDATA_TEXT_UTF8=$(NO_COLOR=1 printLivedata)"
             printLivedataHTML
+       elif [ $LIVEDATAVIEW -eq $LIVEDATAVIEW_JSON ]; then
+            printLivedataJSON
        else
           echo >&2 Not implemented liveview $LIVEDATAVIEW
        fi
@@ -2400,7 +2403,10 @@ while [ $# -gt 0 ]; do
                                     ;;
                            h | html)    LIVEDATAVIEW=$LIVEDATAVIEW_HTML
                                     ;;
-                            *) >&2 echo "Warning: Unknown livedata view $liveview, use 0 | null, n | normal, b | backup"
+                           j | json)    LIVEDATAVIEW=$LIVEDATAVIEW_JSON
+                                    ;;
+
+                            *) >&2 echo "Warning: Unknown livedata view $liveview, use 0 | null, n | normal, b | backup, h | html, j | json"
                             ;;
                         esac
                     done

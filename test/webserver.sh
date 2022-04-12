@@ -92,7 +92,7 @@ webserver()
                
                 case "$HTTP_REQUEST_ABSPATH" in
 
-                  /livedata|/livedata.json) echo >&2 "Info: got request for livedata on /livedata"
+                  /livedata) 
                                              appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                             appendHttpDefaultHeaders
                                             appendHttpResponseHeader "Content-Type" "application/json"
@@ -100,8 +100,13 @@ webserver()
                                             # for cross-origin request: 127.0.0.1:3000 Live Preview visual studio code -> webserver localhost:8000
                                             appendHttpResponseHeader "Access-Control-Allow-Origin" "*"
                                             appendHttpResponseNewline
-                                            appendHttpResponseBody '{"intemp":"21.2"}'
+                                            l_response_JSON=$(cd ..; ./gw -g 192.168.3.16 -v json -c l)
+                                            #l_response_JSON=$(printf '{"indoor":{"temperature":{"time":"%s","value":"%s","unit":"%s"}}}' 1 2 3)
+                                            #problem: stty: 'standard input': Inappropriate ioctl for device
+                                            appendHttpResponseBody "$l_response_JSON"
+                                            echo >&2 "Info: sending JSON: $l_response_JSON"
                                             sendHttpResponse
+                                            unset l_response_JSON
                                             ;;
                   /)
                                     #sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
