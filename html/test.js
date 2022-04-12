@@ -1,5 +1,6 @@
 
-var host="192.168.3.3"
+//var host="192.168.3.3"
+var host="192.168.3.174"
 var port="8000"
 var url='http://'+host+':'+port+'/livedata'
 
