@@ -625,12 +625,13 @@ printLivedataHTML()
     #printLivedataHTMLAll
 }
 
-printLDIntempJSON()
+printLDOuttempJSON()
 {
     #appendFormat 
     #https://doc.ecowitt.net/web/#/apiv3en?page_id=17
-    # timestamp and value is a string value
-   printf '{"indoor":{"temperature":{"time":"%s","value":"%s","unit":"%s"}}}' "$LIVEDATA_SYSTEM_TIMESTAMP" "$LIVEDATA_INTEMP" "$LIVEDATAUNIT_TEMP"
+    # timestamp and value is a string value/using "*"
+   appendFormat '{"outdoor":{"temperature":{"time":"%s","value":"%s","unit":"%s"}}}' 
+   appendArgs "'$LIVEDATA_SYSTEM_TIMESTAMP' '$LIVEDATA_OUTTEMP' '$LIVEDATAUNIT_TEMP'"
     
 }
 
@@ -640,9 +641,12 @@ printLivedataJSON()
 
     #printf '{ "code": 0, "msg":'
 
-    printLDIntempJSON
+    #printLDIntempJSON
+    printLDOuttempJSON
     
+    set -x
     printAppendBuffer
+    set +x
 
 }
 

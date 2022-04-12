@@ -8,7 +8,7 @@ function transferComplete(evt)
 {
     var json = JSON.parse(this.responseText)
     console.log(json)
-    document.getElementById('intemp').innerHTML=json.indoor.temperature.value
+    document.getElementById('outtemp').innerHTML=json.outdoor.temperature.value
 }
 
 function transferError(evt)
