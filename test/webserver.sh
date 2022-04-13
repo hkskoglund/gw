@@ -5,6 +5,7 @@ HTTP_RESPONSE_200_OK="HTTP/1.1 200" # https://developer.mozilla.org/en-US/docs/W
 HTTP_RESPONSE_404_NOTFOUND="HTTP/1.1 404"
 HTTP_RESPONSE_501_NOTIMPLEMENTED="HTTP/1.1 501"
 
+
 . ../lib/http.sh
 . ../lib/util.sh
 
@@ -48,6 +49,7 @@ resetHttpResponse()
 sendHttpResponseCode()
 {
     #resetHttpResponse
+    echo >&2 "response: $1"
     appendHttpResponseCode "$1"
     appendHttpDefaultHeaders
     sendHttpResponse
@@ -56,44 +58,38 @@ sendHttpResponseCode()
 webserver()
 # process runs in a subshell (function call in end of pipeline), pid can be accessed by $BASHPID/$$ is invoking shell, pstree -pal gives overview
 {
-        # read request and headers including newline. read strips off LF=\n at the end of line -> only check for CR=\r
-        l_no=0
-        while IFS= read -r l_http_response_line; do
+    echo >&2 "waiting: read request"
+    # read request and headers including newline. read strips off LF=\n at the end of line -> only check for CR=\r
+    l_no=0
+    
+    while IFS= read -r l_http_response_line; do
+    l_no=$(( l_no + 1 ))
+       
+          eval HTTP_LINE$l_no=\""$l_http_response_line"\"
+          if [ "$l_http_response_line" = "$CR" ]; then
+                echo >&2 header/body CRLF - empty line
+                break # exit webserver
+           elif [ $l_no -gt 1 ] ; then
+                eval parseHttpHeader \"\$HTTP_LINE$l_no\"
+          fi
+    done
+       # send response to client to terminate connection
+    if [ -z "$HTTP_LINE1" ]; then
+        echo >&2 "webserver: http request of length 0"
+        return 1
+    fi
 
-           l_no=$(( l_no + 1 ))
-           
-              eval HTTP_LINE$l_no=\""$l_http_response_line"\"
-              if [ "$l_http_response_line" = "$CR" ]; then
-                    echo >&2 http newline CR
-                    break
-               elif [ $l_no -gt 1 ] ; then
-                    eval parseHttpHeader \"\$HTTP_LINE$l_no\"
-              fi
+    parseHttpRequestLine "$HTTP_LINE1"
+    resetHttpResponse
 
-        done
-      
-        # send response to client to terminate connection
-
-        if [ -z "$HTTP_LINE1" ]; then
-            echo >&2 "webserver: http request of length 0"
-            return 1
-        fi
-
-        parseHttpRequestLine "$HTTP_LINE1"
-
-        resetHttpResponse
-
-        case "$HTTP_REQUEST_METHOD" in
-
-            HEAD)                   sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
+    case "$HTTP_REQUEST_METHOD" in
+        HEAD)                   sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                     ;;
-
-            GET)
-               
+        GET)
+            
                 case "$HTTP_REQUEST_ABSPATH" in
-
-                  /livedata) 
-                                             appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
+            /livedata) 
+                                            appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                             appendHttpDefaultHeaders
                                             appendHttpResponseHeader "Content-Type" "application/json"
                                             #https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
@@ -108,19 +104,16 @@ webserver()
                                             sendHttpResponse
                                             unset l_response_JSON
                                             ;;
-                  /)
+                /)
                                     #sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                     #resetHttpResponse
-
-                                    appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
+                                appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                     appendHttpDefaultHeaders
-
-                                    # shellcheck disable=SC2154
+                                # shellcheck disable=SC2154
                                     echo >&2 "!!!!!!!!!! Accept-header $HTTP_HEADER_accept"
                                     case "$HTTP_HEADER_accept" in
-
-                                        application/json)
-                                          
+                                    application/json)
+                                        
                                             appendHttpResponseHeader "Content-Type" "application/json"
                                             appendHttpResponseNewline
                                             appendHttpResponseBody '{"intemp":"21.2"}'
@@ -130,22 +123,19 @@ webserver()
                                     
                                             appendHttpResponseHeader "Content-Type" "text/html"
                                             appendHttpResponseNewline
-                                            appendHttpResponseBody "$(cat ../html/ipad1.html)"
+                                            appendHttpResponseBody "$(cat $HTTP_SERVER_ROOT/ipad1.html)"
                                             ;;
-
-                                        *)   appendHttpResponseHeader "Content-Type" "text/plain"
+                                    *)   appendHttpResponseHeader "Content-Type" "text/plain"
                                             appendHttpResponseBody 'Hello from webserver'
                                             ;;
                                     esac
-
-                                    sendHttpResponse
+                                sendHttpResponse
                                     ;;
-                                       
+                                    
                     *".js")
                             l_script_file=${HTTP_REQUEST_ABSPATH##*/}
                             l_script_dir=${HTTP_REQUEST_ABSPATH%"$l_script_file"}
-                            l_server_root="../html"
-                            l_server_file="$l_server_root$l_script_dir$l_script_file"
+                            l_server_file="$HTTP_SERVER_ROOT$l_script_dir$l_script_file"
                             if [ -s "$l_server_file" ]; then
                                 >&2 echo "Info: found script $l_server_file"
                                     appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
@@ -155,13 +145,11 @@ webserver()
                                     appendHttpResponseBody "$(cat "$l_server_file")"
                                     sendHttpResponse
                             else
-                                >&2 echo "Error: script not available file: $l_server_file"
+                                >&2 echo "Error: script not found or empty: $l_server_file"
                                 sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
                             fi
-
-                            unset l_script_file l_script_dir l_server_root l_server_file
-
-                                ;;
+                        unset l_script_file l_script_dir l_server_file
+                            ;;
                     
                     *)      sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
                             ;;
@@ -178,6 +166,7 @@ webserver()
 
 startwebserver()
 # $1 port
+# $2 root directory
 # from man fifo: "The FIFO must be opened on both ends (reading and
 # writing) before data can be passed.  Normally, opening  the  FIFO  blocks  until  the
 # other end is opened also."
@@ -185,16 +174,35 @@ startwebserver()
 # all processes in pipeline runs in same process group, commands to manage: ps -efj, kill -- -PGID, jobs, kill %+, kill %-
 # https://www.baeldung.com/linux/kill-members-process-group
 {
-    echo >&2 "Webserver PID $$"
+    echo >&2 "pid: $$"
 
     if [ -z "$1" ]; then
         echo >&2 Error: No port specified for web server
         return 1
+    else
+       echo >&2 "port: $1"
     fi
+
+    if [ -n "$2" ]; then
+        if ! [ -d "$2" ]; then
+            echo >&2 "Error: $2 root is not a directory"
+            return 1
+        else
+           HTTP_SERVER_ROOT="$2"
+           echo >&2 "rootdir: $2"
+        fi
+    else
+       echo >&2 "Error: no rootdir specified"
+       return 1
+    fi
+
     TMPFIFODIR=$(mktemp -d)
     GWFIFO="$TMPFIFODIR/httpfifo"
     # create kernel fifo, man fifo
-    mkfifo "$GWFIFO"
+    if mkfifo "$GWFIFO"; then
+       echo >&2 "fifo: $GWFIFO"
+    fi
+
     trap 'echo >&2 "webserver INT trap handler"; rm -rf "$TMPFIFODIR"; exit' INT # INT catches ctrl-c -> triggers exit trap handler
     #trap 'echo >&2 webserver EXIT TERM HUP trap handler; rm -rf "$TMPFIFODIR"' EXIT INT TERM HUP
     GWWEBSERVER_PORT=$1
@@ -210,7 +218,7 @@ trap
 
 #set -x
 #echo Args $0
-startwebserver "$1" 
+startwebserver "$@"
 #echo Background PID $!
 #jobs
 #set +x
