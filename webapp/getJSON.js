@@ -30,8 +30,8 @@ GetJSON.prototype.getOuttemp=function()
 
 GetJSON.prototype.transferComplete=function(evt)
 {
+    console.log('json:'+this.req.responseText)
     this.json = JSON.parse(this.req.responseText)
-    console.log(this.json)
     this.updateUI()
 }
 
@@ -47,7 +47,6 @@ GetJSON.prototype.requestLivedata=function()
      this.req.open('GET',this.url)
     //req.overrideMimeType("application/json")
     this.req.setRequestHeader("Accept","application/json")
-    console.log(this.transferComplete.call)
 
     this.req.addEventListener("load", this.transferComplete.bind(this))
     this.req.addEventListener("error", this.transferError.bind(this))
@@ -69,8 +68,7 @@ GetEcowittJSON.prototype.getOuttemp=function()
 https://stackoverflow.com/questions/15455009/javascript-call-apply-vs-bind
 if (Function.prototype.bind === undefined)
 {
-    console.log('javascript bind not found, creating new Function.prototype.bind')
-    // for ipad1 User-Agent: Mozilla/5.0 (iPad; CPU OS 5_1_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B206 Safari/7534.48.3
+    console.log('javascript bind not found, creating new Function.prototype.bind,'+window.navigator.userAgent)
     Function.prototype.bind = function(ctx) {
         var fn = this;
         return function() {
