@@ -123,7 +123,7 @@ webserver()
                                     
                                             appendHttpResponseHeader "Content-Type" "text/html"
                                             appendHttpResponseNewline
-                                            appendHttpResponseBody "$(cat $HTTP_SERVER_ROOT/ipad1.html)"
+                                            appendHttpResponseBody "$(cat "$HTTP_SERVER_ROOT/ipad1.html")"
                                             ;;
                                     *)   appendHttpResponseHeader "Content-Type" "text/plain"
                                             appendHttpResponseBody 'Hello from webserver'
