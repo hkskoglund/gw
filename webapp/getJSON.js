@@ -117,6 +117,8 @@ function UI(server,port,path,interval)
     this.intervalElement.addEventListener('change',this.onChangeInterval.bind(this))
 
     this.outtempElement=document.getElementById('outtemp')
+    
+    this.weatherElement=document.getElementById('divWeather')
 
     this.btnOK=document.getElementById('btnOK')
 
@@ -227,6 +229,10 @@ UI.prototype.onClickOK = function(ev)
 
 UI.prototype.onJSON=function (ev)
 {
+    // Show when data is available
+    if (this.weatherElement.style.display==="none")
+      this.weatherElement.style.display="block"
+
     this.outtempElement.textContent=this.getJSON.getOuttemp()
 }
 
