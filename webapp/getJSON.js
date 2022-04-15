@@ -120,12 +120,35 @@ function UI(server,port,path,interval)
 
     this.btnOK=document.getElementById('btnOK')
 
-    // init ui
-    this.serverElement.value=localStorage.getItem('server') || server
-    this.portElement.value=localStorage.getItem('port') || port
-    this.pathElement.value=localStorage.getItem('path') || path
-    this.intervalElement.value=localStorage.getItem('interval') || interval
+    // init ui 
 
+    this.serverElement.value= localStorage.getItem('server')
+    this.portElement.value=localStorage.getItem('port') 
+    this.pathElement.value=localStorage.getItem('path') 
+    this.intervalElement.value=localStorage.getItem('interval')
+
+    // use default, if not available in localstorage
+
+    if (this.serverElement.value==="") {
+        this.serverElement.value=server
+        localStorage.setItem('server',server)
+    }
+
+    if (this.portElement.value==="") {
+        this.portElement.value=port
+        localStorage.setItem('port',port)
+    }
+
+    if (this.pathElement.value==="") {
+        this.pathElement.value=path
+        localStorage.setItem('path',path)
+    }
+
+    if (this.intervalElement.value==="") {
+        this.intervalElement.value=interval
+        localStorage.setItem('interval',interval)
+    }
+    
     this.getJSON=new GetEcowittJSON(this.serverElement.value,this.portElement.value,this.pathElement.value,this.intervalElement.value)
     this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
     this.btnOK.addEventListener('click',this.onClickOK.bind(this))
