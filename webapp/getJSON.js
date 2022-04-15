@@ -10,12 +10,15 @@ function GetJSON(host,port,path,interval) {
     this.host=host
     this.port=port
     this.path=path
+
     if (interval === undefined) {
         console.log('using default interval: '+defaultInterval)
         this.interval=defaultInterval
+    } else
+    {
+        this.interval=interval
     }
     
-    this.interval=interval
     this.setUrl(host,port,path)
 
     this.req=new XMLHttpRequest()
@@ -23,6 +26,8 @@ function GetJSON(host,port,path,interval) {
     this.req.addEventListener("load", this.transferComplete.bind(this))
     this.req.addEventListener("error", this.transferError.bind(this))
     this.req.addEventListener("onabort",this.transferAbort.bind(this))
+
+    this.requestLivedata()
     this.setInterval(this.interval)
   
   }
@@ -30,6 +35,7 @@ function GetJSON(host,port,path,interval) {
 GetJSON.prototype.setInterval= function(interval)
 {
     this.requestLivedata()
+
     if (this.intervalID != null && this.intervalID != undefined) {
         console.log('clearing interval id:'+this.intervalID)
         clearInterval(this.intervalID)
@@ -46,7 +52,9 @@ GetJSON.prototype.transferAbort = function(ev)
 
 GetJSON.prototype.setUrl=function(host,port,path)
 { 
+
     this.url='http://'+host+':'+port+path
+    console.log('request data from url:'+this.url)
 }
 
 
@@ -75,10 +83,8 @@ GetJSON.prototype.transferError=function(evt)
 
 GetJSON.prototype.requestLivedata=function()
 {
-    //this.req=new XMLHttpRequest()
     //req.overrideMimeType('')
     //req.overrideMimeType("application/json")
-    //this.req.setRequestHeader("Accept","application/json")
     this.req.open('GET',this.url)
     this.req.setRequestHeader("Accept","application/json")
     this.req.send()
@@ -98,65 +104,107 @@ GetEcowittJSON.prototype.getOuttemp=function()
 
 function UI(server,port,path,interval)
 {
-    this.server=document.getElementById('inputServer')
-    this.port=document.getElementById('inputPort')
-    this.path=document.getElementById('inputPath')
-    this.interval=document.getElementById('inputInterval')
-    this.btnChangeServer=document.getElementById('btnChangeServer')
-    this.server.value=server
-    this.port.value=port
-    this.path.value=path
-    this.interval.value=interval
+    this.serverElement=document.getElementById('inputServer')
+    this.serverElement.addEventListener('change',this.onChangeServer.bind(this))
 
-    this.getJSON=new GetEcowittJSON(server,port,path,interval)
+    this.portElement=document.getElementById('inputPort')
+    this.portElement.addEventListener('change',this.onChangePort.bind(this))
+
+    this.pathElement=document.getElementById('inputPath')
+    this.portElement.addEventListener('change',this.onChangePath.bind(this))
+
+    this.intervalElement=document.getElementById('inputInterval')
+    this.intervalElement.addEventListener('change',this.onChangeInterval.bind(this))
+
+    this.outtempElement=document.getElementById('outtemp')
+
+    this.btnOK=document.getElementById('btnOK')
+
+    // init ui
+    this.serverElement.value=localStorage.getItem('server') || server
+    this.portElement.value=localStorage.getItem('port') || port
+    this.pathElement.value=localStorage.getItem('path') || path
+    this.intervalElement.value=localStorage.getItem('interval') || interval
+
+    this.getJSON=new GetEcowittJSON(this.serverElement.value,this.portElement.value,this.pathElement.value,this.intervalElement.value)
     this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
-    this.btnChangeServer.addEventListener('click',this.onChangeServer.bind(this))
+    this.btnOK.addEventListener('click',this.onClickOK.bind(this))
+}
+
+UI.prototype.onInputServer = function(ev)
+{
+    console.log('oninput',ev)
 }
 
 UI.prototype.onChangeServer = function(ev)
 {
-    // Validation
-    
-    var port=parseInt(this.port.value)
-    var interval=parseInt(this.interval.value)
+    console.log('onchangeServer',ev)
+    localStorage.setItem('server',this.serverElement.value)
+}
+
+UI.prototype.onChangePort = function(ev)
+{
+
+    var port=parseInt(this.portElement.value)
+
+    console.log('onchangePort',ev)
 
     if (isNaN(port)) {
         this.port.value=this.getJSON.port
-        console.error('port is not a number:'+this.port.value)
+        console.error('port is not a number:'+this.portElement.value)
         return
     }
 
-    if (port < 0 ) {
-        this.port.value=this.getJSON.port
-        console.error('port negative:'+this.port.value)
+    if (port < 1024 || port > 65535) {
+        this.portElement.value=this.getJSON.port
+        console.error('port outside bounds 1024-65535:'+this.portElement.value)
         return
     }
+
+    localStorage.setItem('port',this.portElement.value)
+}
+
+UI.prototype.onChangePath = function(ev)
+{
+    console.log('onchangePath',ev)
+    localStorage.setItem('path',this.pathElement.value)
+}
+
+UI.prototype.onChangeInterval = function(ev)
+{
+    console.log('onchangeInterval',ev)
+    
+    var interval=parseInt(this.intervalElement.value)
 
     if (interval < 500) {
-        this.interval.value=this.getJSON.interval
-        console.error('interval less than 500ms:'+this.interval.value)
+        this.intervalElement.value=this.getJSON.interval
+        console.error('interval less than 500ms:'+this.intervalElement.value)
         return
     }
 
     if (isNaN(interval))
     {
         this.interval.value=this.getJSON.interval
-        console.error('interval is not a number:'+this.interval.value)
+        console.error('interval is not a number:'+this.intervalElement.value)
         return
     }
 
-    this.port.value=port
-    this.interval.value=interval
+    localStorage.setItem('interval',this.intervalElement.value)
+}
 
-    console.log('changing server to '+this.server.value+':'+this.port.value+this.path.value,this)
+
+UI.prototype.onClickOK = function(ev)
+{
+
+    console.log('changing server to '+this.serverElement.value+':'+this.portElement.value+this.pathElement.value,this)
     this.getJSON.req.abort()
-    this.getJSON.setUrl(this.server.value,port,this.path.value)
-    this.getJSON.setInterval(interval)
+    this.getJSON.setUrl(this.serverElement.value,this.portElement.value,this.pathElement.value)
+    this.getJSON.setInterval(this.intervalElement.value)
 }
 
 UI.prototype.onJSON=function (ev)
 {
-    document.getElementById('outtemp').innerHTML=this.getJSON.getOuttemp()
+    this.outtempElement.textContent=this.getJSON.getOuttemp()
 }
 
 https://stackoverflow.com/questions/15455009/javascript-call-apply-vs-bind
@@ -176,6 +224,9 @@ Number.isInteger = Number.isInteger || function(value) {
       isFinite(value) && 
       Math.floor(value) === value;
   };
+
+
+  
 
 var ui = new UI("192.168.3.3",8000,'/livedata',16000)
 
