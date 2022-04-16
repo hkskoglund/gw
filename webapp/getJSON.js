@@ -255,14 +255,7 @@ Number.isInteger = Number.isInteger || function(value) {
   };
 
 
-  
-
-var ui = new UI("192.168.3.3",8000,'/livedata',16000)
-
-
-
-
-
-
-
-
+window.onload = function init() {
+    console.log('onload event, init ui')
+    var ui = new UI("192.168.3.3",8000,'/livedata',16000)
+}
