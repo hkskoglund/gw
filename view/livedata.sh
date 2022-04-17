@@ -312,7 +312,7 @@ printLDWind()
         fi
 
         if [ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]; then
-                    printLivedataLine "$LIVEDATAHEADER_WINDDIRECTION_COMPASS" "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE $LIVEDATA_WINDDIRECTION_COMPASS ($LIVEDATA_WINDDIRECTION $LIVEDATAUNIT_WIND_DIRECTION)"  "%s" "$LIVEDATAUNIT_WINDDIRECTION_COMPASS" "%5s" "$LIVEDATA_WINDDIRECTION_COMPASS" "" ""
+            printLivedataLine "$LIVEDATAHEADER_WINDDIRECTION_COMPASS" "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE $LIVEDATA_WINDDIRECTION_COMPASS ($LIVEDATA_WINDDIRECTION $LIVEDATAUNIT_WIND_DIRECTION)"  "%s" "$LIVEDATAUNIT_WINDDIRECTION_COMPASS" "%5s" "$LIVEDATA_WINDDIRECTION_COMPASS" "" ""
         fi
     
         if [ -n "$LIVEDATA_WINDDAILYMAX" ]; then
@@ -625,24 +625,120 @@ printLivedataHTML()
     #printLivedataHTMLAll
 }
 
+printJSONinit()
+{
+    JSON_level=0
+}
+
+printJSONOpeningBrace()
+{
+    JSON_level=$(( JSON_level + 1 ))
+    eval JSON_firstproperty$JSON_level=1 # flag = 1 if this is the first property (used to print , on subsequent properties for same object literal)
+    appendFormat "{ "
+}
+
+printJSONClosingBrace()
+{
+    JSON_level=$(( JSON_level - 1 ))
+    appendFormat "} "
+}
+
+printJSONproperty()
+{
+    if [ -n "$2" ]; then
+        # eval echo "LEVEL: $JSON_level JSON_firstproperty$JSON_level: \$JSON_firstproperty$JSON_level"
+        eval "if [ \$JSON_firstproperty$JSON_level -eq 1 ]; then
+            appendBuffer '$1 ' '$2 '
+            JSON_firstproperty$JSON_level=0
+        else
+            appendBuffer ', $1 ' '$2 '
+        fi"
+    else
+         eval "if [ \$JSON_firstproperty$JSON_level -eq 1 ]; then
+             appendBuffer '$1 '
+             JSON_firstproperty$JSON_level=0
+          else
+            appendBuffer ', $1 '
+         fi"  
+    fi
+}
+
+printLDIntempJSON()
+{
+    if [ -n "$LIVEDATA_INTEMP" ]; then
+        printJSONproperty '"intemp": %.1f, "inhumidity": %d' "$LIVEDATA_INTEMP $LIVEDATA_INHUMI"
+    fi
+}
+
 printLDOuttempJSON()
 {
-    #appendFormat 
     #https://doc.ecowitt.net/web/#/apiv3en?page_id=17
-    # timestamp and value is a string value/using "*"
-   printf '{"outdoor":{"temperature":{"time":"%s","value":"%s","unit":"%s"}}}'  "$LIVEDATA_SYSTEM_TIMESTAMP" "$LIVEDATA_OUTTEMP" "$LIVEDATAUNIT_TEMP"
-    
+    # time and value is a string value/using "*"
+   #printf '{"outdoor":{"temperature":{"time":"%s","value":"%s","unit":"%s"}}}'  "$LIVEDATA_SYSTEM_TIMESTAMP" "$LIVEDATA_OUTTEMP" "$LIVEDATAUNIT_TEMP"
+
+    if [ -n "$LIVEDATA_OUTTEMP" ]; then
+        printJSONproperty '"outtemp": %.1f, "outhumidity": %d' "$LIVEDATA_OUTTEMP $LIVEDATA_OUTHUMI"
+    fi
+
+}
+
+printLDWindJSON()
+{
+    if [ -n "$LIVEDATA_WINDSPEED" ]; then
+        printJSONproperty '"windspeed": %.1f' "$LIVEDATA_WINDSPEED"
+    fi
+
+    if [ -n "$LIVEDATA_WINDGUSTSPEED" ]; then
+        printJSONproperty '"windgustspeed": %.1f' "$LIVEDATA_WINDSPEED"
+    fi
+
+    if [ -n "$LIVEDATA_WINDDAILYMAX" ]; then
+        printJSONproperty '"winddailymax": %.1f' "$LIVEDATA_WINDDAILYMAX"
+    fi
+
+    if [ -n "$LIVEDATA_WINDDIRECTION" ]; then
+        printJSONproperty '"winddirection": %d' "$LIVEDATA_WINDDIRECTION"
+    fi
+
+   if [ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]; then
+        printJSONproperty '"winddirection_compass": "%s"' "$LIVEDATA_WINDDIRECTION_COMPASS"
+    fi
+
+
 }
 
 printLivedataJSON()
 {
     resetAppendBuffer
 
-    #printf '{ "code": 0, "msg":'
-
-    #printLDIntempJSON
-    printLDOuttempJSON
+    printJSONOpeningBrace
     
+        printJSONproperty '"data" :'
+            
+            printJSONOpeningBrace
+            
+                printLDIntempJSON
+                printLDOuttempJSON
+                printLDWindJSON
+            
+            printJSONClosingBrace
+
+        printJSONproperty '"unit" :'
+            
+            printJSONOpeningBrace
+            
+                printJSONproperty '"temperature": "%s"' "$LIVEDATAUNIT_TEMP"
+                printJSONproperty '"humidity": "%s"' "$LIVEDATAUNIT_HUMIDITY"
+                printJSONproperty '"humidity": "%s"' "$LIVEDATAUNIT_HUMIDITY"
+                printJSONproperty '"wind": "%s"' "$LIVEDATAUNIT_WIND"
+                printJSONproperty '"pressure": "%s"' "$LIVEDATAUNIT_PRESSURE"
+                printJSONproperty '"winddirection": "%s"' "$LIVEDATAUNIT_WIND_DIRECTION"
+                printJSONproperty '"pm25": "%s"' "$LIVEDATAUNIT_PM25"
+                
+            printJSONClosingBrace
+
+    printJSONClosingBrace
+
     printAppendBuffer
 
 }

@@ -13,10 +13,11 @@ appendArgs()
 }
 
 appendVar()
+# $1 variable
+# $2 value
 #generic append to any variable
 {
-    #echo  "$1=\"\$$1$2\"" 
-    eval "$1=\"\$$1$2\""
+    eval "$1=\$$1"'$2'
 }
 
 appendBuffer()
@@ -35,7 +36,8 @@ printAppendBuffer()
         printf >&2 "%s\n" "APPEND_FORMAT/APPEND_ARGS printf '$APPEND_FORMAT' $APPEND_ARGS"
     fi
 
-    eval printf \""$APPEND_FORMAT"\" "$APPEND_ARGS"
+    eval printf \"'$APPEND_FORMAT'\" "$APPEND_ARGS"
+    #'$APPEND_FORMAT' keeps double quoute "" in JSON
     resetAppendBuffer
 }
 
