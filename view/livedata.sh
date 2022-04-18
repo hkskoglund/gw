@@ -663,7 +663,7 @@ printJSONmember()
                      lfloat="$1.$2"
                      set +x
                      IFS=$lIFS
-                     set -- "$lmember" "$lvaluefmt" "$lfloat"
+                     set -- "$lmember" "%s" "$lfloat"
                      #locale -k decimal_point
                         ;;
             esac
