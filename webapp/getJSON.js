@@ -60,8 +60,39 @@ GetJSON.prototype.setUrl=function(host,port,path)
 
 GetJSON.prototype.getOuttemp=function()
 {
-    return null
+    return this.json.data.outtemp
 }
+
+GetJSON.prototype.getIntemp=function()
+{
+    return this.json.data.intemp
+}
+
+GetJSON.prototype.getUnitTemp=function()
+{
+    return this.json.unit.temperature
+}
+
+GetJSON.prototype.getUnitWind=function()
+{
+    return this.json.unit.wind
+}
+
+GetJSON.prototype.getWindspeed=function()
+{
+    return this.json.data.windspeed
+}
+
+GetJSON.prototype.getWindgustspeed=function()
+{
+    return this.json.data.windgustspeed
+}
+
+GetJSON.prototype.getWinddirection_compass=function()
+{
+    return this.json.data.winddirection_compass
+}
+
 
 GetJSON.prototype.transferComplete=function(evt)
 {
@@ -117,12 +148,21 @@ function UI(server,port,path,interval)
     this.intervalElement.addEventListener('change',this.onChangeInterval.bind(this))
 
     this.outtempElement=document.getElementById('outtemp')
+    this.intempElement=document.getElementById('intemp')
+    this.unitTempElement=document.getElementById('unittemp')
+
+    this.windspeedElement=document.getElementById('windspeed')
+    this.windgustspeedElement=document.getElementById('windgustspeed')
+    this.unitWindElement=document.getElementById('unitwind')
+    this.winddirection_compassElement=document.getElementById('winddirection_compass')
     
     this.weatherElement=document.getElementById('divWeather')
 
     this.btnOK=document.getElementById('btnOK')
 
     // init ui 
+
+    
 
     this.serverElement.value= localStorage.getItem('server')
     this.portElement.value=localStorage.getItem('port') 
@@ -151,7 +191,7 @@ function UI(server,port,path,interval)
         localStorage.setItem('interval',interval)
     }
     
-    this.getJSON=new GetEcowittJSON(this.serverElement.value,this.portElement.value,this.pathElement.value,this.intervalElement.value)
+    this.getJSON=new GetJSON(this.serverElement.value,this.portElement.value,this.pathElement.value,this.intervalElement.value)
     this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
     this.btnOK.addEventListener('click',this.onClickOK.bind(this))
 }
@@ -234,6 +274,15 @@ UI.prototype.onJSON=function (ev)
       this.weatherElement.style.display="block"
 
     this.outtempElement.textContent=this.getJSON.getOuttemp()
+    this.intempElement.textContent=this.getJSON.getIntemp()
+    this.unitTempElement.textContent=this.getJSON.getUnitTemp()
+
+    this.windspeedElement.textContent=this.getJSON.getWindspeed()
+    this.windgustspeedElement.textContent=this.getJSON.getWindgustspeed()
+    this.winddirection_compassElement.textContent=this.getJSON.getWinddirection_compass()
+    this.unitWindElement.textContent=this.getJSON.getUnitWind()
+
+
 }
 
 https://stackoverflow.com/questions/15455009/javascript-call-apply-vs-bind
@@ -257,5 +306,6 @@ Number.isInteger = Number.isInteger || function(value) {
 
 window.onload = function init() {
     console.log('onload event, init ui')
-    var ui = new UI("192.168.3.3",8000,'/livedata',16000)
+    console.log('window location',window.location)
+    var ui = new UI(window.location.hostname,window.location.port,'/livedata',16000)
 }
