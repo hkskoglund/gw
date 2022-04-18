@@ -645,11 +645,26 @@ printJSONmember()
 # $3 value
 # https://www.json.org/json-en.html
 {
+    lIFS="$IFS"
+    lmember=$1
+    lvaluefmt=$2
 
-    ## convert %s to "%s"
+    # convert %s to "%s"
     case "$2" in
       %s)  set -- "$1" \"%s\" "\"$3\""
            #\" used to disable word splitting on space
+            ;;
+      %*f) # json requires . in floating point numbers
+            case "$3" in
+                *,*) IFS=,
+                    #shellcheck disable=SC2086
+                     set -- $3
+                     lfloat="$1.$2"
+                     IFS=$lIFS
+                     set -- "$lmember" "$lvaluefmt" "$lfloat"
+                     #locale -k decimal_point
+                        ;;
+            esac
             ;;
     esac
 
@@ -668,6 +683,8 @@ printJSONmember()
             appendBuffer ', \"$1\" : '
          fi"  
     fi
+
+    unset lmember lvaluefmt lfloat lIFS
 }
 
 printLDIntempJSON()
