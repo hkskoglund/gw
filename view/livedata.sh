@@ -297,14 +297,12 @@ printLDWind()
         fi
 
         if [ -n "$LIVEDATA_WINDGUSTSPEED" ]; then
-              setBeufort "$LIVEDATA_WINDGUSTSPEED_INTS10"
-              if type setStyleBeufort >/dev/null 2>/dev/null; then
+            if type setStyleBeufort >/dev/null 2>/dev/null; then
                 setStyleBeufort "$LIVEDATA_WINDGUSTSPEED_INTS10"
                 #STYLE_LIVE_VALUE=$STYLE_BEUFORT
                 export LIVEDATASTYLE_WINDGUSTSPEED="$STYLE_BEUFORT"
-              fi
-            export LIVEDATA_WINDGUSTSPEED_BEUFORT="$VALUE_BEUFORT"
-            export LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION="$VALUE_BEUFORT_DESCRIPTION"
+            fi
+           
 
             printLivedataLine  "$LIVEDATAHEADER_WINDGUSTSPEED" "$LIVEDATA_WINDGUSTSPEED" "%6.1f" "$LIVEDATAUNIT_WIND" "%s" 
             printLivedataLine  "$LIVEDATAHEADER_WINDGUSTSPEED_BEUFORT" "$LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION ($LIVEDATA_WINDGUSTSPEED_BEUFORT)" "%s" "" "%s" 
@@ -343,11 +341,9 @@ printLDSolar()
         fi
     fi
         
-    [ -n "$LIVEDATA_SOLAR_UV" ] && printLivedataLine "$LIVEDATAHEADER_SOLAR_UV" "$LIVEDATA_SOLAR_UV" "%6.1f" "$LIVEDATAUNIT_SOLAR_LIGHT_UV" "%5s" 
+    [ -n "$LIVEDATA_SOLAR_UV" ] && printLivedataLine "$LIVEDATAHEADER_SOLAR_UV" "$LIVEDATA_SOLAR_UV" "%6.1f" "$LIVEDATAUINT_SOLAR_UV" "%5s" 
     
     if [ -n "$LIVEDATA_SOLAR_UVI" ]; then
-            setUVRisk "$LIVEDATA_SOLAR_UVI"
-            export LIVEDATA_SOLAR_UVI_DESCRIPTION="$VALUE_UV_RISK"
             if type setStyleUVI >/dev/null 2>/dev/null; then
                 setStyleUVI "$LIVEDATA_SOLAR_UVI"
                 #shellcheck disable=SC2153
@@ -630,35 +626,46 @@ printJSONinit()
     JSON_level=0
 }
 
-printJSONOpeningBrace()
+printJSONLeftBrace()
 {
     JSON_level=$(( JSON_level + 1 ))
-    eval JSON_firstproperty$JSON_level=1 # flag = 1 if this is the first property (used to print , on subsequent properties for same object literal)
+    eval JSON_firstMember$JSON_level=1 # flag = 1 if this is the first property (used to print , on subsequent properties for same object literal)
     appendFormat "{ "
 }
 
-printJSONClosingBrace()
+printJSONRightBrace()
 {
     JSON_level=$(( JSON_level - 1 ))
     appendFormat "} "
 }
 
-printJSONproperty()
+printJSONmember()
+# $1 member
+# $2 value format
+# $3 value
+# https://www.json.org/json-en.html
 {
-    if [ -n "$2" ]; then
-        # eval echo "LEVEL: $JSON_level JSON_firstproperty$JSON_level: \$JSON_firstproperty$JSON_level"
-        eval "if [ \$JSON_firstproperty$JSON_level -eq 1 ]; then
-            appendBuffer '$1 ' '$2 '
-            JSON_firstproperty$JSON_level=0
+
+    ## convert %s to "%s"
+    case "$2" in
+      %s)  set -- "$1" \"%s\" "\"$3\""
+           #\" used to disable word splitting on space
+            ;;
+    esac
+
+    if [ -n "$3" ]; then
+        eval "if [ \$JSON_firstMember$JSON_level -eq 1 ]; then
+            appendBuffer '\"$1\" : $2' '$3 '
+            JSON_firstMember$JSON_level=0
         else
-            appendBuffer ', $1 ' '$2 '
+            appendBuffer ', \"$1\" : $2' '$3 '
         fi"
-    else
-         eval "if [ \$JSON_firstproperty$JSON_level -eq 1 ]; then
-             appendBuffer '$1 '
-             JSON_firstproperty$JSON_level=0
+    elif [ -z "$2" ] && [ -z "$3" ]; then
+         eval "if [ \$JSON_firstMember$JSON_level -eq 1 ]; then
+             appendBuffer '\"$1\" : '
+             JSON_firstMember$JSON_level=0
           else
-            appendBuffer ', $1 '
+            appendBuffer ', \"$1\" : '
          fi"  
     fi
 }
@@ -666,7 +673,8 @@ printJSONproperty()
 printLDIntempJSON()
 {
     if [ -n "$LIVEDATA_INTEMP" ]; then
-        printJSONproperty '"intemp": %.1f, "inhumidity": %d' "$LIVEDATA_INTEMP $LIVEDATA_INHUMI"
+        printJSONmember "intemp" "%.1f" "$LIVEDATA_INTEMP"
+        printJSONmember "inhumidity" "%d" "$LIVEDATA_INHUMI"
     fi
 }
 
@@ -677,67 +685,131 @@ printLDOuttempJSON()
    #printf '{"outdoor":{"temperature":{"time":"%s","value":"%s","unit":"%s"}}}'  "$LIVEDATA_SYSTEM_TIMESTAMP" "$LIVEDATA_OUTTEMP" "$LIVEDATAUNIT_TEMP"
 
     if [ -n "$LIVEDATA_OUTTEMP" ]; then
-        printJSONproperty '"outtemp": %.1f, "outhumidity": %d' "$LIVEDATA_OUTTEMP $LIVEDATA_OUTHUMI"
+        printJSONmember "outtemp" "%.1f" "$LIVEDATA_OUTTEMP" 
+        printJSONmember "outhumidity" "%d" "$LIVEDATA_OUTHUMI"
     fi
 
+}
+
+printLDPressureJSON()
+{
+    if [ -n "$LIVEDATA_PRESSURE_RELBARO" ]; then
+        if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
+            printJSONmember "relbaro" "%.1f" "$LIVEDATA_PRESSURE_RELBARO"
+        elif [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_INHG ]; then
+            printJSONmember "relbaro" "%.2f" "$LIVEDATA_PRESSURE_RELBARO"
+        fi
+    fi
+
+    if [ -n "$LIVEDATA_PRESSURE_ABSBARO" ]; then
+        if [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_HPA ]; then
+            printJSONmember "absbaro" "%.1f" "$LIVEDATA_PRESSURE_ABSBARO"
+        elif [ "$UNIT_PRESSURE_MODE" -eq $UNIT_PRESSURE_INHG ]; then
+            printJSONmember "absbaro" "%.2f" "$LIVEDATA_PRESSURE_ABSBARO"
+        fi
+    fi
 }
 
 printLDWindJSON()
 {
     if [ -n "$LIVEDATA_WINDSPEED" ]; then
-        printJSONproperty '"windspeed": %.1f' "$LIVEDATA_WINDSPEED"
+        printJSONmember "windspeed" '%.1f' "$LIVEDATA_WINDSPEED"
     fi
 
     if [ -n "$LIVEDATA_WINDGUSTSPEED" ]; then
-        printJSONproperty '"windgustspeed": %.1f' "$LIVEDATA_WINDSPEED"
+        printJSONmember "windgustspeed" '%.1f' "$LIVEDATA_WINDSPEED"
+        printJSONmember "wingustspeed_beufort" "%d" "$LIVEDATA_WINDGUSTSPEED_BEUFORT"
+        printJSONmember "wingustspeed_beufort_description" "%s" "$LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION"
+    
     fi
 
     if [ -n "$LIVEDATA_WINDDAILYMAX" ]; then
-        printJSONproperty '"winddailymax": %.1f' "$LIVEDATA_WINDDAILYMAX"
+        printJSONmember "winddailymax" '%.1f' "$LIVEDATA_WINDDAILYMAX"
     fi
 
     if [ -n "$LIVEDATA_WINDDIRECTION" ]; then
-        printJSONproperty '"winddirection": %d' "$LIVEDATA_WINDDIRECTION"
+        printJSONmember "winddirection" '%d' "$LIVEDATA_WINDDIRECTION"
     fi
 
-   if [ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]; then
-        printJSONproperty '"winddirection_compass": "%s"' "$LIVEDATA_WINDDIRECTION_COMPASS"
+    if [ -n "$LIVEDATA_WINDDIRECTION_COMPASS" ]; then
+        printJSONmember "winddirection_compass" '%s' "$LIVEDATA_WINDDIRECTION_COMPASS"
     fi
 
+    if [ -n "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE" ]; then
+        printJSONmember "winddirection_compass_needle" '%s' "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE"
+    fi
 
 }
 
+printLDSolarJSON()
+{
+     if [ -n "$LIVEDATA_SOLAR_LIGHT" ]; then
+        if [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_WATTM2" ]; then
+                printJSONmember "solar_light" "%6.2f" "$LIVEDATA_SOLAR_LIGHT"  
+        elif [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_LUX" ]; then 
+            printLivedataLine "$LIVEDATAHEADER_SOLAR_LIGHT" "$LIVEDATA_SOLAR_LIGHT"  "%6.0f" "$LIVEDATAUNIT_SOLAR_LIGHT" "%4s" 
+        fi
+    fi
+
+    if [ -n "$LIVEDATA_SOLAR_UV" ]; then
+        printJSONmember "solar_uv" "%.1f" "$LIVEDATA_SOLAR_UV"
+    fi
+
+    if [ -n "$LIVEDATA_SOLAR_UVI" ]; then
+        printJSONmember "solar_uvi" "%.1f" "$LIVEDATA_SOLAR_UVI"
+        printJSONmember "solar_uvi_description" "%s" "$LIVEDATA_SOLAR_UVI_DESCRIPTION"
+    fi
+}
+
+printLDUnitJSON()
+{
+    printJSONmember 'unit'
+            
+    printJSONLeftBrace
+    
+        printJSONmember "temperature" '%s' "$LIVEDATAUNIT_TEMP"
+        printJSONmember "humidity" '%s' "$LIVEDATAUNIT_HUMIDITY"
+        printJSONmember "humidity" '%s' "$LIVEDATAUNIT_HUMIDITY"
+        printJSONmember "wind" '%s' "$LIVEDATAUNIT_WIND"
+        printJSONmember "pressure" '%s' "$LIVEDATAUNIT_PRESSURE"
+        printJSONmember "winddirection" '%s' "$LIVEDATAUNIT_WIND_DIRECTION"
+        printJSONmember "rain" '%s' "$LIVEDATAUNIT_RAIN"
+        printJSONmember "rain_rate" '%s' "$LIVEDATAUNIT_RAINRATE"
+        printJSONmember "solar_light" '%s' $LIVEDATAUNIT_SOLAR_LIGHT
+        printJSONmember "solar_uv" '%s' $LIVEDATAUINT_SOLAR_UV
+        #printJSONmember "solar_uvi" '%s' '""'
+
+        printJSONmember "pm25" '%s' "$LIVEDATAUNIT_PM25"
+        
+        
+    printJSONRightBrace
+}
+
 printLivedataJSON()
+# test: echo "console.log(JSON.parse('"$(./gw -g 192.168.3.16 -v json -c l)"'))" | node
 {
     resetAppendBuffer
 
-    printJSONOpeningBrace
-    
-        printJSONproperty '"data" :'
-            
-            printJSONOpeningBrace
+    printJSONinit
+
+    printJSONLeftBrace
+
+        printJSONmember 'data'
+
+            printJSONLeftBrace
             
                 printLDIntempJSON
                 printLDOuttempJSON
+                printLDPressureJSON
                 printLDWindJSON
+                printLDSolarJSON
             
-            printJSONClosingBrace
+            printJSONRightBrace
 
-        printJSONproperty '"unit" :'
-            
-            printJSONOpeningBrace
-            
-                printJSONproperty '"temperature": "%s"' "$LIVEDATAUNIT_TEMP"
-                printJSONproperty '"humidity": "%s"' "$LIVEDATAUNIT_HUMIDITY"
-                printJSONproperty '"humidity": "%s"' "$LIVEDATAUNIT_HUMIDITY"
-                printJSONproperty '"wind": "%s"' "$LIVEDATAUNIT_WIND"
-                printJSONproperty '"pressure": "%s"' "$LIVEDATAUNIT_PRESSURE"
-                printJSONproperty '"winddirection": "%s"' "$LIVEDATAUNIT_WIND_DIRECTION"
-                printJSONproperty '"pm25": "%s"' "$LIVEDATAUNIT_PM25"
-                
-            printJSONClosingBrace
+            printLDUnitJSON
+        
 
-    printJSONClosingBrace
+    printJSONRightBrace
 
     printAppendBuffer
 

@@ -15,17 +15,20 @@ appendArgs()
 appendVar()
 # $1 variable
 # $2 value
-#generic append to any variable
+# generic append to any variable
 {
-    eval "$1=\$$1"'$2'
+    eval "$1=\$$1"'$2' 
 }
 
 appendBuffer()
 {
-    #appendFormat "$1"
     appendVar APPEND_FORMAT "$1"
-    #appendArgs "$2"
     appendVar APPEND_ARGS " $2"
+}
+
+resetAppendBuffer()
+{
+   unset APPEND_FORMAT APPEND_ARGS
 }
 
 printAppendBuffer()
@@ -41,7 +44,4 @@ printAppendBuffer()
     resetAppendBuffer
 }
 
-resetAppendBuffer()
-{
-   unset APPEND_FORMAT APPEND_ARGS
-}
+

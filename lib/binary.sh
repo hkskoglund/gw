@@ -631,6 +631,11 @@ parseLivedata()
             export LIVEDATA_WINDGUSTSPEED_INTS10="$VALUE_UINT16BE"
             convertWindLivedata "$VALUE_UINT16BE"
             export LIVEDATA_WINDGUSTSPEED="$VALUE_SCALE10_FLOAT"
+            
+            setBeufort "$LIVEDATA_WINDGUSTSPEED_INTS10"
+            export LIVEDATA_WINDGUSTSPEED_BEUFORT="$VALUE_BEUFORT"
+            export LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION="$VALUE_BEUFORT_DESCRIPTION"
+
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex windgustspeed uint16be $LIVEDATA_WINDGUSTSPEED_INTS10 $LIVEDATA_WINDGUSTSPEED $UNIT_UNICODE_WIND_MPS"
 
 
@@ -649,6 +654,7 @@ parseLivedata()
             export LIVEDATA_SOLAR_LIGHT_INTS10="$VALUE_UINT32BE"
             convertLightLivedata "$LIVEDATA_SOLAR_LIGHT_INTS10"
             export LIVEDATA_SOLAR_LIGHT="$VALUE_SCALE10_FLOAT"
+            
 
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex light uint32be $LIVEDATA_SOLAR_LIGHT_INTS10 lux $LIVEDATA_SOLAR_LIGHT  $LIVEDATAUNIT_SOLAR_LIGHT"
 
@@ -665,12 +671,14 @@ parseLivedata()
             #scale 10: 0.1 µW/m2 = 0.1/(100*cm*100cm) = 0.1/(10000cm^2) = 1000 µW/cm^2 = 1mW/cm^2, resolution: 1mW/cm2
             #not scale 10: 1 µW/m2 = 10mW/cm2, resolution: 10mW/cm2
             #conversion info: https://www.linshangtech.com/tech/tech508.html
-            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex uv uint16be $LIVEDATA_SOLAR_UV_INTS10 $LIVEDATA_SOLAR_UV $LIVEDATAUNIT_SOLAR_LIGHT_UV = $LIVEDATA_SOLAR_UV_INTS10 mW/㎠"
+            [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex uv uint16be $LIVEDATA_SOLAR_UV_INTS10 $LIVEDATA_SOLAR_UV $LIVEDATAUINT_SOLAR_UV = $LIVEDATA_SOLAR_UV_INTS10 mW/㎠"
 
         elif [ "$ldf" -eq "$LDF_UVI" ]; then
 
             readUInt8 "$VALUE_PARSEPACKET_BUFFERNAME" "uvi"
             export LIVEDATA_SOLAR_UVI="$VALUE_UINT8"
+             setUVRisk "$LIVEDATA_SOLAR_UVI"
+            export LIVEDATA_SOLAR_UVI_DESCRIPTION="$VALUE_UV_RISK"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex uvi uint8 $LIVEDATA_SOLAR_UVI"
 
 

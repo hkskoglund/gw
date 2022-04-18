@@ -48,14 +48,14 @@ setLightMode()
     export LIVEDATAUNIT_SOLAR_LIGHT
 
     if [ "$SHELL_SUPPORT_UNICODE" -eq 1 ] ; then
-        LIVEDATAUNIT_SOLAR_LIGHT_UV="µW/$UNIT_UNICODE_M2"
+        LIVEDATAUINT_SOLAR_UV="µW/$UNIT_UNICODE_M2"
     else
-        LIVEDATAUNIT_SOLAR_LIGHT_UV="µW/m2"
+        LIVEDATAUINT_SOLAR_UV="µW/m2"
     fi
 
-    export LIVEDATAUNIT_SOLAR_LIGHT_UV
+    export LIVEDATAUINT_SOLAR_UV
 
-    [ "$DEBUG" -eq 1 ] && >&2 echo Unit solar radiation: $LIVEDATAUNIT_SOLAR_LIGHT uv: $LIVEDATAUNIT_SOLAR_LIGHT_UV
+    [ "$DEBUG" -eq 1 ] && >&2 echo Unit solar radiation: $LIVEDATAUNIT_SOLAR_LIGHT uv: $LIVEDATAUINT_SOLAR_UV
 
 
 }
