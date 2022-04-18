@@ -630,13 +630,13 @@ printJSONLeftBrace()
 {
     JSON_level=$(( JSON_level + 1 ))
     eval JSON_firstMember$JSON_level=1 # flag = 1 if this is the first property (used to print , on subsequent properties for same object literal)
-    appendFormat "{ "
+    appendFormat " { "
 }
 
 printJSONRightBrace()
 {
     JSON_level=$(( JSON_level - 1 ))
-    appendFormat "} "
+    appendFormat " } "
 }
 
 printJSONmember()
