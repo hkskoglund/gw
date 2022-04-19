@@ -41,7 +41,8 @@ printAppendBuffer()
     fi
 
     case "$1" in
-        json) eval LC_NUMERIC= printf \"'$APPEND_FORMAT'\" "$APPEND_ARGS"
+        json) LC_NUMERIC='' locale -k decimal_point
+                eval LC_NUMERIC='' printf \"'$APPEND_FORMAT'\" "$APPEND_ARGS"
                 # use POSIX; LC_NUMERIC= locale -k decimal_point = decimal_point="."
                 ;;
                 
