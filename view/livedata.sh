@@ -735,8 +735,8 @@ printLDWindJSON()
 
     if [ -n "$LIVEDATA_WINDGUSTSPEED" ]; then
         printJSONmember "windgustspeed" '%.1f' "$LIVEDATA_WINDSPEED"
-        printJSONmember "wingustspeed_beufort" "%d" "$LIVEDATA_WINDGUSTSPEED_BEUFORT"
-        printJSONmember "wingustspeed_beufort_description" "%s" "$LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION"
+        printJSONmember "windgustspeed_beufort" "%d" "$LIVEDATA_WINDGUSTSPEED_BEUFORT"
+        printJSONmember "windgustspeed_beufort_description" "%s" "$LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION"
     
     fi
 
@@ -824,6 +824,14 @@ printLivedataJSON()
             printJSONRightBrace
 
         printLDUnitJSON
+
+        printJSONmember 'mode'
+            printJSONLeftBrace
+                printJSONmember 'temperature' '%d' "$UNIT_TEMPERATURE_MODE"
+                printJSONmember 'pressure' '%d' "$UNIT_PRESSURE_MODE"
+                printJSONmember 'rain' '%d' "$UNIT_RAIN_MODE"
+                printJSONmember 'light' '%d' "$UNIT_LIGHT_MODE"
+            printJSONRightBrace
 
     printJSONRightBrace
 

@@ -32,6 +32,20 @@ function GetJSON(host,port,path,interval) {
   
   }
 
+GetJSON.prototype.Mode = {
+    temperature_celcius : 0,
+    temperature_farenheit : 1,
+    pressure_hpa : 0,
+    pressure_inhg : 1,
+    rain_mm : 0,
+    rain_in : 1,
+    wind_mps : 0,
+    wind_mph : 1,
+    wind_kmh : 2,
+    light_lux : 0,
+    light_wattm2 : 1
+}
+
 GetJSON.prototype.setInterval= function(interval)
 {
     this.requestLivedata()
@@ -57,48 +71,75 @@ GetJSON.prototype.setUrl=function(host,port,path)
     console.log('request data from url:'+this.url)
 }
 
-
 GetJSON.prototype.getOuttemp=function()
 {
-    return this.json.data.outtemp
+    return this.data.outtemp.toFixed(1)
 }
 
 GetJSON.prototype.getIntemp=function()
 {
-    return this.json.data.intemp
-}
-
-GetJSON.prototype.getUnitTemp=function()
-{
-    return this.json.unit.temperature
-}
-
-GetJSON.prototype.getUnitWind=function()
-{
-    return this.json.unit.wind
+    return this.data.intemp.toFixed(1)
 }
 
 GetJSON.prototype.getWindspeed=function()
 {
-    return this.json.data.windspeed
+    return this.data.windspeed.toFixed(1)
 }
 
 GetJSON.prototype.getWindgustspeed=function()
 {
-    return this.json.data.windgustspeed
+    return this.data.windgustspeed.toFixed(1)
 }
 
 GetJSON.prototype.getWinddirection_compass=function()
 {
-    return this.json.data.winddirection_compass
+    return  this.data.winddirection_compass + ' ('+this.data.winddirection+this.unit.winddirection+')'
 }
 
+GetJSON.prototype.getWindgustBeufort_description=function()
+{
+    return this.data.windgustspeed_beufort_description+' ('+this.data.windgustspeed_beufort+')'
+}
+
+GetJSON.prototype.getRelbaro= function()
+{
+    if (this.mode.pressure === this.Mode.pressure_hpa)
+        return this.data.relbaro.toFixed(1)
+    else if (this.mode.pressure === this.Mode.pressure_inhg)
+        return this.data.relbaro.toFixed(2)
+}
+
+GetJSON.prototype.getAbsbaro= function()
+{
+    if (this.mode.pressure === this.Mode.pressure_hpa)
+        return this.data.absbaro.toFixed(1)
+    else if (this.mode.pressure === this.Mode.pressure_inhg)
+        return this.data.absbaro.toFixed(2)
+}
+
+GetJSON.prototype.getUnitTemp=function()
+{
+    return this.unit.temperature
+}
+
+GetJSON.prototype.getUnitWind=function()
+{
+    return this.unit.wind
+}
+
+GetJSON.prototype.getUnitPressure=function()
+{
+    return this.unit.pressure
+}
 
 GetJSON.prototype.transferComplete=function(evt)
 {
     if (this.req.responseText.length > 0) {
         console.log('json:'+this.req.responseText)
         this.json = JSON.parse(this.req.responseText)
+        this.data = this.json.data
+        this.unit = this.json.unit
+        this.mode = this.json.mode
     } else
     {
         console.error('Empty json response')
@@ -151,18 +192,21 @@ function UI(server,port,path,interval)
     this.intempElement=document.getElementById('intemp')
     this.unitTempElement=document.getElementById('unittemp')
 
+    this.absbaroElement=document.getElementById('absbaro')
+    this.relbaroElement=document.getElementById('relbaro')
+    this.unitpressureElement=document.getElementById('unitpressure')
+
     this.windspeedElement=document.getElementById('windspeed')
     this.windgustspeedElement=document.getElementById('windgustspeed')
-    this.unitWindElement=document.getElementById('unitwind')
     this.winddirection_compassElement=document.getElementById('winddirection_compass')
+    this.windgustspeed_beufort_descriptionElement=document.getElementById('windgustspeed_beufort_description')
+    this.unitWindElement=document.getElementById('unitwind')
     
     this.weatherElement=document.getElementById('divWeather')
 
     this.btnOK=document.getElementById('btnOK')
 
     // init ui 
-
-    
 
     this.serverElement.value= localStorage.getItem('server')
     this.portElement.value=localStorage.getItem('port') 
@@ -280,7 +324,12 @@ UI.prototype.onJSON=function (ev)
     this.windspeedElement.textContent=this.getJSON.getWindspeed()
     this.windgustspeedElement.textContent=this.getJSON.getWindgustspeed()
     this.winddirection_compassElement.textContent=this.getJSON.getWinddirection_compass()
+    this.windgustspeed_beufort_descriptionElement.textContent=this.getJSON.getWindgustBeufort_description()
     this.unitWindElement.textContent=this.getJSON.getUnitWind()
+
+    this.relbaroElement.textContent=this.getJSON.getRelbaro()
+    this.absbaroElement.textContent=this.getJSON.getAbsbaro()
+    this.unitpressureElement.textContent=this.getJSON.getUnitPressure()
 
 
 }
