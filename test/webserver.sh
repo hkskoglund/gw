@@ -98,7 +98,7 @@ webserver()
                                             appendHttpResponseNewline
                                             l_response_JSON=$(cd ..; ./gw -g 192.168.3.16 -v json -c l)
                                             #l_response_JSON=$(printf '{"indoor":{"temperature":{"time":"%s","value":"%s","unit":"%s"}}}' 1 2 3)
-                                            #problem: stty: 'standard input': Inappropriate ioctl for device
+                                            #problem WSL2: stty: 'standard input': Inappropriate ioctl for device
                                             appendHttpResponseBody "$l_response_JSON"
                                             echo >&2 "Info: sending JSON: $l_response_JSON"
                                             sendHttpResponse
