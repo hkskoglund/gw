@@ -823,8 +823,7 @@ printLivedataJSON()
             
             printJSONRightBrace
 
-           # printLDUnitJSON
-        
+        printLDUnitJSON
 
     printJSONRightBrace
 
