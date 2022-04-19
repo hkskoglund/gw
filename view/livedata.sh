@@ -818,7 +818,7 @@ printLivedataJSON()
                 printLDIntempJSON
                 printLDOuttempJSON
                 printLDPressureJSON
-                printLDWindJSON
+                #printLDWindJSON
                 printLDSolarJSON
             
             printJSONRightBrace
