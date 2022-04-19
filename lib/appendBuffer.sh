@@ -32,6 +32,7 @@ resetAppendBuffer()
 }
 
 printAppendBuffer()
+# $1 format (json)
 {
     #special characters like 'æøå' gives wrong adjustment in %s 
 
@@ -39,8 +40,18 @@ printAppendBuffer()
         printf >&2 "%s\n" "APPEND_FORMAT/APPEND_ARGS printf '$APPEND_FORMAT' $APPEND_ARGS"
     fi
 
-    eval printf \"'$APPEND_FORMAT'\" "$APPEND_ARGS"
-    #'$APPEND_FORMAT' keeps double quoute "" in JSON
+    case "$1" in
+        json) eval LC_NUMERIC= printf \"'$APPEND_FORMAT'\" "$APPEND_ARGS"
+                # use POSIX; LC_NUMERIC= locale -k decimal_point = decimal_point="."
+                ;;
+                
+            
+        *)
+            eval printf \"'$APPEND_FORMAT'\" "$APPEND_ARGS"
+            #'$APPEND_FORMAT' keeps double quoute "" in JSON
+            ;;
+    esac
+
     resetAppendBuffer
 }
 

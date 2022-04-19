@@ -659,11 +659,9 @@ printJSONmember()
                 *,*) IFS=,
                     #shellcheck disable=SC2086
                      set -- $3
-                     set -x
                      lfloat="$1.$2"
-                     set +x
                      IFS=$lIFS
-                     set -- "$lmember" "%s" "$lfloat"
+                     set -- "$lmember" "$lvaluefmt" "$lfloat"
                      #locale -k decimal_point
                         ;;
             esac
@@ -830,7 +828,7 @@ printLivedataJSON()
 
     printJSONRightBrace
 
-    printAppendBuffer
+    printAppendBuffer "json"
 
 }
 
