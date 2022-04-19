@@ -752,9 +752,9 @@ printLDWindJSON()
         printJSONmember "winddirection_compass" '%s' "$LIVEDATA_WINDDIRECTION_COMPASS"
     fi
 
-   # if [ -n "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE" ]; then
-   #     printJSONmember "winddirection_compass_needle" '%s' "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE"
-   # fi
+    if [ -n "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE" ]; then
+        printJSONmember "winddirection_compass_needle" '%s' "$LIVEDATA_WINDDIRECTION_COMPASS_NEEDLE"
+    fi
 
 }
 
