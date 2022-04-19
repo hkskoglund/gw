@@ -803,7 +803,7 @@ printLDUnitJSON()
 }
 
 printLivedataJSON()
-# test: echo "console.log(JSON.parse('"$(./gw -g 192.168.3.16 -v json -c l)"'))" | node
+# test: echo "console.log(JSON.parse('$(./gw -g 192.168.3.16 -v json -c l)'))" | node
 {
     resetAppendBuffer
 
@@ -823,7 +823,7 @@ printLivedataJSON()
             
             printJSONRightBrace
 
-            printLDUnitJSON
+           # printLDUnitJSON
         
 
     printJSONRightBrace
