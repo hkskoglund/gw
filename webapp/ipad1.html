@@ -4,7 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <title>Livedata %s</title>
-    <script src="getJSON.js"></script>
+  
+    <script src="jquery.js"></script>
+    <script src="highcharts.src.js"></script>
+    
 </head>
 
 <body>
@@ -30,21 +33,34 @@
         <div id="temp">
             <div id="intemp" style="display:inline"></div>
             <div id="outtemp" style="display:inline"></div>
-            <div id="unittemp" style="display:inline"></div>
+            <div id="unit_temperature" style="display:inline"></div>
         </div>
          <div id="wind">
+            <meter id="meter_windgustspeed" min="0" max="15.0" low="4.0" high="8.0" optimum="3.0"
+            >
+     </meter>
             <div id="windspeed" style="display:inline"></div>
             <div id="windgustspeed" style="display:inline"></div>
-            <div id="unitwind" style="display:inline"></div>
+            <div id="unit_wind" style="display:inline"></div>
             <div id="windgustspeed_beufort_description"></div>
             <div id="winddirection_compass"></div>
         </div>
         <div id="pressure">
             <div id="relbaro" style="display:inline"></div>
             <div id="absbaro" style="display:inline"></div>
-            <div id="unitpressure" style="display:inline"></div>
-
+            <div id="unit_pressure" style="display:inline"></div>
         </div>
+        <div id="solar">
+            <div> 
+                <div id="solar_light" style="display:inline"></div>
+                <div id="unit_solar_light"style="display:inline"></div>
+           </div>
+           <div>
+                <div id="solar_uv" style="display:inline"></div>
+                <div id="unitsolar_uv" style="display:inline"></div>
+                <div id="solar_uvi" style="display:inline"></div>
+           </div>
+            </div>
     </div>
 </body>
 

@@ -117,6 +117,21 @@ GetJSON.prototype.getAbsbaro= function()
         return this.data.absbaro.toFixed(2)
 }
 
+GetJSON.prototype.getSolarLight = function()
+{
+    return this.data.solar_light.toFixed(1)
+}
+
+GetJSON.prototype.getSolarUV = function()
+{
+    return this.data.solar_uv.toFixed(1)
+}
+
+GetJSON.prototype.getSolarUVI=function()
+{
+    return this.data.solar_uvi
+}
+
 GetJSON.prototype.getUnitTemp=function()
 {
     return this.unit.temperature
@@ -125,6 +140,16 @@ GetJSON.prototype.getUnitTemp=function()
 GetJSON.prototype.getUnitWind=function()
 {
     return this.unit.wind
+}
+
+GetJSON.prototype.getUnitSolarLight=function()
+{
+    return this.unit.solar_light
+}
+
+GetJSON.prototype.getUnitSolarUV=function()
+{
+    return this.unit.solar_uv
 }
 
 GetJSON.prototype.getUnitPressure=function()
@@ -190,17 +215,25 @@ function UI(server,port,path,interval)
 
     this.outtempElement=document.getElementById('outtemp')
     this.intempElement=document.getElementById('intemp')
-    this.unitTempElement=document.getElementById('unittemp')
+    this.unitTempElement=document.getElementById('unit_temperature')
 
     this.absbaroElement=document.getElementById('absbaro')
     this.relbaroElement=document.getElementById('relbaro')
-    this.unitpressureElement=document.getElementById('unitpressure')
+    this.unitpressureElement=document.getElementById('unit_pressure')
 
     this.windspeedElement=document.getElementById('windspeed')
     this.windgustspeedElement=document.getElementById('windgustspeed')
     this.winddirection_compassElement=document.getElementById('winddirection_compass')
     this.windgustspeed_beufort_descriptionElement=document.getElementById('windgustspeed_beufort_description')
-    this.unitWindElement=document.getElementById('unitwind')
+    this.unitWindElement=document.getElementById('unit_wind')
+
+    this.meter_windgustspeedElement=document.getElementById('meter_windgustspeed')
+
+    this.solar_lightElement=document.getElementById('solar_light')
+    this.unit_solar_lightElement=document.getElementById('unit_solar_light')
+    this.solar_uvElement=document.getElementById('solar_uv')
+    this.unit_solar_uvElement=document.getElementById('unitsolar_uv')
+    this.solar_uviElement=document.getElementById('solar_uvi')
     
     this.weatherElement=document.getElementById('divWeather')
 
@@ -326,10 +359,17 @@ UI.prototype.onJSON=function (ev)
     this.winddirection_compassElement.textContent=this.getJSON.getWinddirection_compass()
     this.windgustspeed_beufort_descriptionElement.textContent=this.getJSON.getWindgustBeufort_description()
     this.unitWindElement.textContent=this.getJSON.getUnitWind()
+    this.meter_windgustspeedElement.value=this.getJSON.getWindgustspeed()
 
     this.relbaroElement.textContent=this.getJSON.getRelbaro()
     this.absbaroElement.textContent=this.getJSON.getAbsbaro()
     this.unitpressureElement.textContent=this.getJSON.getUnitPressure()
+
+    this.solar_lightElement.textContent=this.getJSON.getSolarLight()
+    this.unit_solar_lightElement.textContent=this.getJSON.getUnitSolarLight()
+    this.solar_uvElement.textContent=this.getJSON.getSolarUV()
+    this.unit_solar_uvElement.textContent=this.getJSON.getUnitSolarUV()
+    this.solar_uviElement.textContent=this.getJSON.getSolarUVI()
 
 
 }

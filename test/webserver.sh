@@ -5,6 +5,10 @@ HTTP_RESPONSE_200_OK="HTTP/1.1 200" # https://developer.mozilla.org/en-US/docs/W
 HTTP_RESPONSE_404_NOTFOUND="HTTP/1.1 404"
 HTTP_RESPONSE_501_NOTIMPLEMENTED="HTTP/1.1 501"
 
+if [ -n "$ZSH_VERSION" ]; then
+    #https://zsh.sourceforge.io/FAQ/zshfaq03.html
+       setopt shwordsplit  #zsh compability for "1 2 3" -> split in 1 2 3
+    fi
 
 . ../lib/http.sh
 . ../lib/util.sh
@@ -23,7 +27,7 @@ appendHttpDefaultHeaders()
 {
     appendHttpResponseHeader "Date" "$(date)"
     appendHttpResponseHeader "Server" "gw"
-    appendHttpResponseHeader "Connection" "close"
+   # appendHttpResponseHeader "Connection" "close"
 }
 
 appendHttpResponseNewline()
@@ -58,110 +62,140 @@ sendHttpResponseCode()
 webserver()
 # process runs in a subshell (function call in end of pipeline), pid can be accessed by $BASHPID/$$ is invoking shell, pstree -pal gives overview
 {
-    echo >&2 "waiting: read request"
+    echo >&2 "waiting: read http request"
     # read request and headers including newline. read strips off LF=\n at the end of line -> only check for CR=\r
-    l_no=0
     
-    while IFS= read -r l_http_response_line; do
-    l_no=$(( l_no + 1 ))
-       
-          eval HTTP_LINE$l_no=\""$l_http_response_line"\"
-          if [ "$l_http_response_line" = "$CR" ]; then
-                echo >&2 header/body CRLF - empty line
-                break # exit webserver
-           elif [ $l_no -gt 1 ] ; then
-                eval parseHttpHeader \"\$HTTP_LINE$l_no\"
-          fi
-    done
-       # send response to client to terminate connection
-    if [ -z "$HTTP_LINE1" ]; then
-        echo >&2 "webserver: http request of length 0"
-        return 1
-    fi
+    while true; do 
 
-    parseHttpRequestLine "$HTTP_LINE1"
+        l_received=0
+
+        while IFS=" " read -r l_http_request_line; do
+            
+            l_received=$(( l_received + 1 ))
+        
+            eval HTTP_LINE$l_received=\""$l_http_request_line"\"
+
+            if [ "$l_http_request_line" = "$CR" ]; then # request and headers read
+                echo >&2 header/body CRLF - empty line
+                break 
+            fi
+            
+        done
+
+       # set | grep HTTP >&2
+
+        parseHttpRequestLine "$HTTP_LINE1"
+
+        ln=2
+        while [ $ln -le $(( l_received - 1 )) ]; do
+            eval parseHttpHeader \"\$HTTP_LINE$ln\"
+            ln=$(( ln + 1 ))
+        done
+ 
+
+        case "$HTTP_REQUEST_METHOD" in
+            HEAD)                   sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
+                                        ;;
+            GET)
+                
+                    case "$HTTP_REQUEST_ABSPATH" in
+                /livedata) 
+                # /livedata?gw=192.168.3.16
+                                                appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
+                                                appendHttpDefaultHeaders
+                                                appendHttpResponseHeader "Content-Type" "application/json"
+                                                #https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
+                                                # for cross-origin request: 127.0.0.1:3000 Live Preview visual studio code -> webserver localhost:8000
+                                                appendHttpResponseHeader "Access-Control-Allow-Origin" "*"
+                                                appendHttpResponseNewline
+                                                sendHttpResponse
+                                                #l_response_JSON=$(cd ..; ./gw  -g 192.168.3.16 -v json -c l)
+                                                #l_response_JSON=$(printf '{"indoor":{"temperature":{"time":"%s","value":"%s","unit":"%s"}}}' 1 2 3)
+                                                #problem WSL2: stty: 'standard input': Inappropriate ioctl for device
+                                                ( cd ..; ./gw -g 192.168.3.16 -v json -c l)
+                                                #appendHttpResponseBody "$l_response_JSON"
+                                                #echo >&2 "Info: sending JSON: $l_response_JSON"
+                                                unset l_response_JSON
+                                                ;;
+                    /)
+                                        #resetHttpResponse
+                                        appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
+                                        appendHttpDefaultHeaders
+
+                                        # shellcheck disable=SC2154
+                                        case "$HTTP_HEADER_accept" in
+                                            
+                                            application/json)
+                                                
+                                                    appendHttpResponseHeader "Content-Type" "application/json"
+                                                    appendHttpResponseNewline
+                                                    appendHttpResponseBody '{"intemp":"21.2"}'
+                                                    sendHttpResponse
+                                                    ;;
+                                                
+                                            *text/html*)
+                                                    echo >&2 "sending text/html"
+                                                    appendHttpResponseHeader "Content-Type" "text/html"
+                                                    appendHttpResponseNewline
+                                                    sendHttpResponse
+                                                    cat "$HTTP_SERVER_ROOT/ipad1.html"
+                                                    ;;
+                                            
+                                            *)      #appendHttpResponseHeader "Content-Type" "text/plain"
+                                                    ltextplain='hello from webserver'
+                                                    #appendHttpResponseHeader "Content-Length: ${#ltextplain}"
+                                                    #appendHttpResponseNewline
+                                                    #appendHttpResponseBody "$ltextplain"
+                                                    #sendHttpResponse
+
+                                                    printf "HTTP/1.1 200\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s" ${#ltextplain} "$ltextplain"
+
+                                                    ;;
+                                        esac
+                                    ;;
+                                        
+                        *".js")
+                                l_script_file=${HTTP_REQUEST_ABSPATH##*/}
+                                l_script_dir=${HTTP_REQUEST_ABSPATH%"$l_script_file"}
+                                l_server_file="$HTTP_SERVER_ROOT$l_script_dir$l_script_file"
+                                if [ -s "$l_server_file" ]; then
+                                    >&2 echo "Info: found script $l_server_file"
+                                        appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
+                                        appendHttpDefaultHeaders
+                                        appendHttpResponseHeader "Content-Type" "application/javascript"
+                                        appendHttpResponseNewline
+                                        #problem: dash shell converts \n in file to newline in command substitution, intepretation of backslash escape sequences is enabled?
+                                        #possible: insert \\n instead
+                                        #appendHttpResponseBody "$(cat "$l_server_file")"
+                                        sendHttpResponse
+                                        cat "$l_server_file"
+                                else
+                                    >&2 echo "Error: script not found or empty: $l_server_file"
+                                    sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
+                                fi
+                            unset l_script_file l_script_dir l_server_file
+                            
+                                ;;
+                        
+                        *)      sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
+                                ;;
+                    esac
+                    ;;
+                *)                      sendHttpResponseCode "$HTTP_RESPONSE_501_NOTIMPLEMENTED"
+                                        ;;
+            esac
+
+            
+    resetHttpHeaders
+    resetHttpLines "$l_received"
+    resetHttpRequest
     resetHttpResponse
 
-    case "$HTTP_REQUEST_METHOD" in
-        HEAD)                   sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
-                                    ;;
-        GET)
-            
-                case "$HTTP_REQUEST_ABSPATH" in
-            /livedata) 
-            # /livedata?gw=192.168.3.16
-                                            appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
-                                            appendHttpDefaultHeaders
-                                            appendHttpResponseHeader "Content-Type" "application/json"
-                                            #https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
-                                            # for cross-origin request: 127.0.0.1:3000 Live Preview visual studio code -> webserver localhost:8000
-                                            appendHttpResponseHeader "Access-Control-Allow-Origin" "*"
-                                            appendHttpResponseNewline
-                                            l_response_JSON=$(cd ..; ./gw  -g 192.168.3.16 -v json -c l)
-                                            #l_response_JSON=$(printf '{"indoor":{"temperature":{"time":"%s","value":"%s","unit":"%s"}}}' 1 2 3)
-                                            #problem WSL2: stty: 'standard input': Inappropriate ioctl for device
-                                            appendHttpResponseBody "$l_response_JSON"
-                                            echo >&2 "Info: sending JSON: $l_response_JSON"
-                                            sendHttpResponse
-                                            unset l_response_JSON
-                                            ;;
-                /)
-                                    #sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
-                                    #resetHttpResponse
-                                appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
-                                    appendHttpDefaultHeaders
-                                # shellcheck disable=SC2154
-                                    echo >&2 "!!!!!!!!!! Accept-header $HTTP_HEADER_accept"
-                                    case "$HTTP_HEADER_accept" in
-                                    application/json)
-                                        
-                                            appendHttpResponseHeader "Content-Type" "application/json"
-                                            appendHttpResponseNewline
-                                            appendHttpResponseBody '{"intemp":"21.2"}'
-                                            ;;
-                                        
-                                        *text/html*)
-                                    
-                                            appendHttpResponseHeader "Content-Type" "text/html"
-                                            appendHttpResponseNewline
-                                            appendHttpResponseBody "$(cat "$HTTP_SERVER_ROOT/ipad1.html")"
-                                            ;;
-                                    *)   appendHttpResponseHeader "Content-Type" "text/plain"
-                                            appendHttpResponseBody 'Hello from webserver'
-                                            ;;
-                                    esac
-                                sendHttpResponse
-                                    ;;
-                                    
-                    *".js")
-                            l_script_file=${HTTP_REQUEST_ABSPATH##*/}
-                            l_script_dir=${HTTP_REQUEST_ABSPATH%"$l_script_file"}
-                            l_server_file="$HTTP_SERVER_ROOT$l_script_dir$l_script_file"
-                            if [ -s "$l_server_file" ]; then
-                                >&2 echo "Info: found script $l_server_file"
-                                    appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
-                                    appendHttpDefaultHeaders
-                                    appendHttpResponseHeader "Content-Type" "application/javascript"
-                                    appendHttpResponseNewline
-                                    appendHttpResponseBody "$(cat "$l_server_file")"
-                                    sendHttpResponse
-                            else
-                                >&2 echo "Error: script not found or empty: $l_server_file"
-                                sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
-                            fi
-                        unset l_script_file l_script_dir l_server_file
-                            ;;
-                    
-                    *)      sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
-                            ;;
-                esac
-                ;;
-            *)                      sendHttpResponseCode "$HTTP_RESPONSE_501_NOTIMPLEMENTED"
-                                    ;;
-        esac
+    # set | grep HTTP >&2
 
-   # set
-    unset l_no l_http_response_line
+   done
+
+    unset l_received l_http_request_line
 }
 
 
@@ -210,7 +244,10 @@ startwebserver()
     while true; do 
        #shellcheck disable=SC2094
       # nc -v -4 -l "$GWWEBSERVER_PORT" <"$GWFIFO" | webserver >"$GWFIFO" #openbsd
-      nc -4 -l "$GWWEBSERVER_PORT" <"$GWFIFO" | webserver >"$GWFIFO"
+      # man nc openbsd: -k When a connection is completed, listen for another one.  Requires -l.
+      # unless -k is used webserver will enter a read(0,"",1) = 0 loop -> because the nc process exited
+      # possible: while true; do nc -4 -l; done loop -> use -k flag instead
+      { nc -4 -k -l "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "Error: nc exited error code:$?"; } | { webserver >"$GWFIFO" ; echo >&2 "Error: webserver exit code: $?" ; }
       
     done
 }

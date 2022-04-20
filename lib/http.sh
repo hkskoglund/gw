@@ -59,15 +59,42 @@ httpServer()
     return "$EXITCODE_HTTPSERVER"
 }
 
+resetHttpHeaders()
+{
+    IFS=" "
+    for header in $HTTP_HEADERS; do 
+        unset HTTP_HEADER_"$header"
+    done
+    unset HTTP_HEADERS
+}
+
+resetHttpLines()
+# $1 max lines to unset
+{
+    ln=1
+    while [ $ln -le "$1" ]; do
+        eval unset HTTP_LINE$ln
+        ln=$(( ln + 1 ))
+    done
+    unset ln
+}
+
+resetHttpRequest()
+{
+    unset HTTP_REQUEST_ABSPATH HTTP_REQUEST_METHOD HTTP_REQUEST_VERSION
+}
+
 parseHttpHeader()
 {
     #[ "$DEBUG" -eq 1 ] &&  
-    >&2 echo "parseHttpHeader $1"
+    >&2 echo "> $1"
     
     IFS=": $CR" read -r l_HTTP_KEY l_HTTP_VALUE <<EOH
 $1
 EOH
     [ "$DEBUG" -eq 1 ] && echo >&2 "KEY $l_HTTP_KEY length ${#l_HTTP_KEY} VALUE $l_HTTP_VALUE length ${#l_HTTP_VALUE}"
+
+    unset l_header
 
     case $l_HTTP_KEY in
         *-*) 
@@ -83,20 +110,25 @@ EOH
                 if [ -n "$3" ]; then
                     toLowercase "$3"
                     l_HTTP_KEY_PART3=$VALUE_LOWERCASE
-                    eval "HTTP_HEADER_${l_HTTP_KEY_PART1}_${l_HTTP_KEY_PART2}_${l_HTTP_KEY_PART3}=\"$l_HTTP_VALUE\""
+                    l_header=${l_HTTP_KEY_PART1}_${l_HTTP_KEY_PART2}_${l_HTTP_KEY_PART3}
+                    eval "HTTP_HEADER_$l_header=\"$l_HTTP_VALUE\""
                 else
-                    eval "HTTP_HEADER_${l_HTTP_KEY_PART1}_${l_HTTP_KEY_PART2}=\"$l_HTTP_VALUE\""
+                    l_header=${l_HTTP_KEY_PART1}_${l_HTTP_KEY_PART2}
+                    eval "HTTP_HEADER_$l_header=\"$l_HTTP_VALUE\""
                 fi
 
                 ;;
         *)         
                 toLowercase "$l_HTTP_KEY"
                 l_HTTP_KEY=$VALUE_LOWERCASE
-                eval "HTTP_HEADER_$l_HTTP_KEY=\"$l_HTTP_VALUE\"" 
+                l_header=$l_HTTP_KEY
+                eval "HTTP_HEADER_$l_header=\"$l_HTTP_VALUE\"" 
                ;;
     esac
 
-    unset l_HTTP_KEY l_HTTP_VALUE l_HTTP_KEY_PART1 l_HTTP_KEY_PART2
+    HTTP_HEADERS="$HTTP_HEADERS$l_header "
+
+    unset l_HTTP_KEY l_HTTP_VALUE l_HTTP_KEY_PART1 l_HTTP_KEY_PART2 l_header
    #IFS=- set -- $l_HTTP_KEY
 }
 
@@ -107,8 +139,9 @@ parseHttpRequestLine()
       IFS=" $CR" read -r HTTP_REQUEST_METHOD HTTP_REQUEST_ABSPATH HTTP_REQUEST_VERSION <<EOL 
 $1
 EOL
-    #[ $DEBUG -eq 1 ] && 
-    echo >&2 "parseHttpRequestLine method: $HTTP_REQUEST_METHOD abspath: $HTTP_REQUEST_ABSPATH version: $HTTP_REQUEST_VERSION"
+    [ $DEBUG -eq 1 ] && echo >&2 "parseHttpRequestLine method: $HTTP_REQUEST_METHOD abspath: $HTTP_REQUEST_ABSPATH version: $HTTP_REQUEST_VERSION"
+
+    echo >&2 "> $1"
 }
 
 parseHttpLines()
