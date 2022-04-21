@@ -354,6 +354,10 @@ getSensorNameShort()
             eval SENSORNAME_VAR="SENSOR_LEAFWETNESS$local_channel"
 
            ;;
+        48) SENSORNAME_WH="WH90"
+            SENSORNAME_SHORT='Weather Station'
+            eval SENSORNAME_VAR="SENSOR_WH90"
+            ;;
          *)
          echo >&2 "Warning: Unknown sensortype $1"
           SENSORNAME_WH='WH??' 
@@ -395,7 +399,7 @@ parseSensorId()
 
         # set sensor id
         if ! getSensorNameShort "$local_type"; then
-          contiunue
+          continue
         fi
        
         unset VALUE_BATTERY_STATE VALUE_SIGNAL_UNICODE local_sensorstate local_sensorstate_backup local_sensorname_backup
@@ -405,21 +409,28 @@ parseSensorId()
         eval "${SENSORNAME_VAR}"_BATTERY_STATE=\"\"
 
         if [ "$local_id" -eq "$SENSORID_SEARCH" ]; then
+           
             SENSORSTAT_SEARCHING=$(( SENSORSTAT_SEARCHING + 1 ))
             local_sensorstate=$SENSORIDSTATE_SEARCH
             local_sensorstate_backup=$SENSORIDSTATE_SEARCH
+
         elif [ "$local_id" -eq "$SENSORID_DISABLE" ]; then
+           
             local_sensorstate=$SENSORIDSTATE_DISABLE
             local_sensorstate_backup=$SENSORIDSTATE_DISABLE
             SENSORSTAT_DISABLED=$(( SENSORSTAT_DISABLED + 1 ))
+        
         elif [ "$local_signal" -gt 0 ]; then
+        
             SENSORSTAT_CONNECTED=$(( SENSORSTAT_CONNECTED + 1 ))
             local_sensorstate=$SENSORIDSTATE_CONNECTED
             setBattery "$local_type" "$local_battery" "$SENSORNAME_VAR" # set/export ${SENSORNAME_VAR}_BATTERY, ${SENSORNAME_VAR}_BATTERY_STATE
             getSignalUnicode "$local_signal"
              export "$SENSORNAME_VAR"_SIGNAL="$local_signal"\
                     "$SENSORNAME_VAR"_SIGNAL_STATE="$VALUE_SIGNAL_UNICODE"
+        
         elif [ "$local_signal" -eq 0 ]; then
+        
             local_sensorstate=$SENSORIDSTATE_DISCONNECTED
             SENSORSTAT_DISCONNECTED=$(( SENSORSTAT_DISCONNECTED + 1 ))
         fi

@@ -1880,6 +1880,7 @@ restoreBackup()
             "$BACKUPNAME_SENSOR_WH65")              setSensorRestore 0 "$backup_value" ;;
             "$BACKUPNAME_SENSOR_WH68")              setSensorRestore 1 "$backup_value" ;; 
             "$BACKUPNAME_SENSOR_WH80")              setSensorRestore 2 "$backup_value" ;;
+            "$BACKUPNAME_SENSOR_WH90")              setSensorRestore 48 48 "$backup_value" ;;
             "$BACKUPNAME_SENSOR_RAINFALL")          setSensorRestore 3 "$backup_value" ;;
             "$BACKUPNAME_SENSOR_OUTTEMP")           setSensorRestore 5 "$backup_value" ;;
             "$BACKUPNAME_SENSOR_TEMP"?)             setSensorRestore $(( 5 + ${backup_name#"${backup_name%?}"})) "$backup_value" ;;
@@ -2166,6 +2167,9 @@ while [ $# -gt 0 ]; do
                                                 shift
                                                 ;;
 
+        --$BACKUPNAME_SENSOR_WH90=*)            processSensorLongOpt 48 48 "$1"
+                                                shift
+                                                ;;
         --$BACKUPNAME_SENSOR_RAINFALL=*)        processSensorLongOpt 3 3 "$1"
                                                 shift
                                                 ;;
