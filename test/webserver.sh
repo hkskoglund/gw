@@ -260,14 +260,14 @@ jsonserver()
                                                 appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                                 appendHttpDefaultHeaders
                                                 appendHttpResponseHeader "Content-Type" "text/plain"
-                                                appendHttpResponseHeader "Content-Length" "${#l_response_plain}"
+                                                appendHttpResponseHeader "Content-Length" ""$(( ${#l_response_plain} + 1))"" # +1 for \n
                                                 #https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
                                                 # for cross-origin request: 127.0.0.1:3000 Live Preview visual studio code -> webserver localhost:8000
                                                 appendHttpResponseHeader "Access-Control-Allow-Origin" "*"
                                                 appendHttpResponseNewline
                                                 sendHttpResponse
                                                 echo >&2 Sending text/plain
-                                                printf "%s" "$l_response_plain"
+                                                printf "%s\n" "$l_response_plain"
                                                 unset l_response_plain
                                                 ;;
                                                
