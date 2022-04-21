@@ -53,7 +53,7 @@ resetHttpResponse()
 sendHttpResponseCode()
 {
     #resetHttpResponse
-    echo >&2 "response: $1"
+    echo >&2 "sending response: $1"
     appendHttpResponseCode "$1"
     appendHttpDefaultHeaders
     appendHttpResponseHeader "Content-Length" "0"
@@ -288,12 +288,13 @@ jsonserver()
                                                 #problem WSL2: stty: 'standard input': Inappropriate ioctl for device
                                                 unset l_response_JSON
                                                 ;;
+
                                     esac
                                     ;;
 
-                                *)  echo >&2 "jsonserver: only / path supported"
-                                    ;;
-                                            
+                                *)   sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
+                                     ;;
+
                   esac
                   
         esac
