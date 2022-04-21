@@ -397,4 +397,19 @@ window.onload = function init() {
     console.log('onload event, init ui')
     console.log('window location',window.location)
     var ui = new UI(window.location.hostname,window.location.port,'/livedata',16000)
+    var chart= new Highcharts.Chart({
+    
+        chart : {
+            renderTo: 'chart'
+        },
+    title: {
+        text: 'Wind'
+    },
+    series: [{
+        name: 'Sky',
+        type: 'areaspline',
+        data: [0.1, 0.2, 0.3, 0.4, 0.5],
+        animation: 250
+    }] })
+    
 }

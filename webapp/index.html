@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html >
+
+<head>
+    <meta charset="UTF-8">
+    <title>Livedata %s</title>
+  
+    <script src="getjson.js"></script>
+    <script src=".\lib\jquery.js"></script>
+    <script src=".\lib\highcharts.src.js"></script>
+    
+</head>
+
+<body>
+    <div id="divChangeServer">
+        <label>Server
+            <input id="inputServer" ></input>
+        </label>
+        <label>Port
+            <input id="inputPort" ></input>
+        </label>
+        <label>Path
+            <input id="inputPath" ></input>
+        </label>
+        <label>Interval
+            <input id="inputInterval" ></input>
+        </label>
+        
+        <button id="btnOK" onclick="">OK</button>
+    </div>
+    
+    <div id="divWeather" style="zoom: 7; font-weight: bold; text-align: center; display:none">
+       
+        <div id="temp">
+            <div id="intemp" style="display:inline"></div>
+            <div id="outtemp" style="display:inline"></div>
+            <div id="unit_temperature" style="display:inline"></div>
+        </div>
+         <div id="wind">
+            <meter id="meter_windgustspeed" min="0" max="15.0" low="4.0" high="8.0" optimum="3.0"
+            >
+     </meter>
+            <div id="windspeed" style="display:inline"></div>
+            <div id="windgustspeed" style="display:inline"></div>
+            <div id="unit_wind" style="display:inline"></div>
+            <div id="windgustspeed_beufort_description"></div>
+            <div id="winddirection_compass"></div>
+        </div>
+        <div id="pressure">
+            <div id="relbaro" style="display:inline"></div>
+            <div id="absbaro" style="display:inline"></div>
+            <div id="unit_pressure" style="display:inline"></div>
+        </div>
+        <div id="solar">
+            <div> 
+                <div id="solar_light" style="display:inline"></div>
+                <div id="unit_solar_light"style="display:inline"></div>
+           </div>
+           <div>
+                <div id="solar_uv" style="display:inline"></div>
+                <div id="unitsolar_uv" style="display:inline"></div>
+                <div id="solar_uvi" style="display:inline"></div>
+           </div>
+            </div>
+    </div>
+    <div id="chart" ></div>
+    
+</body>
+
+</html>

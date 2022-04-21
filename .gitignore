@@ -13,6 +13,5 @@ backup*.hex
 restore.hex
 test.csv
 backup*.conf
-index.html
 test.html
 fifo
