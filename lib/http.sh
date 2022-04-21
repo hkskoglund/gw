@@ -87,7 +87,7 @@ resetHttpRequest()
 parseHttpHeader()
 {
     #[ "$DEBUG" -eq 1 ] &&  
-    >&2 echo "> $1"
+    #>&2 echo "> $1"
     
     IFS=": $CR" read -r l_HTTP_KEY l_HTTP_VALUE <<EOH
 $1
