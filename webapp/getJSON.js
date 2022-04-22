@@ -97,7 +97,10 @@ GetJSON.prototype.getWindgustspeed=function()
     return Number(this.data.windgustspeed.toFixed(1))
 }
 
-
+GetJSON.prototype.getWinddirection=function()
+{
+    return this.data.winddirection
+}
 GetJSON.prototype.getWinddirection_compass=function()
 {
     return  this.data.winddirection_compass + ' ('+this.data.winddirection+this.unit.winddirection+')'
@@ -274,69 +277,161 @@ function UI(server,port,path,interval)
         localStorage.setItem('interval',interval)
     }
 
-    this.windchart= new Highcharts.Chart({ chart : {
-                                                renderTo: 'windchart'
-                                            },
-                                            title: {
-                                                text: 'Wind'
-                                            },
-                                            yAxis: [{
-                                                //https://api.highcharts.com/highcharts/yAxis.max
-                                                
-                                                min : null,
-                                                max : null
-                                                //max : 1.0
-                                              //  max : 40
-                                            }],
-                                            xAxis: [{
-
-                                                id: 'datetime-axis',
-                                
-                                                type: 'datetime',
-                                
-                                                // Turn off X-axis line
-                                                //lineWidth: 0,
-                                
-                                                // Turn off tick-marks
-                                                //tickLength: 0,
-                                
-                                                //tickPositions: [],
-                                
-                                                offset : 10,
-                                
-                                                labels:
-                                                    {
-                                                        enabled: false,
-                                                        style: {
-                                                            //color: '#6D869F',
-                                                            fontWeight: 'bold',
-                                                            fontSize: '10px',
-                                
-                                                        },
-                                
-                                                        y: 18
-                                                    },
-                                
-                                            }],
-                                
-                                            series: [{
-                                                        name: 'Windgustspeed',
-                                                        type: 'spline',
-                                                        data: [],
-                                                        animation: 250
-                                                    },
-                                                    {
-                                                        name: 'Windspeed',
-                                                        type: 'spline',
-                                                        data: [],
-                                                        animation: 250
-                                                    }] 
-                                        })
+    this.initChart()
+    
     
     this.getJSON=new GetJSON(this.serverElement.value,this.portElement.value,this.pathElement.value,this.intervalElement.value)
     this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
     this.btnOK.addEventListener('click',this.onClickOK.bind(this))
     
+}
+
+UI.prototype.initChart=function()
+{
+    this.windchart= new Highcharts.Chart({ chart : {
+        renderTo: 'windchart'
+    },
+    title: {
+        text: 'Wind'
+    },
+    yAxis: [ 
+        {
+            title: false,
+            min : null,
+            max : null
+        },
+        {
+            title: false,
+            min: 0,
+            max: 360,
+            opposite:true
+        }
+    ],
+    xAxis: [{
+
+        id: 'datetime-axis',
+
+        type: 'datetime',
+
+        // Turn off X-axis line
+        //lineWidth: 0,
+
+        // Turn off tick-marks
+        //tickLength: 0,
+
+        //tickPositions: [],
+
+        offset : 10,
+
+        labels:
+            {
+                enabled: false,
+                style: {
+                    //color: '#6D869F',
+                    fontWeight: 'bold',
+                    fontSize: '10px',
+
+                },
+
+                y: 18
+            },
+
+    }],
+
+    series: [{
+                name: 'Windspeed',
+                type: 'spline',
+                data: [],
+                yAxis:0
+            },
+            {
+                name: 'Windgustspeed',
+                type: 'spline',
+                data: [],
+                yAxis:0
+            }
+            ,
+            {
+                name: 'Winddirection',
+                type: 'spline',
+                yAxis: 1,
+                data: []
+            }
+        ] 
+})
+
+    this.solarchart= new Highcharts.Chart({ chart : {
+                            renderTo: 'solarchart'
+                        },
+                        title: {
+                            text: 'Solar'
+                        },
+                        yAxis: [{
+                            //https://api.highcharts.com/highcharts/yAxis.max
+                            title: false,
+                            min : null,
+                            max : null
+                            //max : 1.0
+                        //  max : 40
+                        },
+                    // uv
+                    {
+                        title:false,
+                        opposite: true,
+                        min: null,
+                        max: null
+                    },
+                    // uvi
+                    {
+                        title:false,
+                        min: null,
+                        max: null
+                    }
+                ],
+                        xAxis: [{
+
+                            id: 'datetime-axis',
+
+                            type: 'datetime',
+
+                            offset : 10,
+
+                            labels:
+                                {
+                                    enabled: false,
+                                    style: {
+                                        //color: '#6D869F',
+                                        fontWeight: 'bold',
+                                        fontSize: '10px',
+
+                                    },
+
+                                    y: 18
+                                },
+
+                        }],
+
+                        series: [
+                            {
+                                    name: 'Solar light',
+                                    type: 'spline',
+                                    yAxis: 0,
+                                    data: [],
+                                },
+                                {
+                                    name: 'Solar UV',
+                                    type: 'spline',
+                                    data: [],
+                                    yAxis: 1,
+                                }
+                                ,
+                                {
+                                    name: 'Solar UVI',
+                                    type: 'spline',
+                                    yAxis: 2,
+                                }] 
+                        })
+
 }
 
 UI.prototype.onInputServer = function(ev)
@@ -446,12 +541,21 @@ UI.prototype.onJSON=function (ev)
 	 * @param {Boolean|Object} animation Whether to apply animation, and optionally animation
 	 *    configuration
 	 */
-     this.windchart.series[0].addPoint([this.getJSON.getTimestamp(),this.getJSON.getWindspeed()],false, false, false)
-    this.windchart.series[1].addPoint([this.getJSON.getTimestamp(),this.getJSON.getWindgustspeed()],false, false, false)
+    var timestamp=this.getJSON.getTimestamp()
 
-    console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
+    this.windchart.series[0].addPoint([timestamp,this.getJSON.getWindspeed()],false, false, false)
+    this.windchart.series[1].addPoint([timestamp,this.getJSON.getWindgustspeed()],false, false, false)
+    this.windchart.series[2].addPoint([timestamp,this.getJSON.getWinddirection()],false, false, false)
+
+
+   this.solarchart.series[0].addPoint([timestamp,this.getJSON.getSolarLight()],false, false, false)
+    this.solarchart.series[1].addPoint([timestamp,this.getJSON.getSolarUV()],false, false, false)
+   this.solarchart.series[2].addPoint([timestamp,this.getJSON.getSolarUVI()],false, false, false)
+
+   // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
     
     this.windchart.redraw()
+    this.solarchart.redraw()
 
 }
 
