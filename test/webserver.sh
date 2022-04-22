@@ -67,6 +67,15 @@ getFilesize()
     VALUE_FILESIZE=$(stat -c %s "$1")
 }
 
+getUnicodeStringLength()
+# $1 unicode string
+# ${#S} does not count number of bytes in string when sent as json
+# zsh/bash affected
+{
+    #printf "%s" "$1" | od -A n -t x1 >&2
+    VALUE_UNICODE_STRING_LENGTH=$(printf "%s" "$1" | od -A n -t x1 |  wc -w)
+}
+
 webserver()
 # process runs in a subshell (function call in end of pipeline), pid can be accessed by $BASHPID/$$ is invoking shell, pstree -pal gives overview
 {
@@ -114,10 +123,11 @@ webserver()
                          /livedata) 
                         # /livedata?gw=192.168.3.16
                                                 l_response_JSON=$( cd .. ; ./gw -g 192.168.3.16 -v json -c l )
+                                                getUnicodeStringLength "$l_response_JSON"
                                                 appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                                 appendHttpDefaultHeaders
                                                 appendHttpResponseHeader "Content-Type" "application/json"
-                                                appendHttpResponseHeader "Content-Length" "${#l_response_JSON}"
+                                                appendHttpResponseHeader "Content-Length" "$VALUE_UNICODE_STRING_LENGTH"
                                                 #https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
                                                 # for cross-origin request: 127.0.0.1:3000 Live Preview visual studio code -> webserver localhost:8000
                                                 appendHttpResponseHeader "Access-Control-Allow-Origin" "*"
@@ -257,10 +267,12 @@ jsonserver()
                                             text/plain)
 
                                                l_response_plain=$( cd ..; ./gw -g 192.168.3.16 -c l)
+                                               
                                                 appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                                 appendHttpDefaultHeaders
                                                 appendHttpResponseHeader "Content-Type" "text/plain"
-                                                appendHttpResponseHeader "Content-Length" ""$(( ${#l_response_plain} + 1))"" # +1 for \n
+                                                getUnicodeStringLength "$l_response_plain"
+                                                appendHttpResponseHeader "Content-Length" ""$(( VALUE_UNICODE_STRING_LENGTH + 1))"" # +1 for \n
                                                 #https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
                                                 # for cross-origin request: 127.0.0.1:3000 Live Preview visual studio code -> webserver localhost:8000
                                                 appendHttpResponseHeader "Access-Control-Allow-Origin" "*"
@@ -277,7 +289,9 @@ jsonserver()
                                                 appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                                 appendHttpDefaultHeaders
                                                 appendHttpResponseHeader "Content-Type" "application/json"
-                                                appendHttpResponseHeader "Content-Length" "${#l_response_JSON}"
+                                                getUnicodeStringLength "$l_response_JSON"
+                                                echo >&2 JSON string length "$VALUE_UNICODE_STRING_LENGTH" '$# length' ${#l_response_JSON}
+                                                appendHttpResponseHeader "Content-Length" "$VALUE_UNICODE_STRING_LENGTH"
                                                 #https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
                                                 # for cross-origin request: 127.0.0.1:3000 Live Preview visual studio code -> webserver localhost:8000
                                                 appendHttpResponseHeader "Access-Control-Allow-Origin" "*"
