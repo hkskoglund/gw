@@ -695,6 +695,13 @@ printLDIntempJSON()
     fi
 }
 
+printLDTimestampJSON()
+{
+    if [ -n "$LIVEDATA_SYSTEM_TIMESTAMP" ]; then
+        printJSONmember "timestamp" "%u" "$(( LIVEDATA_SYSTEM_TIMESTAMP * 1000))"
+    fi
+}
+
 printLDOuttempJSON()
 {
     #https://doc.ecowitt.net/web/#/apiv3en?page_id=17
@@ -815,6 +822,7 @@ printLivedataJSON()
 
             printJSONLeftBrace
             
+                printLDTimestampJSON
                 printLDIntempJSON
                 printLDOuttempJSON
                 printLDPressureJSON

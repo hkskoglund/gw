@@ -71,25 +71,32 @@ GetJSON.prototype.setUrl=function(host,port,path)
     console.log('request data from url:'+this.url)
 }
 
+GetJSON.prototype.getTimestamp=function()
+{
+    return this.data.timestamp
+}
+
 GetJSON.prototype.getOuttemp=function()
 {
-    return this.data.outtemp.toFixed(1)
+    return Number(this.data.outtemp.toFixed(1))
 }
 
 GetJSON.prototype.getIntemp=function()
 {
-    return this.data.intemp.toFixed(1)
+    return Number(this.data.intemp.toFixed(1))
 }
 
 GetJSON.prototype.getWindspeed=function()
 {
-    return this.data.windspeed.toFixed(1)
+    //https://javascript.info/number
+    return Number(this.data.windspeed.toFixed(1))
 }
 
 GetJSON.prototype.getWindgustspeed=function()
 {
-    return this.data.windgustspeed.toFixed(1)
+    return Number(this.data.windgustspeed.toFixed(1))
 }
+
 
 GetJSON.prototype.getWinddirection_compass=function()
 {
@@ -104,27 +111,27 @@ GetJSON.prototype.getWindgustBeufort_description=function()
 GetJSON.prototype.getRelbaro= function()
 {
     if (this.mode.pressure === this.Mode.pressure_hpa)
-        return this.data.relbaro.toFixed(1)
+        return Number(this.data.relbaro.toFixed(1))
     else if (this.mode.pressure === this.Mode.pressure_inhg)
-        return this.data.relbaro.toFixed(2)
+        return Number(this.data.relbaro.toFixed(2))
 }
 
 GetJSON.prototype.getAbsbaro= function()
 {
     if (this.mode.pressure === this.Mode.pressure_hpa)
-        return this.data.absbaro.toFixed(1)
+        return Number(this.data.absbaro.toFixed(1))
     else if (this.mode.pressure === this.Mode.pressure_inhg)
-        return this.data.absbaro.toFixed(2)
+        return Number(this.data.absbaro.toFixed(2))
 }
 
 GetJSON.prototype.getSolarLight = function()
 {
-    return this.data.solar_light.toFixed(1)
+    return Number(this.data.solar_light.toFixed(1))
 }
 
 GetJSON.prototype.getSolarUV = function()
 {
-    return this.data.solar_uv.toFixed(1)
+    return Number(this.data.solar_uv.toFixed(1))
 }
 
 GetJSON.prototype.getSolarUVI=function()
@@ -239,7 +246,6 @@ function UI(server,port,path,interval)
 
     this.btnOK=document.getElementById('btnOK')
 
-    // init ui 
 
     this.serverElement.value= localStorage.getItem('server')
     this.portElement.value=localStorage.getItem('port') 
@@ -267,10 +273,70 @@ function UI(server,port,path,interval)
         this.intervalElement.value=interval
         localStorage.setItem('interval',interval)
     }
+
+    this.windchart= new Highcharts.Chart({ chart : {
+                                                renderTo: 'windchart'
+                                            },
+                                            title: {
+                                                text: 'Wind'
+                                            },
+                                            yAxis: [{
+                                                //https://api.highcharts.com/highcharts/yAxis.max
+                                                
+                                                min : null,
+                                                max : null
+                                                //max : 1.0
+                                              //  max : 40
+                                            }],
+                                            xAxis: [{
+
+                                                id: 'datetime-axis',
+                                
+                                                type: 'datetime',
+                                
+                                                // Turn off X-axis line
+                                                //lineWidth: 0,
+                                
+                                                // Turn off tick-marks
+                                                //tickLength: 0,
+                                
+                                                //tickPositions: [],
+                                
+                                                offset : 10,
+                                
+                                                labels:
+                                                    {
+                                                        enabled: false,
+                                                        style: {
+                                                            //color: '#6D869F',
+                                                            fontWeight: 'bold',
+                                                            fontSize: '10px',
+                                
+                                                        },
+                                
+                                                        y: 18
+                                                    },
+                                
+                                            }],
+                                
+                                            series: [{
+                                                        name: 'Windgustspeed',
+                                                        type: 'spline',
+                                                        data: [],
+                                                        animation: 250
+                                                    },
+                                                    {
+                                                        name: 'Windspeed',
+                                                        type: 'spline',
+                                                        data: [],
+                                                        animation: 250
+                                                    }] 
+                                        })
     
     this.getJSON=new GetJSON(this.serverElement.value,this.portElement.value,this.pathElement.value,this.intervalElement.value)
     this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
     this.btnOK.addEventListener('click',this.onClickOK.bind(this))
+    
 }
 
 UI.prototype.onInputServer = function(ev)
@@ -371,6 +437,21 @@ UI.prototype.onJSON=function (ev)
     this.unit_solar_uvElement.textContent=this.getJSON.getUnitSolarUV()
     this.solar_uviElement.textContent=this.getJSON.getSolarUVI()
 
+    /** From highcharts.src.js
+	 * Add a point dynamically after chart load time
+	 * @param {Object} options Point options as given in series.data
+	 * @param {Boolean} redraw Whether to redraw the chart or wait for an explicit call
+	 * @param {Boolean} shift If shift is true, a point is shifted off the start
+	 *    of the series as one is appended to the end.
+	 * @param {Boolean|Object} animation Whether to apply animation, and optionally animation
+	 *    configuration
+	 */
+     this.windchart.series[0].addPoint([this.getJSON.getTimestamp(),this.getJSON.getWindspeed()],false, false, false)
+    this.windchart.series[1].addPoint([this.getJSON.getTimestamp(),this.getJSON.getWindgustspeed()],false, false, false)
+
+    console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
+    
+    this.windchart.redraw()
 
 }
 
@@ -397,19 +478,5 @@ window.onload = function init() {
     console.log('onload event, init ui')
     console.log('window location',window.location)
     var ui = new UI(window.location.hostname,window.location.port,'/livedata',16000)
-    var chart= new Highcharts.Chart({
-    
-        chart : {
-            renderTo: 'chart'
-        },
-    title: {
-        text: 'Wind'
-    },
-    series: [{
-        name: 'Sky',
-        type: 'areaspline',
-        data: [0.1, 0.2, 0.3, 0.4, 0.5],
-        animation: 250
-    }] })
     
 }
