@@ -741,7 +741,7 @@ printLDWindJSON()
     fi
 
     if [ -n "$LIVEDATA_WINDGUSTSPEED" ]; then
-        printJSONmember "windgustspeed" '%.1f' "$LIVEDATA_WINDSPEED"
+        printJSONmember "windgustspeed" '%.1f' "$LIVEDATA_WINDGUSTSPEED"
         printJSONmember "windgustspeed_beufort" "%d" "$LIVEDATA_WINDGUSTSPEED_BEUFORT"
         printJSONmember "windgustspeed_beufort_description" "%s" "$LIVEDATA_WINDGUSTSPEED_BEUFORT_DESCRIPTION"
     

@@ -321,11 +321,13 @@ UI.prototype.initChart=function()
 
         //tickPositions: [],
 
+        tickpixelinterval: 150,
+
         offset : 10,
 
         labels:
             {
-                enabled: false,
+                enabled: true,
                 style: {
                     //color: '#6D869F',
                     fontWeight: 'bold',
@@ -396,9 +398,11 @@ UI.prototype.initChart=function()
 
                             offset : 10,
 
+                            tickpixelinterval: 150,
+
                             labels:
                                 {
-                                    enabled: false,
+                                    enabled: true,
                                     style: {
                                         //color: '#6D869F',
                                         fontWeight: 'bold',
@@ -433,203 +437,7 @@ UI.prototype.initChart=function()
                         })
 
 
-    this.windspeedgauge= new Highcharts.Chart({
-
-        chart: {
-            type: 'gauge',
-            plotBackgroundColor: null,
-            plotBackgroundImage: null,
-            plotBorderWidth: 0,
-            plotShadow: false,
-            renderTo: 'windspeedgauge',
-            width:200
-        },
     
-        title: {
-            text: 'Windspeed'
-        },
-
-       //title: false,
-    
-        pane: {
-            startAngle: -150,
-            endAngle: 150,
-            background: [{
-                backgroundColor: {
-                    linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
-                    stops: [
-                        [0, '#FFF'],
-                        [1, '#333']
-                    ]
-                },
-                borderWidth: 0,
-                outerRadius: '109%'
-            }, {
-                backgroundColor: {
-                    linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
-                    stops: [
-                        [0, '#333'],
-                        [1, '#FFF']
-                    ]
-                },
-                borderWidth: 1,
-                outerRadius: '107%'
-            }, {
-                // default background
-            }, {
-                backgroundColor: '#DDD',
-                borderWidth: 0,
-                outerRadius: '105%',
-                innerRadius: '103%'
-            }]
-        },
-    
-        // the value axis
-        yAxis: {
-            min: 0,
-            max: 20,
-    
-            minorTickInterval: 'auto',
-            minorTickWidth: 1,
-            minorTickLength: 10,
-            minorTickPosition: 'inside',
-            minorTickColor: '#666',
-    
-            tickPixelInterval: 30,
-            tickWidth: 2,
-            tickPosition: 'inside',
-            tickLength: 10,
-            tickColor: '#666',
-            labels: {
-                step: 2,
-                rotation: 'auto'
-            },
-            title: {
-                text: 'm/s'
-            },
-            plotBands: [{
-                from: 0,
-                to: 5,
-                color: '#55BF3B' // green
-            }, {
-                from: 5,
-                to: 10,
-                color: '#DDDF0D' // yellow
-            }, {
-                from: 10,
-                to: 20,
-                color: '#DF5353' // red
-            }]
-        },
-    
-        series: [{
-            name: 'windspeed',
-            data: [],
-            tooltip: {
-                valueSuffix: ' m/s'
-            }
-        }]
-    
-    })
-
-    this.windgustspeedgauge= new Highcharts.Chart({
-
-        chart: {
-            type: 'gauge',
-            plotBackgroundColor: null,
-            plotBackgroundImage: null,
-            plotBorderWidth: 0,
-            plotShadow: false,
-            renderTo: 'windgustspeedgauge',
-            width: 200
-        },
-    
-        title: {
-            text: 'Windgust'
-        },
-
-       //title: false,
-    
-        pane: {
-            startAngle: -150,
-            endAngle: 150,
-            background: [{
-                backgroundColor: {
-                    linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
-                    stops: [
-                        [0, '#FFF'],
-                        [1, '#333']
-                    ]
-                },
-                borderWidth: 0,
-                outerRadius: '109%'
-            }, {
-                backgroundColor: {
-                    linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
-                    stops: [
-                        [0, '#333'],
-                        [1, '#FFF']
-                    ]
-                },
-                borderWidth: 1,
-                outerRadius: '107%'
-            }, {
-                // default background
-            }, {
-                backgroundColor: '#DDD',
-                borderWidth: 0,
-                outerRadius: '105%',
-                innerRadius: '103%'
-            }]
-        },
-    
-        // the value axis
-        yAxis: {
-            min: 0,
-            max: 20,
-    
-            minorTickInterval: 'auto',
-            minorTickWidth: 1,
-            minorTickLength: 10,
-            minorTickPosition: 'inside',
-            minorTickColor: '#666',
-    
-            tickPixelInterval: 30,
-            tickWidth: 2,
-            tickPosition: 'inside',
-            tickLength: 10,
-            tickColor: '#666',
-            labels: {
-                step: 2,
-                rotation: 'auto'
-            },
-            title: {
-                text: 'm/s'
-            },
-            plotBands: [{
-                from: 0,
-                to: 5,
-                color: '#55BF3B' // green
-            }, {
-                from: 5,
-                to: 10,
-                color: '#DDDF0D' // yellow
-            }, {
-                from: 10,
-                to: 20,
-                color: '#DF5353' // red
-            }]
-        },
-    
-        series: [{
-            name: 'windgustspeed',
-            data: [],
-            tooltip: {
-                valueSuffix: ' m/s'
-            }
-        }]
-    
-    })
 
 
 }
@@ -708,8 +516,8 @@ UI.prototype.onClickOK = function(ev)
 UI.prototype.onJSON=function (ev)
 {
     // Show when data is available
-    if (this.weatherElement.style.display==="none")
-      this.weatherElement.style.display="block"
+   // if (this.weatherElement.style.display==="none")
+   //   this.weatherElement.style.display="block"
 
     this.outtempElement.textContent=this.getJSON.getOuttemp()
     this.intempElement.textContent=this.getJSON.getIntemp()
@@ -760,15 +568,6 @@ UI.prototype.onJSON=function (ev)
     this.windchart.redraw()
     this.solarchart.redraw()
 
-    if (this.windspeedgauge.series[0].points.length === 1)
-        this.windspeedgauge.series[0].points[0].update(this.getJSON.getWindspeed())
-    else
-        this.windspeedgauge.series[0].addPoint(this.getJSON.getWindspeed(),true,false,false)
-
-    if (this.windgustspeedgauge.series[0].points.length === 1)
-        this.windgustspeedgauge.series[0].points[0].update(this.getJSON.getWindgustspeed())
-    else    
-        this.windgustspeedgauge.series[0].addPoint(this.getJSON.getWindgustspeed(),true,false,false)
 
 }
 

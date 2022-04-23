@@ -373,7 +373,7 @@ startwebserver()
       # man nc openbsd: -k When a connection is completed, listen for another one.  Requires -l.
       # unless -k is used webserver will enter a read(0,"",1) = 0 loop -> because the nc process exited
       # possible: while true; do nc -4 -l; done loop -> use -k flag instead
-       { nc -4 -v -k -l "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "nc exited error code:$?"; } | { jsonserver >"$GWFIFO" ; echo >&2 "jsonserver exit code: $?" ; }
+       { nc -4 -k -l "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "nc exited error code:$?"; } | { jsonserver >"$GWFIFO" ; echo >&2 "jsonserver exit code: $?" ; }
       # { busybox nc  -ll -p "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "Error: nc exited error code:$?"; } | { webserver >"$GWFIFO" ; echo >&2 "Error: webserver exit code: $?" ; }
       # { toybox nc  -L -p "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "Error: nc exited error code:$?"; } | { webserver >"$GWFIFO" ; echo >&2 "Error: webserver exit code: $?" ; }
 
