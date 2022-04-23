@@ -342,13 +342,13 @@ UI.prototype.initChart=function()
 
     series: [{
                 name: 'Windspeed',
-                type: 'spline',
+                type: 'column',
                 data: [],
                 yAxis:0
             },
             {
                 name: 'Windgustspeed',
-                type: 'spline',
+                type: 'column',
                 data: [],
                 yAxis:0
             }
@@ -431,7 +431,7 @@ UI.prototype.initChart=function()
                                 ,
                                 {
                                     name: 'Solar UVI',
-                                    type: 'spline',
+                                    type: 'column',
                                     yAxis: 2,
                                 }] 
                         })
@@ -553,15 +553,21 @@ UI.prototype.onJSON=function (ev)
     // https://www.highcharts.com/changelog/
 
     var timestamp=this.getJSON.getTimestamp()
+    var shift
 
-    this.windchart.series[0].addPoint([timestamp,this.getJSON.getWindspeed()],false, false, false)
-    this.windchart.series[1].addPoint([timestamp,this.getJSON.getWindgustspeed()],false, false, false)
-    this.windchart.series[2].addPoint([timestamp,this.getJSON.getWinddirection()],false, false, false)
+    this.windchart.series[0].addPoint([timestamp,this.getJSON.getWindspeed()],false, this.windchart.series[0].points.length>37, false)
+    this.windchart.series[1].addPoint([timestamp,this.getJSON.getWindgustspeed()],false, this.windchart.series[1].points.length>37, false)
+    this.windchart.series[2].addPoint([timestamp,this.getJSON.getWinddirection()],false, this.windchart.series[2].points.length>37, false)
 
 
-   this.solarchart.series[0].addPoint([timestamp,this.getJSON.getSolarLight()],false, false, false)
-    this.solarchart.series[1].addPoint([timestamp,this.getJSON.getSolarUV()],false, false, false)
-   this.solarchart.series[2].addPoint([timestamp,this.getJSON.getSolarUVI()],false, false, false)
+   this.solarchart.series[0].addPoint([timestamp,this.getJSON.getSolarLight()],false, this.solarchart.series[0].points.length>37, false)
+    this.solarchart.series[1].addPoint([timestamp,this.getJSON.getSolarUV()],false, this.solarchart.series[1].points.length>37, false)
+   this.solarchart.series[2].addPoint([timestamp,this.getJSON.getSolarUVI()],false, this.solarchart.series[2].points.length>37, false)
+   //this.solarchart.series[2].points[0].pointAttr[""].fill='#ff0000'
+  //  this.solarchart.series[2].points[0].graphic.fill('#ff0000')
+   //this.solarchart.series[2].data[0].update({
+//    color: '#ff0000'
+//}, false);
 
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    

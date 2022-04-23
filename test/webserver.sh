@@ -290,14 +290,14 @@ jsonserver()
                                                 appendHttpDefaultHeaders
                                                 appendHttpResponseHeader "Content-Type" "application/json"
                                                 getUnicodeStringLength "$l_response_JSON"
-                                                echo >&2 JSON string length "$VALUE_UNICODE_STRING_LENGTH" '$# length' ${#l_response_JSON}
                                                 appendHttpResponseHeader "Content-Length" "$VALUE_UNICODE_STRING_LENGTH"
                                                 #https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
                                                 # for cross-origin request: 127.0.0.1:3000 Live Preview visual studio code -> webserver localhost:8000
                                                 appendHttpResponseHeader "Access-Control-Allow-Origin" "*"
                                                 appendHttpResponseNewline
                                                 sendHttpResponse
-                                                echo >&2 Sending JSON
+                                                echo >&2 Sending JSON length: "$VALUE_UNICODE_STRING_LENGTH" 
+
                                                 printf "%s" "$l_response_JSON"
                                                 #problem WSL2: stty: 'standard input': Inappropriate ioctl for device
                                                 unset l_response_JSON
