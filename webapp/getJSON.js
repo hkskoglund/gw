@@ -599,6 +599,6 @@ Number.isInteger = Number.isInteger || function(value) {
 window.onload = function init() {
     console.log('onload event, init ui')
     console.log('window location',window.location)
-    var ui = new UI(window.location.hostname,window.location.port,'/livedata',16000)
+    var ui = new UI(window.location.hostname,window.location.port,'/livedata.json',16000)
     
 }

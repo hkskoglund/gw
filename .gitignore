@@ -15,3 +15,4 @@ test.csv
 backup*.conf
 test.html
 fifo
+webapp/livedata.json

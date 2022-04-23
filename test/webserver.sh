@@ -16,6 +16,7 @@ if [ -n "$ZSH_VERSION" ]; then
 sendHttpResponse()
 {
     printf "%b" "$APPEND_HTTP_RESPONSE" 
+    printf "%b" "$APPEND_HTTP_RESPONSE" >&2
 }
 
 appendHttpResponseHeader()
@@ -89,14 +90,14 @@ webserver()
 
         while IFS=" " read -r l_http_request_line; do
 
-           echo received "$l_http_request_line" >&2
+           echo "> $l_http_request_line" >&2
             
             l_received=$(( l_received + 1 ))
         
             eval HTTP_LINE$l_received=\""$l_http_request_line"\"
 
             if [ "$l_http_request_line" = "$CR" ]; then # request and headers read
-                echo >&2 header/body CRLF - empty line
+                echo >&2 "> CRLF/empty line"
                 break 
             fi
             
@@ -226,21 +227,20 @@ jsonserver()
 {
     while true; do 
 
-     echo >&2 "jsonserver: read request"
+     echo >&2 "jsonserver: read waiting for http request"
 
         l_received=0
 
         while IFS=" " read -r l_http_request_line; do
 
-           echo received "$l_http_request_line" >&2
+           echo "< $l_http_request_line" >&2
             
             l_received=$(( l_received + 1 ))
         
             eval HTTP_LINE$l_received=\""$l_http_request_line"\"
 
             if [ "$l_http_request_line" = "$CR" ]; then # request and headers read
-                echo >&2 header/body CRLF - empty line
-                break 
+                break # dont process body if any
             fi
             
         done
@@ -373,7 +373,7 @@ startwebserver()
       # man nc openbsd: -k When a connection is completed, listen for another one.  Requires -l.
       # unless -k is used webserver will enter a read(0,"",1) = 0 loop -> because the nc process exited
       # possible: while true; do nc -4 -l; done loop -> use -k flag instead
-       { nc -4 -k -l "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "nc exited error code:$?"; } | { jsonserver >"$GWFIFO" ; echo >&2 "jsonserver exit code: $?" ; }
+       { nc -4 -v -k -l "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "nc exited error code:$?"; } | { jsonserver >"$GWFIFO" ; echo >&2 "jsonserver exit code: $?" ; }
       # { busybox nc  -ll -p "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "Error: nc exited error code:$?"; } | { webserver >"$GWFIFO" ; echo >&2 "Error: webserver exit code: $?" ; }
       # { toybox nc  -L -p "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "Error: nc exited error code:$?"; } | { webserver >"$GWFIFO" ; echo >&2 "Error: webserver exit code: $?" ; }
 

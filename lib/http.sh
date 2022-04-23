@@ -141,7 +141,6 @@ $1
 EOL
     [ $DEBUG -eq 1 ] && echo >&2 "parseHttpRequestLine method: $HTTP_REQUEST_METHOD abspath: $HTTP_REQUEST_ABSPATH version: $HTTP_REQUEST_VERSION"
 
-    echo >&2 "> $1"
 }
 
 parseHttpLines()
