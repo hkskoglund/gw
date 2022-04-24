@@ -436,10 +436,6 @@ UI.prototype.initChart=function()
                                 }] 
                         })
 
-
-    
-
-
 }
 
 UI.prototype.onInputServer = function(ev)
@@ -553,7 +549,6 @@ UI.prototype.onJSON=function (ev)
     // https://www.highcharts.com/changelog/
 
     var timestamp=this.getJSON.getTimestamp()
-    var shift
 
     this.windchart.series[0].addPoint([timestamp,this.getJSON.getWindspeed()],false, this.windchart.series[0].points.length>37, false)
     this.windchart.series[1].addPoint([timestamp,this.getJSON.getWindgustspeed()],false, this.windchart.series[1].points.length>37, false)

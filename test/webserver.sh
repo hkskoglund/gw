@@ -121,12 +121,17 @@ webserver()
 
             GET)   case "$HTTP_REQUEST_ABSPATH" in
 
-                         /livedata) 
-                        # /livedata?gw=192.168.3.16
+                    /)                      #resetHttpResponse
+                                            appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
+                                            appendHttpDefaultHeaders
+
+                                        # shellcheck disable=SC2154
+                                        case "$HTTP_HEADER_accept" in
+                                            
+                                            application/json)
+
                                                 l_response_JSON=$( cd .. ; ./gw -g 192.168.3.16 -v json -c l )
                                                 getUnicodeStringLength "$l_response_JSON"
-                                                appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
-                                                appendHttpDefaultHeaders
                                                 appendHttpResponseHeader "Content-Type" "application/json"
                                                 appendHttpResponseHeader "Content-Length" "$VALUE_UNICODE_STRING_LENGTH"
                                                 #https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
@@ -139,31 +144,16 @@ webserver()
                                                 #problem WSL2: stty: 'standard input': Inappropriate ioctl for device
                                                 unset l_response_JSON
                                                 ;;
-
-                    /)                      #resetHttpResponse
-                                            appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
-                                            appendHttpDefaultHeaders
-
-                                        # shellcheck disable=SC2154
-                                        case "$HTTP_HEADER_accept" in
-                                            
-                                            application/json)
-                                                
-                                                    appendHttpResponseHeader "Content-Type" "application/json"
-                                                    appendHttpResponseNewline
-                                                    appendHttpResponseBody '{"intemp":"21.2"}'
-                                                    sendHttpResponse
-                                                    ;;
-                                                
+                                                   
                                             *text/html*)
                                                     echo >&2 "sending text/html"
                                                     appendHttpResponseHeader "Content-Type" "text/html"
-                                                    getFilesize "$HTTP_SERVER_ROOT/ipad1.html"
+                                                    getFilesize "$HTTP_SERVER_ROOT/index.html"
                                                     appendHttpResponseHeader "Content-Length" "$VALUE_FILESIZE"
 
                                                     appendHttpResponseNewline
                                                     sendHttpResponse
-                                                    cat "$HTTP_SERVER_ROOT/ipad1.html"
+                                                    cat "$HTTP_SERVER_ROOT/index.html"
                                                     ;;
                                             
                                             *)      #appendHttpResponseHeader "Content-Type" "text/plain"
@@ -180,9 +170,11 @@ webserver()
                                     ;;
                                         
                         *".js")
+                                set -x
                                 l_script_file=${HTTP_REQUEST_ABSPATH##*/}
                                 l_script_dir=${HTTP_REQUEST_ABSPATH%"$l_script_file"}
                                 l_server_file="$HTTP_SERVER_ROOT$l_script_dir$l_script_file"
+                                set +x
                                 if [ -s "$l_server_file" ]; then
                                         appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                         appendHttpDefaultHeaders
@@ -223,108 +215,6 @@ webserver()
 
 }
 
-jsonserver()
-{
-    while true; do 
-
-     echo >&2 "jsonserver: read waiting for http request"
-
-        l_received=0
-
-        while IFS=" " read -r l_http_request_line; do
-
-           echo "< $l_http_request_line" >&2
-            
-            l_received=$(( l_received + 1 ))
-        
-            eval HTTP_LINE$l_received=\""$l_http_request_line"\"
-
-            if [ "$l_http_request_line" = "$CR" ]; then # request and headers read
-                break # dont process body if any
-            fi
-            
-        done
-
-       # set | grep HTTP >&2
-
-        parseHttpRequestLine "$HTTP_LINE1"
-
-        ln=2
-        while [ $ln -le $(( l_received - 1 )) ]; do
-            eval parseHttpHeader \"\$HTTP_LINE$ln\"
-            ln=$(( ln + 1 ))
-        done
- 
-        case "$HTTP_REQUEST_METHOD" in
-
-            GET)   case "$HTTP_REQUEST_ABSPATH" in
-
-                         /) 
-                        # /livedata?gw=192.168.3.16
-
-                                     case "$HTTP_HEADER_accept" in
-                                            
-                                            text/plain)
-
-                                               l_response_plain=$( cd ..; ./gw -g 192.168.3.16 -c l)
-                                               
-                                                appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
-                                                appendHttpDefaultHeaders
-                                                appendHttpResponseHeader "Content-Type" "text/plain"
-                                                getUnicodeStringLength "$l_response_plain"
-                                                appendHttpResponseHeader "Content-Length" ""$(( VALUE_UNICODE_STRING_LENGTH + 1))"" # +1 for \n
-                                                #https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
-                                                # for cross-origin request: 127.0.0.1:3000 Live Preview visual studio code -> webserver localhost:8000
-                                                appendHttpResponseHeader "Access-Control-Allow-Origin" "*"
-                                                appendHttpResponseNewline
-                                                sendHttpResponse
-                                                echo >&2 Sending text/plain
-                                                printf "%s\n" "$l_response_plain"
-                                                unset l_response_plain
-                                                ;;
-                                               
-                                            application/json|*)
-
-                                                l_response_JSON=$( cd .. ; ./gw -g 192.168.3.16 -v json -c l )
-                                                appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
-                                                appendHttpDefaultHeaders
-                                                appendHttpResponseHeader "Content-Type" "application/json"
-                                                getUnicodeStringLength "$l_response_JSON"
-                                                appendHttpResponseHeader "Content-Length" "$VALUE_UNICODE_STRING_LENGTH"
-                                                #https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
-                                                # for cross-origin request: 127.0.0.1:3000 Live Preview visual studio code -> webserver localhost:8000
-                                                appendHttpResponseHeader "Access-Control-Allow-Origin" "*"
-                                                appendHttpResponseNewline
-                                                sendHttpResponse
-                                                echo >&2 Sending JSON length: "$VALUE_UNICODE_STRING_LENGTH" 
-
-                                                printf "%s" "$l_response_JSON"
-                                                #problem WSL2: stty: 'standard input': Inappropriate ioctl for device
-                                                unset l_response_JSON
-                                                ;;
-
-                                    esac
-                                    ;;
-
-                                *)   sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
-                                     ;;
-
-                  esac
-                  
-        esac
-
-    resetHttpHeaders
-    resetHttpLines "$l_received"
-    resetHttpRequest
-    resetHttpResponse
-
-    # set | grep HTTP >&2
-
-    unset l_received l_http_request_line
-  done
-}
-
-
 startwebserver()
 # $1 port
 # $2 root directory
@@ -349,7 +239,8 @@ startwebserver()
             echo >&2 "Error: $2 root is not a directory"
             return 1
         else
-           HTTP_SERVER_ROOT="$2"
+          #export allows child of nc with (cloned with -e option) to get it
+           export HTTP_SERVER_ROOT="$2"
            echo >&2 "rootdir: $2"
         fi
     else
@@ -357,14 +248,14 @@ startwebserver()
        return 1
     fi
 
-    TMPFIFODIR=$(mktemp -d)
-    GWFIFO="$TMPFIFODIR/httpfifo"
+  #  TMPFIFODIR=$(mktemp -d)
+  #  GWFIFO="$TMPFIFODIR/httpfifo"
     # create kernel fifo, man fifo
-    if mkfifo "$GWFIFO"; then
-       echo >&2 "fifo: $GWFIFO"
-    fi
+  #  if mkfifo "$GWFIFO"; then
+  #     echo >&2 "fifo: $GWFIFO"
+  #  fi
 
-    trap 'echo >&2 "webserver INT trap handler"; rm -rf "$TMPFIFODIR"; exit' INT # INT catches ctrl-c -> triggers exit trap handler
+  #  trap 'echo >&2 "webserver INT trap handler"; rm -rf "$TMPFIFODIR"; exit' INT # INT catches ctrl-c -> triggers exit trap handler
     #trap 'echo >&2 webserver EXIT TERM HUP trap handler; rm -rf "$TMPFIFODIR"' EXIT INT TERM HUP
     GWWEBSERVER_PORT=$1
     while true; do 
@@ -373,18 +264,30 @@ startwebserver()
       # man nc openbsd: -k When a connection is completed, listen for another one.  Requires -l.
       # unless -k is used webserver will enter a read(0,"",1) = 0 loop -> because the nc process exited
       # possible: while true; do nc -4 -l; done loop -> use -k flag instead
-       { nc -4 -v -k -l "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "nc exited error code:$?"; } | { jsonserver >"$GWFIFO" ; echo >&2 "jsonserver exit code: $?" ; }
+      # { nc -4 -v -k -l "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "nc exited error code:$?"; } | { jsonserver >"$GWFIFO" ; echo >&2 "jsonserver exit code: $?" ; }
       # { busybox nc  -ll -p "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "Error: nc exited error code:$?"; } | { webserver >"$GWFIFO" ; echo >&2 "Error: webserver exit code: $?" ; }
       # { toybox nc  -L -p "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "Error: nc exited error code:$?"; } | { webserver >"$GWFIFO" ; echo >&2 "Error: webserver exit code: $?" ; }
-
+    
+          # { nc -4 -v -k -l "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "nc exited error code:$?"; } | { jsonserver >"$GWFIFO" ; echo >&2 "jsonserver exit code: $?" ; }
+       set -x
+       # Ncat: version 7.8 allows -e to clone new process for handling request
+        { nc -4 -v -k -l "$GWWEBSERVER_PORT" -e './webserver.sh' ; echo >&2 "nc exited error code:$?"; }
+        set +x
     done
 }
 
-trap
+#trap
 
 #set -x
 #echo Args $0
-startwebserver "$@"
+#startwebserver "$@"
 #echo Background PID $!
 #jobs
 #set +x
+
+ if [ $# -ge 2  ]; then
+    startwebserver "$@"
+else
+   #cloned process parses http request
+    webserver
+fi
