@@ -171,6 +171,50 @@ EOF
     fi
 }
 
+resetHttpQueryStringProperties()
+{
+    IFS=" "
+    for lprop in $HTTP_QUERY_STRING_PROPERTIES; do
+      set -x
+      unset "HTTP_QUERY_STRING_$lprop"
+      set +x
+    done
+    unset lprop HTTP_QUERY_STRING_PROPERTIES
+}
+
+parseHttpQueryStringProperty()
+# $1 prop=value
+{
+    IFS='='
+    #shellcheck disable=SC2086
+    set -- $1
+    set -x
+    HTTP_QUERY_STRING_PROPERTIES="$HTTP_QUERY_STRING_PROPERTIES $1"
+    eval "HTTP_QUERY_STRING_$1=$2"
+    set +x
+}
+
+parseHttpQueryString()
+# $1 query string
+{
+    IFS='?'
+    #shellcheck disable=SC2086
+    set -- $1
+    #parseCustomizedHttpUrl "$1"
+    
+    if [ -n "$2" ]; then
+        
+        IFS='&'
+        #shellcheck disable=SC2086
+        set -- $2
+        for lprop ; do
+            parseHttpQueryStringProperty "$lprop"
+        done
+        unset lprop
+    fi
+}
+
+
 setHttpBatteryState()
 # determine low battery 
 # $1 value x.xx format

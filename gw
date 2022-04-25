@@ -1154,28 +1154,6 @@ isValidHttp()
 
 }
 
-parseCustomizedHttpQueryStringProperty()
-# $1 prop=value
-{
-    IFS='='
-    #shellcheck disable=SC2086
-    set -- $1
-    case "$1" in
-        id) GW_WS_CUSTOMIZED_ID=$2 ;;
-        password) GW_WS_CUSTOMIZED_PASSWORD=$2 ;;
-        interval) if isValidInterval "$2"; then
-                        GW_WS_CUSTOMIZED_INTERVAL=$2
-                   fi
-                  ;;
-        enabled|enable) if isValidEnabled "$2"; then
-                             GW_WS_CUSTOMIZED_ENABLED=$VALUE_SERVER_ENABLED
-                        fi
-                 ;;
-            *) echo >&2 "Error: Unknown setting '$1', use id, password, interval, enabled"
-                ;;
-    esac
-}
-
 parseCustomizedHttpUrl()
 # $1 format: wunderground://192.168.3.3:8080/data/report
 # set GW_WS_CUSTOMIZED_SERVER, GW_WS_CUSTOMIZED_PORT, GW_WS_CUSTOMIZED_PATH
@@ -1245,13 +1223,16 @@ parseCustomizedHttpUrl()
 
     unset url server http port path
 }
+
 parseCustomizedHttpQueryString()
 # $1 query string
 {
+    resetHttpQueryStringProperties
+
     IFS='?'
     #shellcheck disable=SC2086
     set -- $1
-    parseCustomizedHttpUrl "$1"
+    #parseCustomizedHttpUrl "$1"
     
     if [ -n "$2" ]; then
         
@@ -1259,8 +1240,31 @@ parseCustomizedHttpQueryString()
         #shellcheck disable=SC2086
         set -- $2
         for prop ; do
-            parseCustomizedHttpQueryStringProperty "$prop"
+
+           case "$prop" in
+        
+              id=*|password=*|interval=*|enabled=*)
+
+                    parseHttpQueryStringProperty "$prop"
+                    ;;
+
+                *)  echo >&2 "Error: Unknown setting '$1', use id, password, interval, enabled"
+                    ;;
+            esac
+                
         done
+
+        GW_WS_CUSTOMIZED_ID="$HTTP_QUERY_STRING_id"
+        GW_WS_CUSTOMIZED_PASSWORD="$HTTP_QUERY_STRING_password"
+        
+        if isValidInterval "$HTTP_QUERY_STRING_interval"; then
+            GW_WS_CUSTOMIZED_INTERVAL="$HTTP_QUERY_STRING_interval"
+        fi
+        
+        if isValidEnabled "$HTTP_QUERY_STRING_enabled"; then
+            GW_WS_CUSTOMIZED_ENABLED=$VALUE_SERVER_ENABLED
+        fi
+        
     fi
 }
 
