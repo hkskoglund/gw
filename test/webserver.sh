@@ -26,7 +26,7 @@ appendHttpResponseHeader()
 
 appendHttpDefaultHeaders()
 {
-    appendHttpResponseHeader "Date" "$(date)"
+   # appendHttpResponseHeader "Date" "$(date)"
     appendHttpResponseHeader "Server" "gw"
    # appendHttpResponseHeader "Connection" "close"
 }
@@ -269,4 +269,12 @@ else
     #lsof -p $$ >&2
     #pstree -pa >&2
     webserver
+# problem: sometimes transfer is stopped
+# curl -v  192.168.3.174:8000/lib/highcharts-v309.src.js
+#* transfer closed with 7016 bytes remaining to read
+# nc process is using sendto to write to socket, it keeps sending after webserver exit
+# using sleep to let nc have some time to send all data
+  
+  sleep 1
+
 fi
