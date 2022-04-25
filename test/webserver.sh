@@ -53,7 +53,6 @@ resetHttpResponse()
 
 sendHttpResponseCode()
 {
-    #resetHttpResponse
     echo >&2 "sending response: $1"
     appendHttpResponseCode "$1"
     appendHttpDefaultHeaders
@@ -93,7 +92,7 @@ webserver()
             eval HTTP_LINE$l_received=\""$l_http_request_line"\"
 
             if [ "$l_http_request_line" = "$CR" ]; then # request and headers read
-                echo >&2 "> CRLF/empty line"
+               # echo >&2 "> CRLF/empty line"
                 break 
             fi
             
@@ -128,15 +127,17 @@ webserver()
 
                                                 l_response_JSON=$( cd .. ; ./gw -g 192.168.3.16 -v json -c l )
                                                 getUnicodeStringLength "$l_response_JSON"
-                                                appendHttpResponseHeader "Content-Type" "application/json"
+                                                #https://www.w3.org/International/articles/http-charset/index
+                                                # "browsers use the reader's preferred encoding when there is no explicit charset parameter"
+                                                # maybe not neccessary, unicodes seems to be transferred ok without charset
+                                                appendHttpResponseHeader "Content-Type" "application/json; charset=utf-8"
                                                 appendHttpResponseHeader "Content-Length" "$VALUE_UNICODE_STRING_LENGTH"
                                                 #https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
                                                 # for cross-origin request: 127.0.0.1:3000 Live Preview visual studio code -> webserver localhost:8000
                                                 appendHttpResponseHeader "Access-Control-Allow-Origin" "*"
                                                 appendHttpResponseCRLF
-                                                echo >&2 Sending JSON
-                                                #printf "%s" "$l_response_JSON"
-                                                appendHttpResponseBody "$l_repsponse_JSON"
+                                                appendHttpResponseBody "$l_response_JSON"
+                                                echo >&2 "Sending JSON length: $VALUE_UNICODE_STRING_LENGTH"
                                                 sendHttpResponse
 
                                                 #problem WSL2: stty: 'standard input': Inappropriate ioctl for device
@@ -146,26 +147,29 @@ webserver()
                                             *text/html*)
                                                     
                                                     echo >&2 "sending text/html"
-                                                    appendHttpResponseHeader "Content-Type" "text/html"
+                                                    appendHttpResponseHeader "Content-Type" "text/html; charset=utf-8"
                                                     getFilesize "$HTTP_SERVER_ROOT/index.html"
                                                     appendHttpResponseHeader "Content-Length" "$VALUE_FILESIZE"
 
                                                     appendHttpResponseCRLF
                                                     sendHttpResponse
+                                                    echo >&2 "Sending index.html length: $VALUE_UNICODE_STRING_LENGTH"
                                                     cat "$HTTP_SERVER_ROOT/index.html"
                                                     ;;
                                             
                                             *text/plain*|*)
-                                                    
+                                                    # testcurl -v  -H "Acceept: text/plain" 192.168.3.3:8000/
                                                     ltextplain=$( cd .. ; ./gw -g 192.168.3.16 -c l )
                                                     getUnicodeStringLength "$ltextplain"
-                                                    appendHttpResponseHeader "Content-Type" "text/plain"
-                                                    appendHttpResponseHeader "Content-Length" "$(( VALUE_UNICODE_STRING_LENGTH + 2))" # 2=CRLF
+                                                    appendHttpResponseHeader "Content-Type" "text/plain; charset=utf-8"
+                                                    ltextplain_length=$(( VALUE_UNICODE_STRING_LENGTH + 2)) # 2=CRLF
+                                                    appendHttpResponseHeader "Content-Length" "$ltextplain_length" 
                                                     appendHttpResponseCRLF
                                                     appendHttpResponseBody "$ltextplain"
                                                     appendHttpResponseCRLF
+                                                    echo >&2 "Sending text plain length: $ltextplain_length"
                                                     sendHttpResponse
-                                                    
+                                                    unset ltextplain_length
                                                     ;;
                                         esac
                                     ;;
@@ -178,7 +182,7 @@ webserver()
                                 if [ -s "$l_server_file" ]; then
                                         appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                         appendHttpDefaultHeaders
-                                        appendHttpResponseHeader "Content-Type" "application/javascript"
+                                        appendHttpResponseHeader "Content-Type" "application/javascript; charset=utf-8"
                                         getFilesize "$l_server_file"
                                         appendHttpResponseHeader "Content-Length" "$VALUE_FILESIZE"
                                         appendHttpResponseCRLF
