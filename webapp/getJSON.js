@@ -342,13 +342,13 @@ UI.prototype.initChart=function()
 
     series: [{
                 name: 'Windspeed',
-                type: 'column',
+                type: 'spline',
                 data: [],
                 yAxis:0
             },
             {
                 name: 'Windgustspeed',
-                type: 'column',
+                type: 'spline',
                 data: [],
                 yAxis:0
             }

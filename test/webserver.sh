@@ -82,10 +82,6 @@ webserver()
 {
     # read request and headers including newline. read strips off LF=\n at the end of line -> only check for CR=\r
     
-    #while true; do 
-
-    echo >&2 "waiting: read http request"
-
         l_received=0
 
         while IFS=" " read -r l_http_request_line; do
@@ -184,7 +180,7 @@ webserver()
                                         appendHttpResponseNewline
                                         sendHttpResponse
                                         >&2 echo "webserver: sending javascript $l_server_file"
-                                        cat "$l_server_file"
+                                        cat "$l_server_file" 
                                 else
                                     >&2 echo "Error: script not found or empty: $l_server_file"
                                     sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
@@ -210,8 +206,6 @@ webserver()
     # set | grep HTTP >&2
 
     unset l_received l_http_request_line
-
-  #done
 
 }
 
@@ -248,46 +242,31 @@ startwebserver()
        return 1
     fi
 
-  #  TMPFIFODIR=$(mktemp -d)
-  #  GWFIFO="$TMPFIFODIR/httpfifo"
-    # create kernel fifo, man fifo
-  #  if mkfifo "$GWFIFO"; then
-  #     echo >&2 "fifo: $GWFIFO"
-  #  fi
+    # nc openbsd test kernel fifo
+        #   TMPFIFODIR=$(mktemp -d)
+        #   GWFIFO="$TMPFIFODIR/httpfifo"
+            # create kernel fifo, man fifo
+        #   if mkfifo "$GWFIFO"; then
+        #   echo >&2 "fifo: $GWFIFO"
+        #   fi
 
-  #  trap 'echo >&2 "webserver INT trap handler"; rm -rf "$TMPFIFODIR"; exit' INT # INT catches ctrl-c -> triggers exit trap handler
+    trap 'echo >&2 "webserver INT trap handler"; rm -rf "$TMPFIFODIR"; exit' INT # INT catches ctrl-c -> triggers exit trap handler
     #trap 'echo >&2 webserver EXIT TERM HUP trap handler; rm -rf "$TMPFIFODIR"' EXIT INT TERM HUP
     GWWEBSERVER_PORT=$1
     while true; do 
-       #shellcheck disable=SC2094
-      # nc -v -4 -l "$GWWEBSERVER_PORT" <"$GWFIFO" | webserver >"$GWFIFO" #openbsd
-      # man nc openbsd: -k When a connection is completed, listen for another one.  Requires -l.
-      # unless -k is used webserver will enter a read(0,"",1) = 0 loop -> because the nc process exited
-      # possible: while true; do nc -4 -l; done loop -> use -k flag instead
-      # { nc -4 -v -k -l "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "nc exited error code:$?"; } | { jsonserver >"$GWFIFO" ; echo >&2 "jsonserver exit code: $?" ; }
-      # { busybox nc  -ll -p "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "Error: nc exited error code:$?"; } | { webserver >"$GWFIFO" ; echo >&2 "Error: webserver exit code: $?" ; }
-      # { toybox nc  -L -p "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "Error: nc exited error code:$?"; } | { webserver >"$GWFIFO" ; echo >&2 "Error: webserver exit code: $?" ; }
-    
-          # { nc -4 -v -k -l "$GWWEBSERVER_PORT" <"$GWFIFO" ; echo >&2 "nc exited error code:$?"; } | { jsonserver >"$GWFIFO" ; echo >&2 "jsonserver exit code: $?" ; }
-       set -x
-       # Ncat: version 7.8 allows -e to clone new process for handling request
+       # nc openbsd: does not work, single fifo shared with multiple sockets? {  webserver <"$GWFIFO"; }  | { nc -4 -v -l "$GWWEBSERVER_PORT" >"$GWFIFO" ; echo >&2 "nc exited error code:$?"; } 
+      
+      # Ncat: version 7.8 allows -e to clone new process for handling request
         { nc -4 -v -k -l "$GWWEBSERVER_PORT" -e './webserver.sh' ; echo >&2 "nc exited error code:$?"; }
-        set +x
     done
 }
-
-#trap
-
-#set -x
-#echo Args $0
-#startwebserver "$@"
-#echo Background PID $!
-#jobs
-#set +x
 
  if [ $# -ge 2  ]; then
     startwebserver "$@"
 else
    #cloned process parses http request
+    echo >&2 webserver pid: $$
+    #lsof -p $$ >&2
+    #pstree -pa >&2
     webserver
 fi
