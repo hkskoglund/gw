@@ -108,13 +108,9 @@ webserver()
             ln=$(( ln + 1 ))
         done
  
-
         case "$HTTP_REQUEST_METHOD" in
 
-            HEAD)                               sendHttpResponseCode "$HTTP_RESPONSE_200_OK"
-                                                ;;
-
-            GET)   case "$HTTP_REQUEST_ABSPATH" in
+            GET|HEAD)   case "$HTTP_REQUEST_ABSPATH" in
 
                         /)                   
                                         appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
@@ -136,8 +132,11 @@ webserver()
                                                 # for cross-origin request: 127.0.0.1:3000 Live Preview visual studio code -> webserver localhost:8000
                                                 appendHttpResponseHeader "Access-Control-Allow-Origin" "*"
                                                 appendHttpResponseCRLF
-                                                appendHttpResponseBody "$l_response_JSON"
-                                                echo >&2 "Sending JSON length: $VALUE_UNICODE_STRING_LENGTH"
+                                                if [ "$HTTP_REQUEST_METHOD" = "GET" ]; then 
+                                                     appendHttpResponseBody "$l_response_JSON"
+                                                     echo >&2 "Sending JSON length: $VALUE_UNICODE_STRING_LENGTH"
+                                                fi
+
                                                 sendHttpResponse
 
                                                 #problem WSL2: stty: 'standard input': Inappropriate ioctl for device
@@ -153,9 +152,11 @@ webserver()
 
                                                     appendHttpResponseCRLF
                                                     sendHttpResponse
-                                                    echo >&2 "Sending index.html length: $VALUE_UNICODE_STRING_LENGTH"
-                                                    cat "$HTTP_SERVER_ROOT/index.html"
-                                                    ;;
+                                                    if [ "$HTTP_REQUEST_METHOD" = "GET" ]; then 
+                                                            echo >&2 "Sending index.html length: $VALUE_UNICODE_STRING_LENGTH"
+                                                            cat "$HTTP_SERVER_ROOT/index.html"
+                                                    fi
+                                                ;;
                                             
                                             *text/plain*|*)
                                                     # testcurl -v  -H "Acceept: text/plain" 192.168.3.3:8000/
@@ -165,9 +166,11 @@ webserver()
                                                     ltextplain_length=$(( VALUE_UNICODE_STRING_LENGTH + 2)) # 2=CRLF
                                                     appendHttpResponseHeader "Content-Length" "$ltextplain_length" 
                                                     appendHttpResponseCRLF
-                                                    appendHttpResponseBody "$ltextplain"
-                                                    appendHttpResponseCRLF
-                                                    echo >&2 "Sending text plain length: $ltextplain_length"
+                                                    if [ "$HTTP_REQUEST_METHOD" = "GET" ]; then 
+                                                        appendHttpResponseBody "$ltextplain"
+                                                        appendHttpResponseCRLF
+                                                        echo >&2 "Sending text plain length: $ltextplain_length"
+                                                    fi
                                                     sendHttpResponse
                                                     unset ltextplain_length
                                                     ;;
@@ -187,8 +190,12 @@ webserver()
                                         appendHttpResponseHeader "Content-Length" "$VALUE_FILESIZE"
                                         appendHttpResponseCRLF
                                         sendHttpResponse
-                                        >&2 echo "webserver: sending javascript $l_server_file"
-                                        cat "$l_server_file" 
+                                               # --head = only request headers
+                                               # curl -v --head  192.168.3.3:8000/lib/highcharts-v309.src.js
+                                        if [ "$HTTP_REQUEST_METHOD" = "GET" ]; then 
+                                            >&2 echo "webserver: sending javascript $l_server_file"
+                                            cat "$l_server_file"
+                                        fi 
                                 else
                                     >&2 echo "Error: script not found or empty: $l_server_file"
                                     sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
