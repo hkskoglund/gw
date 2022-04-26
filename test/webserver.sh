@@ -8,7 +8,7 @@ HTTP_RESPONSE_501_NOTIMPLEMENTED="501"
 # https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
 # https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
 MIME_TYPE_TEXT="text" 
-MIME_PARAM_CHARSET_UTF8="charset=UTF-8" # charset can be set optionally only for text 
+MIME_PARAM_CHARSET_UTF8="charset=utf-8" # charset can be set optionally only for text, https://www.w3.org/International/articles/http-charset/index
 MIME_TYPE_APPLICATION="application"
 MIME_SUBTYPE_PLAIN="plain"
 MIME_SUBTYPE_HTML="html"
@@ -25,8 +25,36 @@ if [ -n "$ZSH_VERSION" ]; then
 . ../lib/http.sh
 . ../lib/util.sh
 
+sendHttpError404NotFound()
+{
+    appendHttpResponseCodeMessage $HTTP_RESPONSE_404_NOTFOUND "$1"
+    appendHttpDefaultHeaders
+    logErr "$HTTP_RESPONSE_HEADER_DATE_VALUE Error: $1"
+}
+
+sendHttpTextPlain()
+{
+    ltextplain="$1"
+     getUnicodeStringLength "$ltextplain"
+    appendHttpResponseHeader "Content-Type" "$MIME_TYPE_TEXT/$MIME_SUBTYPE_PLAIN;$MIME_PARAM_CHARSET_UTF8"
+    ltextplain_length=$(( VALUE_UNICODE_STRING_LENGTH + 2)) # 2=CRLF
+    appendHttpResponseHeader "Content-Length" "$ltextplain_length" 
+    appendHttpResponseCRLF
+    
+    if [ "$HTTP_REQUEST_METHOD" = "GET" ]; then 
+        appendHttpResponseBody "$ltextplain"
+        appendHttpResponseCRLF
+        logErr "Sending text plain length: $ltextplain_length"
+    fi
+    
+    sendHttpResponse
+
+    unset ltextplain ltextplain_length
+}
+
 sendHttpResponse()
 {
+    #shellcheck disable=SC2119
     printAppendBuffer
 }
 
@@ -37,7 +65,8 @@ appendHttpResponseHeader()
 
 appendHttpDefaultHeaders()
 {
-    appendHttpResponseHeader "Date" "$(date -R)"
+    HTTP_RESPONSE_HEADER_DATE_VALUE=$(date -R)
+    appendHttpResponseHeader "Date" "$HTTP_RESPONSE_HEADER_DATE_VALUE"
     #https://httpwg.org/specs/rfc7231.html#http.date
     appendHttpResponseHeader "Server" "gw"
 }
@@ -47,9 +76,15 @@ appendHttpResponseCRLF()
     appendFormat "\r\n"
 }
 
-appendHttpResponseCode()
+appendHttpResponseCodeMessage()
+# $1 code
+# $2 message
 {
-    appendBuffer "HTTP/1.1 %s\r\n" "'$1'"
+    if [ -z "$2" ]; then
+        appendBuffer "HTTP/1.1 %s\r\n" "'$1'"
+    else
+        appendBuffer "HTTP/1.1 %s %s\r\n" "'$1' '$2'"
+    fi
 }
 
 appendHttpResponseBody()
@@ -64,8 +99,8 @@ resetHttpResponse()
 
 sendHttpResponseCode()
 {
-    echo >&2 "sending response: $1"
-    appendHttpResponseCode "$1"
+    logErr "sending response: $1"
+    appendHttpResponseCodeMessage "$1"
     appendHttpDefaultHeaders
     appendHttpResponseHeader "Content-Length" "0"
     appendHttpResponseCRLF
@@ -100,6 +135,42 @@ getHostFromQS()
     unset lip
 }
 
+sendFile()
+{
+     set -x
+    l_file=${HTTP_REQUEST_ABSPATH##*/}
+    l_dir=${HTTP_REQUEST_ABSPATH%"$l_file"}
+    l_server_file="$HTTP_SERVER_ROOT$l_dir$l_file"
+    set +x
+
+    if [ -s "$l_server_file" ]; then
+            appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
+            appendHttpDefaultHeaders
+                case "$HTTP_REQUEST_ABSPATH" in
+                *".js")     appendHttpResponseHeader "Content-Type" "$MIME_TYPE_TEXT/$MIME_SUBTYPE_JAVASCRIPT;$MIME_PARAM_CHARSET_UTF8"
+                            ;;
+                *".css")    appendHttpResponseHeader "Content-Type" "$MIME_TYPE_TEXT/$MIME_SUBTYPE_CSS;$MIME_PARAM_CHARSET_UTF8"
+                            ;;
+                *".html")   appendHttpResponseHeader "Content-Type" "$MIME_TYPE_TEXT/$MIME_SUBTYPE_HTML;$MIME_PARAM_CHARSET_UTF8"
+                            ;;
+            esac
+            getFilesize "$l_server_file"
+            appendHttpResponseHeader "Content-Length" "$VALUE_FILESIZE"
+            appendHttpResponseCRLF
+            sendHttpResponse
+                    # --head = only request headers
+                    # curl -v --head  192.168.3.3:8000/lib/highcharts-v309.src.js
+            if [ "$HTTP_REQUEST_METHOD" = "GET" ]; then 
+                logErr "webserver: sending file $l_server_file, length $VALUE_FILESIZE"
+                cat "$l_server_file"
+            fi 
+    else
+        sendHttpError404NotFound "$l_server_file"
+    fi
+    
+    unset l_file l_dir l_server_file
+}
+
 webserver()
 # process runs in a subshell (function call in end of pipeline), pid can be accessed by $BASHPID/$$ is invoking shell, pstree -pal gives overview
 {
@@ -109,7 +180,7 @@ webserver()
 
         while IFS=" " read -r l_http_request_line; do
 
-           echo "> $l_http_request_line" >&2
+           logErr "> $l_http_request_line" 
             
             l_received=$(( l_received + 1 ))
         
@@ -136,22 +207,26 @@ webserver()
 
             GET|HEAD)   case "$HTTP_REQUEST_ABSPATH" in
 
-                        /)                   
-                                        appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
+                        /|/\?*)                   
+                                        appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
                                         appendHttpDefaultHeaders
 
                                         # shellcheck disable=SC2154
                                         case "$HTTP_HEADER_accept" in
                                             
                                             application/json)
+
                                                 getHostFromQS "192.168.3.16"
-                                               # l_response_JSON=$( cd .. ; ./gw -g "$VALUE_HOST" -v json -c l )
-                                                l_response_JSON=$( cd .. ; ./gw -v json -l 8016 )
+
+                                                #l_response_JSON=$( cd .. ; timeout 20 ./gw -v json -l 8016 )
+                                               l_response_JSON=$( cd .. ; ./gw -g "$VALUE_HOST" -v json -c l );
+                                               l_exitcode_livedata=$?
+                                               if [ $l_exitcode_livedata -gt 0 ]; then
+                                                    l_response_JSON='{ "exitcode": '$l_exitcode_livedata' }'
+                                               fi
                                                
                                                 getUnicodeStringLength "$l_response_JSON"
-                                                #https://www.w3.org/International/articles/http-charset/index
-                                                # "browsers use the reader's preferred encoding when there is no explicit charset parameter"
-                                                # maybe not neccessary, unicodes seems to be transferred ok without charset
+                                            
                                                 appendHttpResponseHeader "Content-Type" "$MIME_TYPE_APPLICATION/$MIME_SUBTYPE_JSON" 
                                                 appendHttpResponseHeader "Content-Length" "$VALUE_UNICODE_STRING_LENGTH"
                                                 #https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
@@ -159,78 +234,42 @@ webserver()
                                                 appendHttpResponseHeader "Access-Control-Allow-Origin" "*"
                                                 appendHttpResponseCRLF
                                                 if [ "$HTTP_REQUEST_METHOD" = "GET" ]; then 
-                                                     appendHttpResponseBody "$l_response_JSON"
-                                                     echo >&2 "Sending JSON length: $VALUE_UNICODE_STRING_LENGTH"
+                                                    appendHttpResponseBody "$l_response_JSON"
+                                                    logErr "Sending JSON length: $VALUE_UNICODE_STRING_LENGTH"
                                                 fi
 
                                                 sendHttpResponse
 
                                                 #problem WSL2: stty: 'standard input': Inappropriate ioctl for device
-                                                unset l_response_JSON
+                                                unset l_response_JSON l_exitcode_livedata
+                                                
                                                 ;;
                                                    
                                             *text/html*)
-                                                    
-                                                    echo >&2 "sending text/html"
-                                                    appendHttpResponseHeader "Content-Type" "$MIME_TYPE_TEXT/$MIME_SUBTYPE_HTML;$MIME_PARAM_CHARSET_UTF8" 
-                                                    getFilesize "$HTTP_SERVER_ROOT/index.html"
-                                                    appendHttpResponseHeader "Content-Length" "$VALUE_FILESIZE"
-
-                                                    appendHttpResponseCRLF
-                                                    sendHttpResponse
-                                                    if [ "$HTTP_REQUEST_METHOD" = "GET" ]; then 
-                                                            echo >&2 "Sending index.html length: $VALUE_UNICODE_STRING_LENGTH"
-                                                            cat "$HTTP_SERVER_ROOT/index.html"
-                                                    fi
+                                                    HTTP_REQUEST_ABSPATH="/index.html"
+                                                    sendFile
                                                 ;;
                                             
                                             *text/plain*|*)
                                                     # testcurl -v  -H "Acceept: text/plain" 192.168.3.3:8000/
                                                     getHostFromQS "192.168.3.16"
                                                     ltextplain=$( cd .. ; ./gw -g "$VALUE_HOST" -c l )
-                                                    getUnicodeStringLength "$ltextplain"
-                                                    appendHttpResponseHeader "Content-Type" "$MIME_TYPE_TEXT/$MIME_SUBTYPE_PLAIN;$MIME_PARAM_CHARSET_UTF8"
-                                                    ltextplain_length=$(( VALUE_UNICODE_STRING_LENGTH + 2)) # 2=CRLF
-                                                    appendHttpResponseHeader "Content-Length" "$ltextplain_length" 
-                                                    appendHttpResponseCRLF
-                                                    if [ "$HTTP_REQUEST_METHOD" = "GET" ]; then 
-                                                        appendHttpResponseBody "$ltextplain"
-                                                        appendHttpResponseCRLF
-                                                        echo >&2 "Sending text plain length: $ltextplain_length"
+                                                    l_exitcode_livedata=$?
+                                                    
+                                                    if [ $l_exitcode_livedata -gt 0 ]; then
+                                                        ltextplain="No response from $VALUE_HOST, exitcode : $l_exitcode_livedata"
                                                     fi
-                                                    sendHttpResponse
-                                                    unset ltextplain_length
+                                                    
+                                                    sendHttpTextPlain "$ltextplain"
+
+                                                    unset ltextplain l_exitcode_livedata
+
                                                     ;;
                                         esac
                                     ;;
                                         
-                        *".js")
-                                l_script_file=${HTTP_REQUEST_ABSPATH##*/}
-                                l_script_dir=${HTTP_REQUEST_ABSPATH%"$l_script_file"}
-                                l_server_file="$HTTP_SERVER_ROOT$l_script_dir$l_script_file"
-
-                                if [ -s "$l_server_file" ]; then
-                                        appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
-                                        appendHttpDefaultHeaders
-                                        appendHttpResponseHeader "Content-Type" "$MIME_TYPE_TEXT/$MIME_SUBTYPE_JAVASCRIPT" 
-                                        getFilesize "$l_server_file"
-                                        appendHttpResponseHeader "Content-Length" "$VALUE_FILESIZE"
-                                        appendHttpResponseCRLF
-                                        sendHttpResponse
-                                               # --head = only request headers
-                                               # curl -v --head  192.168.3.3:8000/lib/highcharts-v309.src.js
-                                        if [ "$HTTP_REQUEST_METHOD" = "GET" ]; then 
-                                            >&2 echo "webserver: sending javascript $l_server_file"
-                                            cat "$l_server_file"
-                                        fi 
-                                else
-                                    >&2 echo "Error: script not found or empty: $l_server_file"
-                                    sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
-                                fi
-                                
-                                unset l_script_file l_script_dir l_server_file
-                            
-                                ;;
+                        *".js"|*".css") sendFile 
+                                        ;;
                         
                         *)      sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
                                 ;;
@@ -252,6 +291,11 @@ webserver()
 
 }
 
+logErr()
+{
+    echo >&2 "$*"
+}
+
 startwebserver()
 # $1 port
 # $2 root directory
@@ -262,26 +306,26 @@ startwebserver()
 # all processes in pipeline runs in same process group, commands to manage: ps -efj, kill -- -PGID, jobs, kill %+, kill %-
 # https://www.baeldung.com/linux/kill-members-process-group
 {
-    echo >&2 "pid: $$"
+    logErr "pid: $$"
 
     if [ -z "$1" ]; then
-        echo >&2 Error: No port specified for web server
+        logErr "Error: No port specified for web server"
         return 1
     else
-       echo >&2 "port: $1"
+       logErr "port: $1"
     fi
 
     if [ -n "$2" ]; then
         if ! [ -d "$2" ]; then
-            echo >&2 "Error: $2 root is not a directory"
+            logErr "Error: $2 root is not a directory"
             return 1
         else
           #export allows child of nc with (cloned with -e option) to get it
            export HTTP_SERVER_ROOT="$2"
-           echo >&2 "rootdir: $2"
+           logErr "rootdir: $2"
         fi
     else
-       echo >&2 "Error: no rootdir specified"
+       logErr "Error: no rootdir specified"
        return 1
     fi
 
@@ -308,7 +352,7 @@ startwebserver()
     startwebserver "$@"
 else
    #cloned process parses http request
-    echo >&2 webserver pid: $$
+    logErr "webserver pid: $$"
     #lsof -p $$ >&2
     #pstree -pa >&2
     webserver
@@ -319,6 +363,6 @@ else
 # strace -f -p $(pgrep nc) 2>&1
 # using sleep to let nc have some time to send all data
   
-  sleep 1
+  #sleep 1
 
 fi
