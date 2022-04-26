@@ -146,14 +146,14 @@ sendFile()
     if [ -s "$l_server_file" ]; then
             appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
             appendHttpDefaultHeaders
-                case "$HTTP_REQUEST_ABSPATH" in
+            case "$HTTP_REQUEST_ABSPATH" in
                 *".js")     appendHttpResponseHeader "Content-Type" "$MIME_TYPE_TEXT/$MIME_SUBTYPE_JAVASCRIPT;$MIME_PARAM_CHARSET_UTF8"
                             ;;
                 *".css")    appendHttpResponseHeader "Content-Type" "$MIME_TYPE_TEXT/$MIME_SUBTYPE_CSS;$MIME_PARAM_CHARSET_UTF8"
                             ;;
                 *".html")   appendHttpResponseHeader "Content-Type" "$MIME_TYPE_TEXT/$MIME_SUBTYPE_HTML;$MIME_PARAM_CHARSET_UTF8"
                             ;;
-            esac
+                esac
             getFilesize "$l_server_file"
             appendHttpResponseHeader "Content-Length" "$VALUE_FILESIZE"
             appendHttpResponseCRLF
@@ -268,7 +268,7 @@ webserver()
                                         esac
                                     ;;
                                         
-                        *".js"|*".css") sendFile 
+                        *".js"|*".css"|*".html") sendFile 
                                         ;;
                         
                         *)      sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
@@ -359,10 +359,10 @@ else
 # problem: sometimes transfer is stopped
 # curl -v  192.168.3.174:8000/lib/highcharts-v309.src.js
 #* transfer closed with 7016 bytes remaining to read
-# nc process is using sendto to write to socket, it keeps sending after webserver process exits
+# nc process is using sendto to write to socket, it keeps sending after webserver.sh process exits
 # strace -f -p $(pgrep nc) 2>&1
 # using sleep to let nc have some time to send all data
   
-  #sleep 1
+  sleep 1
 
 fi
