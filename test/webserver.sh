@@ -5,6 +5,17 @@ HTTP_RESPONSE_200_OK="200" # https://developer.mozilla.org/en-US/docs/Web/HTTP/S
 HTTP_RESPONSE_404_NOTFOUND="404"
 HTTP_RESPONSE_501_NOTIMPLEMENTED="501"
 
+# https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
+# https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
+MIME_TYPE_TEXT="text" 
+MIME_PARAM_CHARSET_UTF8="charset=UTF-8" # charset can be set optionally only for text 
+MIME_TYPE_APPLICATION="application"
+MIME_SUBTYPE_PLAIN="plain"
+MIME_SUBTYPE_HTML="html"
+MIME_SUBTYPE_JAVASCRIPT="javascript"
+MIME_SUBTYPE_JSON="json"
+MIME_SUBTYPE_CSS="css"
+
 if [ -n "$ZSH_VERSION" ]; then
     #https://zsh.sourceforge.io/FAQ/zshfaq03.html
        setopt shwordsplit  #zsh compability for "1 2 3" -> split in 1 2 3
@@ -76,6 +87,19 @@ getUnicodeStringLength()
     VALUE_UNICODE_STRING_LENGTH=$(printf "%s" "$1" | od -A n -t x1 |  wc -w)
 }
 
+getHostFromQS()
+# $1 default value
+{
+    if [ -n "$HTTP_QUERY_STRING_ip" ]; then
+        #echo >&2 QS ip="$HTTP_QUERY_STRING_ip"
+        lip="$HTTP_QUERY_STRING_ip"
+    else
+        lip="$1"
+    fi
+    VALUE_HOST=$lip
+    unset lip
+}
+
 webserver()
 # process runs in a subshell (function call in end of pipeline), pid can be accessed by $BASHPID/$$ is invoking shell, pstree -pal gives overview
 {
@@ -120,13 +144,15 @@ webserver()
                                         case "$HTTP_HEADER_accept" in
                                             
                                             application/json)
-
-                                                l_response_JSON=$( cd .. ; ./gw -g 192.168.3.16 -v json -c l )
+                                                getHostFromQS "192.168.3.16"
+                                               # l_response_JSON=$( cd .. ; ./gw -g "$VALUE_HOST" -v json -c l )
+                                                l_response_JSON=$( cd .. ; ./gw -v json -l 8016 )
+                                               
                                                 getUnicodeStringLength "$l_response_JSON"
                                                 #https://www.w3.org/International/articles/http-charset/index
                                                 # "browsers use the reader's preferred encoding when there is no explicit charset parameter"
                                                 # maybe not neccessary, unicodes seems to be transferred ok without charset
-                                                appendHttpResponseHeader "Content-Type" "application/json; charset=utf-8"
+                                                appendHttpResponseHeader "Content-Type" "$MIME_TYPE_APPLICATION/$MIME_SUBTYPE_JSON" 
                                                 appendHttpResponseHeader "Content-Length" "$VALUE_UNICODE_STRING_LENGTH"
                                                 #https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
                                                 # for cross-origin request: 127.0.0.1:3000 Live Preview visual studio code -> webserver localhost:8000
@@ -146,7 +172,7 @@ webserver()
                                             *text/html*)
                                                     
                                                     echo >&2 "sending text/html"
-                                                    appendHttpResponseHeader "Content-Type" "text/html; charset=utf-8"
+                                                    appendHttpResponseHeader "Content-Type" "$MIME_TYPE_TEXT/$MIME_SUBTYPE_HTML;$MIME_PARAM_CHARSET_UTF8" 
                                                     getFilesize "$HTTP_SERVER_ROOT/index.html"
                                                     appendHttpResponseHeader "Content-Length" "$VALUE_FILESIZE"
 
@@ -160,9 +186,10 @@ webserver()
                                             
                                             *text/plain*|*)
                                                     # testcurl -v  -H "Acceept: text/plain" 192.168.3.3:8000/
-                                                    ltextplain=$( cd .. ; ./gw -g 192.168.3.16 -c l )
+                                                    getHostFromQS "192.168.3.16"
+                                                    ltextplain=$( cd .. ; ./gw -g "$VALUE_HOST" -c l )
                                                     getUnicodeStringLength "$ltextplain"
-                                                    appendHttpResponseHeader "Content-Type" "text/plain; charset=utf-8"
+                                                    appendHttpResponseHeader "Content-Type" "$MIME_TYPE_TEXT/$MIME_SUBTYPE_PLAIN;$MIME_PARAM_CHARSET_UTF8"
                                                     ltextplain_length=$(( VALUE_UNICODE_STRING_LENGTH + 2)) # 2=CRLF
                                                     appendHttpResponseHeader "Content-Length" "$ltextplain_length" 
                                                     appendHttpResponseCRLF
@@ -185,7 +212,7 @@ webserver()
                                 if [ -s "$l_server_file" ]; then
                                         appendHttpResponseCode "$HTTP_RESPONSE_200_OK"
                                         appendHttpDefaultHeaders
-                                        appendHttpResponseHeader "Content-Type" "application/javascript; charset=utf-8"
+                                        appendHttpResponseHeader "Content-Type" "$MIME_TYPE_TEXT/$MIME_SUBTYPE_JAVASCRIPT" 
                                         getFilesize "$l_server_file"
                                         appendHttpResponseHeader "Content-Length" "$VALUE_FILESIZE"
                                         appendHttpResponseCRLF
