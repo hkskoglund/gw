@@ -177,8 +177,8 @@ GetJSON.prototype.transferComplete=function(evt)
         this.mode = this.json.mode
     } else
     {
-        console.error('Empty json response')
-        this.json=undefined
+        console.error("No JSON received " + this.req.status+' '+this.req.statusText)
+        delete this.json
     }
 }
 

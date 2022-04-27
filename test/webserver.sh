@@ -171,6 +171,25 @@ sendFile()
     unset l_file l_dir l_server_file
 }
 
+sendJSON()
+#$1 JSON string
+{
+    getUnicodeStringLength "$1"
+                                            
+    appendHttpResponseHeader "Content-Type" "$MIME_TYPE_APPLICATION/$MIME_SUBTYPE_JSON" 
+    appendHttpResponseHeader "Content-Length" "$VALUE_UNICODE_STRING_LENGTH"
+    #https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
+    # for cross-origin request: 127.0.0.1:3000 Live Preview visual studio code -> webserver localhost:8000
+    appendHttpResponseHeader "Access-Control-Allow-Origin" "*"
+    appendHttpResponseCRLF
+    if [ "$HTTP_REQUEST_METHOD" = "GET" ]; then 
+        appendHttpResponseBody "$1"
+        logErr "Sending JSON length: $VALUE_UNICODE_STRING_LENGTH"
+    fi
+
+    sendHttpResponse
+}
+
 webserver()
 # process runs in a subshell (function call in end of pipeline), pid can be accessed by $BASHPID/$$ is invoking shell, pstree -pal gives overview
 {
@@ -207,14 +226,29 @@ webserver()
 
             GET|HEAD)   case "$HTTP_REQUEST_ABSPATH" in
 
-                        /|/\?*)                   
+                        /)              #using same JSON format as github api to describe api 
+                                        # echo "console.log(JSON.parse('$(curl -s https://api.github.com)'))" | node 
+                                        appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
+                                        appendHttpDefaultHeaders
+                                        #adding newline \n inside string by breaking line
+                                        #shellcheck disable=SC2154
+                                        l_response_JSON='{
+    "livedata_url": "http://'"$HTTP_HEADER_host"'/livedata"
+}
+'
+                                        sendJSON "$l_response_JSON"
+                                        unset l_response_JSON
+                                        ;;
+                                
+
+                        /livedata|/livedata\?*)                   
                                         appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
                                         appendHttpDefaultHeaders
 
                                         # shellcheck disable=SC2154
                                         case "$HTTP_HEADER_accept" in
                                             
-                                            application/json)
+                                            *application/json*)
 
                                                 getHostFromQS "192.168.3.16"
 
@@ -225,20 +259,7 @@ webserver()
                                                     l_response_JSON='{ "exitcode": '$l_exitcode_livedata' }'
                                                fi
                                                
-                                                getUnicodeStringLength "$l_response_JSON"
-                                            
-                                                appendHttpResponseHeader "Content-Type" "$MIME_TYPE_APPLICATION/$MIME_SUBTYPE_JSON" 
-                                                appendHttpResponseHeader "Content-Length" "$VALUE_UNICODE_STRING_LENGTH"
-                                                #https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
-                                                # for cross-origin request: 127.0.0.1:3000 Live Preview visual studio code -> webserver localhost:8000
-                                                appendHttpResponseHeader "Access-Control-Allow-Origin" "*"
-                                                appendHttpResponseCRLF
-                                                if [ "$HTTP_REQUEST_METHOD" = "GET" ]; then 
-                                                    appendHttpResponseBody "$l_response_JSON"
-                                                    logErr "Sending JSON length: $VALUE_UNICODE_STRING_LENGTH"
-                                                fi
-
-                                                sendHttpResponse
+                                              sendJSON "$l_response_JSON"
 
                                                 #problem WSL2: stty: 'standard input': Inappropriate ioctl for device
                                                 unset l_response_JSON l_exitcode_livedata
@@ -360,8 +381,9 @@ else
 # curl -v  192.168.3.174:8000/lib/highcharts-v309.src.js
 #* transfer closed with 7016 bytes remaining to read
 # nc process is using sendto to write to socket, it keeps sending after webserver.sh process exits
-# strace -f -p $(pgrep nc) 2>&1
+# strace -f -p $(pgrep -f "nc-.*webserver") 2>&1
 # using sleep to let nc have some time to send all data
+# nc send data in chunks of 8192 bytes, only seem to miss less than 1 block of data at the end, unless sleep 1 is used
   
   sleep 1
 

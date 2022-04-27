@@ -92,7 +92,11 @@ parseHttpHeader()
     IFS=": $CR" read -r l_HTTP_KEY l_HTTP_VALUE <<EOH
 $1
 EOH
-    [ "$DEBUG" -eq 1 ] && echo >&2 "KEY $l_HTTP_KEY length ${#l_HTTP_KEY} VALUE $l_HTTP_VALUE length ${#l_HTTP_VALUE}"
+    #remove \r at the end
+    IFS="$CR" read -r l_HTTP_VALUE << EOV
+$l_HTTP_VALUE
+EOV
+    [ "$DEBUG" -eq 1 ] &&  echo >&2 "KEY $l_HTTP_KEY length ${#l_HTTP_KEY} VALUE $l_HTTP_VALUE length ${#l_HTTP_VALUE}"
 
     unset l_header
 
@@ -128,7 +132,7 @@ EOH
 
     HTTP_HEADERS="$HTTP_HEADERS$l_header "
 
-    unset l_HTTP_KEY l_HTTP_VALUE l_HTTP_KEY_PART1 l_HTTP_KEY_PART2 l_header
+    unset l_HTTP_KEY l_HTTP_VALUE l_HTTP_KEY_PART1 l_HTTP_KEY_PART2 l_header lCR
    #IFS=- set -- $l_HTTP_KEY
 }
 
