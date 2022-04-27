@@ -399,6 +399,64 @@ UI.prototype.initChart=function()
                                 }] 
                         })
 
+
+    this.windbarbchart= new Highcharts.Chart({ chart : {
+        renderTo: 'windbarb' },
+
+        title: {
+            text: 'Highcharts Wind Barbs'
+        },
+    
+        xAxis: {
+            type: 'datetime',
+            offset: 40
+        },
+    
+      //  plotOptions: {
+      //      series: {
+      //          pointStart: Date.UTC(2017, 0, 29),
+      //          pointInterval: 36e5
+      //      }
+      //  },
+    
+        series: [{
+            type: 'windbarb',
+            data: [ ],
+            name: 'Wind',
+            color: Highcharts.getOptions().colors[1],
+            showInLegend: false,
+            tooltip: {
+                valueSuffix: ' m/s'
+            }
+        }, {
+            type: 'area',
+            keys: ['y', 'rotation'], // rotation is not used here
+            data: [
+            ],
+            color: Highcharts.getOptions().colors[0],
+            fillColor: {
+                linearGradient: { x1: 0, x2: 0, y1: 0, y2: 1 },
+                stops: [
+                    [0, Highcharts.getOptions().colors[0]],
+                    [
+                        1,
+                        Highcharts.color(Highcharts.getOptions().colors[0])
+                            .setOpacity(0.25).get()
+                    ]
+                ]
+            },
+            name: 'Wind speed',
+            tooltip: {
+                valueSuffix: ' m/s'
+            },
+            states: {
+                inactive: {
+                    opacity: 1
+                }
+            }
+        }]
+    
+    });
 }
 
 UI.prototype.onJSON=function (ev)
@@ -458,6 +516,9 @@ UI.prototype.onJSON=function (ev)
     this.windchart.series[1].addPoint([timestamp,this.getJSON.getWindgustspeed()],false, this.windchart.series[1].points.length>this.options.maxPoints, false)
     this.windchart.series[2].addPoint([timestamp,this.getJSON.getWinddirection()],false, this.windchart.series[2].points.length>this.options.maxPoints, false)
 
+    this.windbarbchart.series[0].addPoint([timestamp,this.getJSON.getWindspeed(),this.getJSON.getWinddirection()],false, this.windbarbchart.series[0].points.length>this.options.maxPoints, false)
+    //this.windbarbchart.series[1].addPoint([this.getJSON.getWindspeed(),this.getJSON.getWinddirection()],false, this.windbarbchart.series[1].points.length>this.options.maxPoints, false)
+
 
    this.solarchart.series[0].addPoint([timestamp,this.getJSON.getSolarLight()],false, this.solarchart.series[0].points.length>37, false)
     this.solarchart.series[1].addPoint([timestamp,this.getJSON.getSolarUV()],false, this.solarchart.series[1].points.length>37, false)
@@ -471,6 +532,7 @@ UI.prototype.onJSON=function (ev)
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
     this.windchart.redraw()
+    this.windbarbchart.redraw()
     this.solarchart.redraw()
 
 
