@@ -209,20 +209,8 @@ GetEcowittJSON.prototype.getOuttemp=function()
 }
 
 
-function UI(server,port,path,interval)
+function UI()
 {
-    this.serverElement=document.getElementById('inputServer')
-    this.serverElement.addEventListener('change',this.onChangeServer.bind(this))
-
-    this.portElement=document.getElementById('inputPort')
-    this.portElement.addEventListener('change',this.onChangePort.bind(this))
-
-    this.pathElement=document.getElementById('inputPath')
-    this.portElement.addEventListener('change',this.onChangePath.bind(this))
-
-    this.intervalElement=document.getElementById('inputInterval')
-    this.intervalElement.addEventListener('change',this.onChangeInterval.bind(this))
-
     this.outtempElement=document.getElementById('outtemp')
     this.intempElement=document.getElementById('intemp')
     this.unitTempElement=document.getElementById('unit_temperature')
@@ -250,39 +238,10 @@ function UI(server,port,path,interval)
     this.btnOK=document.getElementById('btnOK')
 
 
-    this.serverElement.value= localStorage.getItem('server')
-    this.portElement.value=localStorage.getItem('port') 
-    this.pathElement.value=localStorage.getItem('path') 
-    this.intervalElement.value=localStorage.getItem('interval')
-
-    // use default, if not available in localstorage
-
-    if (this.serverElement.value==="") {
-        this.serverElement.value=server
-        localStorage.setItem('server',server)
-    }
-
-    if (this.portElement.value==="") {
-        this.portElement.value=port
-        localStorage.setItem('port',port)
-    }
-
-    if (this.pathElement.value==="") {
-        this.pathElement.value=path
-        localStorage.setItem('path',path)
-    }
-
-    if (this.intervalElement.value==="") {
-        this.intervalElement.value=interval
-        localStorage.setItem('interval',interval)
-    }
-
     this.initChart()
     
-    
-    this.getJSON=new GetJSON(this.serverElement.value,this.portElement.value,this.pathElement.value,this.intervalElement.value)
+    this.getJSON=new GetJSON(window.location.hostname,window.location.port,'/api/livedata',16000)
     this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
-    this.btnOK.addEventListener('click',this.onClickOK.bind(this))
     
 }
 
@@ -438,77 +397,6 @@ UI.prototype.initChart=function()
 
 }
 
-UI.prototype.onInputServer = function(ev)
-{
-    console.log('oninput',ev)
-}
-
-UI.prototype.onChangeServer = function(ev)
-{
-    console.log('onchangeServer',ev)
-    localStorage.setItem('server',this.serverElement.value)
-}
-
-UI.prototype.onChangePort = function(ev)
-{
-
-    var port=parseInt(this.portElement.value)
-
-    console.log('onchangePort',ev)
-
-    if (isNaN(port)) {
-        this.port.value=this.getJSON.port
-        console.error('port is not a number:'+this.portElement.value)
-        return
-    }
-
-    if (port < 1024 || port > 65535) {
-        this.portElement.value=this.getJSON.port
-        console.error('port outside bounds 1024-65535:'+this.portElement.value)
-        return
-    }
-
-    localStorage.setItem('port',this.portElement.value)
-}
-
-UI.prototype.onChangePath = function(ev)
-{
-    console.log('onchangePath',ev)
-    localStorage.setItem('path',this.pathElement.value)
-}
-
-UI.prototype.onChangeInterval = function(ev)
-{
-    console.log('onchangeInterval',ev)
-    
-    var interval=parseInt(this.intervalElement.value)
-
-    if (interval < 500) {
-        this.intervalElement.value=this.getJSON.interval
-        console.error('interval less than 500ms:'+this.intervalElement.value)
-        return
-    }
-
-    if (isNaN(interval))
-    {
-        this.interval.value=this.getJSON.interval
-        console.error('interval is not a number:'+this.intervalElement.value)
-        return
-    }
-
-    localStorage.setItem('interval',this.intervalElement.value)
-}
-
-
-UI.prototype.onClickOK = function(ev)
-{
-
-    console.log('changing server to '+this.serverElement.value+':'+this.portElement.value+this.pathElement.value,this)
-    this.getJSON.req.abort()
-    this.getJSON.setUrl(this.serverElement.value,this.portElement.value,this.pathElement.value)
-    this.getJSON.setInterval(this.intervalElement.value)
-}
-
 UI.prototype.onJSON=function (ev)
 {
     // Show when data is available
@@ -594,6 +482,6 @@ Number.isInteger = Number.isInteger || function(value) {
 window.onload = function init() {
     console.log('onload event, init ui')
     console.log('window location',window.location)
-    var ui = new UI(window.location.hostname,window.location.port,'/livedata.json',16000)
+    var ui = new UI()
     
 }
