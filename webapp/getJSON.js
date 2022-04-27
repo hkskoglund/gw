@@ -239,10 +239,10 @@ function UI()
 
     this.options={
         interval: 16000, // milliseconds request time for JSON
-        shifttime : 20  // shift time in minutes, when points gets deleted/shifted left
+        shifttime : 30  // shift time in minutes, when points gets deleted/shifted left
     }
 
-    this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) 
+    this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
     
     this.getJSON=new GetJSON(window.location.hostname,window.location.port,'/api/livedata',this.options.interval)
     this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
