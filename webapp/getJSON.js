@@ -235,12 +235,16 @@ function UI()
     
     this.weatherElement=document.getElementById('divWeather')
 
-    this.btnOK=document.getElementById('btnOK')
-
-
     this.initChart()
+
+    this.options={
+        interval: 16000, // milliseconds request time for JSON
+        shifttime : 20  // shift time in minutes, when points gets deleted/shifted left
+    }
+
+    this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) 
     
-    this.getJSON=new GetJSON(window.location.hostname,window.location.port,'/api/livedata',16000)
+    this.getJSON=new GetJSON(window.location.hostname,window.location.port,'/api/livedata',this.options.interval)
     this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
     
 }
@@ -437,10 +441,22 @@ UI.prototype.onJSON=function (ev)
     // https://www.highcharts.com/changelog/
 
     var timestamp=this.getJSON.getTimestamp()
+    
+    // Remove data if too old, otherwise they get skewed to the left
+    if (this.windchart.series[0].xData.length >= 1 &&   ( timestamp - this.windchart.series[0].xData[this.windchart.series[0].xData.length-1]) > this.options.interval*this.options.maxPoints)
+    {
+        console.log('Removing data from chart to avoid skewed presentation')
+        this.windchart.series[0].setData([])
+        this.windchart.series[1].setData([])
+        this.windchart.series[2].setData([])
+        this.solarchart.series[0].setData([])
+        this.solarchart.series[1].setData([])
+    }   
 
-    this.windchart.series[0].addPoint([timestamp,this.getJSON.getWindspeed()],false, this.windchart.series[0].points.length>37, false)
-    this.windchart.series[1].addPoint([timestamp,this.getJSON.getWindgustspeed()],false, this.windchart.series[1].points.length>37, false)
-    this.windchart.series[2].addPoint([timestamp,this.getJSON.getWinddirection()],false, this.windchart.series[2].points.length>37, false)
+
+    this.windchart.series[0].addPoint([timestamp,this.getJSON.getWindspeed()],false, this.windchart.series[0].points.length>this.options.maxPoints, false)
+    this.windchart.series[1].addPoint([timestamp,this.getJSON.getWindgustspeed()],false, this.windchart.series[1].points.length>this.options.maxPoints, false)
+    this.windchart.series[2].addPoint([timestamp,this.getJSON.getWinddirection()],false, this.windchart.series[2].points.length>this.options.maxPoints, false)
 
 
    this.solarchart.series[0].addPoint([timestamp,this.getJSON.getSolarLight()],false, this.solarchart.series[0].points.length>37, false)
