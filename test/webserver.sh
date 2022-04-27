@@ -226,14 +226,18 @@ webserver()
 
             GET|HEAD)   case "$HTTP_REQUEST_ABSPATH" in
 
-                        /)              #using same JSON format as github api to describe api 
-                                        # echo "console.log(JSON.parse('$(curl -s https://api.github.com)'))" | node 
-                                        appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
-                                        appendHttpDefaultHeaders
-                                        #adding newline \n inside string by breaking line
-                                        #shellcheck disable=SC2154
-                                        l_response_JSON='{
-    "livedata_url": "http://'"$HTTP_HEADER_host"'/livedata"
+                            /)        HTTP_REQUEST_ABSPATH="/index.html"
+                                    sendFile
+                                                    ;;
+
+                            /api)              #using same JSON format as github api to describe api 
+                                            # echo "console.log(JSON.parse('$(curl -s https://api.github.com)'))" | node 
+                                            appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
+                                            appendHttpDefaultHeaders
+                                            #adding newline \n inside string by breaking line
+                                            #shellcheck disable=SC2154
+                                            l_response_JSON='{
+    "livedata_url": "http://'"$HTTP_HEADER_host"'/api/livedata"
 }
 '
                                         sendJSON "$l_response_JSON"
@@ -241,7 +245,8 @@ webserver()
                                         ;;
                                 
 
-                        /livedata|/livedata\?*)                   
+                            /api/livedata|/api/livedata\?*)      
+
                                         appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
                                         appendHttpDefaultHeaders
 
@@ -253,7 +258,9 @@ webserver()
                                                 getHostFromQS "192.168.3.16"
 
                                                 #l_response_JSON=$( cd .. ; timeout 20 ./gw -v json -l 8016 )
+                                                set -x
                                                l_response_JSON=$( cd .. ; ./gw -g "$VALUE_HOST" -v json -c l );
+                                               set +x
                                                l_exitcode_livedata=$?
                                                if [ $l_exitcode_livedata -gt 0 ]; then
                                                     l_response_JSON='{ "exitcode": '$l_exitcode_livedata' }'
@@ -265,29 +272,24 @@ webserver()
                                                 unset l_response_JSON l_exitcode_livedata
                                                 
                                                 ;;
-                                                   
-                                            *text/html*)
-                                                    HTTP_REQUEST_ABSPATH="/index.html"
-                                                    sendFile
-                                                ;;
                                             
                                             *text/plain*|*)
-                                                    # testcurl -v  -H "Acceept: text/plain" 192.168.3.3:8000/
-                                                    getHostFromQS "192.168.3.16"
-                                                    ltextplain=$( cd .. ; ./gw -g "$VALUE_HOST" -c l )
-                                                    l_exitcode_livedata=$?
-                                                    
-                                                    if [ $l_exitcode_livedata -gt 0 ]; then
-                                                        ltextplain="No response from $VALUE_HOST, exitcode : $l_exitcode_livedata"
-                                                    fi
-                                                    
-                                                    sendHttpTextPlain "$ltextplain"
 
-                                                    unset ltextplain l_exitcode_livedata
+                                             getHostFromQS "192.168.3.16"
+                                                ltextplain=$( cd .. ; ./gw -g "$VALUE_HOST" -c l )
+                                                l_exitcode_livedata=$?
+                                                
+                                                if [ $l_exitcode_livedata -gt 0 ]; then
+                                                    ltextplain="No response from $VALUE_HOST, exitcode : $l_exitcode_livedata"
+                                                fi
+                                                
+                                                sendHttpTextPlain "$ltextplain"
 
-                                                    ;;
+                                                unset ltextplain l_exitcode_livedata
+                                                ;;
                                         esac
                                     ;;
+
                                         
                         *".js"|*".css"|*".html") sendFile 
                                         ;;
