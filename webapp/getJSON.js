@@ -92,9 +92,28 @@ GetJSON.prototype.getWindspeed=function()
     return Number(this.data.windspeed.toFixed(1))
 }
 
+GetJSON.prototype.getWindspeed_mps=function()
+// highcharts windbarb requires m/s
+{
+    if (this.mode.wind === this.Mode.wind_mps)
+        return this.getWindgustspeed()
+    else
+        console.error('Converter to m/s neccessary for wind mode : '+this.mode.wind)
+}
+
 GetJSON.prototype.getWindgustspeed=function()
 {
     return Number(this.data.windgustspeed.toFixed(1))
+}
+
+GetJSON.prototype.getWindgustspeed_mps=function()
+// highcharts windbarb requires m/s
+{
+    if (this.mode.wind === this.Mode.wind_mps)
+        return this.getWindgustspeed()
+    else
+      console.error('Converter to m/s neccessary for wind mode : '+this.mode.wind)
+    
 }
 
 GetJSON.prototype.getWinddirection=function()
@@ -239,7 +258,7 @@ function UI()
 
     this.options={
         interval: 16000, // milliseconds request time for JSON
-        shifttime : 30  // shift time in minutes, when points gets deleted/shifted left
+        shifttime : 15  // shift time in minutes, when points gets deleted/shifted left
     }
 
     this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
@@ -321,7 +340,7 @@ UI.prototype.initChart=function()
                                 ,
                                 {
                                     name: 'Solar UVI',
-                                    type: 'column',
+                                    type: 'area',
                                     yAxis: 2,
                                 }] 
                         })
@@ -365,17 +384,16 @@ UI.prototype.initChart=function()
             data: [
             ],
             color: Highcharts.getOptions().colors[0],
-            fillColor: {
-                linearGradient: { x1: 0, x2: 0, y1: 0, y2: 1 },
-                stops: [
-                    [0, Highcharts.getOptions().colors[0]],
-                    [
-                        1,
-                        Highcharts.color(Highcharts.getOptions().colors[0])
-                            .setOpacity(0.25).get()
-                    ]
-                ]
-            },
+           // fillColor: {
+           //     linearGradient: { x1: 0, x2: 0, y1: 0, y2: 1 },
+           //     stops: [
+           //         [0, Highcharts.getOptions().colors[0]],
+           //         [1,
+           //             Highcharts.color(Highcharts.getOptions().colors[0])
+           //                 .setOpacity(0.25).get()
+           //         ]
+           //     ]
+           // },
             name: 'Wind speed',
             tooltip: {
                 valueSuffix: ' m/s'
@@ -442,32 +460,23 @@ UI.prototype.onJSON=function (ev)
     // Remove data if too old, otherwise they get skewed to the left
     if (this.windbarbchart.series[0].xData.length >= 1 &&   ( timestamp - this.windbarbchart.series[0].xData[this.windbarbchart.series[0].xData.length-1]) > this.options.interval*this.options.maxPoints)
     {
-        console.log('Removing data from chart to avoid skewed presentation')
+        console.log('Removing data from chart to avoid skewed presentation, max points: '+this.options.maxPoints)
         this.windbarbchart.series[0].setData([])
         this.windbarbchart.series[1].setData([])
+        this.windbarbchart.series[2].setData([])
         this.solarchart.series[0].setData([])
         this.solarchart.series[1].setData([])
     }   
 
-    this.windbarbchart.series[0].addPoint([timestamp,this.getJSON.getWindspeed(),this.getJSON.getWinddirection()],false, this.windbarbchart.series[0].points.length>this.options.maxPoints, false)
+    this.windbarbchart.series[0].addPoint([timestamp,this.getJSON.getWindgustspeed_mps(),this.getJSON.getWinddirection()],false, this.windbarbchart.series[0].points.length>this.options.maxPoints, false)
     // https://api.highcharts.com/highcharts/series.line.data
-    this.windbarbchart.series[1].addPoint({
-        x: timestamp,
-        y: this.getJSON.getWindspeed()
-    },false, this.windbarbchart.series[1].points.length>this.options.maxPoints, false)
-    this.windbarbchart.series[2].addPoint({
-        x: timestamp,
-        y: this.getJSON.getWindgustspeed()
-    },false, this.windbarbchart.series[1].points.length>this.options.maxPoints, false) 
+    // only support m/s unit
+    this.windbarbchart.series[1].addPoint({ x: timestamp, y: this.getJSON.getWindspeed_mps() },false, this.windbarbchart.series[1].points.length>this.options.maxPoints, false)
+    this.windbarbchart.series[2].addPoint({ x: timestamp, y: this.getJSON.getWindgustspeed_mps() },false, this.windbarbchart.series[2].points.length>this.options.maxPoints, false) 
 
    this.solarchart.series[0].addPoint([timestamp,this.getJSON.getSolarLight()],false, this.solarchart.series[0].points.length>37, false)
     this.solarchart.series[1].addPoint([timestamp,this.getJSON.getSolarUV()],false, this.solarchart.series[1].points.length>37, false)
    this.solarchart.series[2].addPoint([timestamp,this.getJSON.getSolarUVI()],false, this.solarchart.series[2].points.length>37, false)
-   //this.solarchart.series[2].points[0].pointAttr[""].fill='#ff0000'
-  //  this.solarchart.series[2].points[0].graphic.fill('#ff0000')
-   //this.solarchart.series[2].data[0].update({
-//    color: '#ff0000'
-//}, false);
 
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    

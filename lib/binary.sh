@@ -631,7 +631,11 @@ parseLivedata()
 
             readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "windspeed"
             export LIVEDATA_WINDSPEED_INTS10="$VALUE_UINT16BE"
-            convertWindLivedata "$LIVEDATA_WINDSPEED_INTS10"
+            convertScale10ToFloat "$LIVEDATA_WINDSPEED_INTS10"
+            #export LIVEDATA_WINDSPEED_MPS="$VALUE_SCALE10_FLOAT"
+            if [ "$UNIT_WIND_MODE" -ne "$UNIT_WIND_MPS" ]; then
+                convertWindLivedata "$LIVEDATA_WINDSPEED_INTS10"
+            fi
             export LIVEDATA_WINDSPEED="$VALUE_SCALE10_FLOAT"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex windspeed uint16be $LIVEDATA_WINDSPEED_INTS10 $LIVEDATA_WINDSPEED $UNIT_UNICODE_WIND_MPS"  
 
@@ -640,7 +644,11 @@ parseLivedata()
 
             readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "wingustspeed"
             export LIVEDATA_WINDGUSTSPEED_INTS10="$VALUE_UINT16BE"
-            convertWindLivedata "$VALUE_UINT16BE"
+            convertScale10ToFloat "$LIVEDATA_WINDGUSTSPEED_INTS10"
+            #export LIVEDATA_WINDGUSTSPEED_MPS="$VALUE_SCALE10_FLOAT"
+            if [ "$UNIT_WIND_MODE" -ne "$UNIT_WIND_MPS" ]; then
+                convertWindLivedata "$LIVEDATA_WINDGUSTSPEED_INTS10"
+            fi
             export LIVEDATA_WINDGUSTSPEED="$VALUE_SCALE10_FLOAT"
             
             setBeufort "$LIVEDATA_WINDGUSTSPEED_INTS10"
@@ -650,11 +658,15 @@ parseLivedata()
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex windgustspeed uint16be $LIVEDATA_WINDGUSTSPEED_INTS10 $LIVEDATA_WINDGUSTSPEED $UNIT_UNICODE_WIND_MPS"
 
 
-        elif [ "$ldf" -eq "$LDF_DAYLWINDMAX" ]; then
+        elif [ "$ldf" -eq "$LDF_DAILYWINDMAX" ]; then
 
             readUInt16BE "$VALUE_PARSEPACKET_BUFFERNAME" "winddailymax"
             export LIVEDATA_WINDDAILYMAX_INTS10="$VALUE_UINT16BE"
-            convertWindLivedata "$VALUE_UINT16BE"
+            convertScale10ToFloat "$LIVEDATA_WINDDAILYMAX_INTS10"
+            #export LIVEDATA_WINDDAILYMAX_MPS="$VALUE_SCALE10_FLOAT"
+            if [ "$UNIT_WIND_MODE" -ne "$UNIT_WIND_MPS" ]; then
+                convertWindLivedata "$LIVEDATA_WINDDAILYMAX_INTS10"
+            fi
             export LIVEDATA_WINDDAILYMAX="$VALUE_SCALE10_FLOAT"
             [ "$DEBUG_PARSE_LIVEDATA" -eq 1 ] && echo >&2 "$DEBUG_FUNC $ldf_hex winddailymax uint16be $LIVEDATA_WINDDAILYMAX_INTS10 $LIVEDATA_WINDDAILYMAX $UNIT_UNICODE_WIND_MPS"
 

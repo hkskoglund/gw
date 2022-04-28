@@ -26,7 +26,7 @@ LDF_LIGHT=$((0x15))         #Light (lux) 4
 LDF_UV=$((0x16))            #UV (uW/m2) 2
 LDF_UVI=$((0x17))           #UVI (0-15 index) 1
 LDF_TIME=$((0x18))          #Date and time 6
-LDF_DAYLWINDMAX=$((0X19))   #Day max wind(m/s) 2
+LDF_DAILYWINDMAX=$((0X19))   #Day max wind(m/s) 2
 
     LDF_TEMP1=$((0x1A)) #Temperature 1(℃) 2
     LDF_TEMP2=$((0x1B)) #Temperature 2(℃) 2
