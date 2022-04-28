@@ -280,8 +280,8 @@ UI.prototype.initChart=function()
                         yAxis: [{
                             //https://api.highcharts.com/highcharts/yAxis.max
                             title: false,
-                            min : null,
-                            max : null
+                            min : 0,
+                            //max : null
                             //max : 1.0
                         //  max : 40
                         },
@@ -295,8 +295,8 @@ UI.prototype.initChart=function()
                     // uvi
                     {
                         title:false,
-                        min: null,
-                        max: null
+                        min: 0,
+                        max: 11
                     }
                 ],
                         xAxis: [{
