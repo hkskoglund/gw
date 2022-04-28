@@ -342,10 +342,31 @@ UI.prototype.initChart=function()
                                     name: 'Solar UVI',
                                     type: 'area',
                                     yAxis: 2,
+                                    data: [],
+                                    zones: [{
+                                        value: 2,
+                                        color:  '#2a9502'   // green
+                                    },
+                                    {   
+                                        value: 5,
+                                        color: '#f7e400'    // yellow
+                                    },
+                                    {   
+                                        value: 7,
+                                        color: '#f85900'    // orange
+                                    },
+                                    {   
+                                        value: 10,
+                                        color: '#d8220e'    // redish
+                                    },
+                                    {   
+                                        color: '#6b49c8'    // magenta
+                                    }
+                                   ]
                                 }] 
                         })
 
-
+    // based on https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/demo/windbarb-series/
     this.windbarbchart= new Highcharts.Chart({ chart : {
         renderTo: 'windbarb' },
 
@@ -379,7 +400,7 @@ UI.prototype.initChart=function()
                 valueSuffix: ' m/s'
             }
         }, {
-            type: 'area',
+            type: 'areaspline',
             keys: ['y', 'rotation'], // rotation is not used here
             data: [
             ],
@@ -398,13 +419,13 @@ UI.prototype.initChart=function()
             tooltip: {
                 valueSuffix: ' m/s'
             },
-            states: {
-                inactive: {
-                    opacity: 1
-                }
-            }
+           // states: {
+           //     inactive: {
+           //         opacity: 1
+           //     }
+           // }
         },{
-            type: 'area',
+            type: 'areaspline',
             data: [],
             name: 'Wind gust speed',
             tooltip: {
@@ -476,7 +497,7 @@ UI.prototype.onJSON=function (ev)
 
    this.solarchart.series[0].addPoint([timestamp,this.getJSON.getSolarLight()],false, this.solarchart.series[0].points.length>37, false)
     this.solarchart.series[1].addPoint([timestamp,this.getJSON.getSolarUV()],false, this.solarchart.series[1].points.length>37, false)
-   this.solarchart.series[2].addPoint([timestamp,this.getJSON.getSolarUVI()],false, this.solarchart.series[2].points.length>37, false)
+   this.solarchart.series[2].addPoint([timestamp, this.getJSON.getSolarUVI()],false, this.solarchart.series[2].points.length>37, false)
 
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
