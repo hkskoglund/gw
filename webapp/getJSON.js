@@ -285,13 +285,13 @@ UI.prototype.initChart=function()
                             //max : 1.0
                         //  max : 40
                         },
-                    // uv
-                    {
-                        title:false,
-                        opposite: true,
-                        min: null,
-                        max: null
-                    },
+                 // uv
+                 //   {
+                 //       title:false,
+                 //       opposite: true,
+                 //       min: null,
+                 //       max: null
+                 //   },
                     // uvi
                     {
                         title:false,
@@ -331,17 +331,17 @@ UI.prototype.initChart=function()
                                     yAxis: 0,
                                     data: [],
                                 },
-                                {
-                                    name: 'Solar UV',
-                                    type: 'spline',
-                                    data: [],
-                                    yAxis: 1,
-                                }
-                                ,
+                               // {
+                               //     name: 'Solar UV',
+                               //     type: 'spline',
+                               //     data: [],
+                               //     yAxis: 1,
+                               // }
+                               // ,
                                 {
                                     name: 'Solar UVI',
                                     type: 'area',
-                                    yAxis: 2,
+                                    yAxis: 1,
                                     data: [],
                                     zones: [{
                                         value: 2,
@@ -496,8 +496,8 @@ UI.prototype.onJSON=function (ev)
     this.windbarbchart.series[2].addPoint({ x: timestamp, y: this.getJSON.getWindgustspeed_mps() },false, this.windbarbchart.series[2].points.length>this.options.maxPoints, false) 
 
    this.solarchart.series[0].addPoint([timestamp,this.getJSON.getSolarLight()],false, this.solarchart.series[0].points.length>37, false)
-    this.solarchart.series[1].addPoint([timestamp,this.getJSON.getSolarUV()],false, this.solarchart.series[1].points.length>37, false)
-   this.solarchart.series[2].addPoint([timestamp, this.getJSON.getSolarUVI()],false, this.solarchart.series[2].points.length>37, false)
+   // this.solarchart.series[1].addPoint([timestamp,this.getJSON.getSolarUV()],false, this.solarchart.series[1].points.length>37, false)
+   this.solarchart.series[1].addPoint([timestamp, this.getJSON.getSolarUVI()],false, this.solarchart.series[1].points.length>37, false)
 
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
