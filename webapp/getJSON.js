@@ -96,7 +96,7 @@ GetJSON.prototype.getWindspeed_mps=function()
 // highcharts windbarb requires m/s
 {
     if (this.mode.wind === this.Mode.wind_mps)
-        return this.getWindgustspeed()
+        return this.getWindspeed()
     else
         console.error('Converter to m/s neccessary for wind mode : '+this.mode.wind)
 }
