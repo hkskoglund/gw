@@ -274,6 +274,9 @@ UI.prototype.initChart=function()
     this.solarchart= new Highcharts.Chart({ chart : {
                             renderTo: 'solarchart'
                         },
+                        credits: {
+                            enabled: false
+                        },
                         title: {
                             text: 'Solar'
                         },
@@ -281,6 +284,7 @@ UI.prototype.initChart=function()
                             //https://api.highcharts.com/highcharts/yAxis.max
                             title: false,
                             min : 0,
+                            tickInterval: 50
                             //max : null
                             //max : 1.0
                         //  max : 40
@@ -296,7 +300,8 @@ UI.prototype.initChart=function()
                     {
                         title:false,
                         min: 0,
-                        max: 11
+                        tickInterval:1,
+                        allowDecimals: false
                     }
                 ],
                         xAxis: [{
@@ -308,19 +313,6 @@ UI.prototype.initChart=function()
                             offset : 10,
 
                             tickpixelinterval: 150,
-
-                            labels:
-                                {
-                                    enabled: true,
-                                    style: {
-                                        //color: '#6D869F',
-                                        fontWeight: 'bold',
-                                        fontSize: '10px',
-
-                                    },
-
-                                    y: 18
-                                },
 
                         }],
 
@@ -380,7 +372,8 @@ UI.prototype.initChart=function()
         },
 
         yAxis: {
-            title : false
+            title : false,
+            tickInterval: 0.5
         },
     
       //  plotOptions: {
@@ -477,6 +470,9 @@ UI.prototype.onJSON=function (ev)
     // https://www.highcharts.com/changelog/
 
     var timestamp=this.getJSON.getTimestamp()
+
+    if (this.solarchart.series[0].userOptions.tooltip === undefined || this.solarchart.series[0].userOptions.tooltip.valueSuffix === undefined )
+        this.solarchart.series[0].update({tooltip: { valueSuffix: ' '+this.getJSON.getUnitSolarLight() }})
     
     // Remove data if too old, otherwise they get skewed to the left
     if (this.windbarbchart.series[0].xData.length >= 1 &&   ( timestamp - this.windbarbchart.series[0].xData[this.windbarbchart.series[0].xData.length-1]) > this.options.interval*this.options.maxPoints)
