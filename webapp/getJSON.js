@@ -86,6 +86,16 @@ GetJSON.prototype.intemp=function()
     return this.data.intemp.toFixed(1)
 }
 
+GetJSON.prototype.inhumidity=function()
+{
+    return this.data.inhumidity
+}
+
+GetJSON.prototype.outhumidity=function()
+{
+    return this.data.outhumidity
+}
+
 GetJSON.prototype.windspeed=function()
 {
     //https://javascript.info/number
@@ -293,6 +303,13 @@ UI.prototype.initChart=function()
         //max : 1.0
     //  max : 40
     },
+    // humidity
+    {
+        title:false,
+        opposite: true,
+        min: 0,
+        max: 100
+    },
 
 ],
     xAxis: [{
@@ -310,15 +327,87 @@ UI.prototype.initChart=function()
     series: [
         {
                 name: 'Outdoor',
-                type: 'spline',
+                type: 'areaspline',
                 yAxis: 0,
                 data: [],
+             //   zIndex: 4
             },
             {
                 name: 'Indoor',
-                type: 'spline',
+                type: 'areaspline',
                 data: [],
                 yAxis: 0,
+           //     zIndex: 3
+            },
+            {
+                name: 'Outdoor humidity',
+                type: 'spline',
+                data: [],
+                yAxis: 1,
+                tooltip: {
+                    valueSuffix: ' %'
+                }
+            //    zIndex: 2
+            },
+            {
+                name: 'Indoor humidity',
+                type: 'spline',
+                data: [],
+                yAxis: 1,
+                tooltip: {
+                    valueSuffix: ' %'
+                }
+            //    zIndex: 1
+            }
+           ] 
+    })
+
+    this.pressurechart= new Highcharts.Chart({ chart : {
+        renderTo: 'pressurechart'
+    },
+    credits: {
+        enabled: false
+    },
+    title: {
+        text: 'Pressure'
+    },
+    yAxis: [{
+        //https://api.highcharts.com/highcharts/yAxis.max
+        title: false,
+        tickInterval: 5,
+        min: 950
+        //max : null
+        //max : 1.0
+    //  max : 40
+    }
+
+],
+    xAxis: [{
+
+        id: 'datetime-axis',
+
+        type: 'datetime',
+
+        offset : 10,
+
+        tickpixelinterval: 150,
+
+    }],
+
+    series: [
+        {
+                name: 'Relative',
+                type: 'areaspline',
+                yAxis: 0,
+                data: [],
+             //   zIndex: 4
+            },
+            {
+                name: 'Absolute',
+                type: 'areaspline',
+                data: [],
+                yAxis: 0,
+           //     zIndex: 3
             }
            ] 
     })
@@ -523,9 +612,20 @@ UI.prototype.onJSON=function (ev)
 
     var timestamp=this.getJSON.timestamp()
 
-    this.temperaturechart.setSubtitle({ text: 'Outdoor '+this.getJSON.outtemp()+' '+this.getJSON.unitTemp()+' Indoor '+this.getJSON.intemp()+' '+this.getJSON.unitTemp()})
+    this.temperaturechart.setSubtitle({ text: 'Outdoor '+this.getJSON.outtemp()+' '+this.getJSON.unitTemp()+' '+this.getJSON.outhumidity()+' % Indoor '+this.getJSON.intemp()+' '+this.getJSON.unitTemp()+this.getJSON.inhumidity()+'%' })
     this.windbarbchart.setSubtitle({ text: this.getJSON.windspeed()+'/'+this.getJSON.windgustspeed()+' '+this.getJSON.unitWind()+' '+this.getJSON.winddirection_compass()+' '+this.getJSON.windgustbeufort_description()})
     this.solarchart.setSubtitle({ text: this.getJSON.solar_light()+' '+this.getJSON.unitSolarlight()+' UVI ' +this.getJSON.solar_uvi_description() +' ('+this.getJSON.solar_uvi()+')'})
+    this.pressurechart.setSubtitle({ text: 'Relative '+this.getJSON.relbaro()+ ' '+ this.getJSON.unitPressure()+' Absolute ' + this.getJSON.absbaro()})
+
+    if (this.temperaturechart.series[0].userOptions.tooltip === undefined || this.temperaturechart.series[0].userOptions.tooltip.valueSuffix === undefined ) {
+        this.temperaturechart.series[0].update({tooltip: { valueSuffix: ' '+this.getJSON.unitTemp() }})
+        this.temperaturechart.series[1].update({tooltip: { valueSuffix: ' '+this.getJSON.unitTemp() }})
+    }
+    
+    if (this.pressurechart.series[0].userOptions.tooltip === undefined || this.solarchart.series[0].userOptions.tooltip.valueSuffix === undefined ) {
+        this.pressurechart.series[0].update({tooltip: { valueSuffix: ' '+this.getJSON.unitPressure() }})
+        this.pressurechart.series[1].update({tooltip: { valueSuffix: ' '+this.getJSON.unitPressure() }})
+    }
 
     if (this.solarchart.series[0].userOptions.tooltip === undefined || this.solarchart.series[0].userOptions.tooltip.valueSuffix === undefined )
         this.solarchart.series[0].update({tooltip: { valueSuffix: ' '+this.getJSON.unitSolarlight() }})
@@ -534,15 +634,19 @@ UI.prototype.onJSON=function (ev)
     if (this.windbarbchart.series[0].xData.length >= 1 &&   ( timestamp - this.windbarbchart.series[0].xData[this.windbarbchart.series[0].xData.length-1]) > this.options.interval*this.options.maxPoints)
     {
         //console.log('Removing data from chart to avoid skewed presentation, max points: '+this.options.maxPoints)
-        this.windbarbchart.series[0].setData([])
-        this.windbarbchart.series[1].setData([])
-        this.windbarbchart.series[2].setData([])
-        this.solarchart.series[0].setData([])
-        this.solarchart.series[1].setData([])
+        this.temperaturechart.series.forEach(function (element) { element.setData([]) })
+        this.pressurechart.series.forEach(function (element) { element.setData([]) })
+        this.windbarbchart.series.forEach(function (element) { element.setData([]) })
+        this.solarchart.series.forEach(function (element) { element.setData([]) })
     }   
 
     this.temperaturechart.series[0].addPoint([timestamp,Number(this.getJSON.outtemp())],false, this.temperaturechart.series[0].points.length>this.options.maxPoints, false)
     this.temperaturechart.series[1].addPoint([timestamp,Number(this.getJSON.intemp())],false, this.temperaturechart.series[1].points.length>this.options.maxPoints, false)
+    this.temperaturechart.series[2].addPoint([timestamp,Number(this.getJSON.outhumidity())],false, this.temperaturechart.series[2].points.length>this.options.maxPoints, false)
+    this.temperaturechart.series[3].addPoint([timestamp,Number(this.getJSON.inhumidity())],false, this.temperaturechart.series[3].points.length>this.options.maxPoints, false)
+
+    this.pressurechart.series[0].addPoint([timestamp,Number(this.getJSON.relbaro())],false, this.pressurechart.series[0].points.length>this.options.maxPoints, false)
+    this.pressurechart.series[1].addPoint([timestamp,Number(this.getJSON.absbaro())],false, this.pressurechart.series[1].points.length>this.options.maxPoints, false)
 
     this.windbarbchart.series[0].addPoint([timestamp,Number(this.getJSON.windgustspeed_mps()),this.getJSON.winddirection()],false, this.windbarbchart.series[0].points.length>this.options.maxPoints, false)
     // https://api.highcharts.com/highcharts/series.line.data
@@ -556,11 +660,10 @@ UI.prototype.onJSON=function (ev)
 
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
-   this.temperaturechart.redraw()
+    this.temperaturechart.redraw()
+    this.pressurechart.redraw()
     this.windbarbchart.redraw()
     this.solarchart.redraw()
-
-
 }
 
 https://stackoverflow.com/questions/15455009/javascript-call-apply-vs-bind
