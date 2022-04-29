@@ -615,9 +615,9 @@ UI.prototype.onJSON=function (ev)
 
     var timestamp=this.getJSON.timestamp()
 
-    this.temperaturechart.setSubtitle({ text: 'Outdoor '+this.getJSON.outtemp()+' '+this.getJSON.unitTemp()+' '+this.getJSON.outhumidity()+' % Indoor '+this.getJSON.intemp()+' '+this.getJSON.unitTemp()+this.getJSON.inhumidity()+'%' })
-    this.windbarbchart.setSubtitle({ text: this.getJSON.windspeed()+'/'+this.getJSON.windgustspeed()+' '+this.getJSON.unitWind()+' '+this.getJSON.winddirection_compass()+' '+this.getJSON.windgustbeufort_description()})
-    this.solarchart.setSubtitle({ text: this.getJSON.solar_light()+' '+this.getJSON.unitSolarlight()+' UVI ' +this.getJSON.solar_uvi_description() +' ('+this.getJSON.solar_uvi()+')'})
+    this.temperaturechart.setSubtitle({ text: 'Outdoor '+this.getJSON.outtemp()+' ' + this.getJSON.unitTemp()+' '+this.getJSON.outhumidity()+' % Indoor '+this.getJSON.intemp()+' '+this.getJSON.unitTemp()+this.getJSON.inhumidity()+'%' })
+    this.windbarbchart.setSubtitle({ text: 'Speed '+ this.getJSON.windspeed()+' '+this.getJSON.unitWind()+' Gust '+ this.getJSON.windgustspeed()+' '+this.getJSON.unitWind()+' '+this.getJSON.winddirection_compass()+' '+this.getJSON.windgustbeufort_description()})
+    this.solarchart.setSubtitle({ text: 'Radiation '+this.getJSON.solar_light()+' '+this.getJSON.unitSolarlight()+' UVI ' +this.getJSON.solar_uvi_description() +' ('+this.getJSON.solar_uvi()+')'})
     this.pressurechart.setSubtitle({ text: 'Relative '+this.getJSON.relbaro()+ ' '+ this.getJSON.unitPressure()+' Absolute ' + this.getJSON.absbaro()})
 
     if (this.temperaturechart.series[0].userOptions.tooltip === undefined || this.temperaturechart.series[0].userOptions.tooltip.valueSuffix === undefined ) {
