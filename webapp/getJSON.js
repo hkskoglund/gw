@@ -275,6 +275,53 @@ function UI()
 
 UI.prototype.initChart=function()
 {
+
+    this.temperaturechart= new Highcharts.Chart({ chart : {
+        renderTo: 'temperaturechart'
+    },
+    credits: {
+        enabled: false
+    },
+    title: {
+        text: 'Temperature'
+    },
+    yAxis: [{
+        //https://api.highcharts.com/highcharts/yAxis.max
+        title: false,
+        tickInterval: 1
+        //max : null
+        //max : 1.0
+    //  max : 40
+    },
+
+],
+    xAxis: [{
+
+        id: 'datetime-axis',
+
+        type: 'datetime',
+
+        offset : 10,
+
+        tickpixelinterval: 150,
+
+    }],
+
+    series: [
+        {
+                name: 'Outdoor',
+                type: 'spline',
+                yAxis: 0,
+                data: [],
+            },
+            {
+                name: 'Indoor',
+                type: 'spline',
+                data: [],
+                yAxis: 0,
+            }
+           ] 
+    })
     
     this.solarchart= new Highcharts.Chart({ chart : {
                             renderTo: 'solarchart'
@@ -365,7 +412,7 @@ UI.prototype.initChart=function()
 
     // based on https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/demo/windbarb-series/
     this.windbarbchart= new Highcharts.Chart({ chart : {
-        renderTo: 'windbarb' },
+        renderTo: 'windbarbchart' },
 
         title: {
             text: 'Wind'
@@ -476,6 +523,7 @@ UI.prototype.onJSON=function (ev)
 
     var timestamp=this.getJSON.timestamp()
 
+    this.temperaturechart.setSubtitle({ text: 'Outdoor '+this.getJSON.outtemp()+' '+this.getJSON.unitTemp()+' Indoor '+this.getJSON.intemp()+' '+this.getJSON.unitTemp()})
     this.windbarbchart.setSubtitle({ text: this.getJSON.windspeed()+'/'+this.getJSON.windgustspeed()+' '+this.getJSON.unitWind()+' '+this.getJSON.winddirection_compass()+' '+this.getJSON.windgustbeufort_description()})
     this.solarchart.setSubtitle({ text: this.getJSON.solar_light()+' '+this.getJSON.unitSolarlight()+' UVI ' +this.getJSON.solar_uvi_description() +' ('+this.getJSON.solar_uvi()+')'})
 
@@ -493,6 +541,9 @@ UI.prototype.onJSON=function (ev)
         this.solarchart.series[1].setData([])
     }   
 
+    this.temperaturechart.series[0].addPoint([timestamp,Number(this.getJSON.outtemp())],false, this.temperaturechart.series[0].points.length>this.options.maxPoints, false)
+    this.temperaturechart.series[1].addPoint([timestamp,Number(this.getJSON.intemp())],false, this.temperaturechart.series[1].points.length>this.options.maxPoints, false)
+
     this.windbarbchart.series[0].addPoint([timestamp,Number(this.getJSON.windgustspeed_mps()),this.getJSON.winddirection()],false, this.windbarbchart.series[0].points.length>this.options.maxPoints, false)
     // https://api.highcharts.com/highcharts/series.line.data
     // only support m/s unit
@@ -505,6 +556,7 @@ UI.prototype.onJSON=function (ev)
 
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
+   this.temperaturechart.redraw()
     this.windbarbchart.redraw()
     this.solarchart.redraw()
 
