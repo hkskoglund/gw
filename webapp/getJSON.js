@@ -51,12 +51,12 @@ GetJSON.prototype.setInterval= function(interval)
     this.requestLivedata()
 
     if (this.intervalID != null && this.intervalID != undefined) {
-        console.log('clearing interval id:'+this.intervalID)
+       // console.log('clearing interval id:'+this.intervalID)
         clearInterval(this.intervalID)
     }
     
     this.intervalID=setInterval(this.requestLivedata.bind(this),interval)
-    console.log('Interval:'+interval+' id:'+this.intervalID)
+    //console.log('Interval:'+interval+' id:'+this.intervalID)
 }
 
 GetJSON.prototype.transferAbort = function(ev)
@@ -68,120 +68,125 @@ GetJSON.prototype.setUrl=function(host,port,path)
 { 
 
     this.url='http://'+host+':'+port+path
-    console.log('request data from url:'+this.url)
+    //console.log('request data from url:'+this.url)
 }
 
-GetJSON.prototype.getTimestamp=function()
+GetJSON.prototype.timestamp=function()
 {
     return this.data.timestamp
 }
 
-GetJSON.prototype.getOuttemp=function()
+GetJSON.prototype.outtemp=function()
 {
-    return Number(this.data.outtemp.toFixed(1))
+    return this.data.outtemp.toFixed(1)
 }
 
-GetJSON.prototype.getIntemp=function()
+GetJSON.prototype.intemp=function()
 {
-    return Number(this.data.intemp.toFixed(1))
+    return this.data.intemp.toFixed(1)
 }
 
-GetJSON.prototype.getWindspeed=function()
+GetJSON.prototype.windspeed=function()
 {
     //https://javascript.info/number
-    return Number(this.data.windspeed.toFixed(1))
+    return this.data.windspeed.toFixed(1)
 }
 
-GetJSON.prototype.getWindspeed_mps=function()
+GetJSON.prototype.windspeed_mps=function()
 // highcharts windbarb requires m/s
 {
     if (this.mode.wind === this.Mode.wind_mps)
-        return this.getWindspeed()
+        return this.windspeed()
     else
         console.error('Converter to m/s neccessary for wind mode : '+this.mode.wind)
 }
 
-GetJSON.prototype.getWindgustspeed=function()
+GetJSON.prototype.windgustspeed=function()
 {
-    return Number(this.data.windgustspeed.toFixed(1))
+    return this.data.windgustspeed.toFixed(1)
 }
 
-GetJSON.prototype.getWindgustspeed_mps=function()
+GetJSON.prototype.windgustspeed_mps=function()
 // highcharts windbarb requires m/s
 {
     if (this.mode.wind === this.Mode.wind_mps)
-        return this.getWindgustspeed()
+        return this.windgustspeed()
     else
       console.error('Converter to m/s neccessary for wind mode : '+this.mode.wind)
     
 }
 
-GetJSON.prototype.getWinddirection=function()
+GetJSON.prototype.winddirection=function()
 {
     return this.data.winddirection
 }
-GetJSON.prototype.getWinddirection_compass=function()
+GetJSON.prototype.winddirection_compass=function()
 {
     return  this.data.winddirection_compass + ' ('+this.data.winddirection+this.unit.winddirection+')'
 }
 
-GetJSON.prototype.getWindgustBeufort_description=function()
+GetJSON.prototype.windgustbeufort_description=function()
 {
     return this.data.windgustspeed_beufort_description+' ('+this.data.windgustspeed_beufort+')'
 }
 
-GetJSON.prototype.getRelbaro= function()
+GetJSON.prototype.relbaro= function()
 {
     if (this.mode.pressure === this.Mode.pressure_hpa)
-        return Number(this.data.relbaro.toFixed(1))
+        return this.data.relbaro.toFixed(1)
     else if (this.mode.pressure === this.Mode.pressure_inhg)
-        return Number(this.data.relbaro.toFixed(2))
+        return this.data.relbaro.toFixed(2)
 }
 
-GetJSON.prototype.getAbsbaro= function()
+GetJSON.prototype.absbaro= function()
 {
     if (this.mode.pressure === this.Mode.pressure_hpa)
-        return Number(this.data.absbaro.toFixed(1))
+        return this.data.absbaro.toFixed(1)
     else if (this.mode.pressure === this.Mode.pressure_inhg)
-        return Number(this.data.absbaro.toFixed(2))
+        return this.data.absbaro.toFixed(2)
 }
 
-GetJSON.prototype.getSolarLight = function()
+GetJSON.prototype.solar_light = function()
 {
-    return Number(this.data.solar_light.toFixed(1))
+    return this.data.solar_light.toFixed(1)
 }
 
-GetJSON.prototype.getSolarUV = function()
+GetJSON.prototype.solar_uv = function()
 {
-    return Number(this.data.solar_uv.toFixed(1))
+    return this.data.solar_uv.toFixed(1)
 }
 
-GetJSON.prototype.getSolarUVI=function()
+GetJSON.prototype.solar_uvi=function()
 {
     return this.data.solar_uvi
 }
 
-GetJSON.prototype.getUnitTemp=function()
+GetJSON.prototype.unitTemp=function()
 {
     return this.unit.temperature
 }
 
-GetJSON.prototype.getUnitWind=function()
+GetJSON.prototype.unitWind=function()
 {
     return this.unit.wind
 }
 
-GetJSON.prototype.getUnitSolarLight=function()
+GetJSON.prototype.unitSolarlight=function()
 {
     return this.unit.solar_light
 }
 
-GetJSON.prototype.getUnitSolarUV=function()
+GetJSON.prototype.solar_uvi_description=function()
+{
+    return this.data.solar_uvi_description
+}
+
+GetJSON.prototype.unitSolarUV=function()
 {
     return this.unit.solar_uv
 }
 
-GetJSON.prototype.getUnitPressure=function()
+GetJSON.prototype.unitPressure=function()
 {
     return this.unit.pressure
 }
@@ -189,7 +194,7 @@ GetJSON.prototype.getUnitPressure=function()
 GetJSON.prototype.transferComplete=function(evt)
 {
     if (this.req.responseText.length > 0) {
-        console.log('json:'+this.req.responseText)
+        //console.log('json:'+this.req.responseText)
         this.json = JSON.parse(this.req.responseText)
         this.data = this.json.data
         this.unit = this.json.unit
@@ -222,7 +227,7 @@ function GetEcowittJSON(host,port,path,interval)
 }
 
 GetEcowittJSON.prototype= Object.create(GetJSON.prototype)
-GetEcowittJSON.prototype.getOuttemp=function()
+GetEcowittJSON.prototype.outtemp=function()
 {
     return this.json.outdoor.temperature.value
 }
@@ -436,26 +441,26 @@ UI.prototype.onJSON=function (ev)
    // if (this.weatherElement.style.display==="none")
    //   this.weatherElement.style.display="block"
 
-    this.outtempElement.textContent=this.getJSON.getOuttemp()
-    this.intempElement.textContent=this.getJSON.getIntemp()
-    this.unitTempElement.textContent=this.getJSON.getUnitTemp()
+    this.outtempElement.textContent=this.getJSON.outtemp()
+    this.intempElement.textContent=this.getJSON.intemp()
+    this.unitTempElement.textContent=this.getJSON.unitTemp()
 
-    this.windspeedElement.textContent=this.getJSON.getWindspeed()
-    this.windgustspeedElement.textContent=this.getJSON.getWindgustspeed()
-    this.winddirection_compassElement.textContent=this.getJSON.getWinddirection_compass()
-    this.windgustspeed_beufort_descriptionElement.textContent=this.getJSON.getWindgustBeufort_description()
-    this.unitWindElement.textContent=this.getJSON.getUnitWind()
-    this.meter_windgustspeedElement.value=this.getJSON.getWindgustspeed()
+    this.windspeedElement.textContent=this.getJSON.windspeed()
+    this.windgustspeedElement.textContent=this.getJSON.windgustspeed()
+    this.winddirection_compassElement.textContent=this.getJSON.winddirection_compass()
+    this.windgustspeed_beufort_descriptionElement.textContent=this.getJSON.windgustbeufort_description()
+    this.unitWindElement.textContent=this.getJSON.unitWind()
+    this.meter_windgustspeedElement.value=this.getJSON.windgustspeed()
 
-    this.relbaroElement.textContent=this.getJSON.getRelbaro()
-    this.absbaroElement.textContent=this.getJSON.getAbsbaro()
-    this.unitpressureElement.textContent=this.getJSON.getUnitPressure()
+    this.relbaroElement.textContent=this.getJSON.relbaro()
+    this.absbaroElement.textContent=this.getJSON.absbaro()
+    this.unitpressureElement.textContent=this.getJSON.unitPressure()
 
-    this.solar_lightElement.textContent=this.getJSON.getSolarLight()
-    this.unit_solar_lightElement.textContent=this.getJSON.getUnitSolarLight()
-    this.solar_uvElement.textContent=this.getJSON.getSolarUV()
-    this.unit_solar_uvElement.textContent=this.getJSON.getUnitSolarUV()
-    this.solar_uviElement.textContent=this.getJSON.getSolarUVI()
+    this.solar_lightElement.textContent=this.getJSON.solar_light()
+    this.unit_solar_lightElement.textContent=this.getJSON.unitSolarlight()
+    this.solar_uvElement.textContent=this.getJSON.solar_uv()
+    this.unit_solar_uvElement.textContent=this.getJSON.unitSolarUV()
+    this.solar_uviElement.textContent=this.getJSON.solar_uvi()
 
     /** From highcharts.src.js
 	 * Add a point dynamically after chart load time
@@ -469,15 +474,18 @@ UI.prototype.onJSON=function (ev)
 
     // https://www.highcharts.com/changelog/
 
-    var timestamp=this.getJSON.getTimestamp()
+    var timestamp=this.getJSON.timestamp()
+
+    this.windbarbchart.setSubtitle({ text: this.getJSON.windspeed()+'/'+this.getJSON.windgustspeed()+' '+this.getJSON.unitWind()+' '+this.getJSON.winddirection_compass()+' '+this.getJSON.windgustbeufort_description()})
+    this.solarchart.setSubtitle({ text: this.getJSON.solar_light()+' '+this.getJSON.unitSolarlight()+' UVI ' +this.getJSON.solar_uvi_description() +' ('+this.getJSON.solar_uvi()+')'})
 
     if (this.solarchart.series[0].userOptions.tooltip === undefined || this.solarchart.series[0].userOptions.tooltip.valueSuffix === undefined )
-        this.solarchart.series[0].update({tooltip: { valueSuffix: ' '+this.getJSON.getUnitSolarLight() }})
+        this.solarchart.series[0].update({tooltip: { valueSuffix: ' '+this.getJSON.unitSolarlight() }})
     
     // Remove data if too old, otherwise they get skewed to the left
     if (this.windbarbchart.series[0].xData.length >= 1 &&   ( timestamp - this.windbarbchart.series[0].xData[this.windbarbchart.series[0].xData.length-1]) > this.options.interval*this.options.maxPoints)
     {
-        console.log('Removing data from chart to avoid skewed presentation, max points: '+this.options.maxPoints)
+        //console.log('Removing data from chart to avoid skewed presentation, max points: '+this.options.maxPoints)
         this.windbarbchart.series[0].setData([])
         this.windbarbchart.series[1].setData([])
         this.windbarbchart.series[2].setData([])
@@ -485,15 +493,15 @@ UI.prototype.onJSON=function (ev)
         this.solarchart.series[1].setData([])
     }   
 
-    this.windbarbchart.series[0].addPoint([timestamp,this.getJSON.getWindgustspeed_mps(),this.getJSON.getWinddirection()],false, this.windbarbchart.series[0].points.length>this.options.maxPoints, false)
+    this.windbarbchart.series[0].addPoint([timestamp,Number(this.getJSON.windgustspeed_mps()),this.getJSON.winddirection()],false, this.windbarbchart.series[0].points.length>this.options.maxPoints, false)
     // https://api.highcharts.com/highcharts/series.line.data
     // only support m/s unit
-    this.windbarbchart.series[1].addPoint({ x: timestamp, y: this.getJSON.getWindspeed_mps() },false, this.windbarbchart.series[1].points.length>this.options.maxPoints, false)
-    this.windbarbchart.series[2].addPoint({ x: timestamp, y: this.getJSON.getWindgustspeed_mps() },false, this.windbarbchart.series[2].points.length>this.options.maxPoints, false) 
+    this.windbarbchart.series[1].addPoint({ x: timestamp, y: Number(this.getJSON.windspeed_mps()) },false, this.windbarbchart.series[1].points.length>this.options.maxPoints, false)
+    this.windbarbchart.series[2].addPoint({ x: timestamp, y: Number(this.getJSON.windgustspeed_mps()) },false, this.windbarbchart.series[2].points.length>this.options.maxPoints, false) 
 
-   this.solarchart.series[0].addPoint([timestamp,this.getJSON.getSolarLight()],false, this.solarchart.series[0].points.length>37, false)
-   // this.solarchart.series[1].addPoint([timestamp,this.getJSON.getSolarUV()],false, this.solarchart.series[1].points.length>37, false)
-   this.solarchart.series[1].addPoint([timestamp, this.getJSON.getSolarUVI()],false, this.solarchart.series[1].points.length>37, false)
+   this.solarchart.series[0].addPoint([timestamp,Number(this.getJSON.solar_light())],false, this.solarchart.series[0].points.length>37, false)
+   // this.solarchart.series[1].addPoint([timestamp,Number(this.getJSON.solar_uv())],false, this.solarchart.series[1].points.length>37, false)
+   this.solarchart.series[1].addPoint([timestamp, Number(this.getJSON.solar_uvi())],false, this.solarchart.series[1].points.length>37, false)
 
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
@@ -506,7 +514,7 @@ UI.prototype.onJSON=function (ev)
 https://stackoverflow.com/questions/15455009/javascript-call-apply-vs-bind
 if (Function.prototype.bind === undefined)
 {
-    console.log('javascript bind not found, creating new Function.prototype.bind,'+window.navigator.userAgent)
+    //console.log('javascript bind not found, creating new Function.prototype.bind,'+window.navigator.userAgent)
     Function.prototype.bind = function(ctx) {
         var fn = this;
         return function() {
@@ -523,8 +531,8 @@ Number.isInteger = Number.isInteger || function(value) {
 
 
 window.onload = function init() {
-    console.log('onload event, init ui')
-    console.log('window location',window.location)
+   // console.log('onload event, init ui')
+   // console.log('window location',window.location)
     var ui = new UI()
     
 }
