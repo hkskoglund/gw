@@ -298,7 +298,7 @@ UI.prototype.initChart=function()
     yAxis: [{
         //https://api.highcharts.com/highcharts/yAxis.max
         title: false,
-        tickInterval: 1
+        tickInterval: 1,
         //max : null
         //max : 1.0
     //  max : 40
@@ -337,6 +337,7 @@ UI.prototype.initChart=function()
                 type: 'areaspline',
                 data: [],
                 yAxis: 0,
+                visible: false
            //     zIndex: 3
             },
             {
@@ -354,6 +355,7 @@ UI.prototype.initChart=function()
                 type: 'spline',
                 data: [],
                 yAxis: 1,
+                visible: false,
                 tooltip: {
                     valueSuffix: ' %'
                 }
@@ -407,6 +409,7 @@ UI.prototype.initChart=function()
                 type: 'areaspline',
                 data: [],
                 yAxis: 0,
+                visible: false
            //     zIndex: 3
             }
            ] 
