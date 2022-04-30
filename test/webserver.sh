@@ -367,8 +367,19 @@ startwebserver()
        # nc openbsd: does not work, single fifo shared with multiple sockets? {  webserver <"$GWFIFO"; }  | { nc -4 -v -l "$GWWEBSERVER_PORT" >"$GWFIFO" ; echo >&2 "nc exited error code:$?"; } 
       
       # Ncat: version 7.8 allows -e to clone new process for handling request
-        { nc -4 -v -k -l "$GWWEBSERVER_PORT" -e './webserver.sh' ; echo >&2 "nc exited error code:$?"; }
+       nc -4 -v -k -l "$GWWEBSERVER_PORT" -e './webserver.sh' 
+       EXITCODE_WEBSERVER_NC=$?
+       echo >&2 "nc exited error code:$EXITCODE_WEBSERVER_NC"
     done
+
+    # https://fedoramagazine.org/how-to-manage-network-services-with-firewall-cmd/
+    # fedora: webserver port 80, must be allowed in the firewall
+    #   sudo firewall-cmd --zone=FedoraWorkstation --permanent --add-port=80/tcp
+    #   sudo firewall-cmd --list-all
+    # Process must run with root/sudo for nc to bind to port 0.0.0.0:80
+
+    # wsl2: open tcp port 80 in firewall (inbound rules) in Private profile
+    #   setup portproxy: iex "netsh interface portproxy add v4tov4 listenaddress=(Get-NetIPAddress -InterfaceAlias Wi-Fi -AddressFamily IPv4).IPAddress connectaddress=$(wsl -e hostname -I) connectport=80 listenport=80"
 }
 
  if [ $# -ge 2  ]; then
