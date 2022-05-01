@@ -84,6 +84,20 @@ resetHttpRequest()
     unset HTTP_REQUEST_ABSPATH HTTP_REQUEST_METHOD HTTP_REQUEST_VERSION
 }
 
+setHttpHeader()
+# $1 key
+# $2 value
+# " inside string needs \" quoting inside eval expression
+# https://stackoverflow.com/questions/3834839/how-can-i-escape-a-double-quote-inside-double-quotes
+{
+     case "$2" in 
+        *\"*) echo >&2 "Warning: Double-quoute needs \\\" escaping in eval expression, skipping header $1=$2"
+                ;;
+            *)  eval HTTP_HEADER_"$1"=\""$2"\"
+                ;;
+    esac
+}
+
 parseHttpHeader()
 {
     #[ "$DEBUG" -eq 1 ] &&  
@@ -115,10 +129,11 @@ EOV
                     toLowercase "$3"
                     l_HTTP_KEY_PART3=$VALUE_LOWERCASE
                     l_header=${l_HTTP_KEY_PART1}_${l_HTTP_KEY_PART2}_${l_HTTP_KEY_PART3}
-                    eval "HTTP_HEADER_$l_header=\"$l_HTTP_VALUE\""
+                    setHttpHeader "$l_header" "$l_HTTP_VALUE"
+                   
                 else
                     l_header=${l_HTTP_KEY_PART1}_${l_HTTP_KEY_PART2}
-                    eval "HTTP_HEADER_$l_header=\"$l_HTTP_VALUE\""
+                    setHttpHeader "$l_header" "$l_HTTP_VALUE"
                 fi
 
                 ;;
@@ -126,7 +141,7 @@ EOV
                 toLowercase "$l_HTTP_KEY"
                 l_HTTP_KEY=$VALUE_LOWERCASE
                 l_header=$l_HTTP_KEY
-                eval "HTTP_HEADER_$l_header=\"$l_HTTP_VALUE\"" 
+                setHttpHeader "$l_header" "$l_HTTP_VALUE"
                ;;
     esac
 
