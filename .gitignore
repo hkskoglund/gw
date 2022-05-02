@@ -16,3 +16,5 @@ backup*.conf
 test.html
 fifo
 webapp/livedata.json
+test/test-key.pem
+test/test-cert.pem

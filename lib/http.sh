@@ -87,15 +87,11 @@ resetHttpRequest()
 setHttpHeader()
 # $1 key
 # $2 value
-# " inside string needs \" quoting inside eval expression
 # https://stackoverflow.com/questions/3834839/how-can-i-escape-a-double-quote-inside-double-quotes
 {
-     case "$2" in 
-        *\"*) echo >&2 "Warning: Double-quoute needs \\\" escaping in eval expression, skipping header $1=$2"
-                ;;
-            *)  eval HTTP_HEADER_"$1"=\""$2"\"
-                ;;
-    esac
+    # '$2' qouting for value in eval expression keeps value containing double quote "
+    eval HTTP_HEADER_"$1"='$2'
+    # also used in appendVar function appendBuffer.sh
 }
 
 parseHttpHeader()

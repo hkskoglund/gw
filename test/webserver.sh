@@ -367,7 +367,7 @@ startwebserver()
        # nc openbsd: does not work, single fifo shared with multiple sockets? {  webserver <"$GWFIFO"; }  | { nc -4 -v -l "$GWWEBSERVER_PORT" >"$GWFIFO" ; echo >&2 "nc exited error code:$?"; } 
       
       # Ncat: version 7.8 allows -e to clone new process for handling request
-       nc -4 -v --ssl -k -l "$GWWEBSERVER_PORT" -e './webserver.sh' 
+       nc -4 -v -k -l "$GWWEBSERVER_PORT" -e './webserver.sh' 
        EXITCODE_WEBSERVER_NC=$?
        echo >&2 "nc exited error code:$EXITCODE_WEBSERVER_NC"
     done

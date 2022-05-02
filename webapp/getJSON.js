@@ -32,6 +32,25 @@ function GetJSON(host,port,path,interval) {
   
   }
 
+GetJSON.prototype.WindCompassDirection = {
+    WIND_N:      1,
+    WIND_NNE:    2,
+    WIND_NE:     3,
+    WIND_ENE:    4,
+    WIND_E:      5,
+    WIND_ESE:    6,
+    WIND_SE:     7,
+    WIND_SSE:    8,
+    WIND_S:      9,
+    WIND_SSW:   10,
+    WIND_SW:    11,
+    WIND_WSW:   12,
+    WIND_W:     13,
+    WIND_WNW:   14,
+    WIND_NW:    15,
+    WIND_NNW:   16
+}
+
 GetJSON.prototype.Mode = {
     temperature_celcius : 0,
     temperature_farenheit : 1,
@@ -130,6 +149,17 @@ GetJSON.prototype.winddirection=function()
 {
     return this.data.winddirection
 }
+
+GetJSON.prototype.windgustspeed_beufort=function()
+{
+    return this.data.windgustspeed_beufort
+}
+
+GetJSON.prototype.winddirection_compass_value=function()
+{
+    return this.data.winddirection_compass_value
+}
+
 GetJSON.prototype.winddirection_compass=function()
 {
     return  this.data.winddirection_compass + ' ('+this.data.winddirection+this.unit.winddirection+')'
@@ -286,6 +316,186 @@ function UI()
 UI.prototype.initChart=function()
 {
 
+    // https://jsfiddle.net/fq64pkhn/
+   
+    this.windrosechart=Highcharts.chart('windrosechart', {
+        chart: {
+            polar: true,
+            type: 'column'
+        },
+
+        credits: {
+            enabled: false
+        },
+
+        title: {
+            text: 'Windgust rose',
+            //align: 'centre'
+        },
+    
+        subtitle: {
+            text: '',
+            //align: 'left'
+        },
+    
+        pane: {
+            size: '85%'
+        },
+    
+        legend: {
+            align: 'right',
+            verticalAlign: 'top',
+            y: 100,
+            layout: 'vertical'
+        },
+    
+        xAxis: {
+            tickmarkPlacement: 'on',
+            categories: ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+        },
+    
+        yAxis: {
+            min: 0,
+            endOnTick: false,
+            showLastLabel: true,
+            title: {
+                text: ''
+            },
+            //labels: {
+            //    formatter: function () {
+            //        return this.value + '%';
+            //    }
+            //},
+            reversedStacks: false
+        },
+    
+        tooltip: {
+            valueSuffix: '%'
+        },
+    
+        plotOptions: {
+            series: {
+                stacking: 'normal',
+                shadow: false,
+                groupPadding: 0,
+                pointPlacement: 'on'
+            }
+        },
+
+        series: [
+            // Beufort scale 0 Calm
+            { name: '0 Calm < 0.5 m/s',
+            data: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            }, 
+            // Beufort scale 1 
+            { name : '1 Light air 0.5 - 1.5 m/s',
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            },
+             // Beufort scale 1 
+             { name : '2 Light breeze (2) 1.6 - 3.3 m/s',
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            },
+             // Beufort scale 3
+            { name : '3 Gentle breeze (3) 3.4 - 5.5 m/s',
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            },
+             // Beufort scale 4
+             { name : '4 Moderat breeze (4) 5.6 - 7.9 m/s',
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            },
+             // Beufort scale 5
+             { name : '5 Fresh breeze 8 - 10.7 m/s',
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            },
+             // Beufort scale 6
+             { name : '6 Strong breeze 10.8 - 13.8 m/s',
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            },
+             // Beufort scale 7
+             { name : '7 Near gale 13.9 - 17.1 m/s',
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            },
+             // Beufort scale 8
+             { name : '8 Gale  17.2 - 20.7 m/s',
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            },
+             // Beufort scale 9
+             { name : '9 Strong gale 20.8 - 24.4 m/s',
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            },
+             // Beufort scale 10
+             { name : '10 Storm 24.5 - 28.4 m/s',
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            },
+             // Beufort scale 11 
+             { name : '11 Violent storm  28.5 - 32.6 m/s',
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            },
+             // Beufort scale 12 
+             { name : '12 Hurricane force > 32.6 m/s',
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            }
+                ]
+    });
+    
+   this.temperaturechart_column=Highcharts.chart('temperaturechart-column', {
+        chart: {
+            type: 'column'
+        },
+        title: {
+            text: 'Temperature'
+        },
+        xAxis: {
+            categories: [
+                'Outdoor',
+                'Indoor',
+            ],
+            //crosshair: true
+        },
+        yAxis: [{
+            title: false
+        },
+        {
+            min: 0,
+            max: 100,
+            title: false,
+            opposite: true
+        },
+    ],
+        
+        plotOptions: {
+            column: {
+              //  pointPadding: 0.2,
+              //  borderWidth: 0
+            },
+            series: { dataLabels: {
+                enabled: true,
+               // rotation: 0,
+               // color: '#FFFFFF',
+               // align: 'right',
+               // format: '{point.y:.1f}', // one decimal
+               // y: 10, // 10 pixels down from the top
+               // style: {
+               //     fontSize: '13px',
+               //     fontFamily: 'Verdana, sans-serif'
+               // }
+            }}
+        },
+        
+        series: [{
+            name: 'Temperature',
+            yAxis: 0,
+            data: []
+    
+        }, {
+            name: 'Humidity',
+            data: [],
+            yAxis: 1,
+            visible: false
+    
+        }]
+    });
+
     this.temperaturechart= new Highcharts.Chart({ chart : {
         renderTo: 'temperaturechart'
     },
@@ -329,13 +539,15 @@ UI.prototype.initChart=function()
                 name: 'Outdoor',
                 type: 'areaspline',
                 yAxis: 0,
-                data: [],
+                data: []
+               
              //   zIndex: 4
             },
             {
                 name: 'Indoor',
                 type: 'areaspline',
                 data: [],
+              
                 yAxis: 0,
                 visible: false
            //     zIndex: 3
@@ -345,6 +557,7 @@ UI.prototype.initChart=function()
                 type: 'spline',
                 data: [],
                 yAxis: 1,
+                visible: false,
                 tooltip: {
                     valueSuffix: ' %'
                 }
@@ -354,6 +567,7 @@ UI.prototype.initChart=function()
                 name: 'Indoor humidity',
                 type: 'spline',
                 data: [],
+                
                 yAxis: 1,
                 visible: false,
                 tooltip: {
@@ -401,7 +615,8 @@ UI.prototype.initChart=function()
                 name: 'Relative',
                 type: 'areaspline',
                 yAxis: 0,
-                data: [],
+                data: []
+               
              //   zIndex: 4
             },
             {
@@ -465,8 +680,9 @@ UI.prototype.initChart=function()
                                     name: 'Solar light',
                                     type: 'spline',
                                     yAxis: 0,
-                                    data: [],
-                                },
+                                    data: []
+                            },
+                                  
                                // {
                                //     name: 'Solar UV',
                                //     type: 'spline',
@@ -479,6 +695,7 @@ UI.prototype.initChart=function()
                                     type: 'area',
                                     yAxis: 1,
                                     data: [],
+                                    
                                     zones: [{
                                         value: 2,
                                         color:  '#2a9502'   // green
@@ -530,6 +747,7 @@ UI.prototype.initChart=function()
         series: [{
             type: 'windbarb',
             data: [ ],
+             
             name: 'Wind',
             color: Highcharts.getOptions().colors[1],
             showInLegend: false,
@@ -539,8 +757,8 @@ UI.prototype.initChart=function()
         }, {
             type: 'areaspline',
             keys: ['y', 'rotation'], // rotation is not used here
-            data: [
-            ],
+            data: [],
+           
             color: Highcharts.getOptions().colors[0],
            // fillColor: {
            //     linearGradient: { x1: 0, x2: 0, y1: 0, y2: 1 },
@@ -564,6 +782,7 @@ UI.prototype.initChart=function()
         },{
             type: 'areaspline',
             data: [],
+            
             name: 'Wind gust speed',
             tooltip: {
                 valueSuffix: ' m/s'
@@ -579,6 +798,8 @@ UI.prototype.onJSON=function (ev)
     // Show when data is available
    // if (this.weatherElement.style.display==="none")
    //   this.weatherElement.style.display="block"
+
+    this.measurementCount=this.measurementCount+1
 
     this.outtempElement.textContent=this.getJSON.outtemp()
     this.intempElement.textContent=this.getJSON.intemp()
@@ -615,7 +836,9 @@ UI.prototype.onJSON=function (ev)
 
     var timestamp=this.getJSON.timestamp()
 
-    this.temperaturechart.setSubtitle({ text: 'Outdoor '+this.getJSON.outtemp()+' ' + this.getJSON.unitTemp()+' '+this.getJSON.outhumidity()+' % Indoor '+this.getJSON.intemp()+' '+this.getJSON.unitTemp()+this.getJSON.inhumidity()+'%' })
+  
+    this.temperaturechart_column.setSubtitle({ text: 'Outdoor '+this.getJSON.outtemp()+' ' + this.getJSON.unitTemp()+' '+this.getJSON.outhumidity()+' % Indoor '+this.getJSON.intemp()+' '+this.getJSON.unitTemp()+this.getJSON.inhumidity()+' %' })
+    this.temperaturechart.setSubtitle({ text: 'Outdoor '+this.getJSON.outtemp()+' ' + this.getJSON.unitTemp()+' '+this.getJSON.outhumidity()+' % Indoor '+this.getJSON.intemp()+' '+this.getJSON.unitTemp()+this.getJSON.inhumidity()+' %' })
     this.windbarbchart.setSubtitle({ text: 'Speed '+ this.getJSON.windspeed()+' '+this.getJSON.unitWind()+' Gust '+ this.getJSON.windgustspeed()+' '+this.getJSON.unitWind()+' '+this.getJSON.winddirection_compass()+' '+this.getJSON.windgustbeufort_description()})
     this.solarchart.setSubtitle({ text: 'Radiation '+this.getJSON.solar_light()+' '+this.getJSON.unitSolarlight()+' UVI ' +this.getJSON.solar_uvi_description() +' ('+this.getJSON.solar_uvi()+')'})
     this.pressurechart.setSubtitle({ text: 'Relative '+this.getJSON.relbaro()+ ' '+ this.getJSON.unitPressure()+' Absolute ' + this.getJSON.absbaro()})
@@ -637,11 +860,23 @@ UI.prototype.onJSON=function (ev)
     if (this.windbarbchart.series[0].xData.length >= 1 &&   ( timestamp - this.windbarbchart.series[0].xData[this.windbarbchart.series[0].xData.length-1]) > this.options.interval*this.options.maxPoints)
     {
         //console.log('Removing data from chart to avoid skewed presentation, max points: '+this.options.maxPoints)
+        this.measurementCount=0
+        this.windrosechart.series.forEach(function (element) { element.setData([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) })
         this.temperaturechart.series.forEach(function (element) { element.setData([]) })
         this.pressurechart.series.forEach(function (element) { element.setData([]) })
         this.windbarbchart.series.forEach(function (element) { element.setData([]) })
         this.solarchart.series.forEach(function (element) { element.setData([]) })
-    }   
+    }
+
+    var beufortScale=this.getJSON.windgustspeed_beufort()
+    var compassDirection=this.getJSON.winddirection_compass_value()-1 
+    var rosePoint=this.windrosechart.series[beufortScale].data[compassDirection]
+        rosePoint.update(rosePoint.y+1,true)
+
+    
+   this.temperaturechart_column.series[0].setData([Number(this.getJSON.outtemp()),Number(this.getJSON.intemp())])
+    this.temperaturechart_column.series[1].setData([Number(this.getJSON.outhumidity()),Number(this.getJSON.inhumidity())])
+    
 
     this.temperaturechart.series[0].addPoint([timestamp,Number(this.getJSON.outtemp())],false, this.temperaturechart.series[0].points.length>this.options.maxPoints, false)
     this.temperaturechart.series[1].addPoint([timestamp,Number(this.getJSON.intemp())],false, this.temperaturechart.series[1].points.length>this.options.maxPoints, false)
