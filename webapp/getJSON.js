@@ -645,10 +645,9 @@ UI.prototype.initChart=function()
         //https://api.highcharts.com/highcharts/yAxis.max
         title: false,
         tickInterval: 5,
-        min: 950
+        //min: 950
         //max : null
-        //max : 1.0
-    //  max : 40
+        
     }
 
 ],
@@ -668,18 +667,13 @@ UI.prototype.initChart=function()
         {
                 name: 'Relative',
                 type: 'areaspline',
-                yAxis: 0,
                 data: []
-               
-             //   zIndex: 4
             },
             {
                 name: 'Absolute',
-                type: 'areaspline',
+                type: 'spline',
                 data: [],
-                yAxis: 0,
-                visible: false
-           //     zIndex: 3
+                //visible: false
             }
            ] 
     })
@@ -937,8 +931,11 @@ UI.prototype.onJSON=function (ev)
 
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
+   // https://api.highcharts.com/class-reference/Highcharts.Axis#setExtremes
+   // y-axis start on 0 by default
+   this.pressurechart.series[0].yAxis.setExtremes(this.pressurechart.series[0].dataMin-10)
     this.temperaturechart.redraw()
-    this.pressurechart.redraw()
+    //this.pressurechart.redraw()
     this.windbarbchart.redraw()
     this.solarchart.redraw()
 }
