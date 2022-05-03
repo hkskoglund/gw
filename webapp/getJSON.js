@@ -381,10 +381,6 @@ UI.prototype.initChart=function()
             //align: 'left'
         },
     
-        pane: {
-            size: '85%'
-        },
-    
         legend: {
             align: 'right',
             verticalAlign: 'top',
@@ -881,20 +877,7 @@ UI.prototype.onJSON=function (ev)
     this.unit_solar_uvElement.textContent=json.unitSolarUV()
     this.solar_uviElement.textContent=json.solar_uvi()
 
-    /** From highcharts.src.js
-	 * Add a point dynamically after chart load time
-	 * @param {Object} options Point options as given in series.data
-	 * @param {Boolean} redraw Whether to redraw the chart or wait for an explicit call
-	 * @param {Boolean} shift If shift is true, a point is shifted off the start
-	 *    of the series as one is appended to the end.
-	 * @param {Boolean|Object} animation Whether to apply animation, and optionally animation
-	 *    configuration
-	 */
-
-    // https://www.highcharts.com/changelog/
-
     var timestamp=json.timestamp()
-
   
     this.temperaturechart_column.setSubtitle({ text: 'Outdoor '+json.outtempToString()+' ' + json.unitTemp()+' '+json.outhumidity()+' % Indoor '+json.intempToString()+' '+json.unitTemp()+json.inhumidity()+' %' })
     this.temperaturechart.setSubtitle({ text: 'Outdoor '+json.outtempToString()+' ' + json.unitTemp()+' '+json.outhumidity()+' % Indoor '+json.intempToString()+' '+json.unitTemp()+json.inhumidity()+' %' })
@@ -931,29 +914,26 @@ UI.prototype.onJSON=function (ev)
     var compassDirection=json.winddirection_compass_value()-1 
     var rosePoint=this.windrosechart.series[beufortScale].data[compassDirection]
         rosePoint.update(rosePoint.y+1,true)
-
     
-   this.temperaturechart_column.series[0].setData([json.outtemp(),json.intemp()])
+    this.temperaturechart_column.series[0].setData([json.outtemp(),json.intemp()])
     this.temperaturechart_column.series[1].setData([json.outhumidity(),json.inhumidity()])
-    
-
-    this.temperaturechart.series[0].addPoint([timestamp,json.outtemp()],false, this.temperaturechart.series[0].points.length>this.options.maxPoints, false)
-    this.temperaturechart.series[1].addPoint([timestamp,json.intemp()],false, this.temperaturechart.series[1].points.length>this.options.maxPoints, false)
-    this.temperaturechart.series[2].addPoint([timestamp,json.outhumidity()],false, this.temperaturechart.series[2].points.length>this.options.maxPoints, false)
-    this.temperaturechart.series[3].addPoint([timestamp,json.inhumidity()],false, this.temperaturechart.series[3].points.length>this.options.maxPoints, false)
-
-    this.pressurechart.series[0].addPoint([timestamp,json.relbaro()],false, this.pressurechart.series[0].points.length>this.options.maxPoints, false)
-    this.pressurechart.series[1].addPoint([timestamp,json.absbaro()],false, this.pressurechart.series[1].points.length>this.options.maxPoints, false)
-
-    this.windbarbchart.series[0].addPoint([timestamp,json.windgustspeed_mps(),json.winddirection()],false, this.windbarbchart.series[0].points.length>this.options.maxPoints, false)
+    // https://api.highcharts.com/class-reference/Highcharts.Series#addPoint
+    this.temperaturechart.series[0].addPoint([timestamp,json.outtemp()],false)
+    this.temperaturechart.series[0].addPoint([timestamp,json.outtemp()],false)
+    this.temperaturechart.series[1].addPoint([timestamp,json.intemp()],false)
+    this.temperaturechart.series[2].addPoint([timestamp,json.outhumidity()],false)
+    this.temperaturechart.series[3].addPoint([timestamp,json.inhumidity()],false)
+    this.pressurechart.series[0].addPoint([timestamp,json.relbaro()],false)
+    this.pressurechart.series[1].addPoint([timestamp,json.absbaro()],false)
+    this.windbarbchart.series[0].addPoint([timestamp,json.windgustspeed_mps(),json.winddirection()],false)
     // https://api.highcharts.com/highcharts/series.line.data
     // only support m/s unit
-    this.windbarbchart.series[1].addPoint({ x: timestamp, y: json.windspeed_mps() },false, this.windbarbchart.series[1].points.length>this.options.maxPoints, false)
-    this.windbarbchart.series[2].addPoint({ x: timestamp, y: json.windgustspeed_mps() },false, this.windbarbchart.series[2].points.length>this.options.maxPoints, false) 
+    this.windbarbchart.series[1].addPoint({ x: timestamp, y: json.windspeed_mps() },false)
+    this.windbarbchart.series[2].addPoint({ x: timestamp, y: json.windgustspeed_mps() },false) 
 
-   this.solarchart.series[0].addPoint([timestamp,json.solar_light()],false, this.solarchart.series[0].points.length>37, false)
+   this.solarchart.series[0].addPoint([timestamp,json.solar_light()],false)
    // this.solarchart.series[1].addPoint([timestamp,json.solar_uv()],false, this.solarchart.series[1].points.length>37, false)
-   this.solarchart.series[1].addPoint([timestamp, json.solar_uvi()],false, this.solarchart.series[1].points.length>37, false)
+   this.solarchart.series[1].addPoint([timestamp, json.solar_uvi()],false)
 
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
