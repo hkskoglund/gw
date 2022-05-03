@@ -377,7 +377,7 @@ UI.prototype.initChart=function()
         },
     
         subtitle: {
-            text: 'Based on windgust data',
+            text: 'Based on windgust data, values in minutes',
             //align: 'left'
         },
     
@@ -408,9 +408,9 @@ UI.prototype.initChart=function()
             reversedStacks: false
         },
     
-        tooltip: {
-            valueSuffix: '%'
-        },
+        //tooltip: {
+        //    valueSuffix: ''
+        //},
     
         plotOptions: {
             series: {
@@ -913,7 +913,7 @@ UI.prototype.onJSON=function (ev)
     var beufortScale=json.windgustspeed_beufort()
     var compassDirection=json.winddirection_compass_value()-1 
     var rosePoint=this.windrosechart.series[beufortScale].data[compassDirection]
-        rosePoint.update(rosePoint.y+1,true)
+        rosePoint.update(rosePoint.y+this.options.interval/60000,true)
     
     this.temperaturechart_column.series[0].setData([json.outtemp(),json.intemp()])
     this.temperaturechart_column.series[1].setData([json.outhumidity(),json.inhumidity()])
