@@ -97,7 +97,7 @@ GetJSON.prototype.timestamp=function()
 
 GetJSON.prototype.outtempToString=function()
 {
-    return this.outtemp().toFixed(1)
+    return this.outtemp().toFixed(1)+' '+this.unitTemp()
 }
 
 GetJSON.prototype.outtemp=function()
@@ -107,7 +107,7 @@ GetJSON.prototype.outtemp=function()
 
 GetJSON.prototype.intempToString=function()
 {
-    return this.intemp().toFixed(1)
+    return this.intemp().toFixed(1)+' '+this.unitTemp()
 }
 
 GetJSON.prototype.intemp=function()
@@ -127,7 +127,7 @@ GetJSON.prototype.outhumidity=function()
 
 GetJSON.prototype.windspeedToString=function()
 {
-    return this.windspeed().toFixed(1)
+    return this.windspeed().toFixed(1)+' '+this.unitWind()
 }
 GetJSON.prototype.windspeed=function()
 {
@@ -146,7 +146,7 @@ GetJSON.prototype.windspeed_mps=function()
 
 GetJSON.prototype.windgustspeedToString=function()
 {
-    return this.windgustspeed().toFixed(1)
+    return this.windgustspeed().toFixed(1)+' '+this.unitWind()
 }
 
 GetJSON.prototype.windgustspeed=function()
@@ -203,15 +203,17 @@ GetJSON.prototype.absbaro=function()
 
 GetJSON.prototype.pressureToString= function(pressure)
 {
-    if (this.mode.pressure === this.Mode.pressure_hpa)
-        return pressure.toFixed(1)
-    else if (this.mode.pressure === this.Mode.pressure_inhg)
-        return pressure.toFixed(2)
+    var numdecimals=1
+
+    if (this.mode.pressure === this.Mode.pressure_inhg)
+        numdecimals=2
+
+    return pressure.toFixed(numdecimals)+' '+ this.unitPressure()
 }
 
 GetJSON.prototype.solar_lightToString=function()
 {
-    return this.solar_light().toFixed(1)
+    return this.solar_light().toFixed(1)+' '+this.unitSolarlight()
 }
 
 GetJSON.prototype.solar_light = function()
@@ -221,7 +223,7 @@ GetJSON.prototype.solar_light = function()
 
 GetJSON.prototype.solar_uvToString = function()
 {
-    return this.solar_uv().toFixed(1)
+    return this.solar_uv().toFixed(1)+' '+this.unitSolarUV()
 }
 
 GetJSON.prototype.solar_uv = function()
@@ -873,11 +875,11 @@ UI.prototype.onJSON=function (ev)
 
     var timestamp=json.timestamp()
   
-    this.temperaturechart_column.setSubtitle({ text: 'Outdoor '+json.outtempToString()+' ' + json.unitTemp()+' '+json.outhumidity()+' % Indoor '+json.intempToString()+' '+json.unitTemp()+json.inhumidity()+' %' })
-    this.temperaturechart.setSubtitle({ text: 'Outdoor '+json.outtempToString()+' ' + json.unitTemp()+' '+json.outhumidity()+' % Indoor '+json.intempToString()+' '+json.unitTemp()+json.inhumidity()+' %' })
-    this.windbarbchart.setSubtitle({ text: 'Speed '+ json.windspeedToString()+' '+json.unitWind()+' Gust '+ json.windgustspeedToString()+' '+json.unitWind()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()})
-    this.solarchart.setSubtitle({ text: 'Radiation '+json.solar_lightToString()+' '+json.unitSolarlight()+' UVI ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'})
-    this.pressurechart.setSubtitle({ text: 'Relative '+json.pressureToString(json.relbaro())+ ' '+ json.unitPressure()+' Absolute ' + json.pressureToString(json.absbaro())})
+    this.temperaturechart_column.setSubtitle({ text: 'Outdoor '+json.outtempToString()+' '+json.outhumidity()+' % Indoor '+json.intempToString()+json.inhumidity()+' %' })
+    this.temperaturechart.setSubtitle({ text: 'Outdoor '+json.outtempToString()+' '+json.outhumidity()+' % Indoor '+json.intempToString()+json.inhumidity()+' %' })
+    this.windbarbchart.setSubtitle({ text: 'Speed '+ json.windspeedToString()+' Gust '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()})
+    this.solarchart.setSubtitle({ text: 'Radiation '+json.solar_lightToString()+' UVI ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'})
+    this.pressurechart.setSubtitle({ text: 'Relative '+json.pressureToString(json.relbaro())+' Absolute ' + json.pressureToString(json.absbaro())})
 
     if (this.temperaturechart.series[0].userOptions.tooltip === undefined || this.temperaturechart.series[0].userOptions.tooltip.valueSuffix === undefined ) {
         this.temperaturechart.series[0].update({tooltip: { valueSuffix: ' '+json.unitTemp() }})
