@@ -115,9 +115,19 @@ GetJSON.prototype.intemp=function()
     return this.data.intemp
 }
 
+GetJSON.prototype.inhumidityToString=function()
+{
+    return this.inhumidity()+' %'
+}
+
 GetJSON.prototype.inhumidity=function()
 {
     return this.data.inhumidity
+}
+
+GetJSON.prototype.outhumidityToString=function()
+{
+    return this.outhumidity()+' %'
 }
 
 GetJSON.prototype.outhumidity=function()
@@ -693,7 +703,8 @@ UI.prototype.initChart=function()
                             //https://api.highcharts.com/highcharts/yAxis.max
                             title: false,
                             min : 0,
-                            tickInterval: 50
+                            tickInterval: 50,
+                            opposite: true
                             //max : null
                             //max : 1.0
                         //  max : 40
@@ -710,7 +721,7 @@ UI.prototype.initChart=function()
                         title:false,
                         min: 0,
                         tickInterval:1,
-                        allowDecimals: false
+                        allowDecimals: false,
                     }
                 ],
                         xAxis: [{
@@ -875,8 +886,8 @@ UI.prototype.onJSON=function (ev)
 
     var timestamp=json.timestamp()
   
-    this.temperaturechart_column.setSubtitle({ text: 'Outdoor '+json.outtempToString()+' '+json.outhumidity()+' % Indoor '+json.intempToString()+json.inhumidity()+' %' })
-    this.temperaturechart.setSubtitle({ text: 'Outdoor '+json.outtempToString()+' '+json.outhumidity()+' % Indoor '+json.intempToString()+json.inhumidity()+' %' })
+    this.temperaturechart_column.setSubtitle({ text: 'Outdoor '+json.outtempToString()+' '+json.outhumidityToString()+' Indoor '+json.intempToString()+json.inhumidityToString() })
+    this.temperaturechart.setSubtitle({ text: 'Outdoor '+json.outtempToString()+' '+ json.outhumidityToString()+' Indoor '+json.intempToString()+json.inhumidityToString() })
     this.windbarbchart.setSubtitle({ text: 'Speed '+ json.windspeedToString()+' Gust '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()})
     this.solarchart.setSubtitle({ text: 'Radiation '+json.solar_lightToString()+' UVI ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'})
     this.pressurechart.setSubtitle({ text: 'Relative '+json.pressureToString(json.relbaro())+' Absolute ' + json.pressureToString(json.absbaro())})
