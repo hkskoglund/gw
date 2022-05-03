@@ -899,16 +899,16 @@ UI.prototype.onJSON=function (ev)
         this.solarchart.series[0].update({tooltip: { valueSuffix: ' '+json.unitSolarlight() }})
     
     // Remove data if too old, otherwise they get skewed to the left
-    if (this.windbarbchart.series[0].xData.length >= 1 &&   ( timestamp - this.windbarbchart.series[0].xData[this.windbarbchart.series[0].xData.length-1]) > this.options.interval*this.options.maxPoints)
-    {
-        //console.log('Removing data from chart to avoid skewed presentation, max points: '+this.options.maxPoints)
-        this.measurementCount=0
-        this.windrosechart.series.forEach(function (element) { element.setData([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) })
-        this.temperaturechart.series.forEach(function (element) { element.setData([]) })
-        this.pressurechart.series.forEach(function (element) { element.setData([]) })
-        this.windbarbchart.series.forEach(function (element) { element.setData([]) })
-        this.solarchart.series.forEach(function (element) { element.setData([]) })
-    }
+  //  if (this.windbarbchart.series[0].xData.length >= 1 &&   ( timestamp - this.windbarbchart.series[0].xData[this.windbarbchart.series[0].xData.length-1]) > this.options.interval*this.options.maxPoints)
+  //  {
+  //      //console.log('Removing data from chart to avoid skewed presentation, max points: '+this.options.maxPoints)
+  //      this.measurementCount=0
+  //      this.windrosechart.series.forEach(function (element) { element.setData([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) })
+  //      this.temperaturechart.series.forEach(function (element) { element.setData([]) })
+  //      this.pressurechart.series.forEach(function (element) { element.setData([]) })
+  //      this.windbarbchart.series.forEach(function (element) { element.setData([]) })
+  //      this.solarchart.series.forEach(function (element) { element.setData([]) })
+  //  }
 
     var beufortScale=json.windgustspeed_beufort()
     var compassDirection=json.winddirection_compass_value()-1 
