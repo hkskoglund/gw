@@ -329,12 +329,12 @@ UI.prototype.initChart=function()
         },
 
         title: {
-            text: 'Windgust rose',
+            text: 'Wind rose',
             //align: 'centre'
         },
     
         subtitle: {
-            text: '',
+            text: 'Based on windgust data',
             //align: 'left'
         },
     
@@ -382,58 +382,73 @@ UI.prototype.initChart=function()
             }
         },
 
+        // Colors from https://en.wikipedia.org/wiki/Beaufort_scale
+        
         series: [
             // Beufort scale 0 Calm
             { name: '0 Calm < 0.5 m/s',
-            data: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            data: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+             color: '#FFFFFF'
             }, 
             // Beufort scale 1 
             { name : '1 Light air 0.5 - 1.5 m/s',
-             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+             color : '#AEF1F9'
             },
              // Beufort scale 1 
-             { name : '2 Light breeze (2) 1.6 - 3.3 m/s',
-             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+             { name : '2 Light breeze 1.6 - 3.3 m/s',
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+              color : '#96F7DC'
             },
              // Beufort scale 3
-            { name : '3 Gentle breeze (3) 3.4 - 5.5 m/s',
-             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            { name : '3 Gentle breeze 3.4 - 5.5 m/s',
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+             color: '#96F7B4'
             },
              // Beufort scale 4
-             { name : '4 Moderat breeze (4) 5.6 - 7.9 m/s',
-             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+             { name : '4 Moderat breeze 5.6 - 7.9 m/s',
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+              color: '#6FF46F'
             },
              // Beufort scale 5
              { name : '5 Fresh breeze 8 - 10.7 m/s',
-             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+              color: '#73ED12'
             },
              // Beufort scale 6
              { name : '6 Strong breeze 10.8 - 13.8 m/s',
-             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+              color: '#A4ED12'
             },
              // Beufort scale 7
              { name : '7 Near gale 13.9 - 17.1 m/s',
-             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+              color: '#DAED12'
             },
              // Beufort scale 8
              { name : '8 Gale  17.2 - 20.7 m/s',
-             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+              color: '#EDC212'
             },
              // Beufort scale 9
              { name : '9 Strong gale 20.8 - 24.4 m/s',
-             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+              color: '#ED8F12'
             },
              // Beufort scale 10
              { name : '10 Storm 24.5 - 28.4 m/s',
-             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+              color: '#ED6312'
             },
              // Beufort scale 11 
              { name : '11 Violent storm  28.5 - 32.6 m/s',
-             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+              color: '#ED2912'
             },
              // Beufort scale 12 
              { name : '12 Hurricane force > 32.6 m/s',
-             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+             data:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+              color: '#D5102D'
             }
                 ]
     });
