@@ -377,6 +377,7 @@ UI.prototype.isIpad1=function()
 UI.prototype.initChart=function()
 {
     var animate=this.isIpad1() // turn off animation for ipad 1
+    animate=true // ipad1 empty tooltip turns up after some time if disabled
 
     // https://jsfiddle.net/fq64pkhn/
    
