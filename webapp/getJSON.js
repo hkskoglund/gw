@@ -352,7 +352,8 @@ function UI()
 
     this.options={
         interval: 16000, // milliseconds request time for JSON
-        shifttime : 15  // shift time in minutes, when points gets deleted/shifted left
+        shifttime : 15,  // shift time in minutes, when points gets deleted/shifted left
+        redraw_interval: 60000 // milliseconds between each chart redraw
     }
 
     this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
@@ -920,7 +921,7 @@ UI.prototype.onJSON=function (ev)
     var beufortScale=json.windgustspeed_beufort()
     var compassDirection=json.winddirection_compass_value()-1 
     var rosePoint=this.windrosechart.series[beufortScale].data[compassDirection]
-        rosePoint.update(rosePoint.y+this.options.interval/60000,true)
+        rosePoint.update(rosePoint.y+this.options.interval/60000,false)
     
     this.temperaturechart_column.series[0].setData([json.outtemp(),json.intemp()])
     this.temperaturechart_column.series[1].setData([json.outhumidity(),json.inhumidity()])
@@ -944,13 +945,22 @@ UI.prototype.onJSON=function (ev)
 
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
-   // https://api.highcharts.com/class-reference/Highcharts.Axis#setExtremes
+   if (!this.chart_redraw_interval_id)
+      {
+        this.chart_redraw()
+        this.chart_redraw_interval_id=setInterval(this.chart_redraw.bind(this),this.options.redraw_interval)
+      }
+           
+}
+
+UI.prototype.chart_redraw=function()
+{
+    console.log(Date.now(),'redraw')
+    // https://api.highcharts.com/class-reference/Highcharts.Axis#setExtremes
    // y-axis start on 0 by default
-   this.pressurechart.series[0].yAxis.setExtremes(this.pressurechart.series[0].dataMin-10)
-    this.temperaturechart.redraw()
-    //this.pressurechart.redraw()
-    this.windbarbchart.redraw()
-    this.solarchart.redraw()
+    this.pressurechart.series[0].yAxis.setExtremes(this.pressurechart.series[0].dataMin-10,this.pressurechart.series[0].dataMax+10,false)
+    Highcharts.charts.forEach(function (chart) { chart.redraw() })
+
 }
 
 https://stackoverflow.com/questions/15455009/javascript-call-apply-vs-bind
