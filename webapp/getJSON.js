@@ -26,7 +26,6 @@ function GetJSON(host,port,path,interval) {
     this.req.addEventListener("error", this.transferError.bind(this))
     this.req.addEventListener("onabort",this.transferAbort.bind(this))
 
-    this.requestLivedata()
     this.setInterval(this.interval)
   
   }
@@ -75,6 +74,15 @@ GetJSON.prototype.setInterval= function(interval)
     
     this.intervalID=setInterval(this.requestLivedata.bind(this),interval)
     //console.log('Interval:'+interval+' id:'+this.intervalID)
+}
+
+GetJSON.prototype.requestLivedata=function()
+{
+    //req.overrideMimeType('')
+    //req.overrideMimeType("application/json")
+    this.req.open('GET',this.url)
+    this.req.setRequestHeader("Accept","application/json")
+    this.req.send()
 }
 
 GetJSON.prototype.transferAbort = function(ev)
@@ -296,14 +304,7 @@ GetJSON.prototype.transferError=function(evt)
     console.error('Failed to receive json for '+this.url,evt);
 }
 
-GetJSON.prototype.requestLivedata=function()
-{
-    //req.overrideMimeType('')
-    //req.overrideMimeType("application/json")
-    this.req.open('GET',this.url)
-    this.req.setRequestHeader("Accept","application/json")
-    this.req.send()
-}
+
 
 function GetEcowittJSON(host,port,path,interval)
 {
