@@ -1,4 +1,3 @@
-
 // by default functions are added to window object
 
 function GetJSON(host,port,path,interval) {
@@ -369,15 +368,27 @@ function UI()
     
 }
 
+UI.prototype.isIpad1=function()
+{
+   // "Mozilla/5.0 (iPad; CPU OS 5_1_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B206 Safari/7534.48.3"
+   return navigator.userAgent.indexOf("iPad; CPU OS 5_1_1 like Mac OS X")===-1
+}
+
 UI.prototype.initChart=function()
 {
+    var animate=this.isIpad1() // turn off animation for ipad 1
 
     // https://jsfiddle.net/fq64pkhn/
    
     this.windrosechart=Highcharts.chart('windrosechart', {
         chart: {
             polar: true,
-            type: 'column'
+            type: 'column',
+            animation: animate
+        },
+
+        tooltip : {
+            animation: animate
         },
 
         credits: {
@@ -505,66 +516,12 @@ UI.prototype.initChart=function()
                 ]
     });
     
-   this.temperaturechart_column=Highcharts.chart('temperaturechart-column', {
-        chart: {
-            type: 'column'
-        },
-        title: {
-            text: 'Temperature'
-        },
-        xAxis: {
-            categories: [
-                'Outdoor',
-                'Indoor',
-            ],
-            //crosshair: true
-        },
-        yAxis: [{
-            title: false
-        },
-        {
-            min: 0,
-            max: 100,
-            title: false,
-            opposite: true
-        },
-    ],
-        
-        plotOptions: {
-            column: {
-              //  pointPadding: 0.2,
-              //  borderWidth: 0
-            },
-            series: { dataLabels: {
-                enabled: true,
-               // rotation: 0,
-               // color: '#FFFFFF',
-               // align: 'right',
-               // format: '{point.y:.1f}', // one decimal
-               // y: 10, // 10 pixels down from the top
-               // style: {
-               //     fontSize: '13px',
-               //     fontFamily: 'Verdana, sans-serif'
-               // }
-            }}
-        },
-        
-        series: [{
-            name: 'Temperature',
-            yAxis: 0,
-            data: []
-    
-        }, {
-            name: 'Humidity',
-            data: [],
-            yAxis: 1,
-            visible: false
-    
-        }]
-    });
-
     this.temperaturechart= new Highcharts.Chart({ chart : {
-        renderTo: 'temperaturechart'
+        renderTo: 'temperaturechart',
+        animation: animate
+    },
+    tooltip : {
+        animation: animate
     },
     credits: {
         enabled: false
@@ -646,7 +603,11 @@ UI.prototype.initChart=function()
     })
 
     this.pressurechart= new Highcharts.Chart({ chart : {
-        renderTo: 'pressurechart'
+        renderTo: 'pressurechart',
+        animation: animate
+    },
+    tooltip : {
+        animation: animate
     },
     credits: {
         enabled: false
@@ -692,7 +653,11 @@ UI.prototype.initChart=function()
     })
     
     this.solarchart= new Highcharts.Chart({ chart : {
-                            renderTo: 'solarchart'
+                            renderTo: 'solarchart',
+                            animation: animate
+                        },
+                        tooltip : {
+                            animation: animate
                         },
                         credits: {
                             enabled: false
@@ -784,6 +749,9 @@ UI.prototype.initChart=function()
     // based on https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/demo/windbarb-series/
     this.windbarbchart= new Highcharts.Chart({ chart : {
         renderTo: 'windbarbchart' },
+        tooltip : {
+            animation: animate
+        },
 
         title: {
             text: 'Wind'
@@ -853,6 +821,7 @@ UI.prototype.initChart=function()
     ]
     
     });
+
 }
 
 UI.prototype.onJSON=function (ev)
@@ -887,7 +856,6 @@ UI.prototype.onJSON=function (ev)
 
     var timestamp=json.timestamp()
   
-    this.temperaturechart_column.setSubtitle({ text: 'Outdoor '+json.outtempToString()+' '+json.outhumidityToString()+' Indoor '+json.intempToString()+json.inhumidityToString() })
     this.temperaturechart.setSubtitle({ text: 'Outdoor '+json.outtempToString()+' '+ json.outhumidityToString()+' Indoor '+json.intempToString()+json.inhumidityToString() })
     this.windbarbchart.setSubtitle({ text: 'Speed '+ json.windspeedToString()+' Gust '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()})
     this.solarchart.setSubtitle({ text: 'Radiation '+json.solar_lightToString()+' UVI ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'})
@@ -923,8 +891,6 @@ UI.prototype.onJSON=function (ev)
     var rosePoint=this.windrosechart.series[beufortScale].data[compassDirection]
         rosePoint.update(rosePoint.y+this.options.interval/60000,false)
     
-    this.temperaturechart_column.series[0].setData([json.outtemp(),json.intemp()])
-    this.temperaturechart_column.series[1].setData([json.outhumidity(),json.inhumidity()])
     // https://api.highcharts.com/class-reference/Highcharts.Series#addPoint
     this.temperaturechart.series[0].addPoint([timestamp,json.outtemp()],false)
     this.temperaturechart.series[0].addPoint([timestamp,json.outtemp()],false)
@@ -955,7 +921,7 @@ UI.prototype.onJSON=function (ev)
 
 UI.prototype.chart_redraw=function()
 {
-    console.log(Date.now(),'redraw')
+   // console.log(Date.now(),'redraw')
     // https://api.highcharts.com/class-reference/Highcharts.Axis#setExtremes
    // y-axis start on 0 by default
     this.pressurechart.series[0].yAxis.setExtremes(this.pressurechart.series[0].dataMin-10,this.pressurechart.series[0].dataMax+10,false)
