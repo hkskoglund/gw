@@ -26,7 +26,7 @@ function GetJSON(host,port,path,interval) {
     this.req.addEventListener("error", this.transferError.bind(this))
     this.req.addEventListener("onabort",this.transferAbort.bind(this))
 
-    this.setInterval(this.interval)
+    this.setJSONRequestInterval(this.interval)
   
   }
 
@@ -63,17 +63,17 @@ GetJSON.prototype.Mode = {
     light_wattm2 : 1
 }
 
-GetJSON.prototype.setInterval= function(interval)
+GetJSON.prototype.setJSONRequestInterval= function(interval)
 {
     this.requestLivedata()
 
-    if (this.intervalID != null && this.intervalID != undefined) {
-       // console.log('clearing interval id:'+this.intervalID)
-        clearInterval(this.intervalID)
+    if (this.requestIntervalID != null && this.requestIntervalID != undefined) {
+       // console.log('clearing interval id:'+this.requestIntervalID)
+        clearInterval(this.requestIntervalID)
     }
     
-    this.intervalID=setInterval(this.requestLivedata.bind(this),interval)
-    //console.log('Interval:'+interval+' id:'+this.intervalID)
+    this.requestIntervalID=setInterval(this.requestLivedata.bind(this),interval)
+    //console.log('Interval:'+interval+' id:'+this.requestIntervalID)
 }
 
 GetJSON.prototype.requestLivedata=function()
@@ -563,7 +563,7 @@ UI.prototype.initChart=function()
     series: [
         {
                 name: 'Outdoor',
-                type: 'areaspline',
+                type: 'spline',
                 yAxis: 0,
                 data: []
                
@@ -571,7 +571,7 @@ UI.prototype.initChart=function()
             },
             {
                 name: 'Indoor',
-                type: 'areaspline',
+                type: 'spline',
                 data: [],
               
                 yAxis: 0,
@@ -642,7 +642,7 @@ UI.prototype.initChart=function()
     series: [
         {
                 name: 'Relative',
-                type: 'areaspline',
+                type: 'spline',
                 data: []
             },
             {
@@ -787,7 +787,7 @@ UI.prototype.initChart=function()
                 valueSuffix: ' m/s'
             }
         }, {
-            type: 'areaspline',
+            type: 'spline',
             keys: ['y', 'rotation'], // rotation is not used here
             data: [],
            
@@ -812,7 +812,7 @@ UI.prototype.initChart=function()
            //     }
            // }
         },{
-            type: 'areaspline',
+            type: 'spline',
             data: [],
             
             name: 'Wind gust speed',
@@ -856,12 +856,50 @@ UI.prototype.onJSON=function (ev)
     this.unit_solar_uvElement.textContent=json.unitSolarUV()
     this.solar_uviElement.textContent=json.solar_uvi()
 
-    var timestamp=json.timestamp()
-  
-    this.temperaturechart.setSubtitle({ text: 'Outdoor '+json.outtempToString()+' '+ json.outhumidityToString()+' Indoor '+json.intempToString()+json.inhumidityToString() })
-    this.windbarbchart.setSubtitle({ text: 'Speed '+ json.windspeedToString()+' Gust '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()})
-    this.solarchart.setSubtitle({ text: 'Radiation '+json.solar_lightToString()+' UVI ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'})
-    this.pressurechart.setSubtitle({ text: 'Relative '+json.pressureToString(json.relbaro())+' Absolute ' + json.pressureToString(json.absbaro())})
+    this.simulation=false
+
+    if (this.simulation) // simulate new point every 100ms, testing performance
+        setInterval(this.update_charts.bind(this),100)
+    else
+        this.update_charts()
+
+    if (this.measurementCount < 40)
+        this.chart_redraw()  // redraw chart in the beginning for faster update
+    else 
+       this.startRedrawInterval()
+
+}
+
+UI.prototype.startRedrawInterval=function()
+{
+    if  (!this.chart_redraw_interval_id)
+    {
+      this.chart_redraw()
+      this.chart_redraw_interval_id=setInterval(this.chart_redraw.bind(this),this.options.redraw_interval)
+    }
+}
+
+UI.prototype.update_charts=function()
+{
+    var json=this.getJSON,
+        timestamp=json.timestamp(),
+        simulationSubtitle='',
+        shiftseries=false
+
+     if (this.simulation)
+     {
+       timestamp=Date.now()
+       simulationSubtitle='Points '+this.temperaturechart.series[0].points.length
+     } 
+    //this.temperaturechart.setSubtitle({ text: 'Outdoor '+json.outtempToString()+' '+ json.outhumidityToString()+' Indoor '+json.intempToString()+json.inhumidityToString() })
+    // Update textContent directly, saves some time (tested chrome performance tool)
+    this.temperaturechart.subtitle.element.textContent=simulationSubtitle+' Outdoor '+json.outtempToString()+' '+ json.outhumidityToString()+' Indoor '+json.intempToString()+json.inhumidityToString()
+    //this.windbarbchart.setSubtitle({ text: 'Speed '+ json.windspeedToString()+' Gust '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()})
+    this.windbarbchart.subtitle.element.textContent='Speed '+ json.windspeedToString()+' Gust '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()
+    //this.solarchart.setSubtitle({ text: 'Radiation '+json.solar_lightToString()+' UVI ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'})
+    this.solarchart.subtitle.element.textContent='Radiation '+json.solar_lightToString()+' UVI ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'
+    //this.pressurechart.setSubtitle({ text: 'Relative '+json.pressureToString(json.relbaro())+' Absolute ' + json.pressureToString(json.absbaro())})
+    this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())
 
     if (this.temperaturechart.series[0].userOptions.tooltip === undefined || this.temperaturechart.series[0].userOptions.tooltip.valueSuffix === undefined ) {
         this.temperaturechart.series[0].update({tooltip: { valueSuffix: ' '+json.unitTemp() }})
@@ -893,32 +931,31 @@ UI.prototype.onJSON=function (ev)
     var rosePoint=this.windrosechart.series[beufortScale].data[compassDirection]
         rosePoint.update(rosePoint.y+this.options.interval/60000,false)
     
+    if ((this.isIpad1() && this.temperaturechart.series[0].points.length > 2048) || (this.temperaturechart.series[0].points.length > 5400))
+    {
+        console.log('Starting to shift series, points length '+ this.temperaturechart.series[0].points.length)
+        shiftseries=true
+    }
+
     // https://api.highcharts.com/class-reference/Highcharts.Series#addPoint
-    this.temperaturechart.series[0].addPoint([timestamp,json.outtemp()],false)
-    this.temperaturechart.series[0].addPoint([timestamp,json.outtemp()],false)
-    this.temperaturechart.series[1].addPoint([timestamp,json.intemp()],false)
-    this.temperaturechart.series[2].addPoint([timestamp,json.outhumidity()],false)
-    this.temperaturechart.series[3].addPoint([timestamp,json.inhumidity()],false)
-    this.pressurechart.series[0].addPoint([timestamp,json.relbaro()],false)
-    this.pressurechart.series[1].addPoint([timestamp,json.absbaro()],false)
-    this.windbarbchart.series[0].addPoint([timestamp,json.windgustspeed_mps(),json.winddirection()],false)
+    this.temperaturechart.series[0].addPoint([timestamp,json.outtemp()],false,shiftseries)
+    this.temperaturechart.series[1].addPoint([timestamp,json.intemp()],false,shiftseries)
+    this.temperaturechart.series[2].addPoint([timestamp,json.outhumidity()],false,shiftseries)
+    this.temperaturechart.series[3].addPoint([timestamp,json.inhumidity()],false,shiftseries)
+    this.pressurechart.series[0].addPoint([timestamp,json.relbaro()],false,shiftseries)
+    this.pressurechart.series[1].addPoint([timestamp,json.absbaro()],false,shiftseries)
+    this.windbarbchart.series[0].addPoint([timestamp,json.windgustspeed_mps(),json.winddirection()],false,shiftseries)
     // https://api.highcharts.com/highcharts/series.line.data
     // only support m/s unit
-    this.windbarbchart.series[1].addPoint({ x: timestamp, y: json.windspeed_mps() },false)
-    this.windbarbchart.series[2].addPoint({ x: timestamp, y: json.windgustspeed_mps() },false) 
+    this.windbarbchart.series[1].addPoint({ x: timestamp, y: json.windspeed_mps() },false,shiftseries)
+    this.windbarbchart.series[2].addPoint({ x: timestamp, y: json.windgustspeed_mps() },false,shiftseries) 
 
-   this.solarchart.series[0].addPoint([timestamp,json.solar_light()],false)
+   this.solarchart.series[0].addPoint([timestamp,json.solar_light()],false,shiftseries)
    // this.solarchart.series[1].addPoint([timestamp,json.solar_uv()],false, this.solarchart.series[1].points.length>37, false)
-   this.solarchart.series[1].addPoint([timestamp, json.solar_uvi()],false)
+   this.solarchart.series[1].addPoint([timestamp, json.solar_uvi()],false,shiftseries)
 
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
-   if (!this.chart_redraw_interval_id)
-      {
-        this.chart_redraw()
-        this.chart_redraw_interval_id=setInterval(this.chart_redraw.bind(this),this.options.redraw_interval)
-      }
-           
 }
 
 UI.prototype.chart_redraw=function()
