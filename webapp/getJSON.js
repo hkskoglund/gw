@@ -253,6 +253,11 @@ GetJSON.prototype.solar_uvi=function()
     return this.data.solar_uvi
 }
 
+GetJSON.prototype.rainrate_description=function()
+{
+    return this.data.rainrate_description
+}
+
 GetJSON.prototype.rainrateToString=function()
 {
     var numdecimals
@@ -1063,7 +1068,7 @@ UI.prototype.update_charts=function()
     this.windbarbchart.subtitle.element.textContent='Speed '+ json.windspeedToString()+' Gust '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()
     //this.solarchart.setSubtitle({ text: 'Radiation '+json.solar_lightToString()+' UVI ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'})
     this.solarchart.subtitle.element.textContent='Radiation '+json.solar_lightToString()+' UVI ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'
-    this.rainchart.subtitle.element.textContent='Rain rate '+json.rainrateToString()
+    this.rainchart.subtitle.element.textContent='Rain rate '+json.rainrateToString()+' '+json.rainrate_description()
     //this.pressurechart.setSubtitle({ text: 'Relative '+json.pressureToString(json.relbaro())+' Absolute ' + json.pressureToString(json.absbaro())})
     this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())
 
