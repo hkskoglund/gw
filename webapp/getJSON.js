@@ -352,8 +352,9 @@ function UI()
 
     this.options={
         interval: 16000, // milliseconds request time for JSON
-        shifttime : 15,  // shift time in minutes, when points gets deleted/shifted left
-        redraw_interval: 60000 // milliseconds between each chart redraw
+        redraw_interval: 60000, // milliseconds between each chart redraw
+        addpoint_simulation: false, // add point every 100ms, testing performance
+        addpoint_simulation_interval: 100
     }
 
     this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
@@ -721,7 +722,7 @@ UI.prototype.initChart=function()
                                // ,
                                 {
                                     name: 'Solar UVI',
-                                    type: 'area',
+                                    type: 'areaspline',
                                     yAxis: 1,
                                     data: [],
                                     
@@ -856,10 +857,8 @@ UI.prototype.onJSON=function (ev)
     this.unit_solar_uvElement.textContent=json.unitSolarUV()
     this.solar_uviElement.textContent=json.solar_uvi()
 
-    this.simulation=false
-
-    if (this.simulation) // simulate new point every 100ms, testing performance
-        setInterval(this.update_charts.bind(this),100)
+    if (this.options.addpoint_simulation) 
+        setInterval(this.update_charts.bind(this),this.options.addpoint_simulation_interval)
     else
         this.update_charts()
 
@@ -886,7 +885,7 @@ UI.prototype.update_charts=function()
         simulationSubtitle='',
         shiftseries=false
 
-     if (this.simulation)
+     if (this.options.addpoint_simulation)
      {
        timestamp=Date.now()
        simulationSubtitle='Points '+this.temperaturechart.series[0].points.length

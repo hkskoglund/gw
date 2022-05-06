@@ -778,9 +778,9 @@ printLDSolarJSON()
 {
      if [ -n "$LIVEDATA_SOLAR_LIGHT" ]; then
         if [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_WATTM2" ]; then
-                printJSONmember "solar_light" "%6.2f" "$LIVEDATA_SOLAR_LIGHT"  
+            printJSONmember "solar_light" "%6.2f" "$LIVEDATA_SOLAR_LIGHT"
         elif [ "$UNIT_LIGHT_MODE" -eq "$UNIT_LIGHT_LUX" ]; then 
-            printLivedataLine "$LIVEDATAHEADER_SOLAR_LIGHT" "$LIVEDATA_SOLAR_LIGHT"  "%6.0f" "$LIVEDATAUNIT_SOLAR_LIGHT" "%4s" 
+            printJSONmember "solar_light" "%6.0f" "$LIVEDATA_SOLAR_LIGHT"
         fi
     fi
 
@@ -792,6 +792,28 @@ printLDSolarJSON()
         printJSONmember "solar_uvi" "%.1f" "$LIVEDATA_SOLAR_UVI"
         printJSONmember "solar_uvi_description" "%s" "$LIVEDATA_SOLAR_UVI_DESCRIPTION"
     fi
+}
+
+printLDRainJSON()
+{
+
+    if [ -n "$LIVEDATA_RAINRATE" ]; then
+        printJSONmember "rainrate" "%.1f" "$LIVEDATA_RAINRATE"
+        
+        setRainIntensity "$LIVEDATA_RAINRATE_INTS10"
+        export LIVEDATA_RAINRATE_STATE_DESCRIPTION="$VALUE_RAININTENSITY"
+        printJSONmember "rainrate_description" "%s" "$LIVEDATA_RAINRATE_STATE_DESCRIPTION"
+
+        setRainIntensityStatus "$LIVEDATA_RAINRATE_INTS10"
+        export LIVEDATA_RAINRATE_STATE="$VALUE_RAININTENSITY_STATUS"
+        printJSONmember "rainrate_state" "%s" "$LIVEDATA_RAINRATE_STATE" # unicode
+    fi
+
+    [ -n "$LIVEDATA_RAINHOUR" ] && printJSONmember "rainhour" "%.1f" "$LIVEDATA_RAINHOUR"
+    [ -n "$LIVEDATA_RAINWEEK" ] && printJSONmember "rainweek" "%.1f" "$LIVEDATA_RAINWEEK"
+    [ -n "$LIVEDATA_RAINMONTH" ] && printJSONmember "rainmonth" "%.1f" "$LIVEDATA_RAINMONTH"
+    [ -n "$LIVEDATA_RAINYEAR" ] && printJSONmember "rainyear" "%.1f" "$LIVEDATA_RAINYEAR"
+    [ -n "$LIVEDATA_RAINTOTAL" ] && printJSONmember "raintotal" "%.1f" "$LIVEDATA_RAINTOTAL"
 }
 
 printLDUnitJSON()
@@ -837,6 +859,7 @@ printLivedataJSON()
                 printLDPressureJSON
                 printLDWindJSON
                 printLDSolarJSON
+                printLDRainJSON
             
             printJSONRightBrace
 
