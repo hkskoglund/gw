@@ -253,6 +253,66 @@ GetJSON.prototype.solar_uvi=function()
     return this.data.solar_uvi
 }
 
+GetJSON.prototype.rainrateToString=function()
+{
+    var numdecimals
+
+    if (this.mode.rain === this.Mode.rain_mm)
+        numdecimals=1
+    else
+        numdecimals=2
+    
+    return this.rainrate().toFixed(numdecimals)+' '+this.unitRainrate()
+}
+
+GetJSON.prototype.rainrate=function()
+{
+    return this.data.rainrate
+}
+
+GetJSON.prototype.rainevent=function()
+{
+    return this.data.rainevent
+}
+
+GetJSON.prototype.rainhour=function()
+{
+    if (!this.data.hasOwnProperty('rainhour'))
+        return null
+    else
+        return this.data.rainhour
+}
+
+GetJSON.prototype.rainday=function()
+{
+    return this.data.rainday
+}
+
+GetJSON.prototype.rainweek=function()
+{
+    return this.data.rainweek
+}
+
+GetJSON.prototype.rainmonth=function()
+{
+    return this.data.rainmonth
+}
+
+GetJSON.prototype.rainyear=function()
+{
+    return this.data.rainyear
+}
+
+GetJSON.prototype.unitRainrate=function()
+{
+    return this.unit.rainrate
+}
+
+GetJSON.prototype.unitRain=function()
+{
+    return this.unit.rain
+}
+
 GetJSON.prototype.unitTemp=function()
 {
     return this.unit.temperature
@@ -655,7 +715,86 @@ UI.prototype.initChart=function()
            ] 
     })
     
-    this.solarchart= new Highcharts.Chart({ chart : {
+    this.rainchart= new Highcharts.Chart({ chart : {
+                            renderTo: 'rainchart',
+                            animation: animate
+                        },
+                        tooltip : {
+                            animation: animate
+                        },
+                        credits: {
+                            enabled: false
+                        },
+                        title: {
+                            text: 'Rain'
+                        },
+                        yAxis: [{
+                            //https://api.highcharts.com/highcharts/yAxis.max
+                            title: false,
+                            min : 0,
+                            tickInterval: 1,
+                            //opposite: true
+                            //max : null
+                            //max : 1.0
+                        //  max : 40
+                        },
+                    {
+                        title:false,
+                        min: 0,
+                        //tickInterval:1,
+                        //opposite: true
+                    }
+                ],
+                        xAxis: [{
+
+                            id: 'rain-datetime-axis',
+
+                            type: 'datetime',
+
+                            offset : 10,
+
+                            tickpixelinterval: 150,
+
+                        },{
+                            id: 'rain-category-axis',
+
+                            type: 'category',
+
+                            categories: ['Event','Hour','Day','Week','Month','Year']
+                        }],
+
+                        series: [
+                            {
+                                    name: 'Rain rate',
+                                    type: 'spline',
+                                    yAxis: 0,
+                                    data: []
+                            },
+                            {
+                                name: 'Rain',
+                                type: 'column',
+                                yAxis: 0,
+                                xAxis: 1,
+                                data: [],
+                                dataLabels: {
+                                    enabled : true
+                                }
+                            },
+                            {
+                                name: 'Rain',
+                                type: 'column',
+                                yAxis: 1,
+                                xAxis: 1,
+                                data: [],
+                                dataLabels: {
+                                    enabled: true
+                                }
+                            }
+                        
+                        ] 
+                        })
+
+                        this.solarchart= new Highcharts.Chart({ chart : {
                             renderTo: 'solarchart',
                             animation: animate
                         },
@@ -779,14 +918,10 @@ UI.prototype.initChart=function()
     
         series: [{
             type: 'windbarb',
-            data: [ ],
-             
+            data: [],
             name: 'Wind',
             color: Highcharts.getOptions().colors[1],
             showInLegend: false,
-            tooltip: {
-                valueSuffix: ' m/s'
-            }
         }, {
             type: 'spline',
             keys: ['y', 'rotation'], // rotation is not used here
@@ -804,9 +939,7 @@ UI.prototype.initChart=function()
            //     ]
            // },
             name: 'Wind speed',
-            tooltip: {
-                valueSuffix: ' m/s'
-            },
+            
            // states: {
            //     inactive: {
            //         opacity: 1
@@ -817,9 +950,7 @@ UI.prototype.initChart=function()
             data: [],
             
             name: 'Wind gust speed',
-            tooltip: {
-                valueSuffix: ' m/s'
-            }
+            
         }
     ]
     
@@ -835,6 +966,21 @@ UI.prototype.onJSON=function (ev)
    //   this.weatherElement.style.display="block"
 
     this.measurementCount=this.measurementCount+1
+
+    if (this.measurementCount===1)
+    {
+        this.rainchart.series[0].tooltipOptions.valueSuffix=' '+json.unitRainrate()
+        this.rainchart.series[1].tooltipOptions.valueSuffix=' '+json.unitRain()
+        this.rainchart.series[2].tooltipOptions.valueSuffix=' '+json.unitRain()
+        
+        
+        this.windbarbchart.series.forEach(function (series) { series.tooltipOptions.valueSuffix=' '+json.unitWind()})
+        this.temperaturechart.series[0].tooltipOptions.valueSuffix=' '+json.unitTemp()
+        this.temperaturechart.series[1].tooltipOptions.valueSuffix=' '+json.unitTemp()
+        this.pressurechart.series[0].tooltipOptions.valueSuffix=' '+json.unitPressure()
+        this.pressurechart.series[1].tooltipOptions.valueSuffix=' '+json.unitPressure()
+        this.solarchart.series[0].tooltipOptions.valueSuffix=' '+json.unitSolarlight()
+    }
 
     this.outtempElement.textContent=json.outtemp()
     this.intempElement.textContent=json.intemp()
@@ -897,22 +1043,10 @@ UI.prototype.update_charts=function()
     this.windbarbchart.subtitle.element.textContent='Speed '+ json.windspeedToString()+' Gust '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()
     //this.solarchart.setSubtitle({ text: 'Radiation '+json.solar_lightToString()+' UVI ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'})
     this.solarchart.subtitle.element.textContent='Radiation '+json.solar_lightToString()+' UVI ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'
+    this.rainchart.subtitle.element.textContent='Rain rate '+json.rainrateToString()
     //this.pressurechart.setSubtitle({ text: 'Relative '+json.pressureToString(json.relbaro())+' Absolute ' + json.pressureToString(json.absbaro())})
     this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())
 
-    if (this.temperaturechart.series[0].userOptions.tooltip === undefined || this.temperaturechart.series[0].userOptions.tooltip.valueSuffix === undefined ) {
-        this.temperaturechart.series[0].update({tooltip: { valueSuffix: ' '+json.unitTemp() }})
-        this.temperaturechart.series[1].update({tooltip: { valueSuffix: ' '+json.unitTemp() }})
-    }
-    
-    if (this.pressurechart.series[0].userOptions.tooltip === undefined || this.solarchart.series[0].userOptions.tooltip.valueSuffix === undefined ) {
-        this.pressurechart.series[0].update({tooltip: { valueSuffix: ' '+json.unitPressure() }})
-        this.pressurechart.series[1].update({tooltip: { valueSuffix: ' '+json.unitPressure() }})
-    }
-
-    if (this.solarchart.series[0].userOptions.tooltip === undefined || this.solarchart.series[0].userOptions.tooltip.valueSuffix === undefined )
-        this.solarchart.series[0].update({tooltip: { valueSuffix: ' '+json.unitSolarlight() }})
-    
     // Remove data if too old, otherwise they get skewed to the left
   //  if (this.windbarbchart.series[0].xData.length >= 1 &&   ( timestamp - this.windbarbchart.series[0].xData[this.windbarbchart.series[0].xData.length-1]) > this.options.interval*this.options.maxPoints)
   //  {
@@ -952,6 +1086,10 @@ UI.prototype.update_charts=function()
    this.solarchart.series[0].addPoint([timestamp,json.solar_light()],false,shiftseries)
    // this.solarchart.series[1].addPoint([timestamp,json.solar_uv()],false, this.solarchart.series[1].points.length>37, false)
    this.solarchart.series[1].addPoint([timestamp, json.solar_uvi()],false,shiftseries)
+
+   this.rainchart.series[0].addPoint([timestamp,json.rainrate()],false,shiftseries)
+   this.rainchart.series[1].setData([json.rainevent(),null,json.rainday(),json.rainweek(),null,null])
+   this.rainchart.series[2].setData([null,null,null,null,json.rainmonth(),json.rainyear()])
 
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    

@@ -798,7 +798,11 @@ printLDRainJSON()
 {
  
     if [ -n "$LIVEDATA_RAINRATE" ]; then
-        printJSONmember "rainrate" "%.1f" "$LIVEDATA_RAINRATE"
+        if [ "$UNIT_RAIN_MODE" -eq "$UNIT_RAIN_MM" ]; then 
+            printJSONmember "rainrate" "%.1f" "$LIVEDATA_RAINRATE"
+        elif [ "$UNIT_RAIN_MODE" -eq "$UNIT_RAIN_IN" ]; then
+            printJSONmember "rainrate" "%.2f" "$LIVEDATA_RAINRATE"
+        fi
         
         setRainIntensity "$LIVEDATA_RAINRATE_INTS10"
         export LIVEDATA_RAINRATE_STATE_DESCRIPTION="$VALUE_RAININTENSITY"
@@ -809,9 +813,9 @@ printLDRainJSON()
         printJSONmember "rainrate_state" "%s" "$LIVEDATA_RAINRATE_STATE" # unicode
     fi
 
+    [ -n "$LIVEDATA_RAINEVENT" ] && printJSONmember "rainevent" "%.1f" "$LIVEDATA_RAINEVENT" 
     [ -n "$LIVEDATA_RAINHOUR" ] && printJSONmember "rainhour" "%.1f" "$LIVEDATA_RAINHOUR"
     [ -n "$LIVEDATA_RAINDAY" ]  && printJSONmember "rainday" "%.1f" "$LIVEDATA_RAINDAY"  
-    [ -n "$LIVEDATA_RAINEVENT" ] && printJSONmember "rainevent" "%.1f" "$LIVEDATA_RAINEVENT" 
     [ -n "$LIVEDATA_RAINWEEK" ] && printJSONmember "rainweek" "%.1f" "$LIVEDATA_RAINWEEK"
     [ -n "$LIVEDATA_RAINMONTH" ] && printJSONmember "rainmonth" "%.1f" "$LIVEDATA_RAINMONTH"
     [ -n "$LIVEDATA_RAINYEAR" ] && printJSONmember "rainyear" "%.1f" "$LIVEDATA_RAINYEAR"
@@ -832,7 +836,7 @@ printLDUnitJSON()
         printJSONmember "pressure" '%s' "$LIVEDATAUNIT_PRESSURE"
         printJSONmember "winddirection" '%s' "$LIVEDATAUNIT_WIND_DIRECTION"
         printJSONmember "rain" '%s' "$LIVEDATAUNIT_RAIN"
-        printJSONmember "rain_rate" '%s' "$LIVEDATAUNIT_RAINRATE"
+        printJSONmember "rainrate" '%s' "$LIVEDATAUNIT_RAINRATE"
         printJSONmember "solar_light" '%s' $LIVEDATAUNIT_SOLAR_LIGHT
         printJSONmember "solar_uv" '%s' $LIVEDATAUINT_SOLAR_UV
         #printJSONmember "solar_uvi" '%s' '""'
