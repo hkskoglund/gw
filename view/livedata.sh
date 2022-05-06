@@ -796,6 +796,32 @@ printLDSolarJSON()
 
 printLDRainJSON()
 {
+ #    if [ -n "$LIVEDATA_RAINRATE" ]; then
+ #    
+ #           printLivedataGroupheader "" "$LIVEDATAGROUPHEADER_RAIN"
+#
+ #           setRainIntensity "$LIVEDATA_RAINRATE_INTS10"
+ #           export LIVEDATA_RAINRATE_STATE_DESCRIPTION="$VALUE_RAININTENSITY"
+ #           if type setStyleRainIntensity >/dev/null 2>/dev/null; then
+ #               setStyleRainIntensity "$LIVEDATA_RAINRATE_INTS10"
+ #               STYLE_LIVE_VALUE=$STYLE_RAININTENSITY
+ #           fi
+ #           setRainIntensityStatus "$LIVEDATA_RAINRATE_INTS10"
+ #           export LIVEDATA_RAINRATE_STATE="$VALUE_RAININTENSITY_STATUS"
+ #       
+ #           printLivedataLine "$LIVEDATAHEADER_RAINRATE" "$LIVEDATA_RAINRATE" "$VALUE_RAIN_FMT"  "$LIVEDATAUNIT_RAINRATE" "%4s"  '' "$VALUE_RAININTENSITY_STATUS" 
+ #   fi
+ #   # rainhour available in Ecowitt http request
+ #   [ -n "$LIVEDATA_RAINHOUR" ]     && printLivedataRainLine "$LIVEDATA_RAINHOUR_INTS10"  "$LIVEDATALIMIT_RAINHOUR"  "$LIVEDATAHEADER_RAINHOUR"  "$LIVEDATA_RAINHOUR" "$LIVEDATAUNIT_RAIN" "$STYLE_LIVEDATALIMIT_RAINHOUR"
+ #   [ -n "$LIVEDATA_RAINDAY" ]      && printLivedataRainLine "$LIVEDATA_RAINDAY_INTS10"   "$LIVEDATALIMIT_RAINDAY"   "$LIVEDATAHEADER_RAINDAY"   "$LIVEDATA_RAINDAY"  "$LIVEDATAUNIT_RAIN" "$STYLE_LIVEDATALIMIT_RAINDAY"
+ #   [ -n "$LIVEDATA_RAINEVENT" ]    && printLivedataRainLine "$LIVEDATA_RAINEVENT_INTS10" "$LIVEDATALIMIT_RAINEVENT" "$LIVEDATAHEADER_RAINEVENT" "$LIVEDATA_RAINEVENT" "$LIVEDATAUNIT_RAIN" "$STYLE_LIVEDATALIMIT_RAINEVENT"
+#
+ #   [ -n "$LIVEDATA_RAINWEEK" ]     && printLivedataLine "$LIVEDATAHEADER_RAINWEEK" "$LIVEDATA_RAINWEEK"    "$VALUE_RAIN_FMT" "$LIVEDATAUNIT_RAIN" "%3s"  "$SENSOR_RAINFALL_BATTERY_LOW" "$SENSOR_RAINFALL_BATTERY" "$SENSOR_RAINFALL_BATTERY_STATE" "" "$SENSOR_RAINFALL_SIGNAL" "$SENSOR_RAINFALL_SIGNAL_STATE"
+ #   [ -n "$LIVEDATA_RAINMONTH" ]    && printLivedataLine "$LIVEDATAHEADER_RAINMONTH" "$LIVEDATA_RAINMONTH"  "$VALUE_RAIN_FMT" "$LIVEDATAUNIT_RAIN" "%3s"  "$VALUE_RAIN_FMT"
+ #   [ -n "$LIVEDATA_RAINYEAR" ]     && printLivedataLine "$LIVEDATAHEADER_RAINYEAR" "$LIVEDATA_RAINYEAR"    "$VALUE_RAIN_FMT" "$LIVEDATAUNIT_RAIN" "%3s" 
+ #   [ -n "$LIVEDATA_RAINTOTAL" ]    && printLivedataLine "$LIVEDATAHEADER_RAINTOTAL" "$LIVEDATA_RAINTOTAL"  "$VALUE_RAIN_FMT" "$LIVEDATAUNIT_RAIN" "%3s" "$VALUE_RAIN_FMT"
+#
+ #   unset l_delimiter
 
     if [ -n "$LIVEDATA_RAINRATE" ]; then
         printJSONmember "rainrate" "%.1f" "$LIVEDATA_RAINRATE"
@@ -810,10 +836,13 @@ printLDRainJSON()
     fi
 
     [ -n "$LIVEDATA_RAINHOUR" ] && printJSONmember "rainhour" "%.1f" "$LIVEDATA_RAINHOUR"
+    [ -n "$LIVEDATA_RAINDAY" ]  && printJSONmember "rainday" "%.1f" "$LIVEDATA_RAINDAY"  
+    [ -n "$LIVEDATA_RAINEVENT" ] && printJSONmember "rainevent" "%.1f" "$LIVEDATA_RAINEVENT" 
     [ -n "$LIVEDATA_RAINWEEK" ] && printJSONmember "rainweek" "%.1f" "$LIVEDATA_RAINWEEK"
     [ -n "$LIVEDATA_RAINMONTH" ] && printJSONmember "rainmonth" "%.1f" "$LIVEDATA_RAINMONTH"
     [ -n "$LIVEDATA_RAINYEAR" ] && printJSONmember "rainyear" "%.1f" "$LIVEDATA_RAINYEAR"
     [ -n "$LIVEDATA_RAINTOTAL" ] && printJSONmember "raintotal" "%.1f" "$LIVEDATA_RAINTOTAL"
+
 }
 
 printLDUnitJSON()
