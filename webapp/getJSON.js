@@ -778,7 +778,7 @@ UI.prototype.initChart=function()
                                     data: [],
                                     //https://en.wikipedia.org/wiki/Rain#Intensity
                                     zones: [{
-                                        value: 0,
+                                        //value: 0,
                                         color:  '#2a9502'   // green
                                     },
                                     {   
