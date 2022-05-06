@@ -770,7 +770,25 @@ UI.prototype.initChart=function()
                                     name: 'Rain rate',
                                     type: 'spline',
                                     yAxis: 0,
-                                    data: []
+                                    data: [],
+                                    //https://en.wikipedia.org/wiki/Rain#Intensity
+                                    zones: [{
+                                        value: 0,
+                                        color:  '#2a9502'   // green
+                                    },
+                                    {   
+                                        value: 2.5,
+                                        color: '#f7e400'    // yellow
+                                    },
+                                    {   
+                                        value: 7.6,
+                                        color: '#f85900'    // orange
+                                    },
+                                    {   
+                                        value: 50,
+                                        color: '#d8220e'    // redish
+                                    }
+                                   ]
                             },
                             {
                                 name: 'Rain',
