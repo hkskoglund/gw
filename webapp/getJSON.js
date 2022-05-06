@@ -738,11 +738,13 @@ UI.prototype.initChart=function()
                             //max : 1.0
                         //  max : 40
                         },
+                        //month/year axis
                     {
                         title:false,
                         min: 0,
                         //tickInterval:1,
                         //opposite: true
+                        visible: false
                     }
                 ],
                         xAxis: [{
