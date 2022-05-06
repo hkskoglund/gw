@@ -509,7 +509,10 @@ UI.prototype.initChart=function()
                 stacking: 'normal',
                 shadow: false,
                 groupPadding: 0,
-                pointPlacement: 'on'
+                pointPlacement: 'on',
+                tooltip: {
+                    valueDecimals : 2
+                }
             }
         },
 
@@ -1000,6 +1003,7 @@ UI.prototype.onJSON=function (ev)
         
         
         this.windbarbchart.series.forEach(function (series) { series.tooltipOptions.valueSuffix=' '+json.unitWind()})
+        this.windrosechart.series
         this.temperaturechart.series[0].tooltipOptions.valueSuffix=' '+json.unitTemp()
         this.temperaturechart.series[1].tooltipOptions.valueSuffix=' '+json.unitTemp()
         this.pressurechart.series[0].tooltipOptions.valueSuffix=' '+json.unitPressure()
