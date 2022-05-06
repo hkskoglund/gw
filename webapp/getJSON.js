@@ -740,7 +740,7 @@ UI.prototype.initChart=function()
                             //https://api.highcharts.com/highcharts/yAxis.max
                             title: false,
                             min : 0,
-                            tickInterval: 1,
+                            tickInterval: 5,
                             //opposite: true
                             //max : null
                             //max : 1.0
@@ -780,22 +780,26 @@ UI.prototype.initChart=function()
                                     yAxis: 0,
                                     data: [],
                                     //https://en.wikipedia.org/wiki/Rain#Intensity
-                                    zones: [{
-                                        //value: 0,
-                                        color:  '#2a9502'   // green
-                                    },
-                                    {   
-                                        value: 2.5,
-                                        color: '#f7e400'    // yellow
-                                    },
-                                    {   
-                                        value: 7.6,
-                                        color: '#f85900'    // orange
-                                    },
-                                    {   
-                                        value: 50,
-                                        color: '#d8220e'    // redish
-                                    }
+                                    //zoneAxis: 'y',
+                                    zones: [
+                                        {   
+                                            // max value for zone
+                                            value: 2.5,
+                                            color: '#2a9502'    // green
+                                           
+                                        },
+                                        {   
+                                            value: 7.6,
+                                            color: '#f7e400'    // yellow
+                                           
+                                        },
+                                        {   
+                                            value: 50,
+                                            color: '#f85900'    // orange
+                                        },
+                                        {
+                                            color: '#d8220e'    // redish
+                                        },
                                    ]
                             },
                             {
