@@ -813,7 +813,7 @@ UI.prototype.initChart=function()
                                 }
                             },
                             {
-                                name: 'Rain',
+                                name: 'Rain week/month/year',
                                 type: 'column',
                                 yAxis: 1,
                                 xAxis: 1,
