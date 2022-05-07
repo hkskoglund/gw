@@ -508,7 +508,7 @@ UI.prototype.initChart=function()
                 groupPadding: 0,
                 pointPlacement: 'on',
                 tooltip: {
-                    valueDecimals : 2
+                    valueDecimals : 1
                 }
             }
         },
@@ -589,7 +589,8 @@ UI.prototype.initChart=function()
         animation: animate
     },
     tooltip : {
-        animation: animate
+        enabled: false
+//        animation: animate,
     },
     credits: {
         enabled: false
@@ -675,6 +676,7 @@ UI.prototype.initChart=function()
         animation: animate
     },
     tooltip : {
+        enabled: false,
         animation: animate
     },
     credits: {
@@ -776,6 +778,7 @@ UI.prototype.initChart=function()
                                     type: 'spline',
                                     yAxis: 0,
                                     data: [],
+                                    tooltip: { enabled: false },
                                     //https://en.wikipedia.org/wiki/Rain#Intensity
                                     //zoneAxis: 'y',
                                     zones: [
@@ -829,7 +832,8 @@ UI.prototype.initChart=function()
                             animation: animate
                         },
                         tooltip : {
-                            animation: animate
+                            enabled: false
+                           // animation: animate
                         },
                         credits: {
                             enabled: false
@@ -922,7 +926,8 @@ UI.prototype.initChart=function()
     this.windbarbchart= new Highcharts.Chart({ chart : {
         renderTo: 'windbarbchart' },
         tooltip : {
-            animation: animate
+            enabled: false,
+            //animation: animate
         },
 
         title: {
@@ -997,21 +1002,21 @@ UI.prototype.onJSON=function (ev)
 
     this.measurementCount=this.measurementCount+1
 
-    if (this.measurementCount===1)
-    {
-        this.rainchart.series[0].tooltipOptions.valueSuffix=' '+json.unitRainrate()
-        this.rainchart.series[1].tooltipOptions.valueSuffix=' '+json.unitRain()
-        this.rainchart.series[2].tooltipOptions.valueSuffix=' '+json.unitRain()
-        
-        
-        this.windbarbchart.series.forEach(function (series) { series.tooltipOptions.valueSuffix=' '+json.unitWind()})
-        this.windrosechart.series
-        this.temperaturechart.series[0].tooltipOptions.valueSuffix=' '+json.unitTemp()
-        this.temperaturechart.series[1].tooltipOptions.valueSuffix=' '+json.unitTemp()
-        this.pressurechart.series[0].tooltipOptions.valueSuffix=' '+json.unitPressure()
-        this.pressurechart.series[1].tooltipOptions.valueSuffix=' '+json.unitPressure()
-        this.solarchart.series[0].tooltipOptions.valueSuffix=' '+json.unitSolarlight()
-    }
+//    if (this.measurementCount===1)
+//    {
+//        this.rainchart.series[0].tooltipOptions.valueSuffix=' '+json.unitRainrate()
+//        this.rainchart.series[1].tooltipOptions.valueSuffix=' '+json.unitRain()
+//        this.rainchart.series[2].tooltipOptions.valueSuffix=' '+json.unitRain()
+//        
+//        
+//        this.windbarbchart.series.forEach(function (series) { series.tooltipOptions.valueSuffix=' '+json.unitWind()})
+//        this.windrosechart.series
+//        this.temperaturechart.series[0].tooltipOptions.valueSuffix=' '+json.unitTemp()
+//        this.temperaturechart.series[1].tooltipOptions.valueSuffix=' '+json.unitTemp()
+//        this.pressurechart.series[0].tooltipOptions.valueSuffix=' '+json.unitPressure()
+//        this.pressurechart.series[1].tooltipOptions.valueSuffix=' '+json.unitPressure()
+//        this.solarchart.series[0].tooltipOptions.valueSuffix=' '+json.unitSolarlight()
+//    }
 
     this.outtempElement.textContent=json.outtemp()
     this.intempElement.textContent=json.intemp()
