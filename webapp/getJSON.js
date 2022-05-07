@@ -410,17 +410,18 @@ function UI()
     
     this.weatherElement=document.getElementById('divWeather')
 
-    this.initChart()
-
     this.options={
         interval: 16000, // milliseconds request time for JSON
         redraw_interval: 60000, // milliseconds between each chart redraw
         addpoint_simulation: false, // add point every 100ms, testing performance
-        addpoint_simulation_interval: 100
+        addpoint_simulation_interval: 100,
+        tooltip: this.isIpad1() // turn off for ipad1 - slow animation/disappearing
     }
 
     this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
-    
+
+    this.initChart()
+  
     if (window.location.hostname === '127.0.0.1') // assume web server runs on port 80
         // Visual studio code live preview uses 127.0.0.1:3000
       port=80
@@ -440,20 +441,16 @@ UI.prototype.isIpad1=function()
 
 UI.prototype.initChart=function()
 {
-    var animate=this.isIpad1() // turn off animation for ipad 1
-    animate=true // ipad1 empty tooltip turns up after some time if disabled
-
-    // https://jsfiddle.net/fq64pkhn/
+    // Windrose demo https://jsfiddle.net/fq64pkhn/
    
     this.windrosechart=Highcharts.chart('windrosechart', {
         chart: {
             polar: true,
             type: 'column',
-            animation: animate
         },
 
         tooltip : {
-            animation: animate
+            enabled: this.options.tooltip
         },
 
         credits: {
@@ -508,7 +505,8 @@ UI.prototype.initChart=function()
                 groupPadding: 0,
                 pointPlacement: 'on',
                 tooltip: {
-                    valueDecimals : 1
+                    valueDecimals : 1,
+                    valueSuffix : ' min.'
                 }
             }
         },
@@ -586,11 +584,9 @@ UI.prototype.initChart=function()
     
     this.temperaturechart= new Highcharts.Chart({ chart : {
         renderTo: 'temperaturechart',
-        animation: animate
     },
     tooltip : {
-        enabled: false
-//        animation: animate,
+        enabled: this.options.tooltip
     },
     credits: {
         enabled: false
@@ -673,11 +669,9 @@ UI.prototype.initChart=function()
 
     this.pressurechart= new Highcharts.Chart({ chart : {
         renderTo: 'pressurechart',
-        animation: animate
     },
     tooltip : {
-        enabled: false,
-        animation: animate
+        enabled: this.options.tooltip,
     },
     credits: {
         enabled: false
@@ -724,11 +718,9 @@ UI.prototype.initChart=function()
     
     this.rainchart= new Highcharts.Chart({ chart : {
                             renderTo: 'rainchart',
-                            animation: animate
                         },
                         tooltip : {
-                            enabled: false,
-                            animation: animate
+                            enabled: this.options.tooltip,
                         },
                         credits: {
                             enabled: false
@@ -829,11 +821,9 @@ UI.prototype.initChart=function()
 
                         this.solarchart= new Highcharts.Chart({ chart : {
                             renderTo: 'solarchart',
-                            animation: animate
                         },
                         tooltip : {
-                            enabled: false
-                           // animation: animate
+                            enabled: this.options.tooltip
                         },
                         credits: {
                             enabled: false
@@ -926,8 +916,7 @@ UI.prototype.initChart=function()
     this.windbarbchart= new Highcharts.Chart({ chart : {
         renderTo: 'windbarbchart' },
         tooltip : {
-            enabled: false,
-            //animation: animate
+            enabled: this.options.tooltip,
         },
 
         title: {
@@ -1002,21 +991,18 @@ UI.prototype.onJSON=function (ev)
 
     this.measurementCount=this.measurementCount+1
 
-//    if (this.measurementCount===1)
-//    {
-//        this.rainchart.series[0].tooltipOptions.valueSuffix=' '+json.unitRainrate()
-//        this.rainchart.series[1].tooltipOptions.valueSuffix=' '+json.unitRain()
-//        this.rainchart.series[2].tooltipOptions.valueSuffix=' '+json.unitRain()
-//        
-//        
-//        this.windbarbchart.series.forEach(function (series) { series.tooltipOptions.valueSuffix=' '+json.unitWind()})
-//        this.windrosechart.series
-//        this.temperaturechart.series[0].tooltipOptions.valueSuffix=' '+json.unitTemp()
-//        this.temperaturechart.series[1].tooltipOptions.valueSuffix=' '+json.unitTemp()
-//        this.pressurechart.series[0].tooltipOptions.valueSuffix=' '+json.unitPressure()
-//        this.pressurechart.series[1].tooltipOptions.valueSuffix=' '+json.unitPressure()
-//        this.solarchart.series[0].tooltipOptions.valueSuffix=' '+json.unitSolarlight()
-//    }
+    if (this.measurementCount===1 && this.options.tooltip.enabled)
+    {
+        this.rainchart.series[0].tooltipOptions.valueSuffix=' '+json.unitRainrate()
+        this.rainchart.series[1].tooltipOptions.valueSuffix=' '+json.unitRain()
+        this.rainchart.series[2].tooltipOptions.valueSuffix=' '+json.unitRain()
+        this.windbarbchart.series.forEach(function (series) { series.tooltipOptions.valueSuffix=' '+json.unitWind()})
+        this.temperaturechart.series[0].tooltipOptions.valueSuffix=' '+json.unitTemp()
+        this.temperaturechart.series[1].tooltipOptions.valueSuffix=' '+json.unitTemp()
+        this.pressurechart.series[0].tooltipOptions.valueSuffix=' '+json.unitPressure()
+        this.pressurechart.series[1].tooltipOptions.valueSuffix=' '+json.unitPressure()
+        this.solarchart.series[0].tooltipOptions.valueSuffix=' '+json.unitSolarlight()
+    }
 
     this.outtempElement.textContent=json.outtemp()
     this.intempElement.textContent=json.intemp()
@@ -1170,3 +1156,4 @@ window.onload = function init() {
     var ui = new UI()
     
 }
+
