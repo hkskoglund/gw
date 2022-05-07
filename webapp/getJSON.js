@@ -727,6 +727,7 @@ UI.prototype.initChart=function()
                             animation: animate
                         },
                         tooltip : {
+                            enabled: false,
                             animation: animate
                         },
                         credits: {
@@ -778,7 +779,6 @@ UI.prototype.initChart=function()
                                     type: 'spline',
                                     yAxis: 0,
                                     data: [],
-                                    tooltip: { enabled: false },
                                     //https://en.wikipedia.org/wiki/Rain#Intensity
                                     //zoneAxis: 'y',
                                     zones: [
