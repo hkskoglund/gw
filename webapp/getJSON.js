@@ -282,10 +282,7 @@ GetJSON.prototype.rainevent=function()
 
 GetJSON.prototype.rainhour=function()
 {
-    if (!this.data.hasOwnProperty('rainhour'))
-        return null
-    else
-        return this.data.rainhour
+    return this.data.rainhour
 }
 
 GetJSON.prototype.rainday=function()
@@ -740,7 +737,7 @@ UI.prototype.initChart=function()
                             //https://api.highcharts.com/highcharts/yAxis.max
                             title: false,
                             min : 0,
-                            tickInterval: 5,
+                            //tickInterval: 5,
                             //opposite: true
                             //max : null
                             //max : 1.0
@@ -783,7 +780,7 @@ UI.prototype.initChart=function()
                                     //zoneAxis: 'y',
                                     zones: [
                                         {   
-                                            // max value for zone
+                                            // max value for zone < 2.5
                                             value: 2.5,
                                             color: '#2a9502'    // green
                                            
@@ -807,7 +804,7 @@ UI.prototype.initChart=function()
                                 type: 'column',
                                 yAxis: 0,
                                 xAxis: 1,
-                                data: [],
+                                data: [['Day',10]],
                                 dataLabels: {
                                     enabled : true
                                 }
@@ -1121,8 +1118,12 @@ UI.prototype.update_charts=function()
    this.solarchart.series[1].addPoint([timestamp, json.solar_uvi()],false,shiftseries)
 
    this.rainchart.series[0].addPoint([timestamp,json.rainrate()],false,shiftseries)
-   this.rainchart.series[1].setData([json.rainevent(),null,json.rainday(),json.rainweek(),null,null])
-   this.rainchart.series[2].setData([null,null,null,null,json.rainmonth(),json.rainyear()])
+   var rainData=[['Event',json.rainevent()],['Day',json.rainday()],['Week',json.rainweek()]]
+   var rainHour=json.rainhour()
+   if (rainHour)
+    rainData.push(['Hour',rainHour])
+   this.rainchart.series[1].setData(rainData)
+   this.rainchart.series[2].setData([['Month',json.rainmonth()],['Year',json.rainyear()]])
 
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    

@@ -1661,6 +1661,7 @@ processCommand()
 
             if argEmptyOrOption "$1"; then
                 sendPacket $CMD_READ_RAINDATA "$GW_HOST"
+                printRaindata
             else
                 if sendPacket $CMD_READ_RAINDATA "$GW_HOST" >/dev/null ; then #refresh
                     parseRaindataOptions "$1"

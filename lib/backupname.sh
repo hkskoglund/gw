@@ -47,10 +47,10 @@ while [ "$N" -le 8 ]; do
 done
 unset N
 
-BACKUPNAME_RAINDAY="rain_day"
-BACKUPNAME_RAINWEEK="rain_week"
-BACKUPNAME_RAINMONTH="rain_month"
-BACKUPNAME_RAINYEAR="rain_year" 
+BACKUPNAME_RAINDAY="rainday"
+BACKUPNAME_RAINWEEK="rainweek"
+BACKUPNAME_RAINMONTH="rainmonth"
+BACKUPNAME_RAINYEAR="rainyear" 
 
 getBackupname()
 # get backupname for sensortype
