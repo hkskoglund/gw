@@ -804,7 +804,7 @@ UI.prototype.initChart=function()
                                 type: 'column',
                                 yAxis: 0,
                                 xAxis: 1,
-                                data: [['Day',10]],
+                                data: [],
                                 dataLabels: {
                                     enabled : true
                                 }
@@ -817,7 +817,8 @@ UI.prototype.initChart=function()
                                 data: [],
                                 dataLabels: {
                                     enabled: true
-                                }
+                                },
+                                visible: false
                             }
                         
                         ] 
@@ -1118,12 +1119,12 @@ UI.prototype.update_charts=function()
    this.solarchart.series[1].addPoint([timestamp, json.solar_uvi()],false,shiftseries)
 
    this.rainchart.series[0].addPoint([timestamp,json.rainrate()],false,shiftseries)
-   var rainData=[['Event',json.rainevent()],['Day',json.rainday()],['Week',json.rainweek()]]
+   var rainData=[['Event',json.rainevent()],['Day',json.rainday()]]
    var rainHour=json.rainhour()
    if (rainHour)
     rainData.push(['Hour',rainHour])
    this.rainchart.series[1].setData(rainData)
-   this.rainchart.series[2].setData([['Month',json.rainmonth()],['Year',json.rainyear()]])
+   this.rainchart.series[2].setData([['Week',json.rainweek()],['Month',json.rainmonth()],['Year',json.rainyear()]])
 
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
