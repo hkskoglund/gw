@@ -1137,21 +1137,29 @@ UI.prototype.addpointIfChanged=function(series,value,shiftseries)
         pointsLength=series.points.length // 0 if series hidden
 
     if (dataLength>0)
-   {
-        if  (series.yData[dataLength-1] != value[1] || dataLength===1)
-           series.addPoint(value,false,shiftseries)
-        else
-           if (series.visible)
+    {
+            if  (series.yData[dataLength-1] != value[1] || dataLength===1) {
+                //console.log(series.name,'addpoint',value,series.options.data)
+            series.addPoint(value,false,shiftseries)
+            }
+            else
+            {
+                if (series.visible)
+                {
+                //console.log(series.name,'point update',value,series.options.data)    
                 series.points[pointsLength-1].update(value)
-           else
-                 //change timestamp, problem update hidden series...
-                //series.isDirty = true;
-                //series.isDirtyData = true;
-                 series.xData[dataLength-1]=value[0]
-                series.options.data[dataLength-1][0]=value[0]
-
-   }  else
-       series.addPoint(value,false,shiftseries)
+                }
+                else
+                {
+                    series.options.data.pop()
+                    series.options.data.push(value)
+                    //console.log(series.name,'setdata',value,series.options.data)
+                    series.setData(series.options.data)
+                }
+            }
+    }  
+    else
+        series.addPoint(value,false,shiftseries)
 }
 
 UI.prototype.chart_redraw=function()
