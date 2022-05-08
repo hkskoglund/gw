@@ -415,7 +415,8 @@ function UI()
         redraw_interval: 60000, // milliseconds between each chart redraw
         addpoint_simulation: false, // add point every 100ms, testing performance
         addpoint_simulation_interval: 100,
-        tooltip: this.isIpad1() // turn off for ipad1 - slow animation/disappearing
+        tooltip: this.isIpad1(), // turn off for ipad1 - slow animation/disappearing
+        animation: false // turn off animation for all charts
     }
 
     this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
@@ -445,6 +446,7 @@ UI.prototype.initChart=function()
    
     this.windrosechart=Highcharts.chart('windrosechart', {
         chart: {
+            animation: this.options.animation,
             polar: true,
             type: 'column',
         },
@@ -583,6 +585,7 @@ UI.prototype.initChart=function()
     });
     
     this.temperaturechart= new Highcharts.Chart({ chart : {
+        animation: this.options.animation,
         renderTo: 'temperaturechart',
     },
     tooltip : {
@@ -668,6 +671,7 @@ UI.prototype.initChart=function()
     })
 
     this.pressurechart= new Highcharts.Chart({ chart : {
+        animation: this.options.animation,
         renderTo: 'pressurechart',
     },
     tooltip : {
@@ -717,6 +721,7 @@ UI.prototype.initChart=function()
     })
     
     this.rainchart= new Highcharts.Chart({ chart : {
+                            animation: this.options.animation,
                             renderTo: 'rainchart',
                         },
                         tooltip : {
@@ -820,6 +825,7 @@ UI.prototype.initChart=function()
                         })
 
                         this.solarchart= new Highcharts.Chart({ chart : {
+                            animation: this.options.animation,
                             renderTo: 'solarchart',
                         },
                         tooltip : {
@@ -914,6 +920,7 @@ UI.prototype.initChart=function()
 
     // based on https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/demo/windbarb-series/
     this.windbarbchart= new Highcharts.Chart({ chart : {
+        animation: this.options.animation,
         renderTo: 'windbarbchart' },
         tooltip : {
             enabled: this.options.tooltip,
@@ -963,6 +970,7 @@ UI.prototype.initChart=function()
            //     ]
            // },
             name: 'Wind speed',
+            visible: false // Chart may become obscured with wind gust datra if it contains alot of points/measurements
             
            // states: {
            //     inactive: {
@@ -1093,12 +1101,13 @@ UI.prototype.update_charts=function()
     }
 
     // https://api.highcharts.com/class-reference/Highcharts.Series#addPoint
-    this.temperaturechart.series[0].addPoint([timestamp,json.outtemp()],false,shiftseries)
-    this.temperaturechart.series[1].addPoint([timestamp,json.intemp()],false,shiftseries)
-    this.temperaturechart.series[2].addPoint([timestamp,json.outhumidity()],false,shiftseries)
-    this.temperaturechart.series[3].addPoint([timestamp,json.inhumidity()],false,shiftseries)
-    this.pressurechart.series[0].addPoint([timestamp,json.relbaro()],false,shiftseries)
-    this.pressurechart.series[1].addPoint([timestamp,json.absbaro()],false,shiftseries)
+    
+    this.addpointIfChanged(this.temperaturechart.series[0],[timestamp,json.outtemp()],shiftseries)
+    this.addpointIfChanged(this.temperaturechart.series[1],[timestamp,json.intemp()],shiftseries)
+    this.addpointIfChanged(this.temperaturechart.series[2],[timestamp,json.outhumidity()],shiftseries)
+    this.addpointIfChanged(this.temperaturechart.series[3],[timestamp,json.inhumidity()],shiftseries)
+    this.addpointIfChanged(this.pressurechart.series[0],[timestamp,json.relbaro()],shiftseries)
+    this.addpointIfChanged(this.pressurechart.series[1],[timestamp,json.absbaro()],shiftseries)
     this.windbarbchart.series[0].addPoint([timestamp,json.windgustspeed_mps(),json.winddirection()],false,shiftseries)
     // https://api.highcharts.com/highcharts/series.line.data
     // only support m/s unit
@@ -1107,9 +1116,9 @@ UI.prototype.update_charts=function()
 
    this.solarchart.series[0].addPoint([timestamp,json.solar_light()],false,shiftseries)
    // this.solarchart.series[1].addPoint([timestamp,json.solar_uv()],false, this.solarchart.series[1].points.length>37, false)
-   this.solarchart.series[1].addPoint([timestamp, json.solar_uvi()],false,shiftseries)
-
-   this.rainchart.series[0].addPoint([timestamp,json.rainrate()],false,shiftseries)
+   this.addpointIfChanged(this.solarchart.series[1],[timestamp, json.solar_uvi()],shiftseries)
+   this.addpointIfChanged(this.rainchart.series[0],[timestamp,json.rainrate()],shiftseries)
+   
    var rainData=[['Event',json.rainevent()],['Day',json.rainday()]]
    var rainHour=json.rainhour()
    if (rainHour)
@@ -1119,6 +1128,30 @@ UI.prototype.update_charts=function()
 
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
+}
+
+UI.prototype.addpointIfChanged=function(series,value,shiftseries)
+// Added to limit the number of points generated/memory footprint, for example not necessary to store alot of points when rainrate is 0 
+{
+    var dataLength=series.yData.length,
+        pointsLength=series.points.length // 0 if series hidden
+
+    if (dataLength>0)
+   {
+        if  (series.yData[dataLength-1] != value[1] || dataLength===1)
+           series.addPoint(value,false,shiftseries)
+        else
+           if (series.visible)
+                series.points[pointsLength-1].update(value)
+           else
+                 //change timestamp, problem update hidden series...
+                //series.isDirty = true;
+                //series.isDirtyData = true;
+                 series.xData[dataLength-1]=value[0]
+                series.options.data[dataLength-1][0]=value[0]
+
+   }  else
+       series.addPoint(value,false,shiftseries)
 }
 
 UI.prototype.chart_redraw=function()
