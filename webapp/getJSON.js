@@ -589,12 +589,7 @@ UI.prototype.initChart=function()
         animation: this.options.animation,
         renderTo: 'temperaturechart',
     },
-    // don't use memory for duplicate path
-    plotOptions: {
-        series: {
-            enableMouseTracking: false
-        }
-    },
+   
     tooltip : {
         enabled: this.options.tooltip
     },
@@ -632,6 +627,13 @@ UI.prototype.initChart=function()
         tickpixelinterval: 150,
 
     }],
+
+     // don't use memory for duplicate path
+     plotOptions: {
+        series: {
+            enableMouseTracking: false
+        }
+    },
 
     series: [
         {
@@ -681,11 +683,7 @@ UI.prototype.initChart=function()
         animation: this.options.animation,
         renderTo: 'pressurechart',
     },
-    plotOptions: {
-        series: {
-            enableMouseTracking: false
-        }
-    },
+    
     tooltip : {
         enabled: this.options.tooltip,
     },
@@ -717,6 +715,12 @@ UI.prototype.initChart=function()
 
     }],
 
+    plotOptions: {
+        series: {
+            enableMouseTracking: false
+        }
+    },
+
     series: [
         {
                 name: 'Relative',
@@ -736,11 +740,7 @@ UI.prototype.initChart=function()
                             animation: this.options.animation,
                             renderTo: 'rainchart',
                         },
-                        plotOptions: {
-                            series: {
-                                enableMouseTracking: false
-                            }
-                        },
+                        
                         tooltip : {
                             enabled: this.options.tooltip,
                         },
@@ -786,6 +786,12 @@ UI.prototype.initChart=function()
 
                             categories: ['Event','Hour','Day','Week','Month','Year']
                         }],
+
+                        plotOptions: {
+                            series: {
+                                enableMouseTracking: false
+                            }
+                        },
 
                         series: [
                             {
@@ -845,6 +851,7 @@ UI.prototype.initChart=function()
                             animation: this.options.animation,
                             renderTo: 'solarchart',
                         },
+                       
                         tooltip : {
                             enabled: this.options.tooltip
                         },
@@ -890,6 +897,12 @@ UI.prototype.initChart=function()
                             tickpixelinterval: 150,
 
                         }],
+
+                        plotOptions: {
+                            series: {
+                                enableMouseTracking: false
+                            }
+                        },
 
                         series: [
                             {
@@ -939,11 +952,7 @@ UI.prototype.initChart=function()
     this.windbarbchart= new Highcharts.Chart({ chart : {
         animation: this.options.animation,
         renderTo: 'windbarbchart' },
-        plotOptions: {
-            series: {
-                enableMouseTracking: false
-            }
-        },
+        
         tooltip : {
             enabled: this.options.tooltip,
         },
@@ -962,13 +971,11 @@ UI.prototype.initChart=function()
             tickInterval: 0.5
         },
     
-      //  plotOptions: {
-      //      series: {
-      //          pointStart: Date.UTC(2017, 0, 29),
-      //          pointInterval: 36e5
-      //      }
-      //  },
-    
+      plotOptions: {
+        series: {
+            enableMouseTracking: false
+        }
+    },
         series: [{
             type: 'windbarb',
             data: [],
