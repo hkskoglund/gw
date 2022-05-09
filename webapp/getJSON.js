@@ -416,7 +416,8 @@ function UI()
         addpoint_simulation: false, // add point every 100ms, testing performance
         addpoint_simulation_interval: 100,
         tooltip: this.isIpad1(), // turn off for ipad1 - slow animation/disappearing
-        animation: false // turn off animation for all charts
+        animation: false, // turn off animation for all charts
+        addpointIfChanged : true // only addpoint if value changes (keep memory footprint low)
     }
 
     this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
@@ -588,6 +589,12 @@ UI.prototype.initChart=function()
         animation: this.options.animation,
         renderTo: 'temperaturechart',
     },
+    // don't use memory for duplicate path
+    plotOptions: {
+        series: {
+            enableMouseTracking: false
+        }
+    },
     tooltip : {
         enabled: this.options.tooltip
     },
@@ -674,6 +681,11 @@ UI.prototype.initChart=function()
         animation: this.options.animation,
         renderTo: 'pressurechart',
     },
+    plotOptions: {
+        series: {
+            enableMouseTracking: false
+        }
+    },
     tooltip : {
         enabled: this.options.tooltip,
     },
@@ -723,6 +735,11 @@ UI.prototype.initChart=function()
     this.rainchart= new Highcharts.Chart({ chart : {
                             animation: this.options.animation,
                             renderTo: 'rainchart',
+                        },
+                        plotOptions: {
+                            series: {
+                                enableMouseTracking: false
+                            }
                         },
                         tooltip : {
                             enabled: this.options.tooltip,
@@ -922,6 +939,11 @@ UI.prototype.initChart=function()
     this.windbarbchart= new Highcharts.Chart({ chart : {
         animation: this.options.animation,
         renderTo: 'windbarbchart' },
+        plotOptions: {
+            series: {
+                enableMouseTracking: false
+            }
+        },
         tooltip : {
             enabled: this.options.tooltip,
         },
@@ -1130,36 +1152,43 @@ UI.prototype.update_charts=function()
    
 }
 
-UI.prototype.addpointIfChanged=function(series,value,shiftseries)
+UI.prototype.addpointIfChanged=function(series,xy,shiftseries)
 // Added to limit the number of points generated/memory footprint, for example not necessary to store alot of points when rainrate is 0 
 {
-    var dataLength=series.yData.length,
-        pointsLength=series.points.length // 0 if series hidden
 
-    if (dataLength>0)
+    var dataLength=series.yData.length,
+        pointsLength=series.points.length, // 0 if series hidden
+        y=xy[1],
+        lastY,
+        secondLastY
+
+    if (dataLength>2 && this.options.addpointIfChanged)
     {
-            if  (series.yData[dataLength-1] != value[1] || dataLength===1) {
+            lastY=series.yData[dataLength-1]
+            secondLastY=series.yData[dataLength-2]
+            if (lastY != y || (lastY === y && secondLastY != y)) {
                 //console.log(series.name,'addpoint',value,series.options.data)
-            series.addPoint(value,false,shiftseries)
+                series.addPoint(xy,false,shiftseries)
             }
             else
             {
                 if (series.visible)
                 {
                 //console.log(series.name,'point update',value,series.options.data)    
-                series.points[pointsLength-1].update(value)
+                    series.points[pointsLength-1].update(xy)
                 }
                 else
                 {
                     series.options.data.pop()
-                    series.options.data.push(value)
-                    //console.log(series.name,'setdata',value,series.options.data)
-                    series.setData(series.options.data)
+                    series.options.data.push(xy)
+                    //console.log(series.name,'setdata',xy,series.options.data)
+                    series.setData(series.options.data,false,false,true) // true for updatepoints
+                  // series.updateData(series.options.data,false)
                 }
             }
     }  
     else
-        series.addPoint(value,false,shiftseries)
+        series.addPoint(xy,false,shiftseries)
 }
 
 UI.prototype.chart_redraw=function()
