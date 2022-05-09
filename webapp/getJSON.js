@@ -1168,8 +1168,7 @@ UI.prototype.addpointIfChanged=function(series,xy,shiftseries)
         y=xy[1],
         x=xy[0],
         lastY,
-        secondLastY,
-        lastPoint=series.points[pointsLength-1]
+        secondLastY
 
     if (dataLength>2 && this.options.addpointIfChanged)
     {
@@ -1180,19 +1179,9 @@ UI.prototype.addpointIfChanged=function(series,xy,shiftseries)
             }
             else
             {
-                if (series.visible)
-                {
-                    //if (x >= lastPoint.x)  
-                        lastPoint.update(xy)
-                   
-                }
-                
-                else
-                {
-                    series.options.data.pop()
-                    series.options.data.push(xy)
-                    series.setData(series.options.data,false,false,true) // true for updatepoints
-                }
+                series.options.data.pop()
+                series.options.data.push(xy)
+                series.setData(series.options.data,false,false,true) // true for updatepoints
             }
     }  
     else
