@@ -1166,31 +1166,32 @@ UI.prototype.addpointIfChanged=function(series,xy,shiftseries)
     var dataLength=series.yData.length,
         pointsLength=series.points.length, // 0 if series hidden
         y=xy[1],
+        x=xy[0],
         lastY,
-        secondLastY
+        secondLastY,
+        lastPoint=series.points[pointsLength-1]
 
     if (dataLength>2 && this.options.addpointIfChanged)
     {
             lastY=series.yData[dataLength-1]
             secondLastY=series.yData[dataLength-2]
             if (lastY != y || (lastY === y && secondLastY != y)) {
-                //console.log(series.name,'addpoint',value,series.options.data)
                 series.addPoint(xy,false,shiftseries)
             }
             else
             {
                 if (series.visible)
                 {
-                //console.log(series.name,'point update',value,series.options.data)    
-                    series.points[pointsLength-1].update(xy)
+                    //if (x >= lastPoint.x)  
+                        lastPoint.update(xy)
+                   
                 }
+                
                 else
                 {
                     series.options.data.pop()
                     series.options.data.push(xy)
-                    //console.log(series.name,'setdata',xy,series.options.data)
                     series.setData(series.options.data,false,false,true) // true for updatepoints
-                  // series.updateData(series.options.data,false)
                 }
             }
     }  
