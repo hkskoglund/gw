@@ -1123,9 +1123,9 @@ UI.prototype.update_charts=function()
     var rosePoint=this.windrosechart.series[beufortScale].data[compassDirection]
         rosePoint.update(rosePoint.y+this.options.interval/60000,false)
     
-    if ((this.isIpad1() && this.temperaturechart.series[0].points.length > 2048) || (this.temperaturechart.series[0].points.length > 5400))
+    if ((this.isIpad1() && this.windbarbchart.series[2].options.data.length > 2048) || (this.windbarbchart.series[0].options.data.length > 5400))
     {
-        console.log('Starting to shift series, points length '+ this.temperaturechart.series[0].points.length)
+        console.log('Starting to shift series, data length '+ this.windbarbchart.series[2].yData.length)
         shiftseries=true
     }
 
