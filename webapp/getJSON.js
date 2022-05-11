@@ -631,9 +631,30 @@ UI.prototype.initChart=function()
      // don't use memory for duplicate path
      plotOptions: {
         series: {
-            enableMouseTracking: false
+            enableMouseTracking: false,
+            // https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-events-legenditemclick/
+            // https://api.highcharts.com/highcharts/series.line.events.legendItemClick?_ga=2.179134500.1422516645.1651056622-470753587.1650372441
+            // https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-events-show/
+            events: {
+                show: function _showcallback(ev) {
+                    // this = series
+                    //var visibility = this.visible ? 'visible' : 'hidden';
+                    //if (!confirm('The series is currently ' +
+                    //             visibility + '. Do you want to change that?')) {
+                    //    return false;
+                    //}
+                    var series = ev.target
+                    if (series.pendingAddPoint)
+                    {
+                        console.log('pending data',series.pendingAddPoint,'visibility',series.visible,ev,this)
+                        series.pendingAddPoint.forEach(function (xy) { console.log('addpoint '+xy); series.addPoint(xy,false)})
+                        delete series.pendingAddPoint
+                    }
+                }
+            }
         }
     },
+
 
     series: [
         {
@@ -1017,6 +1038,12 @@ UI.prototype.initChart=function()
     
     });
 
+ //   var serietest=this.temperaturechart.series[1]
+ //   serietest.legendItem.on('click',function(event) { 
+ //       console.log('series was clicked, visible:' + serietest.visible )}
+ //                                                )
+//
+ //   Highcharts.addEvent()
 }
 
 UI.prototype.onJSON=function (ev)
@@ -1137,26 +1164,82 @@ UI.prototype.update_charts=function()
     this.addpointIfChanged(this.temperaturechart.series[3],[timestamp,json.inhumidity()],shiftseries)
     this.addpointIfChanged(this.pressurechart.series[0],[timestamp,json.relbaro()],shiftseries)
     this.addpointIfChanged(this.pressurechart.series[1],[timestamp,json.absbaro()],shiftseries)
-    this.windbarbchart.series[0].addPoint([timestamp,json.windgustspeed_mps(),json.winddirection()],false,shiftseries)
+    this.windbarbchart.series[0].addPoint([timestamp,json.windgustspeed_mps(),json.winddirection()],false,shiftseries,false)
     // https://api.highcharts.com/highcharts/series.line.data
     // only support m/s unit
-    this.windbarbchart.series[1].addPoint({ x: timestamp, y: json.windspeed_mps() },false,shiftseries)
-    this.windbarbchart.series[2].addPoint({ x: timestamp, y: json.windgustspeed_mps() },false,shiftseries) 
+    this.windbarbchart.series[1].addPoint({ x: timestamp, y: json.windspeed_mps() },false,shiftseries,false)
+    this.windbarbchart.series[2].addPoint({ x: timestamp, y: json.windgustspeed_mps() },false,shiftseries,false) 
 
-   this.solarchart.series[0].addPoint([timestamp,json.solar_light()],false,shiftseries)
+   this.solarchart.series[0].addPoint([timestamp,json.solar_light()],false,shiftseries,false)
    // this.solarchart.series[1].addPoint([timestamp,json.solar_uv()],false, this.solarchart.series[1].points.length>37, false)
    this.addpointIfChanged(this.solarchart.series[1],[timestamp, json.solar_uvi()],shiftseries)
    this.addpointIfChanged(this.rainchart.series[0],[timestamp,json.rainrate()],shiftseries)
    
    var rainData=[['Event',json.rainevent()],['Day',json.rainday()]]
-   var rainHour=json.rainhour()
-   if (rainHour)
-    rainData.push(['Hour',rainHour])
-   this.rainchart.series[1].setData(rainData)
-   this.rainchart.series[2].setData([['Week',json.rainweek()],['Month',json.rainmonth()],['Year',json.rainyear()]])
+   var rainhour=json.rainhour()
+   if (rainhour >=0 && !this.rainchart.series[1].data[2])
+       rainData.push(['Hour',rainhour])
+
+    if (this.rainchart.series[1].data.length===0)
+        this.rainchart.series[1].setData(rainData)
+    else if (this.rainchart.series[1].hasData())
+    {
+         // chart is visible
+         var rainevent=json.rainevent(),
+            rainday=json.rainday()
+            
+            if (this.rainchart.series[1].data[0].y != rainevent)
+                this.rainchart.series[1].data[0].update(rainevent,false)
+            
+            if (this.rainchart.series[1].data[1].y != rainday)
+                this.rainchart.series[1].data[1].update(rainday,false)
+            
+            if (this.rainchart.series[1].data[2] && this.rainchart.series[1].data[2].y != rainhour)
+                this.rainchart.series[1].data[1].update(rainhour,false)
+    }
+
+    if (this.rainchart.series[2].data.length===0) // init first time
+
+        this.rainchart.series[2].setData([['Week',json.rainweek()],['Month',json.rainmonth()],['Year',json.rainyear()]])
+    
+    else if (this.rainchart.series[2].hasData())
+    {
+        var rainweek=json.rainweek(),
+            rainmonth=json.rainmonth(),
+            rainyear=json.rainyear()
+        
+        if (this.rainchart.series[2].data[0].y != rainweek) 
+            this.rainchart.series[2].data[0].update(rainweek,false)
+
+        if (this.rainchart.series[2].data[1].y != rainmonth)
+            this.rainchart.series[2].data[1].update(rainmonth,false)
+
+        if (this.rainchart.series[2].data[2].y != rainyear)
+            this.rainchart.series[2].data[2].update(json.rainyear(),false)
+    }
 
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
+}
+
+UI.prototype.addPointIfVisible=function(series,xy,shiftseries)
+{
+    if (series.visible)
+    series.addPoint(xy,false,shiftseries)
+   else
+   {
+     // don't allow 3 similar values for y
+    var lastTwo=series.pendingAddPoint.slice(-2)
+
+    if (lastTwo.length==2 && lastTwo[0][1]===lastTwo[1][1] && lastTwo[1][1]===xy[1]) 
+    {
+        series.pendingAddPoint.pop()
+        series.pendingAddPoint.push(xy)
+        console.warn('Hidden series similar values',series,lastTwo,xy,series.pendingAddPoint)
+
+    } else 
+         series.pendingAddPoint.push(xy) // Add on "show" event/click on legend
+   }
 }
 
 UI.prototype.addpointIfChanged=function(series,xy,shiftseries)
@@ -1168,24 +1251,53 @@ UI.prototype.addpointIfChanged=function(series,xy,shiftseries)
         y=xy[1],
         x=xy[0],
         lastY,
-        secondLastY
+        secondLastY,
+        lastPoint=series.points[pointsLength-1]
 
-    if (dataLength>2 && this.options.addpointIfChanged)
-    {
-            lastY=series.yData[dataLength-1]
-            secondLastY=series.yData[dataLength-2]
-            if (lastY != y || (lastY === y && secondLastY != y)) {
-                series.addPoint(xy,false,shiftseries)
-            }
-            else
-            {
-                series.options.data.pop()
-                series.options.data.push(xy)
-                series.setData(series.options.data,false,false,true) // true for updatepoints
-            }
-    }  
+    if (series.pendingAddPoint===undefined)
+       series.pendingAddPoint=[]
+
+    if (series.tailData === undefined)
+        series.tailData=[xy]
     else
-        series.addPoint(xy,false,shiftseries)
+    {
+        if (series.tailData.length===3)
+          series.tailData.shift()
+        series.tailData.push(xy)
+    }
+
+    if (series.tailData.length <= 2)
+    {
+        this.addPointIfVisible(series,xy,shiftseries)
+    } else
+
+    if (series.tailData.length===3) {
+        console.log('series '+series.name,series.tailData)
+        lastY= series.tailData[1][1]
+        secondLastY=series.tailData[0][1]
+        y=xy[1]
+        if (y != lastY) 
+        {
+           this.addPointIfVisible(series,xy,shiftseries)
+        } else if (y === secondLastY) 
+        {
+            console.log('all values the same series: '+series.name,series.tailData,series)
+            if (series.visible)
+                series.points[series.points.length-1].update(xy)
+            else {
+                
+              console.warn('failed update for invisible series')
+              this.addPointIfVisible(series,xy,shiftseries)
+            }
+
+        }
+        else
+        {
+            this.addPointIfVisible(series,xy,shiftseries)
+
+        }
+    }
+  
 }
 
 UI.prototype.chart_redraw=function()
