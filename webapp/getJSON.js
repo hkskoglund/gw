@@ -635,23 +635,6 @@ UI.prototype.initChart=function()
             // https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-events-legenditemclick/
             // https://api.highcharts.com/highcharts/series.line.events.legendItemClick?_ga=2.179134500.1422516645.1651056622-470753587.1650372441
             // https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-events-show/
-            events: {
-                show: function _showcallback(ev) {
-                    // this = series
-                    //var visibility = this.visible ? 'visible' : 'hidden';
-                    //if (!confirm('The series is currently ' +
-                    //             visibility + '. Do you want to change that?')) {
-                    //    return false;
-                    //}
-                    var series = ev.target
-                    if (series.pendingAddPoint)
-                    {
-                        console.log('pending data',series.pendingAddPoint,'visibility',series.visible,ev,this)
-                        series.pendingAddPoint.forEach(function (xy) { console.log('addpoint '+xy); series.addPoint(xy,false)})
-                        delete series.pendingAddPoint
-                    }
-                }
-            }
         }
     },
 
@@ -1215,89 +1198,31 @@ UI.prototype.update_charts=function()
             this.rainchart.series[2].data[1].update(rainmonth,false)
 
         if (this.rainchart.series[2].data[2].y != rainyear)
-            this.rainchart.series[2].data[2].update(json.rainyear(),false)
+            this.rainchart.series[2].data[2].update(rainyear,false)
     }
 
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
 }
 
-UI.prototype.addPointIfVisible=function(series,xy,shiftseries)
-{
-    if (series.visible)
-    series.addPoint(xy,false,shiftseries)
-   else
-   {
-     // don't allow 3 similar values for y
-    var lastTwo=series.pendingAddPoint.slice(-2)
-
-    if (lastTwo.length==2 && lastTwo[0][1]===lastTwo[1][1] && lastTwo[1][1]===xy[1]) 
-    {
-        series.pendingAddPoint.pop()
-        series.pendingAddPoint.push(xy)
-        console.warn('Hidden series similar values',series,lastTwo,xy,series.pendingAddPoint)
-
-    } else 
-         series.pendingAddPoint.push(xy) // Add on "show" event/click on legend
-   }
-}
-
 UI.prototype.addpointIfChanged=function(series,xy,shiftseries)
-// Added to limit the number of points generated/memory footprint, for example not necessary to store alot of points when rainrate is 0 
+// Added to limit the number of points generated/memory footprint, for example not necessary to store alot of points when rainrate is constantly 0 
 {
-
-    var dataLength=series.yData.length,
-        pointsLength=series.points.length, // 0 if series hidden
+    var lastY=series.yData.slice(-2), // get the last two measurements
         y=xy[1],
-        x=xy[0],
-        lastY,
-        secondLastY,
-        lastPoint=series.points[pointsLength-1]
+        x=xy[0]
 
-    if (series.pendingAddPoint===undefined)
-       series.pendingAddPoint=[]
+    //console.log(series.name,lastY,series.yData)
 
-    if (series.tailData === undefined)
-        series.tailData=[xy]
-    else
+    if (lastY[0] === lastY[1] && lastY[1] === y)
     {
-        if (series.tailData.length===3)
-          series.tailData.shift()
-        series.tailData.push(xy)
-    }
-
-    if (series.tailData.length <= 2)
-    {
-        this.addPointIfVisible(series,xy,shiftseries)
+        // don't add a new point, update the last point with new timestamp/x value
+        if (series.hasData()) // visible
+            series.data[series.data.length-1].update(xy)
+        //else wait for value to be updated on next measurement
     } else
+        series.addPoint(xy,false,shiftseries)
 
-    if (series.tailData.length===3) {
-        console.log('series '+series.name,series.tailData)
-        lastY= series.tailData[1][1]
-        secondLastY=series.tailData[0][1]
-        y=xy[1]
-        if (y != lastY) 
-        {
-           this.addPointIfVisible(series,xy,shiftseries)
-        } else if (y === secondLastY) 
-        {
-            console.log('all values the same series: '+series.name,series.tailData,series)
-            if (series.visible)
-                series.points[series.points.length-1].update(xy)
-            else {
-                
-              console.warn('failed update for invisible series')
-              this.addPointIfVisible(series,xy,shiftseries)
-            }
-
-        }
-        else
-        {
-            this.addPointIfVisible(series,xy,shiftseries)
-
-        }
-    }
-  
 }
 
 UI.prototype.chart_redraw=function()
