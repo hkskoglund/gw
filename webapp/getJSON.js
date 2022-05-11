@@ -759,6 +759,7 @@ UI.prototype.initChart=function()
                             //https://api.highcharts.com/highcharts/yAxis.max
                             title: false,
                             min : 0,
+                            visible: false // use datalabels
                             //tickInterval: 5,
                             //opposite: true
                             //max : null
@@ -772,6 +773,10 @@ UI.prototype.initChart=function()
                         //tickInterval:1,
                         //opposite: true
                         visible: false
+                    },
+                    {
+                        title: false,
+                        min: 0
                     }
                 ],
                         xAxis: [{
@@ -802,7 +807,7 @@ UI.prototype.initChart=function()
                             {
                                     name: 'Rain rate',
                                     type: 'spline',
-                                    yAxis: 0,
+                                    yAxis: 2,
                                     data: [],
                                     //https://en.wikipedia.org/wiki/Rain#Intensity
                                     //zoneAxis: 'y',
