@@ -417,7 +417,8 @@ function UI()
         addpoint_simulation_interval: 100,
         tooltip: this.isIpad1(), // turn off for ipad1 - slow animation/disappearing
         animation: false, // turn off animation for all charts
-        addpointIfChanged : true // only addpoint if value changes (keep memory footprint low)
+        addpointIfChanged : true, // only addpoint if value changes (keep memory footprint low),
+        shift: false // shift series
     }
 
     this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
@@ -987,11 +988,11 @@ UI.prototype.initChart=function()
             color: Highcharts.getOptions().colors[1],
             showInLegend: false,
         }, {
-            type: 'spline',
-            keys: ['y', 'rotation'], // rotation is not used here
+            type: 'areaspline',
+           // keys: ['y', 'rotation'], // rotation is not used here
             data: [],
            
-            color: Highcharts.getOptions().colors[0],
+           // color: Highcharts.getOptions().colors[0],
            // fillColor: {
            //     linearGradient: { x1: 0, x2: 0, y1: 0, y2: 1 },
            //     stops: [
@@ -1003,7 +1004,7 @@ UI.prototype.initChart=function()
            //     ]
            // },
             name: 'Wind speed',
-            visible: false // Chart may become obscured with wind gust datra if it contains alot of points/measurements
+            visible: true // Chart may become obscured with wind gust data if it contains alot of points/measurements
             
            // states: {
            //     inactive: {
@@ -1077,9 +1078,9 @@ UI.prototype.onJSON=function (ev)
     else
         this.update_charts()
 
-    if (this.measurementCount < 40)
+  //  if (this.measurementCount < 40)
         this.chart_redraw()  // redraw chart in the beginning for faster update
-    else 
+  //  else 
        this.startRedrawInterval()
 
 }
@@ -1136,27 +1137,31 @@ UI.prototype.update_charts=function()
     if ((this.isIpad1() && this.windbarbchart.series[2].options.data.length > 2048) || (this.windbarbchart.series[0].options.data.length > 5400))
     {
         console.log('Starting to shift series, data length '+ this.windbarbchart.series[2].yData.length)
-        shiftseries=true
+        this.options.shift=true
     }
 
     // https://api.highcharts.com/class-reference/Highcharts.Series#addPoint
     
-    this.addpointIfChanged(this.temperaturechart.series[0],[timestamp,json.outtemp()],shiftseries)
-    this.addpointIfChanged(this.temperaturechart.series[1],[timestamp,json.intemp()],shiftseries)
-    this.addpointIfChanged(this.temperaturechart.series[2],[timestamp,json.outhumidity()],shiftseries)
-    this.addpointIfChanged(this.temperaturechart.series[3],[timestamp,json.inhumidity()],shiftseries)
-    this.addpointIfChanged(this.pressurechart.series[0],[timestamp,json.relbaro()],shiftseries)
-    this.addpointIfChanged(this.pressurechart.series[1],[timestamp,json.absbaro()],shiftseries)
-    this.windbarbchart.series[0].addPoint([timestamp,json.windgustspeed_mps(),json.winddirection()],false,shiftseries,false)
+    this.addpointIfChanged(this.temperaturechart.series[0],[timestamp,json.outtemp()])
+    this.addpointIfChanged(this.temperaturechart.series[1],[timestamp,json.intemp()])
+    this.addpointIfChanged(this.temperaturechart.series[2],[timestamp,json.outhumidity()])
+    this.addpointIfChanged(this.temperaturechart.series[3],[timestamp,json.inhumidity()])
+    this.addpointIfChanged(this.pressurechart.series[0],[timestamp,json.relbaro()])
+    this.addpointIfChanged(this.pressurechart.series[1],[timestamp,json.absbaro()])
+    this.windbarbchart.series[0].addPoint([timestamp,json.windgustspeed_mps(),json.winddirection()],false,this.options.shift,this.options.animation,false)
+    
     // https://api.highcharts.com/highcharts/series.line.data
     // only support m/s unit
-    this.windbarbchart.series[1].addPoint({ x: timestamp, y: json.windspeed_mps() },false,shiftseries,false)
-    this.windbarbchart.series[2].addPoint({ x: timestamp, y: json.windgustspeed_mps() },false,shiftseries,false) 
+    //this.windbarbchart.series[1].addPoint({ x: timestamp, y: json.windspeed_mps() },false,this.options.shift,this.options.animation,false)
+    this.addpointIfChanged(this.windbarbchart.series[1],[timestamp,json.windspeed_mps()])
+    //this.windbarbchart.series[2].addPoint({ x: timestamp, y: json.windgustspeed_mps() },false,this.options.shift,this.options.animation,false)
+    this.addpointIfChanged(this.windbarbchart.series[2],[timestamp,json.windgustspeed_mps()])
 
-   this.solarchart.series[0].addPoint([timestamp,json.solar_light()],false,shiftseries,false)
+   //this.solarchart.series[0].addPoint([timestamp,json.solar_light()],false,this.options.shift,this.options.animation,false)
+   this.addpointIfChanged(this.solarchart.series[0],[timestamp,json.solar_light()])
    // this.solarchart.series[1].addPoint([timestamp,json.solar_uv()],false, this.solarchart.series[1].points.length>37, false)
-   this.addpointIfChanged(this.solarchart.series[1],[timestamp, json.solar_uvi()],shiftseries)
-   this.addpointIfChanged(this.rainchart.series[0],[timestamp,json.rainrate()],shiftseries)
+   this.addpointIfChanged(this.solarchart.series[1],[timestamp, json.solar_uvi()])
+   this.addpointIfChanged(this.rainchart.series[0],[timestamp,json.rainrate()])
    
    var rainData=[['Event',json.rainevent()],['Day',json.rainday()]]
    var rainhour=json.rainhour()
@@ -1205,7 +1210,7 @@ UI.prototype.update_charts=function()
    
 }
 
-UI.prototype.addpointIfChanged=function(series,xy,shiftseries)
+UI.prototype.addpointIfChanged=function(series,xy)
 // Added to limit the number of points generated/memory footprint, for example not necessary to store alot of points when rainrate is constantly 0 
 {
     var lastY=series.yData.slice(-2), // get the last two measurements
@@ -1218,10 +1223,11 @@ UI.prototype.addpointIfChanged=function(series,xy,shiftseries)
     {
         // don't add a new point, update the last point with new timestamp/x value
         if (series.hasData()) // visible
-            series.data[series.data.length-1].update(xy)
+            series.data[series.data.length-1].update(xy,false)
         //else wait for value to be updated on next measurement
     } else
-        series.addPoint(xy,false,shiftseries)
+    //             Series.prototype.addPoint = function (options, redraw, shift, animation, withEvent) {
+        series.addPoint(xy,false,this.options.shift,this.options.animation,false)
 
 }
 
