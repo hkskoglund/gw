@@ -596,9 +596,25 @@ UI.prototype.initChart=function()
                 ]
     });
     
-    this.temperaturechart= new Highcharts.Chart({ chart : {
+    this.temperaturechart= new Highcharts.stockChart({ chart : {
         animation: this.options.animation,
         renderTo: 'temperaturechart',
+    },
+
+    rangeSelector: {
+        enabled: false
+    },
+
+    scrollbar: {
+        enabled: false
+    },
+
+    navigator: {
+        enabled: false
+    },
+
+    legend: {
+        enabled: true
     },
    
     tooltip : {
@@ -614,6 +630,7 @@ UI.prototype.initChart=function()
         //https://api.highcharts.com/highcharts/yAxis.max
         title: false,
         tickInterval: 1,
+        opposite: false,
         //max : null
         //max : 1.0
     //  max : 40
@@ -621,7 +638,7 @@ UI.prototype.initChart=function()
     // humidity
     {
         title:false,
-        opposite: true,
+        //opposite: true,
         min: 0,
         max: 100
     },
@@ -694,9 +711,24 @@ UI.prototype.initChart=function()
            ] 
     })
 
-    this.pressurechart= new Highcharts.Chart({ chart : {
+    this.pressurechart= new Highcharts.stockChart({ chart : {
         animation: this.options.animation,
         renderTo: 'pressurechart',
+    },
+    rangeSelector: {
+        enabled: false
+    },
+
+    scrollbar: {
+        enabled: false
+    },
+
+    navigator: {
+        enabled: false
+    },
+
+    legend: {
+        enabled: true
     },
     
     tooltip : {
@@ -751,9 +783,24 @@ UI.prototype.initChart=function()
            ] 
     })
     
-    this.rainchart= new Highcharts.Chart({ chart : {
+    this.rainchart= new Highcharts.stockChart({ chart : {
                             animation: this.options.animation,
                             renderTo: 'rainchart',
+                        },
+                        rangeSelector: {
+                            enabled: false
+                        },
+                    
+                        scrollbar: {
+                            enabled: false
+                        },
+                    
+                        navigator: {
+                            enabled: false
+                        },
+                    
+                        legend: {
+                            enabled: true
                         },
                         
                         tooltip : {
@@ -799,12 +846,6 @@ UI.prototype.initChart=function()
 
                             tickpixelinterval: 150,
 
-                        },{
-                            id: 'rain-category-axis',
-
-                            type: 'category',
-
-                            categories: ['Event','Hour','Day','Week','Month','Year']
                         }],
 
                         plotOptions: {
@@ -844,32 +885,37 @@ UI.prototype.initChart=function()
                             },
                             {
                                 name: 'Rain',
-                                type: 'column',
-                                yAxis: 0,
-                                xAxis: 1,
+                                type: 'spline',
                                 data: [],
-                                dataLabels: {
-                                    enabled : true
-                                }
                             },
                             {
                                 name: 'Rain week/month/year',
-                                type: 'column',
-                                yAxis: 1,
-                                xAxis: 1,
+                                type: 'spline',
                                 data: [],
-                                dataLabels: {
-                                    enabled: true
-                                },
                                 visible: false
                             }
                         
                         ] 
                         })
 
-                        this.solarchart= new Highcharts.Chart({ chart : {
-                            animation: this.options.animation,
-                            renderTo: 'solarchart',
+    this.solarchart= new Highcharts.stockChart({ chart : {
+                        animation: this.options.animation,
+                        renderTo: 'solarchart',
+                        },
+                        rangeSelector: {
+                            enabled: false
+                        },
+
+                        scrollbar: {
+                            enabled: false
+                        },
+
+                        navigator: {
+                            enabled: false
+                        },
+
+                        legend: {
+                            enabled: true
                         },
                        
                         tooltip : {
@@ -886,7 +932,7 @@ UI.prototype.initChart=function()
                             title: false,
                             min : 0,
                             tickInterval: 50,
-                            opposite: true
+                            opposite: false
                             //max : null
                             //max : 1.0
                         //  max : 40
@@ -969,9 +1015,25 @@ UI.prototype.initChart=function()
                         })
 
     // based on https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/demo/windbarb-series/
-    this.windbarbchart= new Highcharts.Chart({ chart : {
+    this.windbarbchart= new Highcharts.stockChart({ chart : {
         animation: this.options.animation,
         renderTo: 'windbarbchart' },
+
+        rangeSelector: {
+            enabled: false
+        },
+
+        scrollbar: {
+            enabled: false
+        },
+
+        navigator: {
+            enabled: false
+        },
+
+        legend: {
+            enabled: true
+        },
         
         tooltip : {
             enabled: this.options.tooltip,
@@ -1025,17 +1087,6 @@ UI.prototype.initChart=function()
             data: [],
             zIndex: 2,
             name: 'Wind gust speed',
-        },
-        {
-            type: 'column',
-            xAxis: 1,
-            name: 'Wind daily max.',
-            data: [],
-            dataLabels: {
-                enabled : true
-            },
-            visible: false,
-            zIndex: 1 // in the background
         }]
     
     });
@@ -1123,6 +1174,7 @@ UI.prototype.update_charts=function()
     this.windbarbchart.setSubtitle({ text: windSubtitle })
     this.solarchart.setSubtitle({ text: '<b>Radiation</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'})
     this.pressurechart.setSubtitle({ text: '<b>Relative</b> '+json.pressureToString(json.relbaro())+' <b>Absolute</b> ' + json.pressureToString(json.absbaro())})
+    this.rainchart.setSubtitle({ text: '<b>Rain rate</b>'+' '+json.rainrateToString()})
     //this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())
 
     // Remove data if too old, otherwise they get skewed to the left
@@ -1168,7 +1220,7 @@ UI.prototype.update_charts=function()
     var winddailymax=json.winddailymax()
     if (winddailymax)
     {
-        this.windbarbchart.series[3].setData([['Wind daily max.',winddailymax]],false,this.options.animation,true)
+        //this.windbarbchart.series[3].setData([['Wind daily max.',winddailymax]],false,this.options.animation,true)
     }
 
    //this.solarchart.series[0].addPoint([timestamp,json.solar_light()],false,this.options.shift,this.options.animation,false)
@@ -1177,49 +1229,6 @@ UI.prototype.update_charts=function()
    this.addpointIfChanged(this.solarchart.series[1],[timestamp, json.solar_uvi()])
    this.addpointIfChanged(this.rainchart.series[0],[timestamp,json.rainrate()])
    
-   var rainData=[['Event',json.rainevent()],['Day',json.rainday()]]
-   var rainhour=json.rainhour()
-   if (rainhour >=0 && !this.rainchart.series[1].data[2])
-       rainData.push(['Hour',rainhour])
-
-    if (this.rainchart.series[1].data.length===0)
-        this.rainchart.series[1].setData(rainData)
-    else if (this.rainchart.series[1].hasData())
-    {
-         // chart is visible
-         var rainevent=json.rainevent(),
-            rainday=json.rainday()
-            
-            if (this.rainchart.series[1].data[0].y != rainevent)
-                this.rainchart.series[1].data[0].update(rainevent,false)
-            
-            if (this.rainchart.series[1].data[1].y != rainday)
-                this.rainchart.series[1].data[1].update(rainday,false)
-            
-            if (this.rainchart.series[1].data[2] && this.rainchart.series[1].data[2].y != rainhour)
-                this.rainchart.series[1].data[1].update(rainhour,false)
-    }
-
-    if (this.rainchart.series[2].data.length===0) // init first time
-
-        this.rainchart.series[2].setData([['Week',json.rainweek()],['Month',json.rainmonth()],['Year',json.rainyear()]])
-    
-    else if (this.rainchart.series[2].hasData())
-    {
-        var rainweek=json.rainweek(),
-            rainmonth=json.rainmonth(),
-            rainyear=json.rainyear()
-        
-        if (this.rainchart.series[2].data[0].y != rainweek) 
-            this.rainchart.series[2].data[0].update(rainweek,false)
-
-        if (this.rainchart.series[2].data[1].y != rainmonth)
-            this.rainchart.series[2].data[1].update(rainmonth,false)
-
-        if (this.rainchart.series[2].data[2].y != rainyear)
-            this.rainchart.series[2].data[2].update(rainyear,false)
-    }
-
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
 }
