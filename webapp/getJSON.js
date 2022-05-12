@@ -1090,11 +1090,7 @@ UI.prototype.onJSON=function (ev)
     else
         this.update_charts()
 
-    if (this.measurementCount < 40)
-        this.chart_redraw()  // redraw chart in the beginning for faster update
-    else 
-       this.startRedrawInterval()
-
+    this.chart_redraw()
 }
 
 UI.prototype.startRedrawInterval=function()
@@ -1118,21 +1114,16 @@ UI.prototype.update_charts=function()
        timestamp=Date.now()
        simulationSubtitle='Points '+this.temperaturechart.series[0].points.length
      } 
-    //this.temperaturechart.setSubtitle({ text: 'Outdoor '+json.outtempToString()+' '+ json.outhumidityToString()+' Indoor '+json.intempToString()+json.inhumidityToString() })
-    // Update textContent directly, saves some time (tested chrome performance tool)
-    this.temperaturechart.subtitle.element.textContent=simulationSubtitle+' Outdoor '+json.outtempToString()+' '+ json.outhumidityToString()+' Indoor '+json.intempToString()+json.inhumidityToString()
-    //this.windbarbchart.setSubtitle({ text: 'Speed '+ json.windspeedToString()+' Gust '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()})
-    var windSubtitle='Speed '+ json.windspeedToString()+' Gust '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()
+    this.temperaturechart.setSubtitle({ text: '<b>Outdoor</b> '+json.outtempToString()+' '+ json.outhumidityToString()+' <b>Indoor</b> '+json.intempToString()+json.inhumidityToString() })
+    var windSubtitle='<b>Speed</b> '+ json.windspeedToString()+' <b>Gust</b> '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()
     var winddailymax=json.winddailymax()
     if (winddailymax)
-       windSubtitle=windSubtitle+' Max. today '+json.winddailymaxToString()
+       windSubtitle=windSubtitle+' <b>Max. today</b> '+json.winddailymaxToString()
 
-    this.windbarbchart.subtitle.element.textContent=windSubtitle
-    //this.solarchart.setSubtitle({ text: 'Radiation '+json.solar_lightToString()+' UVI ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'})
-    this.solarchart.subtitle.element.textContent='Radiation '+json.solar_lightToString()+' UVI ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'
-    this.rainchart.subtitle.element.textContent='Rain rate '+json.rainrateToString()+' '+json.rainrate_description()
-    //this.pressurechart.setSubtitle({ text: 'Relative '+json.pressureToString(json.relbaro())+' Absolute ' + json.pressureToString(json.absbaro())})
-    this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())
+    this.windbarbchart.setSubtitle({ text: windSubtitle })
+    this.solarchart.setSubtitle({ text: '<b>Radiation</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'})
+    this.pressurechart.setSubtitle({ text: '<b>Relative</b> '+json.pressureToString(json.relbaro())+' <b>Absolute</b> ' + json.pressureToString(json.absbaro())})
+    //this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())
 
     // Remove data if too old, otherwise they get skewed to the left
   //  if (this.windbarbchart.series[0].xData.length >= 1 &&   ( timestamp - this.windbarbchart.series[0].xData[this.windbarbchart.series[0].xData.length-1]) > this.options.interval*this.options.maxPoints)
