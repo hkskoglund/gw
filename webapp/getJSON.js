@@ -152,6 +152,16 @@ GetJSON.prototype.windspeed=function()
     return this.data.windspeed
 }
 
+GetJSON.prototype.winddailymax=function()
+{
+    return this.data.winddailymax
+}
+
+GetJSON.prototype.winddailymaxToString=function()
+{
+    return this.winddailymax().toFixed(1)+' '+this.unitWind()
+}
+
 GetJSON.prototype.windspeed_mps=function()
 // highcharts windbarb requires m/s
 {
@@ -971,14 +981,22 @@ UI.prototype.initChart=function()
             text: 'Wind'
         },
     
-        xAxis: {
+        xAxis: [{
             type: 'datetime',
             offset: 40
-        },
+        },{
+            type: 'category',
+            categories : ['Wind daily max.']
+        }],
 
         yAxis: {
             title : false,
-            tickInterval: 0.5
+            tickInterval: 0.5,
+         //   plotLines: [{
+         //       id: 'winddailymax',
+         //       color: '#ff0000',
+         //       value: 1.7
+         //   }]
         },
     
       plotOptions: {
@@ -992,47 +1010,36 @@ UI.prototype.initChart=function()
             name: 'Wind',
             color: Highcharts.getOptions().colors[1],
             showInLegend: false,
-        }, {
+            zIndex:2
+        }, 
+        {
             type: 'areaspline',
            // keys: ['y', 'rotation'], // rotation is not used here
             data: [],
-           
-           // color: Highcharts.getOptions().colors[0],
-           // fillColor: {
-           //     linearGradient: { x1: 0, x2: 0, y1: 0, y2: 1 },
-           //     stops: [
-           //         [0, Highcharts.getOptions().colors[0]],
-           //         [1,
-           //             Highcharts.color(Highcharts.getOptions().colors[0])
-           //                 .setOpacity(0.25).get()
-           //         ]
-           //     ]
-           // },
             name: 'Wind speed',
+            zIndex: 2,
             visible: true // Chart may become obscured with wind gust data if it contains alot of points/measurements
-            
-           // states: {
-           //     inactive: {
-           //         opacity: 1
-           //     }
-           // }
-        },{
+        },
+        {
             type: 'spline',
             data: [],
-            
+            zIndex: 2,
             name: 'Wind gust speed',
-            
-        }
-    ]
+        },
+        {
+            type: 'column',
+            xAxis: 1,
+            name: 'Wind daily max.',
+            data: [],
+            dataLabels: {
+                enabled : true
+            },
+            visible: false,
+            zIndex: 1 // in the background
+        }]
     
     });
 
- //   var serietest=this.temperaturechart.series[1]
- //   serietest.legendItem.on('click',function(event) { 
- //       console.log('series was clicked, visible:' + serietest.visible )}
- //                                                )
-//
- //   Highcharts.addEvent()
 }
 
 UI.prototype.onJSON=function (ev)
@@ -1083,9 +1090,9 @@ UI.prototype.onJSON=function (ev)
     else
         this.update_charts()
 
-  //  if (this.measurementCount < 40)
+    if (this.measurementCount < 40)
         this.chart_redraw()  // redraw chart in the beginning for faster update
-  //  else 
+    else 
        this.startRedrawInterval()
 
 }
@@ -1115,7 +1122,12 @@ UI.prototype.update_charts=function()
     // Update textContent directly, saves some time (tested chrome performance tool)
     this.temperaturechart.subtitle.element.textContent=simulationSubtitle+' Outdoor '+json.outtempToString()+' '+ json.outhumidityToString()+' Indoor '+json.intempToString()+json.inhumidityToString()
     //this.windbarbchart.setSubtitle({ text: 'Speed '+ json.windspeedToString()+' Gust '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()})
-    this.windbarbchart.subtitle.element.textContent='Speed '+ json.windspeedToString()+' Gust '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()
+    var windSubtitle='Speed '+ json.windspeedToString()+' Gust '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()
+    var winddailymax=json.winddailymax()
+    if (winddailymax)
+       windSubtitle=windSubtitle+' Max. today '+json.winddailymaxToString()
+
+    this.windbarbchart.subtitle.element.textContent=windSubtitle
     //this.solarchart.setSubtitle({ text: 'Radiation '+json.solar_lightToString()+' UVI ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'})
     this.solarchart.subtitle.element.textContent='Radiation '+json.solar_lightToString()+' UVI ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'
     this.rainchart.subtitle.element.textContent='Rain rate '+json.rainrateToString()+' '+json.rainrate_description()
@@ -1161,6 +1173,12 @@ UI.prototype.update_charts=function()
     this.addpointIfChanged(this.windbarbchart.series[1],[timestamp,json.windspeed_mps()])
     //this.windbarbchart.series[2].addPoint({ x: timestamp, y: json.windgustspeed_mps() },false,this.options.shift,this.options.animation,false)
     this.addpointIfChanged(this.windbarbchart.series[2],[timestamp,json.windgustspeed_mps()])
+
+    var winddailymax=json.winddailymax()
+    if (winddailymax)
+    {
+        this.windbarbchart.series[3].setData([['Wind daily max.',winddailymax]],false,this.options.animation,true)
+    }
 
    //this.solarchart.series[0].addPoint([timestamp,json.solar_light()],false,this.options.shift,this.options.animation,false)
    this.addpointIfChanged(this.solarchart.series[0],[timestamp,json.solar_light()])
@@ -1241,7 +1259,7 @@ UI.prototype.chart_redraw=function()
    // console.log(Date.now(),'redraw')
     // https://api.highcharts.com/class-reference/Highcharts.Axis#setExtremes
    // y-axis start on 0 by default
-    this.pressurechart.series[0].yAxis.setExtremes(this.pressurechart.series[0].dataMin-10,this.pressurechart.series[0].dataMax+10,false)
+    this.pressurechart.series[0].yAxis.setExtremes(this.pressurechart.series[0].dataMin-2,this.pressurechart.series[0].dataMax+2,false)
     Highcharts.charts.forEach(function (chart) { chart.redraw() })
 
 }
