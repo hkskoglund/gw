@@ -737,7 +737,7 @@ UI.prototype.initChart=function()
         renderTo: 'pressurechart',
     },
     rangeSelector: {
-        enabled: false,
+        enabled: true,
         buttons: [{
             type: 'hour',
             count: 1,
