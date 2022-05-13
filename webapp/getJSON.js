@@ -736,6 +736,9 @@ UI.prototype.initChart=function()
         animation: this.options.animation,
         renderTo: 'pressurechart',
     },
+    tooltip: {
+        enabled: this.options.tooltip
+    },
     rangeSelector: {
         enabled: true,
         inputEnabled: false,
@@ -793,15 +796,7 @@ UI.prototype.initChart=function()
 
 ],
     xAxis: [{
-
-        id: 'datetime-axis',
-
         type: 'datetime',
-
-        offset : 10,
-
-        tickpixelinterval: 150,
-
     }],
 
     plotOptions: {
@@ -845,6 +840,9 @@ UI.prototype.initChart=function()
                                 legend: {
                                     enabled: false
                                 },
+                                tooltip: {
+                                    enabled: this.options.tooltip
+                                },
                                 series: [
                                     {
                                             name: 'Rain',
@@ -862,7 +860,8 @@ UI.prototype.initChart=function()
                             renderTo: 'rainchart',
                         },
                         rangeSelector: {
-                            enabled: false,
+                            enabled: true,
+                            inputEnabled : false,
                             buttons: [{
                                 type: 'hour',
                                 count: 1,
@@ -925,14 +924,11 @@ UI.prototype.initChart=function()
                             type: 'datetime',
 
                         }],
-
-
                         plotOptions: {
                             series: {
                                 enableMouseTracking: false
                             }
                         },
-
                         series: [
                             {
                                     name: 'Rain rate',
