@@ -602,7 +602,28 @@ UI.prototype.initChart=function()
     },
 
     rangeSelector: {
-        enabled: false
+        enabled: true,
+        inputEnabled: false,
+        buttons: [{
+            type: 'hour',
+            count: 1,
+            text: '1h'
+        },
+            {
+            type: 'minute',
+            count: 15,
+            text: '15m'
+        },{
+            type: 'minute',
+            count: 1,
+            text: '1m'
+        },
+         {
+            type: 'all',
+            text: 'All'
+        }],
+        selected: 1,
+        verticalAlign: 'bottom'
     },
 
     scrollbar: {
@@ -610,7 +631,7 @@ UI.prototype.initChart=function()
     },
 
     navigator: {
-        enabled: false
+        enabled: true
     },
 
     legend: {
@@ -716,7 +737,27 @@ UI.prototype.initChart=function()
         renderTo: 'pressurechart',
     },
     rangeSelector: {
-        enabled: false
+        enabled: false,
+        buttons: [{
+            type: 'hour',
+            count: 1,
+            text: '1h'
+        },
+            {
+            type: 'minute',
+            count: 15,
+            text: '15m'
+        },{
+            type: 'minute',
+            count: 1,
+            text: '1m'
+        },
+         {
+            type: 'all',
+            text: 'All'
+        }],
+        selected: 0,
+        verticalAlign: 'bottom'
     },
 
     scrollbar: {
@@ -724,7 +765,7 @@ UI.prototype.initChart=function()
     },
 
     navigator: {
-        enabled: false
+        enabled: true
     },
 
     legend: {
@@ -782,13 +823,65 @@ UI.prototype.initChart=function()
             }
            ] 
     })
+
+    this.rainstatchart=new Highcharts.chart('rainstatchart',
+                            { chart : { 
+                                 animation: this.options.animation
+                                },
+                                title: {
+                                    text: 'Rain statistics'
+                                },
+                                credits: {
+                                    enabled: false
+                                },
+                                yAxis: [{
+                                    title: false
+                                }],
+                                xAxis: [{
+                                 type: 'column',
+                                 categories: ['hour','day','event','week','month','year']
+                                }],
+                                legend: {
+                                    enabled: false
+                                },
+                                series: [
+                                    {
+                                            name: 'Rain',
+                                            type: 'column',
+                                            data: [],
+                                            dataLabels: {
+                                                enabled: true
+                                            }
+                                            
+                                    }]
+                            })
     
     this.rainchart= new Highcharts.stockChart({ chart : {
                             animation: this.options.animation,
                             renderTo: 'rainchart',
                         },
                         rangeSelector: {
-                            enabled: false
+                            enabled: false,
+                            buttons: [{
+                                type: 'hour',
+                                count: 1,
+                                text: '1h'
+                            },
+                                {
+                                type: 'minute',
+                                count: 15,
+                                text: '15m'
+                            },{
+                                type: 'minute',
+                                count: 1,
+                                text: '1m'
+                            },
+                             {
+                                type: 'all',
+                                text: 'All'
+                            }],
+                            selected: 1,
+                            verticalAlign: 'bottom'
                         },
                     
                         scrollbar: {
@@ -796,7 +889,7 @@ UI.prototype.initChart=function()
                         },
                     
                         navigator: {
-                            enabled: false
+                            enabled: true
                         },
                     
                         legend: {
@@ -813,40 +906,25 @@ UI.prototype.initChart=function()
                             text: 'Rain'
                         },
                         yAxis: [{
-                            //https://api.highcharts.com/highcharts/yAxis.max
                             title: false,
                             min : 0,
-                            visible: false // use datalabels
-                            //tickInterval: 5,
-                            //opposite: true
-                            //max : null
-                            //max : 1.0
-                        //  max : 40
+                            opposite: false,
+                            tickInterval: 0.1
+                           
                         },
-                        //month/year axis
-                    {
-                        title:false,
-                        min: 0,
-                        //tickInterval:1,
-                        //opposite: true
-                        visible: false
-                    },
-                    {
-                        title: false,
-                        min: 0
-                    }
-                ],
+                        {
+                            title: false,
+                            min : 0,
+                            tickInterval: 1
+                           
+                        }],
                         xAxis: [{
 
                             id: 'rain-datetime-axis',
-
                             type: 'datetime',
 
-                            offset : 10,
-
-                            tickpixelinterval: 150,
-
                         }],
+
 
                         plotOptions: {
                             series: {
@@ -858,7 +936,6 @@ UI.prototype.initChart=function()
                             {
                                     name: 'Rain rate',
                                     type: 'spline',
-                                    yAxis: 2,
                                     data: [],
                                     //https://en.wikipedia.org/wiki/Rain#Intensity
                                     //zoneAxis: 'y',
@@ -884,15 +961,17 @@ UI.prototype.initChart=function()
                                    ]
                             },
                             {
-                                name: 'Rain',
+                                name: 'Rain event',
                                 type: 'spline',
                                 data: [],
+                                yAxis: 1,
+                                visible: false
                             },
                             {
-                                name: 'Rain week/month/year',
+                                name: 'Rain day',
                                 type: 'spline',
                                 data: [],
-                                visible: false
+                                yAxis: 1
                             }
                         
                         ] 
@@ -903,7 +982,28 @@ UI.prototype.initChart=function()
                         renderTo: 'solarchart',
                         },
                         rangeSelector: {
-                            enabled: false
+                            enabled: true,
+                            inputEnabled: false,
+                            buttons: [{
+                                type: 'hour',
+                                count: 1,
+                                text: '1h'
+                            },
+                                {
+                                type: 'minute',
+                                count: 15,
+                                text: '15m'
+                            },{
+                                type: 'minute',
+                                count: 1,
+                                text: '1m'
+                            },
+                             {
+                                type: 'all',
+                                text: 'All'
+                            }],
+                            selected: 1,
+                            verticalAlign: 'bottom'
                         },
 
                         scrollbar: {
@@ -911,7 +1011,7 @@ UI.prototype.initChart=function()
                         },
 
                         navigator: {
-                            enabled: false
+                            enabled: true
                         },
 
                         legend: {
@@ -1020,7 +1120,28 @@ UI.prototype.initChart=function()
         renderTo: 'windbarbchart' },
 
         rangeSelector: {
-            enabled: false
+            enabled: true,
+            inputEnabled: false,
+            buttons: [{
+                type: 'hour',
+                count: 1,
+                text: '1h'
+            },
+                {
+                type: 'minute',
+                count: 15,
+                text: '15m'
+            },{
+                type: 'minute',
+                count: 1,
+                text: '1m'
+            },
+             {
+                type: 'all',
+                text: 'All'
+            }],
+            selected: 1,
+            verticalAlign: 'bottom'
         },
 
         scrollbar: {
@@ -1028,7 +1149,7 @@ UI.prototype.initChart=function()
         },
 
         navigator: {
-            enabled: false
+            enabled: true
         },
 
         legend: {
@@ -1228,6 +1349,11 @@ UI.prototype.update_charts=function()
    // this.solarchart.series[1].addPoint([timestamp,json.solar_uv()],false, this.solarchart.series[1].points.length>37, false)
    this.addpointIfChanged(this.solarchart.series[1],[timestamp, json.solar_uvi()])
    this.addpointIfChanged(this.rainchart.series[0],[timestamp,json.rainrate()])
+   this.addpointIfChanged(this.rainchart.series[1],[timestamp,json.rainevent()])
+   this.addpointIfChanged(this.rainchart.series[2],[timestamp,json.rainday()])
+
+    this.rainstatchart.series[0].setData([['hour',json.rainhour()],['day',json.rainday()],['event',json.rainevent()],['week',json.rainweek()],['month',json.rainmonth()],['year',json.rainmonth()]],false,this.options.animation)
+   
    
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
