@@ -738,6 +738,7 @@ UI.prototype.initChart=function()
     },
     rangeSelector: {
         enabled: true,
+        inputEnabled: false,
         buttons: [{
             type: 'hour',
             count: 1,
