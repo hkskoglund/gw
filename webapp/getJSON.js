@@ -1352,7 +1352,7 @@ UI.prototype.update_charts=function()
    this.addpointIfChanged(this.rainchart.series[1],[timestamp,json.rainevent()])
    this.addpointIfChanged(this.rainchart.series[2],[timestamp,json.rainday()])
 
-    this.rainstatchart.series[0].setData([['hour',json.rainhour()],['day',json.rainday()],['event',json.rainevent()],['week',json.rainweek()],['month',json.rainmonth()],['year',json.rainmonth()]],false,this.options.animation)
+    this.rainstatchart.series[0].setData([['hour',json.rainhour()],['day',json.rainday()],['event',json.rainevent()],['week',json.rainweek()],['month',json.rainmonth()],['year',json.rainyear()]],false,this.options.animation)
    
    
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
