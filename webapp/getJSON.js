@@ -420,15 +420,18 @@ function UI()
     
     this.weatherElement=document.getElementById('divWeather')
 
+    var isIpad1=this.isIpad1()
+
     this.options={
         interval: 16000, // milliseconds request time for JSON
         redraw_interval: 60000, // milliseconds between each chart redraw
         addpoint_simulation: false, // add point every 100ms, testing performance
         addpoint_simulation_interval: 100,
-        tooltip: this.isIpad1(), // turn off for ipad1 - slow animation/disappearing
+        tooltip: !isIpad1, // turn off for ipad1 - slow animation/disappearing
         animation: false, // turn off animation for all charts
         addpointIfChanged : true, // only addpoint if value changes (keep memory footprint low),
-        shift: false // shift series
+        shift: false, // shift series
+        mousetracking: !isIpad1 // allocates memory for duplicate path for tracking
     }
 
     this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
@@ -449,7 +452,7 @@ function UI()
 UI.prototype.isIpad1=function()
 {
    // "Mozilla/5.0 (iPad; CPU OS 5_1_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B206 Safari/7534.48.3"
-   return navigator.userAgent.indexOf("iPad; CPU OS 5_1_1 like Mac OS X")===-1
+   return navigator.userAgent.indexOf("iPad; CPU OS 5_1_1 like Mac OS X")!=-1
 }
 
 UI.prototype.initChart=function()
@@ -680,7 +683,7 @@ UI.prototype.initChart=function()
      // don't use memory for duplicate path
      plotOptions: {
         series: {
-            enableMouseTracking: false,
+            enableMouseTracking: this.options.mousetracking,
             // https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-events-legenditemclick/
             // https://api.highcharts.com/highcharts/series.line.events.legendItemClick?_ga=2.179134500.1422516645.1651056622-470753587.1650372441
             // https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-events-show/
@@ -801,7 +804,7 @@ UI.prototype.initChart=function()
 
     plotOptions: {
         series: {
-            enableMouseTracking: false
+            enableMouseTracking: this.options.mousetracking
         }
     },
 
@@ -926,7 +929,7 @@ UI.prototype.initChart=function()
                         }],
                         plotOptions: {
                             series: {
-                                enableMouseTracking: false
+                                enableMouseTracking: this.options.mousetracking
                             }
                         },
                         series: [
@@ -1063,7 +1066,7 @@ UI.prototype.initChart=function()
 
                         plotOptions: {
                             series: {
-                                enableMouseTracking: false
+                                enableMouseTracking: this.options.mousetracking
                             }
                         },
 
@@ -1181,7 +1184,7 @@ UI.prototype.initChart=function()
     
       plotOptions: {
         series: {
-            enableMouseTracking: false
+            enableMouseTracking: this.options.mousetracking
         }
     },
         series: [{
@@ -1284,6 +1287,7 @@ UI.prototype.update_charts=function()
        simulationSubtitle='Points '+this.temperaturechart.series[0].points.length
      } 
     this.temperaturechart.setSubtitle({ text: '<b>Outdoor</b> '+json.outtempToString()+' '+ json.outhumidityToString()+' <b>Indoor</b> '+json.intempToString()+json.inhumidityToString() })
+    this.temperaturechart.setCaption({ text: new Date(timestamp)})
     var windSubtitle='<b>Speed</b> '+ json.windspeedToString()+' <b>Gust</b> '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()
     var winddailymax=json.winddailymax()
     if (winddailymax)
