@@ -687,6 +687,7 @@ UI.prototype.initChart=function()
             // https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-events-legenditemclick/
             // https://api.highcharts.com/highcharts/series.line.events.legendItemClick?_ga=2.179134500.1422516645.1651056622-470753587.1650372441
             // https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-events-show/
+            
         }
     },
 
@@ -839,7 +840,7 @@ UI.prototype.initChart=function()
                                 },{
                                     min : 0,
                                     title: false,
-                                    opposite: true
+                                    opposite: true,
                                 }],
                                 xAxis: [{
                                  type: 'column',
@@ -1292,24 +1293,29 @@ UI.prototype.update_charts=function()
     var json=this.getJSON,
         timestamp=json.timestamp(),
         simulationSubtitle='',
-        shiftseries=false
+        shiftseries=false,
+        redraw=false
 
      if (this.options.addpoint_simulation)
      {
        timestamp=Date.now()
        simulationSubtitle='Points '+this.temperaturechart.series[0].points.length
      } 
-    this.temperaturechart.setSubtitle({ text: '<b>Outdoor</b> '+json.outtempToString()+' '+ json.outhumidityToString()+' <b>Indoor</b> '+json.intempToString()+json.inhumidityToString() })
-    this.temperaturechart.setCaption({ text: new Date(timestamp)})
+
+    this.temperaturechart.update({ 
+        subtitle: { text: '<b>Outdoor</b> '+json.outtempToString()+' '+ json.outhumidityToString()+' <b>Indoor</b> '+json.intempToString()+json.inhumidityToString()}
+        //caption : { text: new Date(timestamp)}
+    },redraw)
+
     var windSubtitle='<b>Speed</b> '+ json.windspeedToString()+' <b>Gust</b> '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()
     var winddailymax=json.winddailymax()
     if (winddailymax)
        windSubtitle=windSubtitle+' <b>Max. today</b> '+json.winddailymaxToString()
 
-    this.windbarbchart.setSubtitle({ text: windSubtitle })
-    this.solarchart.setSubtitle({ text: '<b>Radiation</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'})
-    this.pressurechart.setSubtitle({ text: '<b>Relative</b> '+json.pressureToString(json.relbaro())+' <b>Absolute</b> ' + json.pressureToString(json.absbaro())})
-    this.rainchart.setSubtitle({ text: '<b>Rain rate</b>'+' '+json.rainrateToString()})
+    this.windbarbchart.update({ subtitle : { text: windSubtitle }},redraw)
+    this.solarchart.update({subtitle : { text: '<b>Radiation</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')' }},redraw)
+    this.pressurechart.update({ subtitle : { text: '<b>Relative</b> '+json.pressureToString(json.relbaro())+' <b>Absolute</b> ' + json.pressureToString(json.absbaro())}},redraw)
+    this.rainchart.update({subtitle: { text: '<b>Rain rate</b>'+' '+json.rainrateToString()}},redraw)
     //this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())
 
     // Remove data if too old, otherwise they get skewed to the left
@@ -1327,7 +1333,7 @@ UI.prototype.update_charts=function()
     var beufortScale=json.windgustspeed_beufort()
     var compassDirection=json.winddirection_compass_value()-1 
     var rosePoint=this.windrosechart.series[beufortScale].data[compassDirection]
-        rosePoint.update(rosePoint.y+this.options.interval/60000,false)
+        rosePoint.update(rosePoint.y+this.options.interval/60000,redraw)
     
     if ((this.isIpad1() && this.windbarbchart.series[2].options.data.length > 2048) || (this.windbarbchart.series[0].options.data.length > 5400))
     {
@@ -1343,7 +1349,7 @@ UI.prototype.update_charts=function()
     this.addpointIfChanged(this.temperaturechart.series[3],[timestamp,json.inhumidity()])
     this.addpointIfChanged(this.pressurechart.series[0],[timestamp,json.relbaro()])
     this.addpointIfChanged(this.pressurechart.series[1],[timestamp,json.absbaro()])
-    this.windbarbchart.series[0].addPoint([timestamp,json.windgustspeed_mps(),json.winddirection()],false,this.options.shift,this.options.animation,false)
+    this.windbarbchart.series[0].addPoint([timestamp,json.windgustspeed_mps(),json.winddirection()],redraw,this.options.shift,this.options.animation,false)
     
     // https://api.highcharts.com/highcharts/series.line.data
     // only support m/s unit
@@ -1366,8 +1372,8 @@ UI.prototype.update_charts=function()
    this.addpointIfChanged(this.rainchart.series[1],[timestamp,json.rainevent()])
    this.addpointIfChanged(this.rainchart.series[2],[timestamp,json.rainday()])
 
-    this.rainstatchart.series[0].setData([['hour',json.rainhour()],['day',json.rainday()],['event',json.rainevent()],['week',json.rainweek()],null,null],false,this.options.animation)
-    this.rainstatchart.series[1].setData([null,null,null,null,['month',json.rainmonth()],['year',json.rainyear()]],false,this.options.animation)
+    this.rainstatchart.series[0].setData([['hour',json.rainhour()],['day',json.rainday()],['event',json.rainevent()],['week',json.rainweek()]],redraw,this.options.animation)
+    this.rainstatchart.series[1].setData([null,null,null,null,['month',json.rainmonth()],['year',json.rainyear()]],redraw,this.options.animation)
    
    
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
@@ -1379,7 +1385,8 @@ UI.prototype.addpointIfChanged=function(series,xy)
 {
     var lastY=series.yData.slice(-2), // get the last two measurements
         y=xy[1],
-        x=xy[0]
+        x=xy[0],
+        redraw=false
 
     //console.log(series.name,lastY,series.yData)
 
@@ -1387,20 +1394,22 @@ UI.prototype.addpointIfChanged=function(series,xy)
     {
         // don't add a new point, update the last point with new timestamp/x value
         if (series.hasData()) // visible
-            series.data[series.data.length-1].update(xy,false)
+            series.data[series.data.length-1].update(xy,redraw)
         //else wait for value to be updated on next measurement
     } else
     //             Series.prototype.addPoint = function (options, redraw, shift, animation, withEvent) {
-        series.addPoint(xy,false,this.options.shift,this.options.animation,false)
+        series.addPoint(xy,redraw,this.options.shift,this.options.animation,false)
 
 }
 
 UI.prototype.chart_redraw=function()
 {
-   // console.log(Date.now(),'redraw')
     // https://api.highcharts.com/class-reference/Highcharts.Axis#setExtremes
    // y-axis start on 0 by default
-    this.pressurechart.series[0].yAxis.setExtremes(this.pressurechart.series[0].dataMin-2,this.pressurechart.series[0].dataMax+2,false)
+    if (this.pressurechart.series[0].dataMin && this.pressurechart.series[0].dataMax)
+        this.pressurechart.series[0].yAxis.setExtremes(this.pressurechart.series[0].dataMin-2,this.pressurechart.series[0].dataMax+2,false)
+
+    //console.log('redraw all charts')
     Highcharts.charts.forEach(function (chart) { chart.redraw() })
 
 }

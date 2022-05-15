@@ -30659,6 +30659,7 @@
                     redrawLegend = chart.isDirtyLegend,
                     serie;
                 // Handle responsive rules, not only on resize (#6130)
+                //console.log(Date.now(),'redraw chart:',chart.renderTo,chart)
                 if (chart.setResponsive) {
                     chart.setResponsive(false);
                 }
@@ -36035,7 +36036,9 @@
                             var val = key === 'y' && series.toYData ?
                                 series.toYData(point) :
                                 point[key];
+                      // console.log('updateparallel '+series.name+' key: '+key+'Data'+' i:'+i+' val:'+val)
                         series[key + 'Data'][i] = val;
+                        
                     } :
                     // Apply the method specified in i with the following
                     // arguments as arguments
@@ -38600,6 +38603,7 @@
              * @emits Highcharts.Series#event:addPoint
              */
             Series.prototype.addPoint = function (options, redraw, shift, animation, withEvent) {
+
                 var series = this,
                     seriesOptions = series.options,
                     data = series.data,
@@ -38610,12 +38614,15 @@
                     xData = series.xData;
                 var isInTheMiddle,
                     i;
-                // Optional redraw, defaults to true
+
+                //console.log(Date.now(),'addpoint',series.name,options,series,series.options.data)
+                    // Optional redraw, defaults to true
                 redraw = pick(redraw, true);
                 // Get options and push the point to xData, yData and series.options. In
                 // series.generatePoints the Point instance will be created on demand
                 // and pushed to the series.data array.
                 var point = { series: series };
+
                 series.pointClass.prototype.applyOptions.apply(point, [options]);
                 var x = point.x;
                 // Get the insertion point
@@ -38626,10 +38633,14 @@
                         i--;
                     }
                 }
+
                 // Insert undefined item
+                //console.time('updateparallelarrays')
                 series.updateParallelArrays(point, 'splice', i, 0, 0);
                 // Update it
                 series.updateParallelArrays(point, i);
+                //console.timeEnd('updateparallelarrays')
+
                 if (names && point.name) {
                     names[x] = point.name;
                 }
@@ -38666,6 +38677,7 @@
                 if (redraw) {
                     chart.redraw(animation); // Animation is set anyway on redraw, #5665
                 }
+
             };
             /**
              * Remove a point from the series. Unlike the
