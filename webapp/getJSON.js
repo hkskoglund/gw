@@ -834,28 +834,41 @@ UI.prototype.initChart=function()
                                     enabled: false
                                 },
                                 yAxis: [{
+                                    min: 0,
                                     title: false
+                                },{
+                                    min : 0,
+                                    title: false,
+                                    opposite: true
                                 }],
                                 xAxis: [{
                                  type: 'column',
                                  categories: ['hour','day','event','week','month','year']
                                 }],
-                                legend: {
-                                    enabled: false
-                                },
+                               
                                 tooltip: {
                                     enabled: this.options.tooltip
                                 },
                                 series: [
                                     {
-                                            name: 'Rain',
-                                            type: 'column',
-                                            data: [],
-                                            dataLabels: {
-                                                enabled: true
-                                            }
+                                        name: 'Rain',
+                                        type: 'column',
+                                        data: [],
+                                        dataLabels: {
+                                            enabled: true
+                                        }
                                             
-                                    }]
+                                    },
+                                    {
+                                        name: 'Rain',
+                                        type: 'column',
+                                        data: [],
+                                        yAxis: 1,
+                                        dataLabels: {
+                                            enabled: true
+                                        }
+                                        
+                                }]
                             })
     
     this.rainchart= new Highcharts.stockChart({ chart : {
@@ -1353,7 +1366,8 @@ UI.prototype.update_charts=function()
    this.addpointIfChanged(this.rainchart.series[1],[timestamp,json.rainevent()])
    this.addpointIfChanged(this.rainchart.series[2],[timestamp,json.rainday()])
 
-    this.rainstatchart.series[0].setData([['hour',json.rainhour()],['day',json.rainday()],['event',json.rainevent()],['week',json.rainweek()],['month',json.rainmonth()],['year',json.rainyear()]],false,this.options.animation)
+    this.rainstatchart.series[0].setData([['hour',json.rainhour()],['day',json.rainday()],['event',json.rainevent()],['week',json.rainweek()],null,null],false,this.options.animation)
+    this.rainstatchart.series[1].setData([null,null,null,null,['month',json.rainmonth()],['year',json.rainyear()]],false,this.options.animation)
    
    
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
