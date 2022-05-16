@@ -27,6 +27,13 @@ function GetJSON(host,port,path,interval) {
     this.req.addEventListener("onabort",this.transferAbort.bind(this))
 
     this.setJSONRequestInterval(this.interval)
+
+    // add pressure calibration value from met.no
+    if (navigator.language==='nb-NO') {
+        this.reqPressure=new XMLHttpRequest()
+        this.reqPressure.addEventListener('load',this.transferPressureComplete.bind(this))
+        this.setJSONPressureRequestInterval(3600000) // 1 hour
+    }
   
   }
 
@@ -83,6 +90,29 @@ GetJSON.prototype.requestLivedata=function()
     this.req.open('GET',this.url)
     this.req.setRequestHeader("Accept","application/json")
     this.req.send()
+}
+
+GetJSON.prototype.requestPressure=function()
+{
+        var d1hourago=new Date(Date.now()-3600000),
+             d1hourafter=new Date(Date.now()+3600000),
+             sourceId='SN90450',
+             pressure_calibration_url='https://rim.k8s.met.no/api/v1/observations?sources='+sourceId+'&referenceTime='+d1hourago.toISOString()+'/'+d1hourafter.toISOString()+'&elements=air_pressure_at_sea_level&timeResolution=hours'
+
+        this.reqPressure.open("GET",pressure_calibration_url)
+        this.reqPressure.setRequestHeader("Accept","application/json")
+        this.reqPressure.send()
+    }
+
+GetJSON.prototype.setJSONPressureRequestInterval= function(interval)
+{
+    this.requestPressure()
+
+    if (this.requestPressureIntervalID != null && this.requestPressureIntervalID != undefined) {
+        clearInterval(this.requestPressureIntervalID)
+    }
+    
+    this.requestPressureIntervalID=setInterval(this.requestPressure.bind(this),interval)
 }
 
 GetJSON.prototype.transferAbort = function(ev)
@@ -226,6 +256,11 @@ GetJSON.prototype.relbaro= function()
 GetJSON.prototype.absbaro=function()
 {
     return this.data.absbaro
+}
+
+GetJSON.prototype.pressureCalibrationToString=function(pressure)
+{
+    return pressure.toFixed(1)
 }
 
 GetJSON.prototype.pressureToString= function(pressure)
@@ -376,6 +411,18 @@ GetJSON.prototype.transferError=function(evt)
     console.error('Failed to receive json for '+this.url,evt);
 }
 
+GetJSON.prototype.transferPressureComplete=function(evt)
+{
+    if (this.reqPressure.responseText.length > 0) {
+        //console.log('json:'+this.req.responseText)
+        this.jsonPressure = JSON.parse(this.reqPressure.responseText)
+    } else
+    {
+        console.error("No JSON pressure received " + this.reqPressure.status+' '+this.reqPressure.statusText)
+        delete this.jsonPressure
+    }
+}
+
 
 
 function GetEcowittJSON(host,port,path,interval)
@@ -446,7 +493,29 @@ function UI()
 
     this.getJSON=new GetJSON(window.location.hostname,port,'/api/livedata',this.options.interval)
     this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
+    this.getJSON.reqPressure.addEventListener("load",this.onJSONPressure.bind(this))
+
+        
+
     
+}
+
+UI.prototype.onJSONPressure=function(evt)
+{
+    var json=this.getJSON.jsonPressure // set by getJSON eventhandler, otherwise also available in evt.currentTarget.reponseText
+   // console.log('ui got',json)
+    var referenceTime=new Date(json.data[0].referenceTime),
+         timestamp=referenceTime.getTime()-referenceTime.getTimezoneOffset()*60000
+    if (json.data[0].observations[0].elementId==="air_pressure_at_sea_level") {
+        this.pressureCalibration = {
+            timestamp: timestamp,
+            hour : referenceTime.getHours()+':00',
+            value: json.data[0].observations[0].value,
+            unit: json.data[0].observations[0].unit
+        }
+     //   console.log('timestamp,pressure:',timestamp,this.pressureCalibration)
+        this.pressurechart.series[2].addPoint([timestamp,this.pressureCalibration.value],false,this.options.shift,this.options.animation,false)
+    }
 }
 
 UI.prototype.isIpad1=function()
@@ -820,6 +889,11 @@ UI.prototype.initChart=function()
                 type: 'spline',
                 data: [],
                 //visible: false
+            },
+            {
+                name: 'Calibration',
+                type: 'spline',
+                data: []
             }
            ] 
     })
@@ -1211,14 +1285,12 @@ UI.prototype.initChart=function()
         }, 
         {
             type: 'areaspline',
-           // keys: ['y', 'rotation'], // rotation is not used here
             data: [],
             name: 'Wind speed',
-            zIndex: 2,
-            visible: true // Chart may become obscured with wind gust data if it contains alot of points/measurements
+            zIndex: 3
         },
         {
-            type: 'spline',
+            type: 'areaspline',
             data: [],
             zIndex: 2,
             name: 'Wind gust speed',
@@ -1314,7 +1386,10 @@ UI.prototype.update_charts=function()
 
     this.windbarbchart.update({ subtitle : { text: windSubtitle }},redraw)
     this.solarchart.update({subtitle : { text: '<b>Radiation</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')' }},redraw)
-    this.pressurechart.update({ subtitle : { text: '<b>Relative</b> '+json.pressureToString(json.relbaro())+' <b>Absolute</b> ' + json.pressureToString(json.absbaro())}},redraw)
+    var pressureSubtitle='<b>Relative</b> '+json.pressureToString(json.relbaro())+' <b>Absolute</b> ' + json.pressureToString(json.absbaro())
+    if (this.pressureCalibration)
+       pressureSubtitle=pressureSubtitle+' <b>Sea-level pressure</b> ' + this.pressureCalibration.value.toFixed(1) + this.pressureCalibration.unit +' @'+this.pressureCalibration.hour
+    this.pressurechart.update({ subtitle : { text: pressureSubtitle }},redraw)
     this.rainchart.update({subtitle: { text: '<b>Rain rate</b>'+' '+json.rainrateToString()}},redraw)
     //this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())
 
@@ -1353,10 +1428,8 @@ UI.prototype.update_charts=function()
     
     // https://api.highcharts.com/highcharts/series.line.data
     // only support m/s unit
-    //this.windbarbchart.series[1].addPoint({ x: timestamp, y: json.windspeed_mps() },false,this.options.shift,this.options.animation,false)
-    this.addpointIfChanged(this.windbarbchart.series[1],[timestamp,json.windspeed_mps()])
-    //this.windbarbchart.series[2].addPoint({ x: timestamp, y: json.windgustspeed_mps() },false,this.options.shift,this.options.animation,false)
-    this.addpointIfChanged(this.windbarbchart.series[2],[timestamp,json.windgustspeed_mps()])
+    this.windbarbchart.series[1].addPoint({ x: timestamp, y: json.windspeed_mps() },redraw,this.options.shift,this.options.animation,false)
+    this.windbarbchart.series[2].addPoint({ x: timestamp, y: json.windgustspeed_mps() },redraw,this.options.shift,this.options.animation,false)
 
     var winddailymax=json.winddailymax()
     if (winddailymax)
@@ -1374,8 +1447,7 @@ UI.prototype.update_charts=function()
 
     this.rainstatchart.series[0].setData([['hour',json.rainhour()],['day',json.rainday()],['event',json.rainevent()],['week',json.rainweek()]],redraw,this.options.animation)
     this.rainstatchart.series[1].setData([null,null,null,null,['month',json.rainmonth()],['year',json.rainyear()]],redraw,this.options.animation)
-   
-   
+
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
 }
@@ -1394,7 +1466,13 @@ UI.prototype.addpointIfChanged=function(series,xy)
     {
         // don't add a new point, update the last point with new timestamp/x value
         if (series.hasData()) // visible
-            series.data[series.data.length-1].update(xy,redraw)
+        {
+            var point=series.data[series.data.length-1]
+            if (point) {
+               //console.log('updating point',point.x,point.y,xy,series.name,'time diff:'+(xy[0]-point.x),series.data)
+               point.update(xy,redraw)
+            }
+        }
         //else wait for value to be updated on next measurement
     } else
     //             Series.prototype.addPoint = function (options, redraw, shift, animation, withEvent) {
