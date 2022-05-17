@@ -1,6 +1,6 @@
 // by default functions are added to window object
 
-function GetJSON(host,port,path,interval) {
+function GetJSON(host,port,path,interval,frostapi) {
 // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest
 // https://stackoverflow.com/questions/1973140/parsing-json-from-xmlhttprequest-responsejson
 // https://developer.mozilla.org/en-US/docs/Web/API/setInterval
@@ -29,10 +29,12 @@ function GetJSON(host,port,path,interval) {
     this.setJSONRequestInterval(this.interval)
 
     // add pressure calibration value from met.no
-    if (navigator.language==='nb-NO') {
+    if (navigator.language.toLowerCase()==='nb-no' && frostapi) {
         this.reqPressure=new XMLHttpRequest()
         this.reqPressure.addEventListener('load',this.transferPressureComplete.bind(this))
+        this.reqPressure.addEventListener('error',this.transferPressureError.bind(this))
         this.setJSONPressureRequestInterval(3600000) // 1 hour
+        console.log('set request for pressure calibration')
     }
   
   }
@@ -94,13 +96,18 @@ GetJSON.prototype.requestLivedata=function()
 
 GetJSON.prototype.requestPressure=function()
 {
+    // sources='+sourceId+'&referenceTime='+d1hourago.toISOString()
         var d1hourago=new Date(Date.now()-3600000),
              d1hourafter=new Date(Date.now()+3600000),
              sourceId='SN90450',
-             pressure_calibration_url='https://rim.k8s.met.no/api/v1/observations?sources='+sourceId+'&referenceTime='+d1hourago.toISOString()+'/'+d1hourafter.toISOString()+'&elements=air_pressure_at_sea_level&timeResolution=hours'
+             //frostapi_url='https://frost.met.no/observations/v0.jsonld', // Webserver does not send Access-Control-Allow-Origin: * -> cannot use in Chrome -> use proxy server?
+             frostapi_url='https://rim.k8s.met.no/api/v1/observations' // Allow CORS -> can use in browser
+             pressure_calibration_url=frostapi_url+'?sources='+sourceId+'&referencetime=latest&elements=air_pressure_at_sea_level&timeResolution=hours'
 
         this.reqPressure.open("GET",pressure_calibration_url)
         this.reqPressure.setRequestHeader("Accept","application/json")
+        this.reqPressure.setRequestHeader("Authorization", "Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:"));
+        console.log('Sending GET '+pressure_calibration_url)
         this.reqPressure.send()
     }
 
@@ -392,6 +399,7 @@ GetJSON.prototype.unitPressure=function()
 
 GetJSON.prototype.transferComplete=function(evt)
 {
+    console.log('transfer complete',evt)
     if (this.req.responseText.length > 0) {
         //console.log('json:'+this.req.responseText)
         this.json = JSON.parse(this.req.responseText)
@@ -423,6 +431,11 @@ GetJSON.prototype.transferPressureComplete=function(evt)
     }
 }
 
+GetJSON.prototype.transferPressureError=function(evt)
+{
+    console.error('Failed to get calibration pressure '+ this.reqPressure.status+' '+this.reqPressure.statusText)
+    console.error(JSON.stringify(this.reqPressure))
+}
 
 
 function GetEcowittJSON(host,port,path,interval)
@@ -475,10 +488,13 @@ function UI()
         addpoint_simulation: false, // add point every 100ms, testing performance
         addpoint_simulation_interval: 100,
         tooltip: !isIpad1, // turn off for ipad1 - slow animation/disappearing
-        animation: false, // turn off animation for all charts
-        addpointIfChanged : true, // only addpoint if value changes (keep memory footprint low),
-        shift: false, // shift series
-        mousetracking: !isIpad1 // allocates memory for duplicate path for tracking
+        animation: false,               // turn off animation for all charts
+        addpointIfChanged : true,   // only addpoint if value changes (keep memory footprint low),
+        shift: false,               // shift series flag
+        shift_measurements_ipad1: 2048, // number of measurements before shifting
+        shift_measurements: 5400,
+        mousetracking: !isIpad1,    // allocates memory for duplicate path for tracking
+        frostapi : true    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0       
     }
 
     this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
@@ -491,12 +507,9 @@ function UI()
     else
       port=window.location.port
 
-    this.getJSON=new GetJSON(window.location.hostname,port,'/api/livedata',this.options.interval)
+    this.getJSON=new GetJSON(window.location.hostname,port,'/api/livedata',this.options.interval,this.options.frostapi)
     this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
     this.getJSON.reqPressure.addEventListener("load",this.onJSONPressure.bind(this))
-
-        
-
     
 }
 
@@ -506,6 +519,7 @@ UI.prototype.onJSONPressure=function(evt)
    // console.log('ui got',json)
     var referenceTime=new Date(json.data[0].referenceTime),
          timestamp=referenceTime.getTime()-referenceTime.getTimezoneOffset()*60000
+
     if (json.data[0].observations[0].elementId==="air_pressure_at_sea_level") {
         this.pressureCalibration = {
             timestamp: timestamp,
@@ -513,7 +527,7 @@ UI.prototype.onJSONPressure=function(evt)
             value: json.data[0].observations[0].value,
             unit: json.data[0].observations[0].unit
         }
-     //   console.log('timestamp,pressure:',timestamp,this.pressureCalibration)
+        console.log('timestamp,pressure:'+timestamp+' '+this.pressureCalibration.value)
         this.pressurechart.series[2].addPoint([timestamp,this.pressureCalibration.value],false,this.options.shift,this.options.animation,false)
     }
 }
@@ -891,7 +905,7 @@ UI.prototype.initChart=function()
                 //visible: false
             },
             {
-                name: 'Calibration',
+                name: 'Sea-level pressure (QFF)',
                 type: 'spline',
                 data: []
             }
@@ -1309,17 +1323,23 @@ UI.prototype.onJSON=function (ev)
 
     this.measurementCount=this.measurementCount+1
 
-    if (this.measurementCount===1 && this.options.tooltip.enabled)
+    if (this.measurementCount===1 )
     {
-        this.rainchart.series[0].tooltipOptions.valueSuffix=' '+json.unitRainrate()
-        this.rainchart.series[1].tooltipOptions.valueSuffix=' '+json.unitRain()
-        this.rainchart.series[2].tooltipOptions.valueSuffix=' '+json.unitRain()
-        this.windbarbchart.series.forEach(function (series) { series.tooltipOptions.valueSuffix=' '+json.unitWind()})
-        this.temperaturechart.series[0].tooltipOptions.valueSuffix=' '+json.unitTemp()
-        this.temperaturechart.series[1].tooltipOptions.valueSuffix=' '+json.unitTemp()
-        this.pressurechart.series[0].tooltipOptions.valueSuffix=' '+json.unitPressure()
-        this.pressurechart.series[1].tooltipOptions.valueSuffix=' '+json.unitPressure()
-        this.solarchart.series[0].tooltipOptions.valueSuffix=' '+json.unitSolarlight()
+        if (this.options.tooltip.enabled) {
+            this.rainchart.series[0].tooltipOptions.valueSuffix=' '+json.unitRainrate()
+            this.rainchart.series[1].tooltipOptions.valueSuffix=' '+json.unitRain()
+            this.rainchart.series[2].tooltipOptions.valueSuffix=' '+json.unitRain()
+            this.windbarbchart.series.forEach(function (series) { series.tooltipOptions.valueSuffix=' '+json.unitWind()})
+            this.temperaturechart.series[0].tooltipOptions.valueSuffix=' '+json.unitTemp()
+            this.temperaturechart.series[1].tooltipOptions.valueSuffix=' '+json.unitTemp()
+            this.pressurechart.series[0].tooltipOptions.valueSuffix=' '+json.unitPressure()
+            this.pressurechart.series[1].tooltipOptions.valueSuffix=' '+json.unitPressure()
+            this.solarchart.series[0].tooltipOptions.valueSuffix=' '+json.unitSolarlight()
+        }
+
+        if (this.options.frostapi) {
+            this.pressurechart.setCaption({ text: 'Calibration from https://frost.met.no Norwegian Meterological Institute - CC 4.0'})
+        }
     }
 
     this.outtempElement.textContent=json.outtemp()
@@ -1388,7 +1408,7 @@ UI.prototype.update_charts=function()
     this.solarchart.update({subtitle : { text: '<b>Radiation</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')' }},redraw)
     var pressureSubtitle='<b>Relative</b> '+json.pressureToString(json.relbaro())+' <b>Absolute</b> ' + json.pressureToString(json.absbaro())
     if (this.pressureCalibration)
-       pressureSubtitle=pressureSubtitle+' <b>Sea-level pressure</b> ' + this.pressureCalibration.value.toFixed(1) + this.pressureCalibration.unit +' @'+this.pressureCalibration.hour
+       pressureSubtitle=pressureSubtitle+' <b>Sea-level pressure (QFF)</b> ' + this.pressureCalibration.value.toFixed(1) + ' '+this.pressureCalibration.unit +' '+this.pressureCalibration.hour
     this.pressurechart.update({ subtitle : { text: pressureSubtitle }},redraw)
     this.rainchart.update({subtitle: { text: '<b>Rain rate</b>'+' '+json.rainrateToString()}},redraw)
     //this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())
@@ -1410,9 +1430,9 @@ UI.prototype.update_charts=function()
     var rosePoint=this.windrosechart.series[beufortScale].data[compassDirection]
         rosePoint.update(rosePoint.y+this.options.interval/60000,redraw)
     
-    if ((this.isIpad1() && this.windbarbchart.series[2].options.data.length > 2048) || (this.windbarbchart.series[0].options.data.length > 5400))
+    if (!this.options.shift && (this.isIpad1() && this.windbarbchart.series[2].options.data.length > this.options.shift_measurements_ipad1) || this.windbarbchart.series[0].options.data.length > this.shift_measurements)
     {
-        console.log('Starting to shift series, data length '+ this.windbarbchart.series[2].yData.length)
+        console.log(Date()+'Starting to shift series, data length '+ this.windbarbchart.series[2].options.data.length)
         this.options.shift=true
     }
 
