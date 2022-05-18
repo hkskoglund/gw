@@ -1,6 +1,6 @@
 // by default functions are added to window object
 
-function GetJSON(host,port,path,interval,frostapi) {
+function GetJSON(host,port,path,interval,options) {
 // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest
 // https://stackoverflow.com/questions/1973140/parsing-json-from-xmlhttprequest-responsejson
 // https://developer.mozilla.org/en-US/docs/Web/API/setInterval
@@ -29,12 +29,12 @@ function GetJSON(host,port,path,interval,frostapi) {
     this.setJSONRequestInterval(this.interval)
 
     // add pressure calibration value from met.no
-    if (navigator.language.toLowerCase()==='nb-no' && frostapi) {
-        this.reqPressure=new XMLHttpRequest()
-        this.reqPressure.addEventListener('load',this.transferPressureComplete.bind(this))
-        this.reqPressure.addEventListener('error',this.transferPressureError.bind(this))
-        this.setJSONPressureRequestInterval(3600000) // 1 hour
-        console.log('set request for pressure calibration')
+    if (navigator.language.toLowerCase()==='nb-no' && options.frostapi) {
+        this.reqFrost=new XMLHttpRequest()
+        this.reqFrost.addEventListener('load',this.transferFrostComplete.bind(this))
+        this.reqFrost.addEventListener('error',this.transferFrostError.bind(this))
+        this.setJSONFrostRequestInterval(options.frostapi_interval) 
+      
     }
   
   }
@@ -103,15 +103,17 @@ GetJSON.prototype.requestPressure=function()
              //frostapi_url='https://frost.met.no/observations/v0.jsonld', // Webserver does not send Access-Control-Allow-Origin: * -> cannot use in Chrome -> use proxy server?
              frostapi_url='https://rim.k8s.met.no/api/v1/observations' // Allow CORS -> can use in browser
              pressure_calibration_url=frostapi_url+'?sources='+sourceId+'&referencetime=latest&elements=air_pressure_at_sea_level&timeResolution=hours'
+             precipitation_calibration_month_url=frostapi_url+'?sources='+sourceId+'referenceTime=2021-05-01T00:00:00Z/2022-05-31T23:59:59Z&elements=sum(precipitation_amount%20P1M)&timeResolution=months'
+             precipitation_calibration_day_url=frostapi_url+'?sources='+sourceId+'&referenceTime=2022-05-18T00:00:00Z/2022-05-18T23:59:59Z&elements=sum(precipitation_amount%20P1D)&timeResolution=days'
 
-        this.reqPressure.open("GET",pressure_calibration_url)
-        this.reqPressure.setRequestHeader("Accept","application/json")
-        this.reqPressure.setRequestHeader("Authorization", "Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:"));
+        this.reqFrost.open("GET",pressure_calibration_url)
+        this.reqFrost.setRequestHeader("Accept","application/json")
+        this.reqFrost.setRequestHeader("Authorization", "Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:"));
         console.log('Sending GET '+pressure_calibration_url)
-        this.reqPressure.send()
+        this.reqFrost.send()
     }
 
-GetJSON.prototype.setJSONPressureRequestInterval= function(interval)
+GetJSON.prototype.setJSONFrostRequestInterval= function(interval)
 {
     this.requestPressure()
 
@@ -399,7 +401,7 @@ GetJSON.prototype.unitPressure=function()
 
 GetJSON.prototype.transferComplete=function(evt)
 {
-    console.log('transfer complete',evt)
+    //console.log('transfer complete',evt)
     if (this.req.responseText.length > 0) {
         //console.log('json:'+this.req.responseText)
         this.json = JSON.parse(this.req.responseText)
@@ -419,22 +421,22 @@ GetJSON.prototype.transferError=function(evt)
     console.error('Failed to receive json for '+this.url,evt);
 }
 
-GetJSON.prototype.transferPressureComplete=function(evt)
+GetJSON.prototype.transferFrostComplete=function(evt)
 {
-    if (this.reqPressure.responseText.length > 0) {
+    if (this.reqFrost.responseText.length > 0) {
         //console.log('json:'+this.req.responseText)
-        this.jsonPressure = JSON.parse(this.reqPressure.responseText)
+        this.jsonFrost = JSON.parse(this.reqFrost.responseText)
     } else
     {
-        console.error("No JSON pressure received " + this.reqPressure.status+' '+this.reqPressure.statusText)
-        delete this.jsonPressure
+        console.error("No JSON frost received " + this.reqFrost.status+' '+this.reqFrost.statusText)
+        delete this.jsonFrost
     }
 }
 
-GetJSON.prototype.transferPressureError=function(evt)
+GetJSON.prototype.transferFrostError=function(evt)
 {
-    console.error('Failed to get calibration pressure '+ this.reqPressure.status+' '+this.reqPressure.statusText)
-    console.error(JSON.stringify(this.reqPressure))
+    console.error('Failed to get calibration pressure '+ this.reqFrost.status+' '+this.reqFrost.statusText)
+    console.error(JSON.stringify(this.reqFrost))
 }
 
 
@@ -494,7 +496,8 @@ function UI()
         shift_measurements_ipad1: 2048, // number of measurements before shifting
         shift_measurements: 5400,
         mousetracking: !isIpad1,    // allocates memory for duplicate path for tracking
-        frostapi : true    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0       
+        frostapi : true,    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
+        frostapi_interval: 3600000 // request interval 1 hour     
     }
 
     this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
@@ -507,15 +510,15 @@ function UI()
     else
       port=window.location.port
 
-    this.getJSON=new GetJSON(window.location.hostname,port,'/api/livedata',this.options.interval,this.options.frostapi)
+    this.getJSON=new GetJSON(window.location.hostname,port,'/api/livedata',this.options.interval,this.options)
     this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
-    this.getJSON.reqPressure.addEventListener("load",this.onJSONPressure.bind(this))
+    this.getJSON.reqFrost.addEventListener("load",this.onJSONFrost.bind(this))
     
 }
 
-UI.prototype.onJSONPressure=function(evt)
+UI.prototype.onJSONFrost=function(evt)
 {
-    var json=this.getJSON.jsonPressure // set by getJSON eventhandler, otherwise also available in evt.currentTarget.reponseText
+    var json=this.getJSON.jsonFrost // set by getJSON eventhandler, otherwise also available in evt.currentTarget.reponseText
    // console.log('ui got',json)
     var referenceTime=new Date(json.data[0].referenceTime),
          timestamp=referenceTime.getTime()-referenceTime.getTimezoneOffset()*60000
