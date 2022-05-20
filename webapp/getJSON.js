@@ -1405,7 +1405,7 @@ UI.prototype.onJSON=function (ev)
         }
 
         if (this.options.frostapi) {
-            this.pressurechart.setCaption({ text: 'Calibration from https://frost.met.no Norwegian Meterological Institute - CC 4.0'})
+            this.pressurechart.setCaption({ text: 'MET.no data from https://frost.met.no API - CC 4.0'})
         }
     }
 

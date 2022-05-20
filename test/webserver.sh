@@ -322,8 +322,10 @@ webserver()
                         /api/frost.met.no/latest-hour)
 
                                 # ipad1 does not have updated security certificates to access frost.met.no directly with XmlHttpRequest, using this endpoint allows curl to get the data
+                                # query can be built using https://seklima.met.no/ -> developer tools "Network" pane
 
-                                sendMETnoRequest "https://frost.met.no/observations/v0.jsonld?elements=air_pressure_at_sea_level,relative_humidity,air_temperature,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)&referencetime=latest&sources=SN90450&timeresolutions=PT1H"
+                                l_sources=SN90450
+                                sendMETnoRequest "https://frost.met.no/observations/v0.jsonld?elements=air_temperature,surface_snow_thickness,air_pressure_at_sea_level,relative_humidity,wind_speed,wind_speed_of_gust,wind_from_direction,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)&referencetime=latest&sources=$l_sources&timeresolutions=PT1H"
 
                                 ;; 
 
@@ -332,9 +334,7 @@ webserver()
                                 # runs request as specified
                                 appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
                                 appendHttpDefaultHeaders
-                                set -x
                                 l_path=${HTTP_REQUEST_ABSPATH#/api/frost.met.no/}
-                                set +x
                                 sendMETnoRequest "https://frost.met.no/$l_path"
                               
                                 unset l_path
