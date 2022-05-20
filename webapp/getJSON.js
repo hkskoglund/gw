@@ -29,12 +29,20 @@ function GetJSON(host,port,path,interval,options) {
     this.setJSONRequestInterval(this.interval)
 
     // add pressure calibration value from met.no
-    if (navigator.language.toLowerCase()==='nb-no' && options.frostapi) {
+    if (navigator.language.toLowerCase()==='nb-no' && options.frostapi) 
+    {
+        
         this.reqFrost=new XMLHttpRequest()
         this.reqFrost.addEventListener('load',this.transferFrostComplete.bind(this))
         this.reqFrost.addEventListener('error',this.transferFrostError.bind(this))
+
+        this.reqFrostPrecipitationHour= new XMLHttpRequest()
+        this.reqFrostPrecipitationHour.addEventListener('load',this.reqFrostPrecipitationHourComplete.bind(this))
+        this.reqFrostPrecipitationHour.addEventListener('error',this.reqFrostPrecipitationHourError.bind(this))
+
         this.setJSONFrostRequestInterval(options.frostapi_interval) 
-      
+
+        
     }
   
   }
@@ -94,34 +102,52 @@ GetJSON.prototype.requestLivedata=function()
     this.req.send()
 }
 
-GetJSON.prototype.requestPressure=function()
+GetJSON.prototype.requestFrost=function()
 {
     // sources='+sourceId+'&referenceTime='+d1hourago.toISOString()
-        var d1hourago=new Date(Date.now()-3600000),
+        var  date   = new Date(),
+             dateISO = date.toISOString().split('.')[0]+'Z', // 2022-05-19T09:28:59Z https://stackoverflow.com/questions/34053715/how-to-output-date-in-javascript-in-iso-8601-without-milliseconds-and-with-z
+             year   = date.getUTCFullYear(),
+             month  = date.getUTCMonth(), // zero-based 0=january
+             day    = date.getUTCDate(), // day
+             hours  = date.getUTCHours(),
+             minutes= date.getUTCMinutes(),
+             dateISOYYMMDD = year + '-' + (month + 1) + '-' + day,
+             dateISOMidnight= new Date(dateISOYYMMDD + ' 00:00'),
+             d1hourago=new Date(Date.now()-3600000),
              d1hourafter=new Date(Date.now()+3600000),
              sourceId='SN90450',
+             authentication="Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:"),
              //frostapi_url='https://frost.met.no/observations/v0.jsonld', // Webserver does not send Access-Control-Allow-Origin: * -> cannot use in Chrome -> use proxy server?
              frostapi_url='https://rim.k8s.met.no/api/v1/observations' // Allow CORS -> can use in browser
-             pressure_calibration_url=frostapi_url+'?sources='+sourceId+'&referencetime=latest&elements=air_pressure_at_sea_level&timeResolution=hours'
+             pressureURL=frostapi_url+'?sources='+sourceId+'&referencetime=latest&elements=air_pressure_at_sea_level,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)&timeResolution=hours'
              precipitation_calibration_month_url=frostapi_url+'?sources='+sourceId+'referenceTime=2021-05-01T00:00:00Z/2022-05-31T23:59:59Z&elements=sum(precipitation_amount%20P1M)&timeResolution=months'
-             precipitation_calibration_day_url=frostapi_url+'?sources='+sourceId+'&referenceTime=2022-05-18T00:00:00Z/2022-05-18T23:59:59Z&elements=sum(precipitation_amount%20P1D)&timeResolution=days'
+             precipitationHourURL=frostapi_url+'?sources='+sourceId+'&referencetime='+dateISOMidnight.toISOString().split('.')[0]+'Z'+'/'+dateISO+'&elements=sum(precipitation_amount%20PT1H)&timeResolution=hours'
 
-        this.reqFrost.open("GET",pressure_calibration_url)
+        
+        this.reqFrost.open("GET",pressureURL)
         this.reqFrost.setRequestHeader("Accept","application/json")
-        this.reqFrost.setRequestHeader("Authorization", "Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:"));
-        console.log('Sending GET '+pressure_calibration_url)
+        this.reqFrost.setRequestHeader("Authorization", authentication);
+        console.log('Sending GET '+pressureURL)
         this.reqFrost.send()
+
+        this.reqFrostPrecipitationHour.open("GET",precipitationHourURL)
+        this.reqFrostPrecipitationHour.setRequestHeader("Accept","application/json")
+        this.reqFrostPrecipitationHour.setRequestHeader("Authorization", authentication);
+        console.log('Sending GET '+precipitationHourURL)
+        this.reqFrostPrecipitationHour.send()
+        
     }
 
 GetJSON.prototype.setJSONFrostRequestInterval= function(interval)
 {
-    this.requestPressure()
+    this.requestFrost()
 
     if (this.requestPressureIntervalID != null && this.requestPressureIntervalID != undefined) {
         clearInterval(this.requestPressureIntervalID)
     }
     
-    this.requestPressureIntervalID=setInterval(this.requestPressure.bind(this),interval)
+    this.requestPressureIntervalID=setInterval(this.requestFrost.bind(this),interval)
 }
 
 GetJSON.prototype.transferAbort = function(ev)
@@ -433,11 +459,27 @@ GetJSON.prototype.transferFrostComplete=function(evt)
     }
 }
 
+GetJSON.prototype.reqFrostPrecipitationHourComplete=function(evt)
+{
+    if (this.reqFrostPrecipitationHour.responseText.length > 0) {
+        this.jsonFrostPrecipitationHour = JSON.parse(this.reqFrostPrecipitationHour.responseText)
+    } else
+    {
+        console.error("No JSON frost precipitation day received " + this.reqFrostPrecipitationHour.status+' '+this.reqFrostPrecipitationHour.statusText)
+        delete this.jsonFrostPrecipitationHour
+    }
+}
+
 GetJSON.prototype.transferFrostError=function(evt)
 {
     console.error('Failed to get calibration pressure '+ this.reqFrost.status+' '+this.reqFrost.statusText)
-    console.error(JSON.stringify(this.reqFrost))
 }
+
+GetJSON.prototype.reqFrostPrecipitationHourError=function(evt)
+{
+    console.error('Failed to get precipitation day '+ this.reqFrostPrecipitationHour.status+' '+this.reqFrostPrecipitationHour.statusText)
+}
+
 
 
 function GetEcowittJSON(host,port,path,interval)
@@ -513,6 +555,7 @@ function UI()
     this.getJSON=new GetJSON(window.location.hostname,port,'/api/livedata',this.options.interval,this.options)
     this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
     this.getJSON.reqFrost.addEventListener("load",this.onJSONFrost.bind(this))
+    this.getJSON.reqFrostPrecipitationHour.addEventListener("load",this.onJSONFrostPrecipitationHour.bind(this))
     
 }
 
@@ -533,6 +576,18 @@ UI.prototype.onJSONFrost=function(evt)
         console.log('timestamp,pressure:'+timestamp+' '+this.pressureCalibration.value)
         this.pressurechart.series[2].addPoint([timestamp,this.pressureCalibration.value],false,this.options.shift,this.options.animation,false)
     }
+}
+
+UI.prototype.onJSONFrostPrecipitationHour=function(evt)
+{
+    var json=this.getJSON.jsonFrostPrecipitationHour
+    console.log('ui got',json)
+    var precipitationDay=0
+    json.data.forEach(function (data) { precipitationDay=precipitationDay+data.observations[0].value})
+    var precipitationHour=json.data[json.data.length-1].observations[0].value
+    console.log('precipitation today: '+ precipitationDay+' precip. hour: '+precipitationHour)
+    this.rainstatchart.series[2].setData([['hour',precipitationHour],['day',precipitationDay],null,null,null],false,this.options.animation)
+
 }
 
 UI.prototype.isIpad1=function()
@@ -908,7 +963,7 @@ UI.prototype.initChart=function()
                 //visible: false
             },
             {
-                name: 'Sea-level pressure (QFF)',
+                name: 'Sea-level pressure (QFF) MET.no',
                 type: 'spline',
                 data: []
             }
@@ -958,9 +1013,18 @@ UI.prototype.initChart=function()
                                         yAxis: 1,
                                         dataLabels: {
                                             enabled: true
-                                        }
-                                        
-                                }]
+                                        },
+                                    },
+                                    {
+                                        name: 'Rain MET.no',
+                                        type: 'column',
+                                        data: [],
+                                        yAxis: 1,
+                                        dataLabels: {
+                                            enabled: true
+                                        },
+                                    }
+                            ]
                             })
     
     this.rainchart= new Highcharts.stockChart({ chart : {
@@ -1411,7 +1475,7 @@ UI.prototype.update_charts=function()
     this.solarchart.update({subtitle : { text: '<b>Radiation</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')' }},redraw)
     var pressureSubtitle='<b>Relative</b> '+json.pressureToString(json.relbaro())+' <b>Absolute</b> ' + json.pressureToString(json.absbaro())
     if (this.pressureCalibration)
-       pressureSubtitle=pressureSubtitle+' <b>Sea-level pressure (QFF)</b> ' + this.pressureCalibration.value.toFixed(1) + ' '+this.pressureCalibration.unit +' '+this.pressureCalibration.hour
+       pressureSubtitle=pressureSubtitle+' <b>Sea-level pressure (QFF) MET.no</b> ' + this.pressureCalibration.value.toFixed(1) + ' '+this.pressureCalibration.unit +' '+this.pressureCalibration.hour
     this.pressurechart.update({ subtitle : { text: pressureSubtitle }},redraw)
     this.rainchart.update({subtitle: { text: '<b>Rain rate</b>'+' '+json.rainrateToString()}},redraw)
     //this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())

@@ -190,6 +190,28 @@ sendJSON()
     sendHttpResponse
 }
 
+sendMETnoRequest()
+# $1 http request url
+{
+        appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
+        appendHttpDefaultHeaders
+        #using basic authentication with -u/new user must be registered at frost.met.no, -s turns off progress metering
+        set -x
+        l_user=2c6cf1d9-b949-4f64-af83-0cb4d881658a
+        l_password=d5c393a3-d04e-4b24-b2e5-e4adbc62208c
+        l_response_JSON=$( curl -v -s -u "$l_user:$l_password" "$1" );
+        l_exitcode=$?
+        set +x
+        if [ $l_exitcode -gt 0 ]; then
+            l_response_JSON='{ "exitcode": '$l_exitcode' }'
+        fi
+        
+        sendJSON "$l_response_JSON"
+
+        #problem WSL2: stty: 'standard input': Inappropriate ioctl for device
+        unset l_response_JSON l_exitcode l_user l_password
+}
+
 webserver()
 # process runs in a subshell (function call in end of pipeline), pid can be accessed by $BASHPID/$$ is invoking shell, pstree -pal gives overview
 {
@@ -221,6 +243,7 @@ webserver()
             eval parseHttpHeader \"\$HTTP_LINE$ln\"
             ln=$(( ln + 1 ))
         done
+
  
         case "$HTTP_REQUEST_METHOD" in
 
@@ -237,7 +260,9 @@ webserver()
                                             #adding newline \n inside string by breaking line
                                             #shellcheck disable=SC2154
                                             l_response_JSON='{
-    "livedata_url": "http://'"$HTTP_HEADER_host"'/api/livedata"
+    "livedata_url": "http://'"$HTTP_HEADER_host"'/api/livedata",
+    "frostmetno_latest_url": "http://'"$HTTP_HEADER_host"'/api/frost.met.no/latest-hour",
+    "frostmetno_url": "http://'"$HTTP_HEADER_host"'/api/frost.met.no{/path}"
 }
 '
                                         sendJSON "$l_response_JSON"
@@ -260,8 +285,8 @@ webserver()
                                                 #l_response_JSON=$( cd .. ; timeout 20 ./gw -v json -l 8016 )
                                                 set -x
                                                l_response_JSON=$( cd .. ; ./gw -g "$VALUE_HOST" -v json -c l );
+                                                l_exitcode_livedata=$?
                                                set +x
-                                               l_exitcode_livedata=$?
                                                if [ $l_exitcode_livedata -gt 0 ]; then
                                                     l_response_JSON='{ "exitcode": '$l_exitcode_livedata' }'
                                                fi
@@ -293,6 +318,28 @@ webserver()
                                         
                         *".js"|*".css"|*".html") sendFile 
                                         ;;
+
+                        /api/frost.met.no/latest-hour)
+
+                                # ipad1 does not have updated security certificates to access frost.met.no directly with XmlHttpRequest, using this endpoint allows curl to get the data
+
+                                sendMETnoRequest "https://frost.met.no/observations/v0.jsonld?elements=air_pressure_at_sea_level,relative_humidity,air_temperature,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)&referencetime=latest&sources=SN90450&timeresolutions=PT1H"
+
+                                ;; 
+
+                        /api/frost.met.no/*)
+
+                                # runs request as specified
+                                appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
+                                appendHttpDefaultHeaders
+                                set -x
+                                l_path=${HTTP_REQUEST_ABSPATH#/api/frost.met.no/}
+                                set +x
+                                sendMETnoRequest "https://frost.met.no/$l_path"
+                              
+                                unset l_path
+
+                                ;;
                         
                         *)      sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
                                 ;;
