@@ -30,7 +30,7 @@ function GetJSON(host,port,path,interval,options) {
     this.setJSONRequestInterval(this.interval)
 
     // add pressure calibration value from met.no
-    if (navigator.language.toLowerCase()==='nb-no' && options.frostapi) 
+    if (options.frostapi) 
     {
         
         this.reqFrost=new XMLHttpRequest()
@@ -540,7 +540,7 @@ function UI()
         shift_measurements: 5400,
         invalid_security_certificate : isIpad1, // have outdated security certificates for https request
         mousetracking: !isIpad1,    // allocates memory for duplicate path for tracking
-        frostapi : true,    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
+        frostapi : true && navigator.language.toLowerCase()==='nb-no',    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
         frostapi_interval: 3600000 // request interval 1 hour     
     }
 
@@ -951,6 +951,29 @@ UI.prototype.initChart=function()
         
    })
 
+   var pressureSeries=[
+    {
+            name: 'Relative',
+            type: 'spline',
+            data: []
+        },
+        {
+            name: 'Absolute',
+            type: 'spline',
+            data: [],
+            //visible: false
+        }]
+
+    if (this.options.frostapi)
+       pressureSeries.push(
+        {
+            name: 'Sea-level pressure (QFF) MET.no',
+            type: 'spline',
+            data: [],
+            visible: false
+        })
+        
+
     this.pressurechart= new Highcharts.stockChart({ chart : {
         animation: this.options.animation,
         renderTo: 'pressurechart',
@@ -1024,24 +1047,7 @@ UI.prototype.initChart=function()
         }
     },
 
-    series: [
-        {
-                name: 'Relative',
-                type: 'spline',
-                data: []
-            },
-            {
-                name: 'Absolute',
-                type: 'spline',
-                data: [],
-                //visible: false
-            },
-            {
-                name: 'Sea-level pressure (QFF) MET.no',
-                type: 'spline',
-                data: []
-            }
-           ] 
+    series: pressureSeries
     })
 
     this.rainstatchart=new Highcharts.chart('rainstatchart',
