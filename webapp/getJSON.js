@@ -564,7 +564,7 @@ function UI()
 UI.prototype.onJSONFrost=function(evt)
 {
     var json=this.getJSON.jsonFrost // set by getJSON eventhandler, otherwise also available in evt.currentTarget.reponseText
-   // console.log('ui got',json)
+    console.log('ui got',json)
    // https://frost.met.no/api.html#!/observations/observations
    if (json['@type'] != 'ObservationResponse' )
    {
@@ -603,31 +603,32 @@ UI.prototype.onJSONFrost=function(evt)
             else if (unit==='W/m2')
               unit='W/㎡'
 
+              this.metno[elementId] = {
+                timestamp : timestamp,
+                hhmm : hhmm,
+                value : observation.value,
+                unit : unit
+            }
+
             switch (elementId)
             {
                 case 'air_pressure_at_sea_level' :
 
-                    this.metno.air_pressure_at_sea_level = {
-                        timestamp: timestamp,
-                        hhmm : hhmm,
-                        value: observation.value,
-                        unit: unit
-                    }
-                    console.log('timestamp,pressure:'+timestamp+' '+this.metno.air_pressure_at_sea_level.value)
                     this.pressurechart.series[2].addPoint([timestamp,this.metno.air_pressure_at_sea_level.value],false,this.options.shift,this.options.animation,false)
+                    break
+                
+                case 'air_temperature' :
 
+                    this.temperaturechart.series[4].addPoint([timestamp,this.metno.air_temperature.value],false,this.options.shift,this.options.animation,false)
                     break
 
-               
-                default:
+                case 'wind_speed' :
 
-                    this.metno[elementId] = {
-                        timestamp : timestamp,
-                        hhmm : hhmm,
-                        value : observation.value,
-                        unit : unit
-                    }
+                    this.windbarbchart.series[3].addPoint([timestamp,this.metno.wind_speed.value],false,this.options.shift,this.options.animation,false)
+                    break
 
+                case 'mean(surface_downwelling_shortwave_flux_in_air PT1H)' :
+                    this.solarchart.series[2].addPoint([timestamp,this.metno[elementId].value],false,this.options.shift,this.options.animation,false)
                     break
             }
         }
@@ -800,101 +801,8 @@ UI.prototype.initChart=function()
             }
                 ]
     });
-    
-    this.temperaturechart= new Highcharts.stockChart({ chart : {
-        animation: this.options.animation,
-        renderTo: 'temperaturechart',
-    },
 
-    rangeSelector: {
-        enabled: true,
-        inputEnabled: false,
-        buttons: [{
-            type: 'hour',
-            count: 1,
-            text: '1h'
-        },
-            {
-            type: 'minute',
-            count: 15,
-            text: '15m'
-        },{
-            type: 'minute',
-            count: 1,
-            text: '1m'
-        },
-         {
-            type: 'all',
-            text: 'All'
-        }],
-        selected: 1,
-        verticalAlign: 'bottom'
-    },
-
-    scrollbar: {
-        enabled: false
-    },
-
-    navigator: {
-        enabled: true
-    },
-
-    legend: {
-        enabled: true
-    },
-   
-    tooltip : {
-        enabled: this.options.tooltip
-    },
-    credits: {
-        enabled: false
-    },
-    title: {
-        text: 'Temperature'
-    },
-    yAxis: [{
-        //https://api.highcharts.com/highcharts/yAxis.max
-        title: false,
-        tickInterval: 1,
-        opposite: false,
-        //max : null
-        //max : 1.0
-    //  max : 40
-    },
-    // humidity
-    {
-        title:false,
-        //opposite: true,
-        min: 0,
-        max: 100
-    },
-
-],
-    xAxis: [{
-
-        id: 'datetime-axis',
-
-        type: 'datetime',
-
-        offset : 10,
-
-        tickpixelinterval: 150,
-
-    }],
-
-     // don't use memory for duplicate path
-     plotOptions: {
-        series: {
-            enableMouseTracking: this.options.mousetracking,
-            // https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-events-legenditemclick/
-            // https://api.highcharts.com/highcharts/series.line.events.legendItemClick?_ga=2.179134500.1422516645.1651056622-470753587.1650372441
-            // https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-events-show/
-            
-        }
-    },
-
-
-    series: [
+    var tempSeries=[
         {
                 name: 'Outdoor',
                 type: 'spline',
@@ -936,7 +844,112 @@ UI.prototype.initChart=function()
             //    zIndex: 1
             }
            ] 
-    })
+
+    if (this.options.frostapi)
+           tempSeries.push(  {
+            name: 'Outdoor METno',
+            type: 'spline',
+            yAxis: 0,
+            data: [],
+            visible: false
+           
+        })
+    
+    this.temperaturechart= new Highcharts.stockChart({ 
+        chart : {
+            animation: this.options.animation,
+            renderTo: 'temperaturechart',
+        },
+
+        rangeSelector: {
+            enabled: true,
+            inputEnabled: false,
+            buttons: [{
+                type: 'hour',
+                count: 1,
+                text: '1h'
+            },
+                {
+                type: 'minute',
+                count: 15,
+                text: '15m'
+            },{
+                type: 'minute',
+                count: 1,
+                text: '1m'
+            },
+            {
+                type: 'all',
+                text: 'All'
+            }],
+            selected: 1,
+            verticalAlign: 'bottom'
+        },
+
+        scrollbar: {
+            enabled: false
+        },
+
+        navigator: {
+            enabled: true
+        },
+
+        legend: {
+            enabled: true
+        },
+    
+        tooltip : {
+            enabled: this.options.tooltip
+        },
+        credits: {
+            enabled: false
+        },
+        title: {
+            text: 'Temperature'
+        },
+        yAxis: [{
+            //https://api.highcharts.com/highcharts/yAxis.max
+            title: false,
+            tickInterval: 1,
+            opposite: false,
+            //max : null
+            //max : 1.0
+        //  max : 40
+        },
+        // humidity
+        {
+            title:false,
+            //opposite: true,
+            min: 0,
+            max: 100
+        },
+        ],
+        xAxis: [{
+
+            id: 'datetime-axis',
+
+            type: 'datetime',
+
+            offset : 10,
+
+            tickpixelinterval: 150,
+
+        }],
+
+        // don't use memory for duplicate path
+        plotOptions: {
+            series: {
+                enableMouseTracking: this.options.mousetracking,
+                // https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-events-legenditemclick/
+                // https://api.highcharts.com/highcharts/series.line.events.legendItemClick?_ga=2.179134500.1422516645.1651056622-470753587.1650372441
+                // https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-events-show/
+                
+            }
+        },
+
+        series: tempSeries
+        
+   })
 
     this.pressurechart= new Highcharts.stockChart({ chart : {
         animation: this.options.animation,
@@ -1206,6 +1219,61 @@ UI.prototype.initChart=function()
                         
                         ] 
                         })
+    
+    var solarSeries=[
+        {
+                name: 'Solar light',
+                type: 'spline',
+                yAxis: 0,
+                data: []
+        },
+              
+           // {
+           //     name: 'Solar UV',
+           //     type: 'spline',
+           //     data: [],
+           //     yAxis: 1,
+           // }
+           // ,
+            {
+                name: 'Solar UVI',
+                type: 'areaspline',
+                yAxis: 1,
+                data: [],
+                
+                zones: [{
+                    value: 2,
+                    color:  '#2a9502'   // green
+                },
+                {   
+                    value: 5,
+                    color: '#f7e400'    // yellow
+                },
+                {   
+                    value: 7,
+                    color: '#f85900'    // orange
+                },
+                {   
+                    value: 10,
+                    color: '#d8220e'    // redish
+                },
+                {   
+                    color: '#6b49c8'    // magenta
+                }
+               ]
+            }] 
+        
+        if (this.options.frostapi)
+          solarSeries.push( {
+            // shortwave 295-2800nm (ultraviolet,visible,infrared)
+            //https://frost.met.no/elements/v0.jsonld?fields=id,oldElementCodes,category,name,description,unit,sensorLevelType,sensorLevelUnit,sensorLevelDefaultValue,sensorLevelValues,cmMethod,cmMethodDescription,cmInnerMethod,cmInnerMethodDescription,status&lang=en-US
+            // https://frost.met.no/elementtable
+            name: 'Solar METno',
+            type: 'spline',
+            yAxis: 0,
+            data: [],
+            visible: false
+    },)
 
     this.solarchart= new Highcharts.stockChart({ chart : {
                         animation: this.options.animation,
@@ -1300,49 +1368,37 @@ UI.prototype.initChart=function()
                             }
                         },
 
-                        series: [
-                            {
-                                    name: 'Solar light',
-                                    type: 'spline',
-                                    yAxis: 0,
-                                    data: []
-                            },
-                                  
-                               // {
-                               //     name: 'Solar UV',
-                               //     type: 'spline',
-                               //     data: [],
-                               //     yAxis: 1,
-                               // }
-                               // ,
-                                {
-                                    name: 'Solar UVI',
-                                    type: 'areaspline',
-                                    yAxis: 1,
-                                    data: [],
-                                    
-                                    zones: [{
-                                        value: 2,
-                                        color:  '#2a9502'   // green
-                                    },
-                                    {   
-                                        value: 5,
-                                        color: '#f7e400'    // yellow
-                                    },
-                                    {   
-                                        value: 7,
-                                        color: '#f85900'    // orange
-                                    },
-                                    {   
-                                        value: 10,
-                                        color: '#d8220e'    // redish
-                                    },
-                                    {   
-                                        color: '#6b49c8'    // magenta
-                                    }
-                                   ]
-                                }] 
+                        series: solarSeries
                         })
+
+    var windSeries= [{
+        type: 'windbarb',
+        data: [],
+        name: 'Wind',
+        color: Highcharts.getOptions().colors[1],
+        showInLegend: false,
+        zIndex:2
+    }, 
+    {
+        type: 'areaspline',
+        data: [],
+        name: 'Wind speed',
+        zIndex: 3
+    },
+    {
+        type: 'areaspline',
+        data: [],
+        zIndex: 2,
+        name: 'Wind gust speed',
+    },
+    {
+        type: 'spline',
+        data: [],
+        name: 'Wind speed METno',
+        visible: false
+    },
+
+]
 
     // based on https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/demo/windbarb-series/
     this.windbarbchart= new Highcharts.stockChart({ chart : {
@@ -1417,26 +1473,7 @@ UI.prototype.initChart=function()
             enableMouseTracking: this.options.mousetracking
         }
     },
-        series: [{
-            type: 'windbarb',
-            data: [],
-            name: 'Wind',
-            color: Highcharts.getOptions().colors[1],
-            showInLegend: false,
-            zIndex:2
-        }, 
-        {
-            type: 'areaspline',
-            data: [],
-            name: 'Wind speed',
-            zIndex: 3
-        },
-        {
-            type: 'areaspline',
-            data: [],
-            zIndex: 2,
-            name: 'Wind gust speed',
-        }]
+        series: windSeries
     
     });
 
@@ -1466,7 +1503,7 @@ UI.prototype.onJSON=function (ev)
         }
 
         if (this.options.frostapi) {
-            this.pressurechart.setCaption({ text: 'MET.no data from https://frost.met.no API - CC 4.0'})
+            this.pressurechart.setCaption({ text: 'METno data from https://frost.met.no API - CC 4.0'})
         }
     }
 
@@ -1548,7 +1585,7 @@ UI.prototype.update_charts=function()
     this.solarchart.update({subtitle : { text: solarSubtitle }},redraw)
     var pressureSubtitle='<b>Relative</b> '+json.pressureToString(json.relbaro())+' <b>Absolute</b> ' + json.pressureToString(json.absbaro())
     if (this.metno.air_pressure_at_sea_level)
-       pressureSubtitle=pressureSubtitle+' <b>Sea-level pressure (QFF) MET.no</b> ' + this.metno.air_pressure_at_sea_level.value.toFixed(1) + ' '+this.metno.air_pressure_at_sea_level.unit +' '+this.metno.air_pressure_at_sea_level.hhmm
+       pressureSubtitle=pressureSubtitle+' <b>Sea-level pressure (QFF) METno</b> ' + this.metno.air_pressure_at_sea_level.value.toFixed(1) + ' '+this.metno.air_pressure_at_sea_level.unit +' '+this.metno.air_pressure_at_sea_level.hhmm
     this.pressurechart.update({ subtitle : { text: pressureSubtitle }},redraw)
     this.rainchart.update({subtitle: { text: '<b>Rain rate</b>'+' '+json.rainrateToString()}},redraw)
     //this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())
