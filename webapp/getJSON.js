@@ -1273,7 +1273,7 @@ UI.prototype.initChart=function()
             yAxis: 0,
             data: [],
             visible: false
-    },)
+    })
 
     this.solarchart= new Highcharts.stockChart({ chart : {
                         animation: this.options.animation,
