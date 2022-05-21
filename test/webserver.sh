@@ -198,7 +198,7 @@ sendMETnoRequest()
         #using basic authentication with -u/new user must be registered at frost.met.no, -s turns off progress metering
         set -x
         l_user=2c6cf1d9-b949-4f64-af83-0cb4d881658a
-        l_password=d5c393a3-d04e-4b24-b2e5-e4adbc62208c
+        l_password=""
         l_response_JSON=$( curl -v -s -u "$l_user:$l_password" "$1" );
         l_exitcode=$?
         set +x
@@ -325,7 +325,7 @@ webserver()
                                 # query can be built using https://seklima.met.no/ -> developer tools "Network" pane
 
                                 l_sources=SN90450
-                                sendMETnoRequest "https://frost.met.no/observations/v0.jsonld?elements=air_temperature,surface_snow_thickness,air_pressure_at_sea_level,relative_humidity,wind_speed,wind_speed_of_gust,wind_from_direction,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)&referencetime=latest&sources=$l_sources&timeresolutions=PT1H"
+                                sendMETnoRequest "https://frost.met.no/observations/v0.jsonld?elements=air_temperature,surface_snow_thickness,air_pressure_at_sea_level,relative_humidity,wind_speed,wind_speed_of_gust,wind_from_direction,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)&referencetime=latest&sources=$l_sources&timeresolutions=PT1H&timeoffsets=PT0H"
 
                                 ;; 
 

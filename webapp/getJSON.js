@@ -9,6 +9,7 @@ function GetJSON(host,port,path,interval,options) {
     this.host=host
     this.port=port
     this.path=path
+    this.options=options
 
     if (interval === undefined) {
         console.log('using default interval: '+defaultInterval)
@@ -118,24 +119,24 @@ GetJSON.prototype.requestFrost=function()
              d1hourafter=new Date(Date.now()+3600000),
              sourceId='SN90450',
              authentication="Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:"),
-             //frostapi_url='https://frost.met.no/observations/v0.jsonld', // Webserver does not send Access-Control-Allow-Origin: * -> cannot use in Chrome -> use proxy server?
-             frostapi_url='https://rim.k8s.met.no/api/v1/observations' // Allow CORS -> can use in browser
-             pressureURL=frostapi_url+'?sources='+sourceId+'&referencetime=latest&elements=air_pressure_at_sea_level,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)&timeResolution=hours'
-             precipitation_calibration_month_url=frostapi_url+'?sources='+sourceId+'referenceTime=2021-05-01T00:00:00Z/2022-05-31T23:59:59Z&elements=sum(precipitation_amount%20P1M)&timeResolution=months'
+             frostapi_url='https://frost.met.no/observations/v0.jsonld', // Webserver does not send Access-Control-Allow-Origin: * -> cannot use in Chrome -> use proxy server?
+             //frostapi_url='https://rim.k8s.met.no/api/v1/observations' // Allow CORS -> can use in browser
+             latestHourURL='https://frost.met.no/observations/v0.jsonld?elements=air_temperature,surface_snow_thickness,air_pressure_at_sea_level,relative_humidity,max(wind_speed%20PT1H),max(wind_speed_of_gust%20PT1H),wind_from_direction,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)&referencetime=latest&sources=SN90450&timeresolutions=PT1H&timeresolutions=PT0H',
+             precipitation_calibration_month_url=frostapi_url+'?sources='+sourceId+'referenceTime=2021-05-01T00:00:00Z/2022-05-31T23:59:59Z&elements=sum(precipitation_amount%20P1M)&timeResolution=months',
              precipitationHourURL=frostapi_url+'?sources='+sourceId+'&referencetime='+dateISOMidnight.toISOString().split('.')[0]+'Z'+'/'+dateISO+'&elements=sum(precipitation_amount%20PT1H)&timeResolution=hours'
 
-        
-        this.reqFrost.open("GET",pressureURL)
+        latestHourURL='/api/frost.met.no/latest-hour' // use curl on local network web server to bypass CORS
+        this.reqFrost.open("GET",latestHourURL)
         this.reqFrost.setRequestHeader("Accept","application/json")
         this.reqFrost.setRequestHeader("Authorization", authentication);
-        console.log('Sending GET '+pressureURL)
+        console.log('Sending GET '+latestHourURL)
         this.reqFrost.send()
 
-        this.reqFrostPrecipitationHour.open("GET",precipitationHourURL)
-        this.reqFrostPrecipitationHour.setRequestHeader("Accept","application/json")
-        this.reqFrostPrecipitationHour.setRequestHeader("Authorization", authentication);
-        console.log('Sending GET '+precipitationHourURL)
-        this.reqFrostPrecipitationHour.send()
+       // this.reqFrostPrecipitationHour.open("GET",precipitationHourURL)
+       // this.reqFrostPrecipitationHour.setRequestHeader("Accept","application/json")
+       // this.reqFrostPrecipitationHour.setRequestHeader("Authorization", authentication);
+       // console.log('Sending GET '+precipitationHourURL)
+       // this.reqFrostPrecipitationHour.send()
         
     }
 
@@ -537,6 +538,7 @@ function UI()
         shift: false,               // shift series flag
         shift_measurements_ipad1: 2048, // number of measurements before shifting
         shift_measurements: 5400,
+        invalid_security_certificate : isIpad1, // have outdated security certificates for https request
         mousetracking: !isIpad1,    // allocates memory for duplicate path for tracking
         frostapi : true,    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
         frostapi_interval: 3600000 // request interval 1 hour     
@@ -563,19 +565,78 @@ UI.prototype.onJSONFrost=function(evt)
 {
     var json=this.getJSON.jsonFrost // set by getJSON eventhandler, otherwise also available in evt.currentTarget.reponseText
    // console.log('ui got',json)
-    var referenceTime=new Date(json.data[0].referenceTime),
-         timestamp=referenceTime.getTime()-referenceTime.getTimezoneOffset()*60000
+   // https://frost.met.no/api.html#!/observations/observations
+   if (json['@type'] != 'ObservationResponse' )
+   {
+       console.error('Not a ObservationResponse type, aborting parsing'+JSON.stringify(json))
+       return
+   }
 
-    if (json.data[0].observations[0].elementId==="air_pressure_at_sea_level") {
-        this.pressureCalibration = {
-            timestamp: timestamp,
-            hour : referenceTime.getHours()+':00',
-            value: json.data[0].observations[0].value,
-            unit: json.data[0].observations[0].unit
+   var item,
+        obsNr,
+        referenceTime,
+        timestamp,
+        hhmm,
+        observation,
+        elementId,
+        unit
+
+    this.metno={}
+
+   for (item=0;item<json.totalItemCount;item++) // number of data items
+   {
+        referenceTime=new Date(json.data[item].referenceTime)                      // http query params has timeoffsets=PT0H -> no need to add timeoffset
+        timestamp=referenceTime.getTime()-referenceTime.getTimezoneOffset()*60000  // local timezone time
+        hhmm=referenceTime.getHours()+':00'
+
+        for (obsNr=0;obsNr<json.data[item].observations.length;obsNr++)
+        {
+            observation=json.data[item].observations[obsNr]
+            elementId=observation.elementId
+            unit=observation.unit
+            if (unit==='degC')
+               unit='℃'
+            else if (unit==='percent')
+                unit='%'
+            else if (unit==='degrees')
+               unit='°'
+            else if (unit==='W/m2')
+              unit='W/㎡'
+
+            switch (elementId)
+            {
+                case 'air_pressure_at_sea_level' :
+
+                    this.metno.air_pressure_at_sea_level = {
+                        timestamp: timestamp,
+                        hhmm : hhmm,
+                        value: observation.value,
+                        unit: unit
+                    }
+                    console.log('timestamp,pressure:'+timestamp+' '+this.metno.air_pressure_at_sea_level.value)
+                    this.pressurechart.series[2].addPoint([timestamp,this.metno.air_pressure_at_sea_level.value],false,this.options.shift,this.options.animation,false)
+
+                    break
+
+               
+                default:
+
+                    this.metno[elementId] = {
+                        timestamp : timestamp,
+                        hhmm : hhmm,
+                        value : observation.value,
+                        unit : unit
+                    }
+
+                    break
+            }
         }
-        console.log('timestamp,pressure:'+timestamp+' '+this.pressureCalibration.value)
-        this.pressurechart.series[2].addPoint([timestamp,this.pressureCalibration.value],false,this.options.shift,this.options.animation,false)
-    }
+
+        console.log('metno',this.metno)
+   }
+
+  
+
 }
 
 UI.prototype.onJSONFrostPrecipitationHour=function(evt)
@@ -1461,8 +1522,12 @@ UI.prototype.update_charts=function()
        simulationSubtitle='Points '+this.temperaturechart.series[0].points.length
      } 
 
+    var tempSubtitle='<b>Outdoor</b> '+json.outtempToString()+' '+ json.outhumidityToString()+' <b>Indoor</b> '+json.intempToString()+json.inhumidityToString()
+    if (this.metno.air_temperature!==undefined)
+      tempSubtitle=tempSubtitle+' <b>METno</b> '+this.metno.air_temperature.value+' '+this.metno.air_temperature.unit+' '+this.metno.relative_humidity.value+' '+this.metno.relative_humidity.unit+' '+this.metno.air_temperature.hhmm
+
     this.temperaturechart.update({ 
-        subtitle: { text: '<b>Outdoor</b> '+json.outtempToString()+' '+ json.outhumidityToString()+' <b>Indoor</b> '+json.intempToString()+json.inhumidityToString()}
+        subtitle: { text: tempSubtitle}
         //caption : { text: new Date(timestamp)}
     },redraw)
 
@@ -1471,11 +1536,19 @@ UI.prototype.update_charts=function()
     if (winddailymax)
        windSubtitle=windSubtitle+' <b>Max. today</b> '+json.winddailymaxToString()
 
+    // Mean value of wind last 10 minutes
+    if (this.metno.wind_speed)
+      windSubtitle=windSubtitle+' <b>METno</b> '+this.metno.wind_speed.value+' '+this.metno.wind_speed.unit+' ('+this.metno.wind_from_direction.value+this.metno.wind_from_direction.unit+') '+this.metno.wind_speed.hhmm
+
     this.windbarbchart.update({ subtitle : { text: windSubtitle }},redraw)
-    this.solarchart.update({subtitle : { text: '<b>Radiation</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')' }},redraw)
+    var solarSubtitle='<b>Radiation</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')' 
+    if (this.metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)']!==undefined)
+        solarSubtitle=solarSubtitle+' <b>METno</b> '+this.metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].value+ ' '+this.metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].unit+' '+this.metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].hhmm
+
+    this.solarchart.update({subtitle : { text: solarSubtitle }},redraw)
     var pressureSubtitle='<b>Relative</b> '+json.pressureToString(json.relbaro())+' <b>Absolute</b> ' + json.pressureToString(json.absbaro())
-    if (this.pressureCalibration)
-       pressureSubtitle=pressureSubtitle+' <b>Sea-level pressure (QFF) MET.no</b> ' + this.pressureCalibration.value.toFixed(1) + ' '+this.pressureCalibration.unit +' '+this.pressureCalibration.hour
+    if (this.metno.air_pressure_at_sea_level)
+       pressureSubtitle=pressureSubtitle+' <b>Sea-level pressure (QFF) MET.no</b> ' + this.metno.air_pressure_at_sea_level.value.toFixed(1) + ' '+this.metno.air_pressure_at_sea_level.unit +' '+this.metno.air_pressure_at_sea_level.hhmm
     this.pressurechart.update({ subtitle : { text: pressureSubtitle }},redraw)
     this.rainchart.update({subtitle: { text: '<b>Rain rate</b>'+' '+json.rainrateToString()}},redraw)
     //this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())
