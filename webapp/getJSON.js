@@ -627,6 +627,10 @@ UI.prototype.onJSONFrost=function(evt)
                     this.windbarbchart.series[3].addPoint([timestamp,this.metno.wind_speed.value],false,this.options.shift,this.options.animation,false)
                     break
 
+                case 'max(wind_speed PT1H)':
+                    this.windbarbchart.series[3].addPoint([timestamp,this.metno['max(wind_speed PT1H)'].value],false,this.options.shift,this.options.animation,false)
+
+
                 case 'mean(surface_downwelling_shortwave_flux_in_air PT1H)' :
                     this.solarchart.series[2].addPoint([timestamp,this.metno[elementId].value],false,this.options.shift,this.options.animation,false)
                     break
@@ -882,7 +886,7 @@ UI.prototype.initChart=function()
                 type: 'all',
                 text: 'All'
             }],
-            selected: 1,
+            selected: 4,
             verticalAlign: 'bottom'
         },
 
@@ -961,7 +965,7 @@ UI.prototype.initChart=function()
             name: 'Absolute',
             type: 'spline',
             data: [],
-            //visible: false
+            visible: false
         }]
 
     if (this.options.frostapi)
@@ -1002,7 +1006,7 @@ UI.prototype.initChart=function()
             type: 'all',
             text: 'All'
         }],
-        selected: 0,
+        selected: 4,
         verticalAlign: 'bottom'
     },
 
@@ -1132,7 +1136,7 @@ UI.prototype.initChart=function()
                                 type: 'all',
                                 text: 'All'
                             }],
-                            selected: 1,
+                            selected: 4,
                             verticalAlign: 'bottom'
                         },
                     
@@ -1306,7 +1310,7 @@ UI.prototype.initChart=function()
                                 type: 'all',
                                 text: 'All'
                             }],
-                            selected: 1,
+                            selected: 4,
                             verticalAlign: 'bottom'
                         },
 
@@ -1388,19 +1392,19 @@ UI.prototype.initChart=function()
     {
         type: 'areaspline',
         data: [],
-        name: 'Wind speed',
+        name: 'Wind',
         zIndex: 3
     },
     {
         type: 'areaspline',
         data: [],
         zIndex: 2,
-        name: 'Wind gust speed',
+        name: 'Wind gust',
     },
     {
         type: 'spline',
         data: [],
-        name: 'Wind speed METno',
+        name: 'Wind max 1h METno',
         visible: false
     },
 
@@ -1432,7 +1436,7 @@ UI.prototype.initChart=function()
                 type: 'all',
                 text: 'All'
             }],
-            selected: 1,
+            selected: 4,
             verticalAlign: 'bottom'
         },
 
@@ -1577,11 +1581,10 @@ UI.prototype.update_charts=function()
     var windSubtitle='<b>Speed</b> '+ json.windspeedToString()+' <b>Gust</b> '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()
     var winddailymax=json.winddailymax()
     if (winddailymax)
-       windSubtitle=windSubtitle+' <b>Max. today</b> '+json.winddailymaxToString()
+       windSubtitle=windSubtitle+' <b>Max today</b> '+json.winddailymaxToString()
 
-    // Mean value of wind last 10 minutes
-    if (this.metno.wind_speed)
-      windSubtitle=windSubtitle+' <b>METno</b> '+this.metno.wind_speed.value+' '+this.metno.wind_speed.unit+' ('+this.metno.wind_from_direction.value+this.metno.wind_from_direction.unit+') '+this.metno.wind_speed.hhmm
+    if (this.metno['max(wind_speed PT1H)'])
+      windSubtitle=windSubtitle+' <b>Wind max 1h METno</b> '+this.metno['max(wind_speed PT1H)'].value+' '+this.metno['max(wind_speed PT1H)'].unit+' ('+this.metno.wind_from_direction.value+this.metno.wind_from_direction.unit+') '+this.metno['max(wind_speed PT1H)'].hhmm
 
     this.windbarbchart.update({ subtitle : { text: windSubtitle }},redraw)
     var solarSubtitle='<b>Radiation</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')' 
@@ -1658,14 +1661,19 @@ UI.prototype.update_charts=function()
 UI.prototype.addpointIfChanged=function(series,xy)
 // Added to limit the number of points generated/memory footprint, for example not necessary to store alot of points when rainrate is constantly 0 
 {
-    var lastY=series.yData.slice(-2), // get the last two measurements
+    var data=series.options.data.slice(-2), // get the last two measurements
+        lastY,
+        secondLastY,
         y=xy[1],
         x=xy[0],
         redraw=false
 
-    //console.log(series.name,lastY,series.yData)
+    if (data && data.length >= 2) {
+        lastY=data[1][1],
+        secondLastY=data[0][1]
+    }
 
-    if (lastY[0] === lastY[1] && lastY[1] === y)
+    if (secondLastY === lastY && lastY === y)
     {
         // don't add a new point, update the last point with new timestamp/x value
         if (series.hasData()) // visible

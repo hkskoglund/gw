@@ -325,8 +325,7 @@ webserver()
                                 # query can be built using https://seklima.met.no/ -> developer tools "Network" pane
 
                                 l_sources=SN90450
-                                sendMETnoRequest "https://frost.met.no/observations/v0.jsonld?elements=air_temperature,surface_snow_thickness,air_pressure_at_sea_level,relative_humidity,wind_speed,wind_speed_of_gust,wind_from_direction,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)&referencetime=latest&sources=$l_sources&timeresolutions=PT1H&timeoffsets=PT0H"
-
+                                sendMETnoRequest "https://frost.met.no/observations/v0.jsonld?elements=air_temperature,surface_snow_thickness,air_pressure_at_sea_level,relative_humidity,max(wind_speed%20PT1H),max(wind_speed_of_gust%20PT1H),wind_from_direction,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)&referencetime=latest&sources=SN90450&timeresolutions=PT1H&timeoffsets=PT0H"
                                 ;; 
 
                         /api/frost.met.no/*)
