@@ -628,11 +628,18 @@ UI.prototype.onJSONFrost=function(evt)
                     break
 
                 case 'max(wind_speed PT1H)':
-                    this.windbarbchart.series[3].addPoint([timestamp,this.metno['max(wind_speed PT1H)'].value],false,this.options.shift,this.options.animation,false)
 
+                    this.windbarbchart.series[3].addPoint([timestamp,this.metno['max(wind_speed PT1H)'].value],false,this.options.shift,this.options.animation,false)
+                    break
+                    
+                case 'max(wind_speed_of_gust PT1H)':
+
+                    this.windbarbchart.series[4].addPoint([timestamp,this.metno['max(wind_speed_of_gust PT1H)'].value],false,this.options.shift,this.options.animation,false)
+                    break
 
                 case 'mean(surface_downwelling_shortwave_flux_in_air PT1H)' :
-                    this.solarchart.series[2].addPoint([timestamp,this.metno[elementId].value],false,this.options.shift,this.options.animation,false)
+                    
+                this.solarchart.series[2].addPoint([timestamp,this.metno[elementId].value],false,this.options.shift,this.options.animation,false)
                     break
             }
         }
@@ -1400,15 +1407,29 @@ UI.prototype.initChart=function()
         data: [],
         zIndex: 2,
         name: 'Wind gust',
-    },
-    {
-        type: 'spline',
-        data: [],
-        name: 'Wind max 1h METno',
-        visible: false
-    },
+    }]
 
-]
+    if (this.options.frostapi)
+    {
+       windSeries.push(
+        {
+            type: 'spline',
+            data: [],
+            //zIndex: 2,
+            name: 'Wind max 1h METno',
+            visible: false
+        })
+
+       windSeries.push(
+        {
+            type: 'spline',
+            data: [],
+            //zIndex: 2,
+            name: 'Wind gust max 1h METno',
+            visible: false
+        })
+    }
+
 
     // based on https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/demo/windbarb-series/
     this.windbarbchart= new Highcharts.stockChart({ chart : {
@@ -1584,7 +1605,7 @@ UI.prototype.update_charts=function()
        windSubtitle=windSubtitle+' <b>Max today</b> '+json.winddailymaxToString()
 
     if (this.metno['max(wind_speed PT1H)'])
-      windSubtitle=windSubtitle+' <b>Wind max 1h METno</b> '+this.metno['max(wind_speed PT1H)'].value+' '+this.metno['max(wind_speed PT1H)'].unit+' ('+this.metno.wind_from_direction.value+this.metno.wind_from_direction.unit+') '+this.metno['max(wind_speed PT1H)'].hhmm
+      windSubtitle=windSubtitle+' <b>Wind max 1h METno</b> '+this.metno['max(wind_speed PT1H)'].value+' '+this.metno['max(wind_speed PT1H)'].unit+' <b>Gust</b> '+this.metno["max(wind_speed_of_gust PT1H)"].value+' '+this.metno['max(wind_speed_of_gust PT1H)'].unit+' ('+this.metno.wind_from_direction.value+this.metno.wind_from_direction.unit+') '+this.metno['max(wind_speed PT1H)'].hhmm
 
     this.windbarbchart.update({ subtitle : { text: windSubtitle }},redraw)
     var solarSubtitle='<b>Radiation</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')' 
