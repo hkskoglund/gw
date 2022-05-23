@@ -622,6 +622,12 @@ UI.prototype.onJSONFrost=function(evt)
                     this.temperaturechart.series[4].addPoint([timestamp,this.metno.air_temperature.value],false,this.options.shift,this.options.animation,false)
                     break
 
+                case 'air_temperature' :
+
+                    this.temperaturechart.series[5].addPoint([timestamp,this.metno.relative_humidity.value],false,this.options.shift,this.options.animation,false)
+                    break
+        
+
                 case 'wind_speed' :
 
                     this.windbarbchart.series[3].addPoint([timestamp,this.metno.wind_speed.value],false,this.options.shift,this.options.animation,false)
@@ -863,7 +869,12 @@ UI.prototype.initChart=function()
             yAxis: 0,
             data: [],
             visible: false
-           
+        }, {
+            name: 'Outdoor humidity METno',
+            type: 'spline',
+            yAxis: 1,
+            data: [],
+            visible: false
         })
     
     this.temperaturechart= new Highcharts.stockChart({ 
@@ -1605,10 +1616,10 @@ UI.prototype.update_charts=function()
        windSubtitle=windSubtitle+' <b>Max today</b> '+json.winddailymaxToString()
 
     if (this.metno['max(wind_speed PT1H)'])
-      windSubtitle=windSubtitle+' <b>Wind max 1h METno</b> '+this.metno['max(wind_speed PT1H)'].value+' '+this.metno['max(wind_speed PT1H)'].unit+' <b>Gust</b> '+this.metno["max(wind_speed_of_gust PT1H)"].value+' '+this.metno['max(wind_speed_of_gust PT1H)'].unit+' ('+this.metno.wind_from_direction.value+this.metno.wind_from_direction.unit+') '+this.metno['max(wind_speed PT1H)'].hhmm
+      windSubtitle=windSubtitle+' <b>Wind max 1h METno</b> '+this.metno['max(wind_speed PT1H)'].value+' '+this.metno['max(wind_speed PT1H)'].unit+' <b>Gust max 1h</b> '+this.metno["max(wind_speed_of_gust PT1H)"].value+' '+this.metno['max(wind_speed_of_gust PT1H)'].unit+' ('+this.metno.wind_from_direction.value+this.metno.wind_from_direction.unit+') '+this.metno['max(wind_speed PT1H)'].hhmm
 
     this.windbarbchart.update({ subtitle : { text: windSubtitle }},redraw)
-    var solarSubtitle='<b>Radiation</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')' 
+    var solarSubtitle='<b>Irradiance</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')' 
     if (this.metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)']!==undefined)
         solarSubtitle=solarSubtitle+' <b>METno</b> '+this.metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].value+ ' '+this.metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].unit+' '+this.metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].hhmm
 
@@ -1655,9 +1666,10 @@ UI.prototype.update_charts=function()
     
     // https://api.highcharts.com/highcharts/series.line.data
     // only support m/s unit
-    this.windbarbchart.series[1].addPoint({ x: timestamp, y: json.windspeed_mps() },redraw,this.options.shift,this.options.animation,false)
-    this.windbarbchart.series[2].addPoint({ x: timestamp, y: json.windgustspeed_mps() },redraw,this.options.shift,this.options.animation,false)
-
+    //this.windbarbchart.series[1].addPoint({ x: timestamp, y: json.windspeed_mps() },redraw,this.options.shift,this.options.animation,false)
+    this.addpointIfChanged(this.windbarbchart.series[1],[timestamp,json.windspeed_mps()])
+    //this.windbarbchart.series[2].addPoint({ x: timestamp, y: json.windgustspeed_mps() },redraw,this.options.shift,this.options.animation,false)
+    this.addpointIfChanged(this.windbarbchart.series[2],[timestamp,json.windgustspeed_mps()])
     var winddailymax=json.winddailymax()
     if (winddailymax)
     {
@@ -1687,7 +1699,9 @@ UI.prototype.addpointIfChanged=function(series,xy)
         secondLastY,
         y=xy[1],
         x=xy[0],
-        redraw=false
+        redraw=false,
+        lastPoint=series.data[series.data.length-1]
+
 
     if (data && data.length >= 2) {
         lastY=data[1][1],
@@ -1696,19 +1710,20 @@ UI.prototype.addpointIfChanged=function(series,xy)
 
     if (secondLastY === lastY && lastY === y)
     {
-        // don't add a new point, update the last point with new timestamp/x value
-        if (series.hasData()) // visible
-        {
-            var point=series.data[series.data.length-1]
-            if (point) {
-               //console.log('updating point',point.x,point.y,xy,series.name,'time diff:'+(xy[0]-point.x),series.data)
-               point.update(xy,redraw)
-            }
-        }
-        //else wait for value to be updated on next measurement
+        if (series.hasData() && lastPoint) {
+
+                if (lastPoint.index !== series.options.data.length-1) { 
+                console.warn('Point is not the last in raw data!! lastPoint index',lastPoint.index,lastPoint,series.options.data,series.name)
+                    lastPoint.remove(false,false)
+                    series.addPoint(xy,redraw,this.options.shift,this.options.animation,false)
+                } else
+                    lastPoint.update(xy,redraw) // Also updates series.xData, series.yData "parallell" arrays, so if point is not the last in rawdata, update will insert point "in the middle" -> unsorted data -> error 15
+         }
     } else
     //             Series.prototype.addPoint = function (options, redraw, shift, animation, withEvent) {
         series.addPoint(xy,redraw,this.options.shift,this.options.animation,false)
+
+    //    console.log(series.name,'points length',series.points.length,'series data length:',series.data.length,'series options.data length:',series.options.data.length,'xDatalength',series.xData.length,series.yData)
 
 }
 
