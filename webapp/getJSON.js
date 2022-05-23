@@ -1694,37 +1694,8 @@ UI.prototype.update_charts=function()
 UI.prototype.addpointIfChanged=function(series,xy)
 // Added to limit the number of points generated/memory footprint, for example not necessary to store alot of points when rainrate is constantly 0 
 {
-    var data=series.options.data.slice(-2), // get the last two measurements
-        lastY,
-        secondLastY,
-        y=xy[1],
-        x=xy[0],
-        redraw=false,
-        lastPoint=series.data[series.data.length-1]
-
-
-    if (data && data.length >= 2) {
-        lastY=data[1][1],
-        secondLastY=data[0][1]
-    }
-
-    if (secondLastY === lastY && lastY === y)
-    {
-        if (series.hasData() && lastPoint) {
-
-                if (lastPoint.index !== series.options.data.length-1) { 
-                console.warn('Point is not the last in raw data!! lastPoint index',lastPoint.index,lastPoint,series.options.data,series.name)
-                    lastPoint.remove(false,false)
-                    series.addPoint(xy,redraw,this.options.shift,this.options.animation,false)
-                } else
-                    lastPoint.update(xy,redraw) // Also updates series.xData, series.yData "parallell" arrays, so if point is not the last in rawdata, update will insert point "in the middle" -> unsorted data -> error 15
-         }
-    } else
-    //             Series.prototype.addPoint = function (options, redraw, shift, animation, withEvent) {
-        series.addPoint(xy,redraw,this.options.shift,this.options.animation,false)
-
-    //    console.log(series.name,'points length',series.points.length,'series data length:',series.data.length,'series options.data length:',series.options.data.length,'xDatalength',series.xData.length,series.yData)
-
+    series.addPoint(xy,false,this.options.shift,this.options.animation,false)
+    // optimization deprecated, series may be grouped automatically by Highstock, hard to update latest point
 }
 
 UI.prototype.chart_redraw=function()
