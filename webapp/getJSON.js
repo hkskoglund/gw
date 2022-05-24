@@ -447,7 +447,7 @@ GetJSONFrost.prototype.parse=function()
         elementId,
         unit
 
-    this.metno={}
+    this.METno={}
 
    for (item=0;item<json.totalItemCount;item++) // number of data items
    {
@@ -469,7 +469,7 @@ GetJSONFrost.prototype.parse=function()
             else if (unit==='W/m2')
               unit='W/㎡'
 
-              this.metno[elementId] = {
+              this.METno[elementId] = {
                 timestamp : timestamp,
                 hhmm : hhmm,
                 value : observation.value,
@@ -479,7 +479,7 @@ GetJSONFrost.prototype.parse=function()
            
         }
 
-        console.log('metno',this.metno)
+        console.log('METno',this.METno)
    }
 }
 
@@ -525,7 +525,8 @@ function UI()
         shift: false,               // shift series flag
         shift_measurements_ipad1: 2048, // number of measurements before shifting
         shift_measurements: 5400,
-        invalid_security_certificate : isIpad1, // have outdated security certificates for https request
+        invalid_security_certificate : isIpad1, // have outdated security certificates for https request,
+        rangeSelector: !isIpad1,     // keeps memory for series
         mousetracking: !isIpad1,    // allocates memory for duplicate path for tracking
         frostapi : true && navigator.language.toLowerCase()==='nb-no',    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
         frostapi_interval: 3600000 // request interval 1 hour     
@@ -553,7 +554,7 @@ UI.prototype.onJSONFrost=function(evt)
 {
     var series
    
-   for (var elementId in this.getJSONFrost.metno) 
+   for (var elementId in this.getJSONFrost.METno) 
    {
         switch (elementId)
         {
@@ -829,7 +830,7 @@ UI.prototype.initChart=function()
         },
 
         rangeSelector: {
-            enabled: true,
+            enabled: this.options.rangeSelector,
             inputEnabled: false,
             buttons: [{
                 type: 'hour',
@@ -949,7 +950,7 @@ UI.prototype.initChart=function()
         enabled: this.options.tooltip
     },
     rangeSelector: {
-        enabled: true,
+        enabled: this.options.rangeSelector,
         inputEnabled: false,
         buttons: [{
             type: 'hour',
@@ -1079,7 +1080,7 @@ UI.prototype.initChart=function()
                             renderTo: 'rainchart',
                         },
                         rangeSelector: {
-                            enabled: true,
+                            enabled: this.options.rangeSelector,
                             inputEnabled : false,
                             buttons: [{
                                 type: 'hour',
@@ -1253,7 +1254,7 @@ UI.prototype.initChart=function()
                         renderTo: 'solarchart',
                         },
                         rangeSelector: {
-                            enabled: true,
+                            enabled: this.options.rangeSelector,
                             inputEnabled: false,
                             buttons: [{
                                 type: 'hour',
@@ -1393,7 +1394,7 @@ UI.prototype.initChart=function()
         renderTo: 'windbarbchart' },
 
         rangeSelector: {
-            enabled: true,
+            enabled: this.options.rangeSelector,
             inputEnabled: false,
             buttons: [{
                 type: 'hour',
@@ -1544,7 +1545,7 @@ UI.prototype.updateCharts=function()
         simulationSubtitle='',
         shiftseries=false,
         redraw=false,
-        metno=this.getJSONFrost.metno
+        METno=this.getJSONFrost.METno
 
      if (this.options.addpoint_simulation)
      {
@@ -1553,8 +1554,8 @@ UI.prototype.updateCharts=function()
      } 
 
     var tempSubtitle='<b>Outdoor</b> '+json.outtempToString()+' '+ json.outhumidityToString()+' <b>Indoor</b> '+json.intempToString()+json.inhumidityToString()
-    if (metno && metno.air_temperature!==undefined)
-      tempSubtitle=tempSubtitle+' <b>METno</b> '+metno.air_temperature.value+' '+metno.air_temperature.unit+' '+metno.relative_humidity.value+' '+metno.relative_humidity.unit+' '+metno.air_temperature.hhmm
+    if (METno && METno.air_temperature!==undefined)
+      tempSubtitle=tempSubtitle+' <b>METno</b> '+METno.air_temperature.value+' '+METno.air_temperature.unit+' '+METno.relative_humidity.value+' '+METno.relative_humidity.unit+' '+METno.air_temperature.hhmm
 
     this.temperaturechart.update({ 
         subtitle: { text: tempSubtitle}
@@ -1566,18 +1567,18 @@ UI.prototype.updateCharts=function()
     if (winddailymax)
        windSubtitle=windSubtitle+' <b>Max today</b> '+json.winddailymaxToString()
 
-    if (metno && metno['max(wind_speed PT1H)'])
-      windSubtitle=windSubtitle+' <b>Wind max 1h METno</b> '+metno['max(wind_speed PT1H)'].value+' '+metno['max(wind_speed PT1H)'].unit+' <b>Gust max 1h</b> '+metno["max(wind_speed_of_gust PT1H)"].value+' '+metno['max(wind_speed_of_gust PT1H)'].unit+' ('+metno.wind_from_direction.value+metno.wind_from_direction.unit+') '+metno['max(wind_speed PT1H)'].hhmm
+    if (METno && METno['max(wind_speed PT1H)'])
+      windSubtitle=windSubtitle+' <b>Wind max 1h METno</b> '+METno['max(wind_speed PT1H)'].value+' '+METno['max(wind_speed PT1H)'].unit+' <b>Gust max 1h</b> '+METno["max(wind_speed_of_gust PT1H)"].value+' '+METno['max(wind_speed_of_gust PT1H)'].unit+' ('+METno.wind_from_direction.value+METno.wind_from_direction.unit+') '+METno['max(wind_speed PT1H)'].hhmm
 
     this.windbarbchart.update({ subtitle : { text: windSubtitle }},redraw)
     var solarSubtitle='<b>Irradiance</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')' 
-    if (metno && metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)']!==undefined)
-        solarSubtitle=solarSubtitle+' <b>METno</b> '+metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].value+ ' '+metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].unit+' '+metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].hhmm
+    if (METno && METno['mean(surface_downwelling_shortwave_flux_in_air PT1H)']!==undefined)
+        solarSubtitle=solarSubtitle+' <b>METno</b> '+METno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].value+ ' '+METno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].unit+' '+METno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].hhmm
 
     this.solarchart.update({subtitle : { text: solarSubtitle }},redraw)
     var pressureSubtitle='<b>Relative</b> '+json.pressureToString(json.relbaro())+' <b>Absolute</b> ' + json.pressureToString(json.absbaro())
-    if (metno && metno.air_pressure_at_sea_level)
-       pressureSubtitle=pressureSubtitle+' <b>Sea-level pressure (QFF) METno</b> ' + metno.air_pressure_at_sea_level.value.toFixed(1) + ' '+metno.air_pressure_at_sea_level.unit +' '+metno.air_pressure_at_sea_level.hhmm
+    if (METno && METno.air_pressure_at_sea_level)
+       pressureSubtitle=pressureSubtitle+' <b>Sea-level pressure (QFF) METno</b> ' + METno.air_pressure_at_sea_level.value.toFixed(1) + ' '+METno.air_pressure_at_sea_level.unit +' '+METno.air_pressure_at_sea_level.hhmm
     this.pressurechart.update({ subtitle : { text: pressureSubtitle }},redraw)
     this.rainchart.update({subtitle: { text: '<b>Rain rate</b>'+' '+json.rainrateToString()}},redraw)
     //this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())
