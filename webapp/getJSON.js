@@ -552,9 +552,11 @@ function UI()
 
 UI.prototype.onJSONFrost=function(evt)
 {
-    var series
+    var series,
+        observation,
+        elementId
    
-   for (var elementId in this.getJSONFrost.METno) 
+   for (elementId in this.getJSONFrost.METno) 
    {
         switch (elementId)
         {
@@ -595,7 +597,8 @@ UI.prototype.onJSONFrost=function(evt)
         }
 
         if (series) {
-            series.addPoint([elementId.timestamp,elementId.value],false,this.options.shift,this.options.animation,false)
+            observation=this.getJSONFrost.METno[elementId]
+            series.addPoint([observation.timestamp,observation.value],false,this.options.shift,this.options.animation,false)
             series=undefined
         }
 
@@ -1546,12 +1549,6 @@ UI.prototype.updateCharts=function()
         shiftseries=false,
         redraw=false,
         METno=this.getJSONFrost.METno
-
-     if (this.options.addpoint_simulation)
-     {
-       timestamp=Date.now()
-       simulationSubtitle='Points '+this.temperaturechart.series[0].points.length
-     } 
 
     var tempSubtitle='<b>Outdoor</b> '+json.outtempToString()+' '+ json.outhumidityToString()+' <b>Indoor</b> '+json.intempToString()+json.inhumidityToString()
     if (METno && METno.air_temperature!==undefined)
