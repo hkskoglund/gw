@@ -479,7 +479,7 @@ GetJSONFrost.prototype.parse=function()
            
         }
 
-        console.log('METno',this.METno)
+        console.log('METno '+JSON.stringify(this.METno))
    }
 }
 
@@ -571,9 +571,9 @@ UI.prototype.onJSONFrost=function(evt)
 
             
             case 'relative_humidity' :
-
+                 
                 series=this.temperaturechart.series[5]
-
+                break;
 
             case 'wind_speed' :
 
@@ -598,6 +598,7 @@ UI.prototype.onJSONFrost=function(evt)
 
         if (series) {
             observation=this.getJSONFrost.METno[elementId]
+            //console.log('addpoint',series.name,[observation.timestamp,observation.value])
             series.addPoint([observation.timestamp,observation.value],false,this.options.shift,this.options.animation,false)
             series=undefined
         }
@@ -811,14 +812,14 @@ UI.prototype.initChart=function()
 
     if (this.options.frostapi)
            tempSeries.push(  {
-            name: 'Outdoor METno',
+            name: 'Temperature METno',
             type: 'spline',
             yAxis: 0,
             data: [],
             visible: false,
             zIndex : 2
         }, {
-            name: 'Outdoor humidity METno',
+            name: 'Humidity METno',
             type: 'spline',
             yAxis: 1,
             data: [],
