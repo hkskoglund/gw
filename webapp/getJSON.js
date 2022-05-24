@@ -859,7 +859,7 @@ UI.prototype.initChart=function()
         },
 
         navigator: {
-            enabled: true
+            enabled: this.options.rangeSelector
         },
 
         legend: {
@@ -979,7 +979,7 @@ UI.prototype.initChart=function()
     },
 
     navigator: {
-        enabled: true
+        enabled: this.options.rangeSelector
     },
 
     legend: {
@@ -1109,7 +1109,7 @@ UI.prototype.initChart=function()
                         },
                     
                         navigator: {
-                            enabled: true
+                            enabled: this.options.rangeSelector
                         },
                     
                         legend: {
@@ -1283,7 +1283,7 @@ UI.prototype.initChart=function()
                         },
 
                         navigator: {
-                            enabled: true
+                            enabled: this.options.rangeSelector
                         },
 
                         legend: {
@@ -1423,7 +1423,7 @@ UI.prototype.initChart=function()
         },
 
         navigator: {
-            enabled: true
+            enabled: this.options.rangeSelector
         },
 
         legend: {
