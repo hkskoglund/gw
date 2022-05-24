@@ -4,20 +4,12 @@ function GetJSON(host,port,path,interval,options) {
 // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest
 // https://stackoverflow.com/questions/1973140/parsing-json-from-xmlhttprequest-responsejson
 // https://developer.mozilla.org/en-US/docs/Web/API/setInterval
-    var defaultInterval=16000
 
     this.host=host
     this.port=port
     this.path=path
     this.options=options
-
-    if (interval === undefined) {
-        console.log('using default interval: '+defaultInterval)
-        this.interval=defaultInterval
-    } else
-    {
-        this.interval=interval
-    }
+    this.interval=interval
     
     this.setUrl(host,port,path)
 
@@ -27,24 +19,7 @@ function GetJSON(host,port,path,interval,options) {
     this.req.addEventListener("error", this.transferError.bind(this))
     this.req.addEventListener("onabort",this.transferAbort.bind(this))
 
-    this.setJSONRequestInterval(this.interval)
-
-    // add pressure calibration value from met.no
-    if (options.frostapi) 
-    {
-        
-        this.reqFrost=new XMLHttpRequest()
-        this.reqFrost.addEventListener('load',this.transferFrostComplete.bind(this))
-        this.reqFrost.addEventListener('error',this.transferFrostError.bind(this))
-
-        this.reqFrostPrecipitationHour= new XMLHttpRequest()
-        this.reqFrostPrecipitationHour.addEventListener('load',this.reqFrostPrecipitationHourComplete.bind(this))
-        this.reqFrostPrecipitationHour.addEventListener('error',this.reqFrostPrecipitationHourError.bind(this))
-
-        this.setJSONFrostRequestInterval(options.frostapi_interval) 
-
-        
-    }
+    this.setInterval(this.interval)
   
   }
 
@@ -81,20 +56,20 @@ GetJSON.prototype.Mode = {
     light_wattm2 : 1
 }
 
-GetJSON.prototype.setJSONRequestInterval= function(interval)
+GetJSON.prototype.setInterval= function(interval)
 {
-    this.requestLivedata()
+    this.sendRequest()
 
     if (this.requestIntervalID != null && this.requestIntervalID != undefined) {
        // console.log('clearing interval id:'+this.requestIntervalID)
         clearInterval(this.requestIntervalID)
     }
     
-    this.requestIntervalID=setInterval(this.requestLivedata.bind(this),interval)
-    //console.log('Interval:'+interval+' id:'+this.requestIntervalID)
+    this.requestIntervalID=setInterval(this.sendRequest.bind(this),interval)
+    console.log('Setting interval for Url: '+this.url+' Interval:'+interval+' id:'+this.requestIntervalID)
 }
 
-GetJSON.prototype.requestLivedata=function()
+GetJSON.prototype.sendRequest=function()
 {
     //req.overrideMimeType('')
     //req.overrideMimeType("application/json")
@@ -103,53 +78,6 @@ GetJSON.prototype.requestLivedata=function()
     this.req.send()
 }
 
-GetJSON.prototype.requestFrost=function()
-{
-    // sources='+sourceId+'&referenceTime='+d1hourago.toISOString()
-        var  date   = new Date(),
-             dateISO = date.toISOString().split('.')[0]+'Z', // 2022-05-19T09:28:59Z https://stackoverflow.com/questions/34053715/how-to-output-date-in-javascript-in-iso-8601-without-milliseconds-and-with-z
-             year   = date.getUTCFullYear(),
-             month  = date.getUTCMonth(), // zero-based 0=january
-             day    = date.getUTCDate(), // day
-             hours  = date.getUTCHours(),
-             minutes= date.getUTCMinutes(),
-             dateISOYYMMDD = year + '-' + (month + 1) + '-' + day,
-             dateISOMidnight= new Date(dateISOYYMMDD + ' 00:00'),
-             d1hourago=new Date(Date.now()-3600000),
-             d1hourafter=new Date(Date.now()+3600000),
-             sourceId='SN90450',
-             authentication="Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:"),
-             frostapi_url='https://frost.met.no/observations/v0.jsonld', // Webserver does not send Access-Control-Allow-Origin: * -> cannot use in Chrome -> use proxy server?
-             //frostapi_url='https://rim.k8s.met.no/api/v1/observations' // Allow CORS -> can use in browser
-             latestHourURL='https://frost.met.no/observations/v0.jsonld?elements=air_temperature,surface_snow_thickness,air_pressure_at_sea_level,relative_humidity,max(wind_speed%20PT1H),max(wind_speed_of_gust%20PT1H),wind_from_direction,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)&referencetime=latest&sources=SN90450&timeresolutions=PT1H&timeresolutions=PT0H',
-             precipitation_calibration_month_url=frostapi_url+'?sources='+sourceId+'referenceTime=2021-05-01T00:00:00Z/2022-05-31T23:59:59Z&elements=sum(precipitation_amount%20P1M)&timeResolution=months',
-             precipitationHourURL=frostapi_url+'?sources='+sourceId+'&referencetime='+dateISOMidnight.toISOString().split('.')[0]+'Z'+'/'+dateISO+'&elements=sum(precipitation_amount%20PT1H)&timeResolution=hours'
-
-        latestHourURL='/api/frost.met.no/latest-hour' // use curl on local network web server to bypass CORS
-        this.reqFrost.open("GET",latestHourURL)
-        this.reqFrost.setRequestHeader("Accept","application/json")
-        this.reqFrost.setRequestHeader("Authorization", authentication);
-        console.log('Sending GET '+latestHourURL)
-        this.reqFrost.send()
-
-       // this.reqFrostPrecipitationHour.open("GET",precipitationHourURL)
-       // this.reqFrostPrecipitationHour.setRequestHeader("Accept","application/json")
-       // this.reqFrostPrecipitationHour.setRequestHeader("Authorization", authentication);
-       // console.log('Sending GET '+precipitationHourURL)
-       // this.reqFrostPrecipitationHour.send()
-        
-    }
-
-GetJSON.prototype.setJSONFrostRequestInterval= function(interval)
-{
-    this.requestFrost()
-
-    if (this.requestPressureIntervalID != null && this.requestPressureIntervalID != undefined) {
-        clearInterval(this.requestPressureIntervalID)
-    }
-    
-    this.requestPressureIntervalID=setInterval(this.requestFrost.bind(this),interval)
-}
 
 GetJSON.prototype.transferAbort = function(ev)
 {
@@ -426,15 +354,21 @@ GetJSON.prototype.unitPressure=function()
     return this.unit.pressure
 }
 
+GetJSON.prototype.parse=function()
+{
+    this.data = this.json.data
+    this.unit = this.json.unit
+    this.mode = this.json.mode
+}
+
 GetJSON.prototype.transferComplete=function(evt)
 {
     //console.log('transfer complete',evt)
     if (this.req.responseText.length > 0) {
         //console.log('json:'+this.req.responseText)
         this.json = JSON.parse(this.req.responseText)
-        this.data = this.json.data
-        this.unit = this.json.unit
-        this.mode = this.json.mode
+        this.parse()
+       
     } else
     {
         console.error("No JSON received " + this.req.status+' '+this.req.statusText)
@@ -448,123 +382,55 @@ GetJSON.prototype.transferError=function(evt)
     console.error('Failed to receive json for '+this.url,evt);
 }
 
-GetJSON.prototype.transferFrostComplete=function(evt)
+function GetJSONFrostPrecipitation(host,port,path,interval,options)
 {
-    if (this.reqFrost.responseText.length > 0) {
-        //console.log('json:'+this.req.responseText)
-        this.jsonFrost = JSON.parse(this.reqFrost.responseText)
-    } else
-    {
-        console.error("No JSON frost received " + this.reqFrost.status+' '+this.reqFrost.statusText)
-        delete this.jsonFrost
-    }
+    GetJSON.call(this,host,port,path,interval,options)
+
 }
 
-GetJSON.prototype.reqFrostPrecipitationHourComplete=function(evt)
+GetJSONFrostPrecipitation.prototype= Object.create(GetJSON.prototype)
+
+
+function GetJSONFrost(host,port,path,interval,options)
 {
-    if (this.reqFrostPrecipitationHour.responseText.length > 0) {
-        this.jsonFrostPrecipitationHour = JSON.parse(this.reqFrostPrecipitationHour.responseText)
-    } else
-    {
-        console.error("No JSON frost precipitation day received " + this.reqFrostPrecipitationHour.status+' '+this.reqFrostPrecipitationHour.statusText)
-        delete this.jsonFrostPrecipitationHour
-    }
+    GetJSON.call(this,host,port,path,interval,options)
 }
 
-GetJSON.prototype.transferFrostError=function(evt)
+GetJSONFrost.prototype= Object.create(GetJSON.prototype)
+
+GetJSONFrost.prototype.sendRequest=function()
 {
-    console.error('Failed to get calibration pressure '+ this.reqFrost.status+' '+this.reqFrost.statusText)
-}
+    // sources='+sourceId+'&referenceTime='+d1hourago.toISOString()
+    var  date   = new Date(),
+            dateISO = date.toISOString().split('.')[0]+'Z', // 2022-05-19T09:28:59Z https://stackoverflow.com/questions/34053715/how-to-output-date-in-javascript-in-iso-8601-without-milliseconds-and-with-z
+            year   = date.getUTCFullYear(),
+            month  = date.getUTCMonth(), // zero-based 0=january
+            day    = date.getUTCDate(), // day
+            hours  = date.getUTCHours(),
+            minutes= date.getUTCMinutes(),
+            dateISOYYMMDD = year + '-' + (month + 1) + '-' + day,
+            dateISOMidnight= new Date(dateISOYYMMDD + ' 00:00'),
+            d1hourago=new Date(Date.now()-3600000),
+            d1hourafter=new Date(Date.now()+3600000),
+            sourceId='SN90450',
+            authentication="Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:"),
+            frostapi_url='https://frost.met.no/observations/v0.jsonld', // Webserver does not send Access-Control-Allow-Origin: * -> cannot use in Chrome -> use proxy server?
+            //frostapi_url='https://rim.k8s.met.no/api/v1/observations' // Allow CORS -> can use in browser
+            latestHourURL='https://frost.met.no/observations/v0.jsonld?elements=air_temperature,surface_snow_thickness,air_pressure_at_sea_level,relative_humidity,max(wind_speed%20PT1H),max(wind_speed_of_gust%20PT1H),wind_from_direction,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)&referencetime=latest&sources=SN90450&timeresolutions=PT1H&timeresolutions=PT0H',
+            precipitation_calibration_month_url=frostapi_url+'?sources='+sourceId+'referenceTime=2021-05-01T00:00:00Z/2022-05-31T23:59:59Z&elements=sum(precipitation_amount%20P1M)&timeResolution=months',
+            precipitationHourURL=frostapi_url+'?sources='+sourceId+'&referencetime='+dateISOMidnight.toISOString().split('.')[0]+'Z'+'/'+dateISO+'&elements=sum(precipitation_amount%20PT1H)&timeResolution=hours'
 
-GetJSON.prototype.reqFrostPrecipitationHourError=function(evt)
-{
-    console.error('Failed to get precipitation day '+ this.reqFrostPrecipitationHour.status+' '+this.reqFrostPrecipitationHour.statusText)
-}
-
-
-
-function GetEcowittJSON(host,port,path,interval)
-{
-    GetJSON.call(this,host,port,path,interval)
-}
-
-GetEcowittJSON.prototype= Object.create(GetJSON.prototype)
-GetEcowittJSON.prototype.outtemp=function()
-{
-    return this.json.outdoor.temperature.value
-}
-
-
-function UI()
-{
-    var port
-
-    this.measurementCount=0
-
-    this.outtempElement=document.getElementById('outtemp')
-    this.intempElement=document.getElementById('intemp')
-    this.unitTempElement=document.getElementById('unit_temperature')
-
-    this.absbaroElement=document.getElementById('absbaro')
-    this.relbaroElement=document.getElementById('relbaro')
-    this.unitpressureElement=document.getElementById('unit_pressure')
-
-    this.windspeedElement=document.getElementById('windspeed')
-    this.windgustspeedElement=document.getElementById('windgustspeed')
-    this.winddirection_compassElement=document.getElementById('winddirection_compass')
-    this.windgustspeed_beufort_descriptionElement=document.getElementById('windgustspeed_beufort_description')
-    this.unitWindElement=document.getElementById('unit_wind')
-
-    this.meter_windgustspeedElement=document.getElementById('meter_windgustspeed')
-
-    this.solar_lightElement=document.getElementById('solar_light')
-    this.unit_solar_lightElement=document.getElementById('unit_solar_light')
-    this.solar_uvElement=document.getElementById('solar_uv')
-    this.unit_solar_uvElement=document.getElementById('unitsolar_uv')
-    this.solar_uviElement=document.getElementById('solar_uvi')
-    
-    this.weatherElement=document.getElementById('divWeather')
-
-    var isIpad1=this.isIpad1()
-
-    this.options={
-        interval: 16000, // milliseconds request time for JSON
-        redraw_interval: 60000, // milliseconds between each chart redraw
-        addpoint_simulation: false, // add point every 100ms, testing performance
-        addpoint_simulation_interval: 100,
-        tooltip: !isIpad1, // turn off for ipad1 - slow animation/disappearing
-        animation: false,               // turn off animation for all charts
-        addpointIfChanged : true,   // only addpoint if value changes (keep memory footprint low),
-        shift: false,               // shift series flag
-        shift_measurements_ipad1: 2048, // number of measurements before shifting
-        shift_measurements: 5400,
-        invalid_security_certificate : isIpad1, // have outdated security certificates for https request
-        mousetracking: !isIpad1,    // allocates memory for duplicate path for tracking
-        frostapi : true && navigator.language.toLowerCase()==='nb-no',    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
-        frostapi_interval: 3600000 // request interval 1 hour     
-    }
-
-    this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
-
-    this.initChart()
-  
-    if (window.location.hostname === '127.0.0.1') // assume web server runs on port 80
-        // Visual studio code live preview uses 127.0.0.1:3000
-      port=80
-    else
-      port=window.location.port
-
-    this.getJSON=new GetJSON(window.location.hostname,port,'/api/livedata',this.options.interval,this.options)
-    this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
-    this.getJSON.reqFrost.addEventListener("load",this.onJSONFrost.bind(this))
-    this.getJSON.reqFrostPrecipitationHour.addEventListener("load",this.onJSONFrostPrecipitationHour.bind(this))
+    latestHourURL='/api/frost.met.no/latest-hour' // use curl on local network web server to bypass CORS
+    this.req.open("GET",latestHourURL)
+    this.req.setRequestHeader("Accept","application/json")
+    this.req.setRequestHeader("Authorization", authentication);
+    this.req.send()
     
 }
 
-UI.prototype.onJSONFrost=function(evt)
+GetJSONFrost.prototype.parse=function()
 {
-    var json=this.getJSON.jsonFrost // set by getJSON eventhandler, otherwise also available in evt.currentTarget.reponseText
-    console.log('ui got',json)
+    var json=this.json // set by getJSON eventhandler, otherwise also available in evt.currentTarget.reponseText
    // https://frost.met.no/api.html#!/observations/observations
    if (json['@type'] != 'ObservationResponse' )
    {
@@ -610,50 +476,129 @@ UI.prototype.onJSONFrost=function(evt)
                 unit : unit
             }
 
-            switch (elementId)
-            {
-                case 'air_pressure_at_sea_level' :
-
-                    this.pressurechart.series[2].addPoint([timestamp,this.metno.air_pressure_at_sea_level.value],false,this.options.shift,this.options.animation,false)
-                    break
-                
-                case 'air_temperature' :
-
-                    this.temperaturechart.series[4].addPoint([timestamp,this.metno.air_temperature.value],false,this.options.shift,this.options.animation,false)
-                    break
-
-                case 'air_temperature' :
-
-                    this.temperaturechart.series[5].addPoint([timestamp,this.metno.relative_humidity.value],false,this.options.shift,this.options.animation,false)
-                    break
-        
-
-                case 'wind_speed' :
-
-                    this.windbarbchart.series[3].addPoint([timestamp,this.metno.wind_speed.value],false,this.options.shift,this.options.animation,false)
-                    break
-
-                case 'max(wind_speed PT1H)':
-
-                    this.windbarbchart.series[3].addPoint([timestamp,this.metno['max(wind_speed PT1H)'].value],false,this.options.shift,this.options.animation,false)
-                    break
-                    
-                case 'max(wind_speed_of_gust PT1H)':
-
-                    this.windbarbchart.series[4].addPoint([timestamp,this.metno['max(wind_speed_of_gust PT1H)'].value],false,this.options.shift,this.options.animation,false)
-                    break
-
-                case 'mean(surface_downwelling_shortwave_flux_in_air PT1H)' :
-                    
-                this.solarchart.series[2].addPoint([timestamp,this.metno[elementId].value],false,this.options.shift,this.options.animation,false)
-                    break
-            }
+           
         }
 
         console.log('metno',this.metno)
    }
+}
 
+function UI()
+{
+    var port
+
+    this.measurementCount=0
+
+    this.outtempElement=document.getElementById('outtemp')
+    this.intempElement=document.getElementById('intemp')
+    this.unitTempElement=document.getElementById('unit_temperature')
+
+    this.absbaroElement=document.getElementById('absbaro')
+    this.relbaroElement=document.getElementById('relbaro')
+    this.unitpressureElement=document.getElementById('unit_pressure')
+
+    this.windspeedElement=document.getElementById('windspeed')
+    this.windgustspeedElement=document.getElementById('windgustspeed')
+    this.winddirection_compassElement=document.getElementById('winddirection_compass')
+    this.windgustspeed_beufort_descriptionElement=document.getElementById('windgustspeed_beufort_description')
+    this.unitWindElement=document.getElementById('unit_wind')
+
+    this.meter_windgustspeedElement=document.getElementById('meter_windgustspeed')
+
+    this.solar_lightElement=document.getElementById('solar_light')
+    this.unit_solar_lightElement=document.getElementById('unit_solar_light')
+    this.solar_uvElement=document.getElementById('solar_uv')
+    this.unit_solar_uvElement=document.getElementById('unitsolar_uv')
+    this.solar_uviElement=document.getElementById('solar_uvi')
+    
+    this.weatherElement=document.getElementById('divWeather')
+
+    var isIpad1=this.isIpad1()
+
+    this.options={
+        interval: 16000, // milliseconds request time for JSON
+        fastRedrawTimeout : 60000*5, // milliseconds before, reverting to fixed redraw interval, during fast redraw charts are redrawn as fast as the JSON request interval
+        redraw_interval: 60000, // milliseconds between each chart redraw
+        tooltip: !isIpad1, // turn off for ipad1 - slow animation/disappearing
+        animation: false,               // turn off animation for all charts
+        addpointIfChanged : true,   // only addpoint if value changes (keep memory footprint low),
+        shift: false,               // shift series flag
+        shift_measurements_ipad1: 2048, // number of measurements before shifting
+        shift_measurements: 5400,
+        invalid_security_certificate : isIpad1, // have outdated security certificates for https request
+        mousetracking: !isIpad1,    // allocates memory for duplicate path for tracking
+        frostapi : true && navigator.language.toLowerCase()==='nb-no',    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
+        frostapi_interval: 3600000 // request interval 1 hour     
+    }
+
+    this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
+
+    this.initChart()
   
+    if (window.location.hostname === '127.0.0.1') // assume web server runs on port 80
+        // Visual studio code live preview uses 127.0.0.1:3000
+      port=80
+    else
+      port=window.location.port
+
+    this.getJSON=new GetJSON(window.location.hostname,port,'/api/livedata',this.options.interval,this.options)
+    this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
+
+    this.getJSONFrost = new GetJSONFrost(window.location.hostname,port,'/api/frost.met.no/latest-hourly',this.options.frostapi_interval,this.options)
+    this.getJSONFrost.req.addEventListener("load",this.onJSONFrost.bind(this))
+    
+}
+
+UI.prototype.onJSONFrost=function(evt)
+{
+    var series
+   
+   for (var elementId in this.getJSONFrost.metno) 
+   {
+        switch (elementId)
+        {
+            case 'air_pressure_at_sea_level' :
+                series = this.pressurechart.series[2]
+                break
+            
+            case 'air_temperature' :
+
+                series=this.temperaturechart.series[4]
+                break
+
+            case 'air_temperature' :
+
+                series=this.temperaturechart.series[5]
+                break
+
+
+            case 'wind_speed' :
+
+                series=this.windbarbchart.series[3]
+                break
+
+            case 'max(wind_speed PT1H)':
+
+                series=this.windbarbchart.series[3]
+                break
+                
+            case 'max(wind_speed_of_gust PT1H)':
+
+                series=this.windbarbchart.series[4]
+                break
+
+            case 'mean(surface_downwelling_shortwave_flux_in_air PT1H)' :
+                
+                series=this.solarchart.series[2]
+                break
+        }
+
+        if (series) {
+            series.addPoint([elementId.timestamp,elementId.value],false,this.options.shift,this.options.animation,false)
+            series=undefined
+        }
+
+    }
 
 }
 
@@ -1545,7 +1490,7 @@ UI.prototype.onJSON=function (ev)
         }
 
         if (this.options.frostapi) {
-            this.pressurechart.setCaption({ text: 'METno data from https://frost.met.no API - CC 4.0'})
+            this.pressurechart.setCaption({ text: 'MET Norway data from https://frost.met.no API - CC 4.0'})
         }
     }
 
@@ -1570,30 +1515,36 @@ UI.prototype.onJSON=function (ev)
     this.unit_solar_uvElement.textContent=json.unitSolarUV()
     this.solar_uviElement.textContent=json.solar_uvi()
 
-    if (this.options.addpoint_simulation) 
-        setInterval(this.update_charts.bind(this),this.options.addpoint_simulation_interval)
-    else
-        this.update_charts()
+    this.updateCharts()
 
-    this.chart_redraw()
+    if (!this.fastRedrawTimeoutId)
+    {
+        console.log('Setting fast redraw timeout '+this.options.fastRedrawTimeout)
+        this.fastRedrawTimeoutId=setTimeout(this.setChartRedrawInterval.bind(this),this.options.fastRedrawTimeout)
+        this.redrawChart()
+    } else if (!this.chartRedrawIntevalId)
+        this.redrawChart()
+
 }
 
-UI.prototype.startRedrawInterval=function()
+UI.prototype.setChartRedrawInterval=function()
 {
-    if  (!this.chart_redraw_interval_id)
+    if  (!this.chartRedrawIntevalId)
     {
-      this.chart_redraw()
-      this.chart_redraw_interval_id=setInterval(this.chart_redraw.bind(this),this.options.redraw_interval)
+      this.redrawChart()
+      console.log('Setting chart redraw interval '+this.options.redraw_interval)
+      this.chartRedrawIntevalId=setInterval(this.redrawChart.bind(this),this.options.redraw_interval)
     }
 }
 
-UI.prototype.update_charts=function()
+UI.prototype.updateCharts=function()
 {
     var json=this.getJSON,
         timestamp=json.timestamp(),
         simulationSubtitle='',
         shiftseries=false,
-        redraw=false
+        redraw=false,
+        metno=this.getJSONFrost.metno
 
      if (this.options.addpoint_simulation)
      {
@@ -1602,8 +1553,8 @@ UI.prototype.update_charts=function()
      } 
 
     var tempSubtitle='<b>Outdoor</b> '+json.outtempToString()+' '+ json.outhumidityToString()+' <b>Indoor</b> '+json.intempToString()+json.inhumidityToString()
-    if (this.metno.air_temperature!==undefined)
-      tempSubtitle=tempSubtitle+' <b>METno</b> '+this.metno.air_temperature.value+' '+this.metno.air_temperature.unit+' '+this.metno.relative_humidity.value+' '+this.metno.relative_humidity.unit+' '+this.metno.air_temperature.hhmm
+    if (metno && metno.air_temperature!==undefined)
+      tempSubtitle=tempSubtitle+' <b>METno</b> '+metno.air_temperature.value+' '+metno.air_temperature.unit+' '+metno.relative_humidity.value+' '+metno.relative_humidity.unit+' '+metno.air_temperature.hhmm
 
     this.temperaturechart.update({ 
         subtitle: { text: tempSubtitle}
@@ -1615,18 +1566,18 @@ UI.prototype.update_charts=function()
     if (winddailymax)
        windSubtitle=windSubtitle+' <b>Max today</b> '+json.winddailymaxToString()
 
-    if (this.metno['max(wind_speed PT1H)'])
-      windSubtitle=windSubtitle+' <b>Wind max 1h METno</b> '+this.metno['max(wind_speed PT1H)'].value+' '+this.metno['max(wind_speed PT1H)'].unit+' <b>Gust max 1h</b> '+this.metno["max(wind_speed_of_gust PT1H)"].value+' '+this.metno['max(wind_speed_of_gust PT1H)'].unit+' ('+this.metno.wind_from_direction.value+this.metno.wind_from_direction.unit+') '+this.metno['max(wind_speed PT1H)'].hhmm
+    if (metno && metno['max(wind_speed PT1H)'])
+      windSubtitle=windSubtitle+' <b>Wind max 1h METno</b> '+metno['max(wind_speed PT1H)'].value+' '+metno['max(wind_speed PT1H)'].unit+' <b>Gust max 1h</b> '+metno["max(wind_speed_of_gust PT1H)"].value+' '+metno['max(wind_speed_of_gust PT1H)'].unit+' ('+metno.wind_from_direction.value+metno.wind_from_direction.unit+') '+metno['max(wind_speed PT1H)'].hhmm
 
     this.windbarbchart.update({ subtitle : { text: windSubtitle }},redraw)
     var solarSubtitle='<b>Irradiance</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')' 
-    if (this.metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)']!==undefined)
-        solarSubtitle=solarSubtitle+' <b>METno</b> '+this.metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].value+ ' '+this.metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].unit+' '+this.metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].hhmm
+    if (metno && metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)']!==undefined)
+        solarSubtitle=solarSubtitle+' <b>METno</b> '+metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].value+ ' '+metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].unit+' '+metno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].hhmm
 
     this.solarchart.update({subtitle : { text: solarSubtitle }},redraw)
     var pressureSubtitle='<b>Relative</b> '+json.pressureToString(json.relbaro())+' <b>Absolute</b> ' + json.pressureToString(json.absbaro())
-    if (this.metno.air_pressure_at_sea_level)
-       pressureSubtitle=pressureSubtitle+' <b>Sea-level pressure (QFF) METno</b> ' + this.metno.air_pressure_at_sea_level.value.toFixed(1) + ' '+this.metno.air_pressure_at_sea_level.unit +' '+this.metno.air_pressure_at_sea_level.hhmm
+    if (metno && metno.air_pressure_at_sea_level)
+       pressureSubtitle=pressureSubtitle+' <b>Sea-level pressure (QFF) METno</b> ' + metno.air_pressure_at_sea_level.value.toFixed(1) + ' '+metno.air_pressure_at_sea_level.unit +' '+metno.air_pressure_at_sea_level.hhmm
     this.pressurechart.update({ subtitle : { text: pressureSubtitle }},redraw)
     this.rainchart.update({subtitle: { text: '<b>Rain rate</b>'+' '+json.rainrateToString()}},redraw)
     //this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())
@@ -1698,7 +1649,7 @@ UI.prototype.addpointIfChanged=function(series,xy)
     // optimization deprecated, series may be grouped automatically by Highstock, hard to update latest point
 }
 
-UI.prototype.chart_redraw=function()
+UI.prototype.redrawChart=function()
 {
     // https://api.highcharts.com/class-reference/Highcharts.Axis#setExtremes
    // y-axis start on 0 by default
