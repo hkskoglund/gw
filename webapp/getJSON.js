@@ -569,10 +569,10 @@ UI.prototype.onJSONFrost=function(evt)
                 series=this.temperaturechart.series[4]
                 break
 
-            case 'air_temperature' :
+            
+            case 'relative_humidity' :
 
                 series=this.temperaturechart.series[5]
-                break
 
 
             case 'wind_speed' :
@@ -773,18 +773,16 @@ UI.prototype.initChart=function()
                 name: 'Outdoor',
                 type: 'spline',
                 yAxis: 0,
-                data: []
-               
-             //   zIndex: 4
+                data: [],
+                zIndex: 5
             },
             {
                 name: 'Indoor',
                 type: 'spline',
                 data: [],
-              
                 yAxis: 0,
-                visible: false
-           //     zIndex: 3
+                visible: false,
+                zIndex: 5
             },
             {
                 name: 'Outdoor humidity',
@@ -794,8 +792,8 @@ UI.prototype.initChart=function()
                 visible: false,
                 tooltip: {
                     valueSuffix: ' %'
-                }
-            //    zIndex: 2
+                },
+                zIndex: 4
             },
             {
                 name: 'Indoor humidity',
@@ -806,8 +804,8 @@ UI.prototype.initChart=function()
                 visible: false,
                 tooltip: {
                     valueSuffix: ' %'
-                }
-            //    zIndex: 1
+                },
+                zIndex : 4
             }
            ] 
 
@@ -817,13 +815,15 @@ UI.prototype.initChart=function()
             type: 'spline',
             yAxis: 0,
             data: [],
-            visible: false
+            visible: false,
+            zIndex : 2
         }, {
             name: 'Outdoor humidity METno',
             type: 'spline',
             yAxis: 1,
             data: [],
-            visible: false
+            visible: false,
+            zIndex : 1
         })
     
     this.temperaturechart= new Highcharts.stockChart({ 
