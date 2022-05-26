@@ -18,7 +18,7 @@ function GetJSON(host,port,path,interval,options) {
     this.req.addEventListener("error", this.transferError.bind(this))
     this.req.addEventListener("onabort",this.transferAbort.bind(this))
 
-    this.setInterval(interval)
+    this.changeInterval(interval)
   
   }
 
@@ -55,8 +55,14 @@ GetJSON.prototype.Mode = {
     light_wattm2 : 1
 }
 
-GetJSON.prototype.setInterval= function(interval)
+GetJSON.prototype.changeInterval= function(interval)
 {
+    if (!interval)
+      {
+          console.error('ChangeInterval: Refusing to set undefined interval: '+interval)
+          return
+      }
+
     // don't send new request if already in progress 
     if (this.req.readyState === 0 || this.req.readyState === 4) // unsent or done https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/readyState
        this.sendRequest()
@@ -535,7 +541,7 @@ function UI()
     this.options={
         interval: 16000,                // milliseconds (ms) request time for livedata JSON
         slow_interval: 60000,            // ms slow request for livedata JSON
-        fastRequestTimeout : 60000*5,   // ms before starting slow request interval for livedata JSON
+        fastRequestTimeout : 20000,   // ms before starting slow request interval for livedata JSON
         fastRedrawTimeout : 60000*5,    // ms before, reverting to fixed redraw interval, during fast redraw charts are redrawn as fast as the JSON request interval
         redraw_interval: 60000,         // ms between each chart redraw
         tooltip: !isIpad1,              // turn off for ipad1 - slow animation/disappearing
@@ -551,7 +557,7 @@ function UI()
         frostapi_interval: 3600000      // request interval 1 hour     
     }
 
-    this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
+    //this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
 
     this.initChart()
   
@@ -563,7 +569,7 @@ function UI()
 
     this.getJSON=new GetJSON(window.location.hostname,port,'/api/livedata',this.options.interval,this.options)
     this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
-    setTimeout(this.getJSON.setInterval.bind(this.getJSON,this.options.slow_interval),this.options.fastRequestTimeout)
+    setTimeout(this.getJSON.changeInterval.bind(this.getJSON,this.options.slow_interval),this.options.fastRequestTimeout)
 
 
     //this.getJSONFrost = new GetJSONFrost(window.location.hostname,port,'/api/frost.met.no/latest-hourly',this.options.frostapi_interval,this.options)
@@ -1701,9 +1707,11 @@ if (Function.prototype.bind === undefined)
 {
     //console.log('javascript bind not found, creating new Function.prototype.bind,'+window.navigator.userAgent)
     Function.prototype.bind = function(ctx) {
-        var fn = this;
+        var fn = this,
+            args=Array.prototype.slice.call(arguments,1) // Shallow copy - points to same memory
         return function() {
-            fn.apply(ctx, arguments);
+            //https://gist.github.com/MiguelCastillo/38005792d33373f4d08c
+            fn.apply(ctx, args);
         };
     };
 }
