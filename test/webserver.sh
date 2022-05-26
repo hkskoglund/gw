@@ -262,6 +262,7 @@ webserver()
                                             l_response_JSON='{
     "livedata_url": "http://'"$HTTP_HEADER_host"'/api/livedata",
     "frostmetno_latest_url": "http://'"$HTTP_HEADER_host"'/api/frost.met.no/latest-hour",
+    "frostmetno_latest_10min_url": "http://'"$HTTP_HEADER_host"'/api/frost.met.no/latest-10min",
     "frostmetno_url": "http://'"$HTTP_HEADER_host"'/api/frost.met.no{/path}"
 }
 '
@@ -325,8 +326,27 @@ webserver()
                                 # query can be built using https://seklima.met.no/ -> developer tools "Network" pane
 
                                 l_sources=SN90450
-                                sendMETnoRequest "https://frost.met.no/observations/v0.jsonld?elements=air_temperature,surface_snow_thickness,air_pressure_at_sea_level,relative_humidity,max(wind_speed%20PT1H),max(wind_speed_of_gust%20PT1H),wind_from_direction,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)&referencetime=latest&sources=SN90450&timeresolutions=PT1H&timeoffsets=PT0H"
-                                ;; 
+                                l_elements="air_temperature,surface_snow_thickness,air_pressure_at_sea_level,relative_humidity,max(wind_speed%20PT1H),max(wind_speed_of_gust%20PT1H),wind_from_direction,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)"
+                                l_timeresolution="PT1H"
+
+                                sendMETnoRequest "https://frost.met.no/observations/v0.jsonld?elements=$l_elements&referencetime=latest&sources=$l_sources&timeresolutions=$l_timeresolution&timeoffsets=PT0H"
+
+                                unset l_sources l_elements l_timeresolution
+                               
+                                ;;
+
+                        /api/frost.met.no/latest-10min)
+
+                               # https://web.postman.co/workspace/Test-av-frost%2Frim-MET~2bc0415b-9a14-431a-84ff-ad0748f8adae/request/21055109-f182896f-5ca9-484f-874f-91b2c594e624
+                               
+                               l_sources=SN90450
+                               l_timeresolution="PT10M,PT1H" # 10 min or 1 h measurements
+                               l_elements="air_temperature,relative_humidity,wind_speed,max(wind_speed_of_gust%20PT10M),wind_from_direction,air_pressure_at_sea_level,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)"
+
+                               sendMETnoRequest  "https://frost.met.no/observations/v0.jsonld?elements=$l_elements&referencetime=latest&sources=$l_sources&timeresolutions=$l_timeresolution"
+
+                               unset l_sources l_timeresolution l_elements
+                               ;;
 
                         /api/frost.met.no/*)
 

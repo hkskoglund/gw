@@ -9,7 +9,6 @@ function GetJSON(host,port,path,interval,options) {
     this.port=port
     this.path=path
     this.options=options
-    this.interval=interval
     
     this.setUrl(host,port,path)
 
@@ -19,7 +18,7 @@ function GetJSON(host,port,path,interval,options) {
     this.req.addEventListener("error", this.transferError.bind(this))
     this.req.addEventListener("onabort",this.transferAbort.bind(this))
 
-    this.setInterval(this.interval)
+    this.setInterval(interval)
   
   }
 
@@ -58,7 +57,9 @@ GetJSON.prototype.Mode = {
 
 GetJSON.prototype.setInterval= function(interval)
 {
-    this.sendRequest()
+    // don't send new request if already in progress 
+    if (this.req.readyState === 0 || this.req.readyState === 4) // unsent or done https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/readyState
+       this.sendRequest()
 
     if (this.requestIntervalID != null && this.requestIntervalID != undefined) {
        // console.log('clearing interval id:'+this.requestIntervalID)
@@ -66,7 +67,8 @@ GetJSON.prototype.setInterval= function(interval)
     }
     
     this.requestIntervalID=setInterval(this.sendRequest.bind(this),interval)
-    console.log('Setting interval for Url: '+this.url+' Interval:'+interval+' id:'+this.requestIntervalID)
+    console.log('Setting new interval '+this.url+' interval:'+interval+' previous interval: '+this.interval+' id:'+this.requestIntervalID)
+    this.interval=interval
 }
 
 GetJSON.prototype.sendRequest=function()
@@ -385,7 +387,6 @@ GetJSON.prototype.transferError=function(evt)
 function GetJSONFrostPrecipitation(host,port,path,interval,options)
 {
     GetJSON.call(this,host,port,path,interval,options)
-
 }
 
 GetJSONFrostPrecipitation.prototype= Object.create(GetJSON.prototype)
@@ -394,6 +395,7 @@ GetJSONFrostPrecipitation.prototype= Object.create(GetJSON.prototype)
 function GetJSONFrost(host,port,path,interval,options)
 {
     GetJSON.call(this,host,port,path,interval,options)
+    this.authentication="Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:")
 }
 
 GetJSONFrost.prototype= Object.create(GetJSON.prototype)
@@ -413,7 +415,6 @@ GetJSONFrost.prototype.sendRequest=function()
             d1hourago=new Date(Date.now()-3600000),
             d1hourafter=new Date(Date.now()+3600000),
             sourceId='SN90450',
-            authentication="Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:"),
             frostapi_url='https://frost.met.no/observations/v0.jsonld', // Webserver does not send Access-Control-Allow-Origin: * -> cannot use in Chrome -> use proxy server?
             //frostapi_url='https://rim.k8s.met.no/api/v1/observations' // Allow CORS -> can use in browser
             latestHourURL='https://frost.met.no/observations/v0.jsonld?elements=air_temperature,surface_snow_thickness,air_pressure_at_sea_level,relative_humidity,max(wind_speed%20PT1H),max(wind_speed_of_gust%20PT1H),wind_from_direction,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)&referencetime=latest&sources=SN90450&timeresolutions=PT1H&timeresolutions=PT0H',
@@ -423,10 +424,11 @@ GetJSONFrost.prototype.sendRequest=function()
     latestHourURL='/api/frost.met.no/latest-hour' // use curl on local network web server to bypass CORS
     this.req.open("GET",latestHourURL)
     this.req.setRequestHeader("Accept","application/json")
-    this.req.setRequestHeader("Authorization", authentication);
+    this.req.setRequestHeader("Authorization", this.authentication);
     this.req.send()
     
 }
+
 
 GetJSONFrost.prototype.parse=function()
 {
@@ -475,13 +477,28 @@ GetJSONFrost.prototype.parse=function()
                 value : observation.value,
                 unit : unit
             }
-
            
         }
 
-        console.log('METno '+JSON.stringify(this.METno))
+        console.log('METno dataitem '+item+' '+JSON.stringify(this.METno),this.METno)
    }
 }
+
+function GetJSONFrostLatest10Min(host,port,path,interval,options)
+{
+    GetJSONFrost.call(this,host,port,path,interval,options)
+}
+
+GetJSONFrostLatest10Min.prototype= Object.create(GetJSONFrost.prototype)
+
+GetJSONFrostLatest10Min.prototype.sendRequest=function()
+{
+    this.req.open("GET",'/api/frost.met.no/latest-10min')
+    this.req.setRequestHeader("Accept","application/json")
+    this.req.setRequestHeader("Authorization", this.authentication);
+    this.req.send()
+}
+
 
 function UI()
 {
@@ -516,20 +533,22 @@ function UI()
     var isIpad1=this.isIpad1()
 
     this.options={
-        interval: 16000, // milliseconds request time for JSON
-        fastRedrawTimeout : 60000*5, // milliseconds before, reverting to fixed redraw interval, during fast redraw charts are redrawn as fast as the JSON request interval
-        redraw_interval: 60000, // milliseconds between each chart redraw
-        tooltip: !isIpad1, // turn off for ipad1 - slow animation/disappearing
+        interval: 16000,                // milliseconds (ms) request time for livedata JSON
+        slow_interval: 60000,            // ms slow request for livedata JSON
+        fastRequestTimeout : 60000*5,   // ms before starting slow request interval for livedata JSON
+        fastRedrawTimeout : 60000*5,    // ms before, reverting to fixed redraw interval, during fast redraw charts are redrawn as fast as the JSON request interval
+        redraw_interval: 60000,         // ms between each chart redraw
+        tooltip: !isIpad1,              // turn off for ipad1 - slow animation/disappearing
         animation: false,               // turn off animation for all charts
-        addpointIfChanged : true,   // only addpoint if value changes (keep memory footprint low),
-        shift: false,               // shift series flag
-        shift_measurements_ipad1: 2048, // number of measurements before shifting
-        shift_measurements: 5400,
+        addpointIfChanged : true,       // only addpoint if value changes (keep memory footprint low),
+        shift: false,                   // shift series flag
+        shift_measurements_ipad1: 2250, // number of measurements before shifting (3600/16=225 samples/hours*10 hours)
+        shift_measurements: 5400,       // 1 day= 225 samples*24 hours =5400
         invalid_security_certificate : isIpad1, // have outdated security certificates for https request,
-        rangeSelector: !isIpad1,     // keeps memory for series
-        mousetracking: !isIpad1,    // allocates memory for duplicate path for tracking
+        rangeSelector: !isIpad1,        // keeps memory for series
+        mousetracking: !isIpad1,        // allocates memory for duplicate path for tracking
         frostapi : true && navigator.language.toLowerCase()==='nb-no',    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
-        frostapi_interval: 3600000 // request interval 1 hour     
+        frostapi_interval: 3600000      // request interval 1 hour     
     }
 
     this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
@@ -544,10 +563,22 @@ function UI()
 
     this.getJSON=new GetJSON(window.location.hostname,port,'/api/livedata',this.options.interval,this.options)
     this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
+    setTimeout(this.getJSON.setInterval.bind(this.getJSON,this.options.slow_interval),this.options.fastRequestTimeout)
 
-    this.getJSONFrost = new GetJSONFrost(window.location.hostname,port,'/api/frost.met.no/latest-hourly',this.options.frostapi_interval,this.options)
-    this.getJSONFrost.req.addEventListener("load",this.onJSONFrost.bind(this))
+
+    //this.getJSONFrost = new GetJSONFrost(window.location.hostname,port,'/api/frost.met.no/latest-hourly',this.options.frostapi_interval,this.options)
+    //this.getJSONFrost.req.addEventListener("load",this.onJSONFrost.bind(this))
+
+    this.getJSONFrostLatest10Min = new GetJSONFrostLatest10Min(window.location.hostname,port,'/api/frost.met.no/latest-10min',this.options.frostapi_interval,this.options)
+    this.getJSONFrostLatest10Min.req.addEventListener("load",this.onJSONFrostLatest10Min.bind(this))
+
     
+}
+
+UI.prototype.onJSONFrostLatest10Min=function(evt)
+{
+    console.error('Parsing of latest 10 min not implemented yet')
+    this.METno=this.getJSONFrostLatest10Min.METno
 }
 
 UI.prototype.onJSONFrost=function(evt)
@@ -555,6 +586,8 @@ UI.prototype.onJSONFrost=function(evt)
     var series,
         observation,
         elementId
+
+    this.METno=this.getJSONFrost.METno
    
    for (elementId in this.getJSONFrost.METno) 
    {
@@ -1549,7 +1582,7 @@ UI.prototype.updateCharts=function()
         simulationSubtitle='',
         shiftseries=false,
         redraw=false,
-        METno=this.getJSONFrost.METno
+        METno=this.METno
 
     var tempSubtitle='<b>Outdoor</b> '+json.outtempToString()+' '+ json.outhumidityToString()+' <b>Indoor</b> '+json.intempToString()+json.inhumidityToString()
     if (METno && METno.air_temperature!==undefined)
@@ -1596,11 +1629,14 @@ UI.prototype.updateCharts=function()
     var beufortScale=json.windgustspeed_beufort()
     var compassDirection=json.winddirection_compass_value()-1 
     var rosePoint=this.windrosechart.series[beufortScale].data[compassDirection]
+
         rosePoint.update(rosePoint.y+this.options.interval/60000,redraw)
     
-    if (!this.options.shift && (this.isIpad1() && this.windbarbchart.series[2].options.data.length > this.options.shift_measurements_ipad1) || this.windbarbchart.series[0].options.data.length > this.shift_measurements)
+    var dataLength=this.temperaturechart.series[0].options.data.length 
+    
+    if (!this.options.shift && ((this.isIpad1() && (dataLength > this.options.shift_measurements_ipad1)) ||  dataLength > this.shift_measurements))
     {
-        console.log(Date()+'Starting to shift series, data length '+ this.windbarbchart.series[2].options.data.length)
+        console.log(Date()+'Starting to shift series, data length '+ dataLength)
         this.options.shift=true
     }
 
