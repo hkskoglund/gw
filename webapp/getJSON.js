@@ -573,7 +573,8 @@ function UI()
         rangeSelector: !isIpad1,        // keeps memory for series
         mousetracking: !isIpad1,        // allocates memory for duplicate path for tracking
         frostapi : true && navigator.language.toLowerCase()==='nb-no',    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
-        frostapi_interval: 3600000      // request interval 1 hour     
+        frostapi_interval_1h:     3600000,      // request interval 1 hour
+        frostapi_interval_10min:   600000       // 10 min   
     }
 
     //this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
@@ -594,7 +595,7 @@ function UI()
     //this.getJSONFrost = new GetJSONFrost(window.location.hostname,port,'/api/frost.met.no/latest-hourly',this.options.frostapi_interval,this.options)
     //this.getJSONFrost.req.addEventListener("load",this.onJSONFrost.bind(this))
 
-    this.getJSONFrostLatest10Min = new GetJSONFrostLatest10Min(window.location.hostname,port,'/api/frost.met.no/latest-10min',this.options.frostapi_interval,this.options)
+    this.getJSONFrostLatest10Min = new GetJSONFrostLatest10Min(window.location.hostname,port,'/api/frost.met.no/latest-10min',this.options.frostapi_interval_10min,this.options)
     this.getJSONFrostLatest10Min.req.addEventListener("load",this.onJSONFrostLatest10Min.bind(this))
 
     
@@ -1765,7 +1766,12 @@ Number.isInteger = Number.isInteger || function(value) {
 window.onload = function init() {
    // console.log('onload event, init ui')
    // console.log('window location',window.location)
-    var ui = new UI()
+   try {
+        var ui = new UI()
+   } catch (err)
+   {
+       console.error(JSON.stringify(err))
+   }
     
 }
 
