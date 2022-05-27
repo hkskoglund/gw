@@ -89,7 +89,7 @@ GetJSON.prototype.sendRequest=function()
 
 GetJSON.prototype.transferAbort = function(ev)
 {
-    console.warn('request aborted')
+    console.warn('request aborted '+JSON.stringify(ev))
 }
 
 GetJSON.prototype.setUrl=function(host,port,path)
@@ -560,7 +560,7 @@ function UI()
     this.options={
         interval: 16000,                // milliseconds (ms) request time for livedata JSON
         slow_interval: 60000,           // ms slow request for livedata JSON
-        fastRequestTimeout : 60000,     // ms before starting slow request interval for livedata JSON
+        fastRequestTimeout : 60000*5,   // ms before starting slow request interval for livedata JSON
         fastRedrawTimeout : 60000*5,    // ms before, reverting to fixed redraw interval, during fast redraw charts are redrawn as fast as the JSON request interval
         redraw_interval: 60000,         // ms between each chart redraw
         tooltip: !isIpad1,              // turn off for ipad1 - slow animation/disappearing
@@ -659,7 +659,7 @@ UI.prototype.addObservationsMETno=function()
         if (series) {
             for (obsNr=0;obsNr<this.METno[elementId].length;obsNr++) {
                 observation=this.METno[elementId][obsNr]
-                console.log('addpoint',series.name,[observation.timestamp,observation.value])
+               // console.log('addpoint',series.name,[observation.timestamp,observation.value])
                 series.addPoint([observation.timestamp,observation.value],false,this.options.shift,this.options.animation,false)
             }
             series=undefined
@@ -683,11 +683,11 @@ UI.prototype.onJSONFrost=function(evt)
 UI.prototype.onJSONFrostPrecipitationHour=function(evt)
 {
     var json=this.getJSON.jsonFrostPrecipitationHour
-    console.log('ui got',json)
+    //console.log('ui got',json)
     var precipitationDay=0
     json.data.forEach(function (data) { precipitationDay=precipitationDay+data.observations[0].value})
     var precipitationHour=json.data[json.data.length-1].observations[0].value
-    console.log('precipitation today: '+ precipitationDay+' precip. hour: '+precipitationHour)
+    //console.log('precipitation today: '+ precipitationDay+' precip. hour: '+precipitationHour)
     this.rainstatchart.series[2].setData([['hour',precipitationHour],['day',precipitationDay],null,null,null],false,this.options.animation)
 
 }
