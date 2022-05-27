@@ -340,8 +340,8 @@ webserver()
                                # https://web.postman.co/workspace/Test-av-frost%2Frim-MET~2bc0415b-9a14-431a-84ff-ad0748f8adae/request/21055109-f182896f-5ca9-484f-874f-91b2c594e624
                                
                                l_sources=SN90450
-                               l_timeresolution="PT10M,PT1H" # 10 min or 1 h measurements
-                               l_elements="air_temperature,relative_humidity,wind_speed,max(wind_speed_of_gust%20PT10M),wind_from_direction,air_pressure_at_sea_level,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)"
+                               l_timeresolution="PT1M,PT10M,PT1H" # 1m, 10 min or 1 h measurements
+                               l_elements="air_temperature,relative_humidity,wind_speed,max(wind_speed_of_gust%20PT10M),wind_from_direction,air_pressure_at_sea_level,mean(surface_downwelling_shortwave_flux_in_air%20PT1M)"
 
                                sendMETnoRequest  "https://frost.met.no/observations/v0.jsonld?elements=$l_elements&referencetime=latest&sources=$l_sources&timeresolutions=$l_timeresolution"
 

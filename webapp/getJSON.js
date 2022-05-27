@@ -453,21 +453,26 @@ GetJSONFrost.prototype.parse=function()
         hhmm,
         observation,
         elementId,
-        unit
+        unit,
+        timeOffset,
+        lastObservation
 
     this.METno={}
 
    for (item=0;item<json.totalItemCount;item++) // number of data items
    {
-        referenceTime=new Date(json.data[item].referenceTime)                      // http query params has timeoffsets=PT0H -> no need to add timeoffset
+        referenceTime=new Date(json.data[item].referenceTime)  
+        //console.log('referencetime',referenceTime)                    
         timestamp=referenceTime.getTime()-referenceTime.getTimezoneOffset()*60000  // local timezone time
-        hhmm=referenceTime.getHours()+':00'
-
+        hhmm=('0'+referenceTime.getHours()).slice(-2)+':'+('0'+referenceTime.getMinutes()).slice(-2) // https://stackoverflow.com/questions/1267283/how-can-i-pad-a-value-with-leading-zeros
+       
         for (obsNr=0;obsNr<json.data[item].observations.length;obsNr++)
         {
             observation=json.data[item].observations[obsNr]
             elementId=observation.elementId
+
             unit=observation.unit
+
             if (unit==='degC')
                unit='℃'
             else if (unit==='percent')
@@ -477,17 +482,31 @@ GetJSONFrost.prototype.parse=function()
             else if (unit==='W/m2')
               unit='W/㎡'
 
-              this.METno[elementId] = {
-                timestamp : timestamp,
-                hhmm : hhmm,
-                value : observation.value,
-                unit : unit
-            }
+            // Query result should have time offset PT0H
+            if (observation.timeOffset!=='PT0H')
+                // must add offset to referencetime
+                console.error('Skipping observation for time offset '+observation.timeOffset+' '+JSON.stringify(observation))
+            else
+            {
+
+                if (!this.METno[elementId])
+                    this.METno[elementId] = []
+
+                lastObservation=this.METno[elementId].slice(-1)[0]
+                if (!lastObservation || (lastObservation && lastObservation.timestamp !== timestamp)) // dont attempt to add multiple observations with same timestamp, for example PT1H and PT10M at 10:00
+                    this.METno[elementId].push({
+                        timestamp : timestamp,
+                        hhmm : hhmm,
+                        value : observation.value,
+                        unit : unit
+                    })
+        }
            
         }
 
-        console.log('METno dataitem '+item+' '+JSON.stringify(this.METno),this.METno)
    }
+   console.log('METno '+JSON.stringify(this.METno),this.METno)
+
 }
 
 function GetJSONFrostLatest10Min(host,port,path,interval,options)
@@ -540,8 +559,8 @@ function UI()
 
     this.options={
         interval: 16000,                // milliseconds (ms) request time for livedata JSON
-        slow_interval: 60000,            // ms slow request for livedata JSON
-        fastRequestTimeout : 20000,   // ms before starting slow request interval for livedata JSON
+        slow_interval: 60000,           // ms slow request for livedata JSON
+        fastRequestTimeout : 60000,     // ms before starting slow request interval for livedata JSON
         fastRedrawTimeout : 60000*5,    // ms before, reverting to fixed redraw interval, during fast redraw charts are redrawn as fast as the JSON request interval
         redraw_interval: 60000,         // ms between each chart redraw
         tooltip: !isIpad1,              // turn off for ipad1 - slow animation/disappearing
@@ -550,7 +569,7 @@ function UI()
         shift: false,                   // shift series flag
         shift_measurements_ipad1: 2250, // number of measurements before shifting (3600/16=225 samples/hours*10 hours)
         shift_measurements: 5400,       // 1 day= 225 samples*24 hours =5400
-        invalid_security_certificate : isIpad1, // have outdated security certificates for https request,
+        invalid_security_certificate : isIpad1, // have outdated security certificates for https request
         rangeSelector: !isIpad1,        // keeps memory for series
         mousetracking: !isIpad1,        // allocates memory for duplicate path for tracking
         frostapi : true && navigator.language.toLowerCase()==='nb-no',    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
@@ -581,22 +600,15 @@ function UI()
     
 }
 
-UI.prototype.onJSONFrostLatest10Min=function(evt)
-{
-    console.error('Parsing of latest 10 min not implemented yet')
-    this.METno=this.getJSONFrostLatest10Min.METno
-}
-
-UI.prototype.onJSONFrost=function(evt)
+UI.prototype.addObservationsMETno=function()
 {
     var series,
-        observation,
-        elementId
+    observation,
+    obsNr,
+    elementId
 
-    this.METno=this.getJSONFrost.METno
-   
-   for (elementId in this.getJSONFrost.METno) 
-   {
+    for (elementId in this.METno) 
+    {
         switch (elementId)
         {
             case 'air_pressure_at_sea_level' :
@@ -610,7 +622,7 @@ UI.prototype.onJSONFrost=function(evt)
 
             
             case 'relative_humidity' :
-                 
+                
                 series=this.temperaturechart.series[5]
                 break;
 
@@ -624,26 +636,47 @@ UI.prototype.onJSONFrost=function(evt)
                 series=this.windbarbchart.series[3]
                 break
                 
+            // Multi-criteria case https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/switch
             case 'max(wind_speed_of_gust PT1H)':
+            case 'max(wind_speed_of_gust PT10M)':
 
                 series=this.windbarbchart.series[4]
                 break
 
             case 'mean(surface_downwelling_shortwave_flux_in_air PT1H)' :
+            case 'mean(surface_downwelling_shortwave_flux_in_air PT1M)' :
                 
                 series=this.solarchart.series[2]
+                break
+
+            default : 
+                
+                console.error('Unsupported elementId '+elementId+' not added to series')
                 break
         }
 
         if (series) {
-            observation=this.getJSONFrost.METno[elementId]
-            //console.log('addpoint',series.name,[observation.timestamp,observation.value])
-            series.addPoint([observation.timestamp,observation.value],false,this.options.shift,this.options.animation,false)
+            for (obsNr=0;obsNr<this.METno[elementId].length;obsNr++) {
+                observation=this.METno[elementId][obsNr]
+                console.log('addpoint',series.name,[observation.timestamp,observation.value])
+                series.addPoint([observation.timestamp,observation.value],false,this.options.shift,this.options.animation,false)
+            }
             series=undefined
         }
 
     }
+}
 
+UI.prototype.onJSONFrostLatest10Min=function(evt)
+{
+    this.METno=this.getJSONFrostLatest10Min.METno
+    this.addObservationsMETno()
+}
+
+UI.prototype.onJSONFrost=function(evt)
+{
+   this.METno=this.getJSONFrost.METno
+   this.addObservationsMETno()
 }
 
 UI.prototype.onJSONFrostPrecipitationHour=function(evt)
@@ -851,14 +884,14 @@ UI.prototype.initChart=function()
 
     if (this.options.frostapi)
            tempSeries.push(  {
-            name: 'Temperature METno',
+            name: 'METno Temperature',
             type: 'spline',
             yAxis: 0,
             data: [],
             visible: false,
             zIndex : 2
         }, {
-            name: 'Humidity METno',
+            name: 'METno Humidity',
             type: 'spline',
             yAxis: 1,
             data: [],
@@ -1239,7 +1272,7 @@ UI.prototype.initChart=function()
     
     var solarSeries=[
         {
-                name: 'Solar light',
+                name: 'Irradiance',
                 type: 'spline',
                 yAxis: 0,
                 data: []
@@ -1253,7 +1286,7 @@ UI.prototype.initChart=function()
            // }
            // ,
             {
-                name: 'Solar UVI',
+                name: 'UVI',
                 type: 'areaspline',
                 yAxis: 1,
                 data: [],
@@ -1285,7 +1318,7 @@ UI.prototype.initChart=function()
             // shortwave 295-2800nm (ultraviolet,visible,infrared)
             //https://frost.met.no/elements/v0.jsonld?fields=id,oldElementCodes,category,name,description,unit,sensorLevelType,sensorLevelUnit,sensorLevelDefaultValue,sensorLevelValues,cmMethod,cmMethodDescription,cmInnerMethod,cmInnerMethodDescription,status&lang=en-US
             // https://frost.met.no/elementtable
-            name: 'Solar METno',
+            name: 'METno Solar mean 1m',
             type: 'spline',
             yAxis: 0,
             data: [],
@@ -1416,7 +1449,7 @@ UI.prototype.initChart=function()
             type: 'spline',
             data: [],
             //zIndex: 2,
-            name: 'Wind max 1h METno',
+            name: 'METno Wind mean 10min',
             visible: false
         })
 
@@ -1425,7 +1458,7 @@ UI.prototype.initChart=function()
             type: 'spline',
             data: [],
             //zIndex: 2,
-            name: 'Wind gust max 1h METno',
+            name: 'METno Wind gust max 10min',
             visible: false
         })
     }
@@ -1588,11 +1621,17 @@ UI.prototype.updateCharts=function()
         simulationSubtitle='',
         shiftseries=false,
         redraw=false,
-        METno=this.METno
+        METno=this.METno,
+        latest = {},
+        elementId
+
+    
+    for (elementId in METno)
+       latest[elementId]=METno[elementId][METno[elementId].length-1]
 
     var tempSubtitle='<b>Outdoor</b> '+json.outtempToString()+' '+ json.outhumidityToString()+' <b>Indoor</b> '+json.intempToString()+json.inhumidityToString()
-    if (METno && METno.air_temperature!==undefined)
-      tempSubtitle=tempSubtitle+' <b>METno</b> '+METno.air_temperature.value+' '+METno.air_temperature.unit+' '+METno.relative_humidity.value+' '+METno.relative_humidity.unit+' '+METno.air_temperature.hhmm
+    if (latest.air_temperature)
+      tempSubtitle=tempSubtitle+' <b>METno</b> '+latest.air_temperature.value+' '+latest.air_temperature.unit+' '+latest.relative_humidity.value+' '+latest.relative_humidity.unit+' '+latest.air_temperature.hhmm
 
     this.temperaturechart.update({ 
         subtitle: { text: tempSubtitle}
@@ -1604,18 +1643,18 @@ UI.prototype.updateCharts=function()
     if (winddailymax)
        windSubtitle=windSubtitle+' <b>Max today</b> '+json.winddailymaxToString()
 
-    if (METno && METno['max(wind_speed PT1H)'])
-      windSubtitle=windSubtitle+' <b>Wind max 1h METno</b> '+METno['max(wind_speed PT1H)'].value+' '+METno['max(wind_speed PT1H)'].unit+' <b>Gust max 1h</b> '+METno["max(wind_speed_of_gust PT1H)"].value+' '+METno['max(wind_speed_of_gust PT1H)'].unit+' ('+METno.wind_from_direction.value+METno.wind_from_direction.unit+') '+METno['max(wind_speed PT1H)'].hhmm
+    if (latest.wind_speed && latest['max(wind_speed_of_gust PT10M)'])
+      windSubtitle=windSubtitle+' <b> METno Wind 10min</b> '+latest['wind_speed'].value+' '+latest['wind_speed'].unit+' <b>Gust max 10min</b> '+latest["max(wind_speed_of_gust PT10M)"].value+' '+latest['max(wind_speed_of_gust PT10M)'].unit+' ('+latest.wind_from_direction.value+latest.wind_from_direction.unit+') '+latest.wind_speed.hhmm
 
     this.windbarbchart.update({ subtitle : { text: windSubtitle }},redraw)
     var solarSubtitle='<b>Irradiance</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')' 
-    if (METno && METno['mean(surface_downwelling_shortwave_flux_in_air PT1H)']!==undefined)
-        solarSubtitle=solarSubtitle+' <b>METno</b> '+METno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].value+ ' '+METno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].unit+' '+METno['mean(surface_downwelling_shortwave_flux_in_air PT1H)'].hhmm
+    if (latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'])
+        solarSubtitle=solarSubtitle+' <b>METno Mean 1m</b> '+latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'].value+ ' '+latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'].unit+' '+latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'].hhmm
 
     this.solarchart.update({subtitle : { text: solarSubtitle }},redraw)
     var pressureSubtitle='<b>Relative</b> '+json.pressureToString(json.relbaro())+' <b>Absolute</b> ' + json.pressureToString(json.absbaro())
-    if (METno && METno.air_pressure_at_sea_level)
-       pressureSubtitle=pressureSubtitle+' <b>Sea-level pressure (QFF) METno</b> ' + METno.air_pressure_at_sea_level.value.toFixed(1) + ' '+METno.air_pressure_at_sea_level.unit +' '+METno.air_pressure_at_sea_level.hhmm
+    if (latest.air_pressure_at_sea_level)
+       pressureSubtitle=pressureSubtitle+' <b>Sea-level pressure (QFF) METno</b> ' + latest.air_pressure_at_sea_level.value.toFixed(1) + ' '+latest.air_pressure_at_sea_level.unit +' '+latest.air_pressure_at_sea_level.hhmm
     this.pressurechart.update({ subtitle : { text: pressureSubtitle }},redraw)
     this.rainchart.update({subtitle: { text: '<b>Rain rate</b>'+' '+json.rainrateToString()}},redraw)
     //this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())
