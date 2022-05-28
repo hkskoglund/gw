@@ -462,9 +462,9 @@ GetJSONFrost.prototype.parse=function()
         elementId,
         unit,
         timeOffset,
-        lastObservation,
-        METno={}
+        lastObservation
 
+    this.METno={}
 
     for (item=0;item<json.totalItemCount;item++) // number of data items
     {
