@@ -451,7 +451,7 @@ GetJSONFrost.prototype.parse=function()
        return
    }
 
-   console.log('JSON'+JSON.stringify(json))
+   //console.log('JSON'+JSON.stringify(json))
 
    var item,
         obsNr,
