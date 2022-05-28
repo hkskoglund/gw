@@ -591,7 +591,7 @@ function UI()
 
     //this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
 
-    this.initChart()
+    this.initCharts()
   
     if (window.location.hostname === '127.0.0.1') // assume web server runs on port 80
         // Visual studio code live preview uses 127.0.0.1:3000
@@ -1570,17 +1570,17 @@ UI.prototype.initWindBarbChart=function()
     });
 }
 
-UI.prototype.initChart=function()
+UI.prototype.initCharts=function()
 {
     // Windrose demo https://jsfiddle.net/fq64pkhn/
-   // var testChart=Highcharts.stockChart('testchart',{ title: { text: 'test chart' }}) ipad1 problem "TypeError: 'undefined' is not an object -> when dragging/touching
+    var testChart=Highcharts.stockChart('testchart',{ title: { text: 'test chart' }}) // ipad1 problem "TypeError: 'undefined' is not an object -> when dragging/touching
 
-    this.initWindroseChart()
+  /*  this.initWindroseChart()
     this.initTemperatureChart()
     this.initPressureChart()
     this.initRainChart()
     this.initSolarChart()
-    this.initWindBarbChart()
+    this.initWindBarbChart() */
 }
 
 UI.prototype.onJSON=function (ev)
@@ -1782,15 +1782,15 @@ UI.prototype.redrawChart=function()
 }
 
 https://stackoverflow.com/questions/15455009/javascript-call-apply-vs-bind
-if (Function.prototype.bind === undefined)
+if (!Function.prototype.bind)
 {
     //console.log('javascript bind not found, creating new Function.prototype.bind,'+window.navigator.userAgent)
     Function.prototype.bind = function(ctx) {
         var fn = this,
-            args=Array.prototype.slice.call(arguments,1) // Shallow copy - points to same memory
+            args=Array.prototype.slice.call(arguments,1) // Shallow copy - points to same memory - arguments when creating function with .bind(this,...)
         return function() {
             //https://gist.github.com/MiguelCastillo/38005792d33373f4d08c
-            fn.apply(ctx, args);
+            fn.apply(ctx, args.concat(Array.prototype.slice.call(arguments))); // conact to append arguments when calling
         };
     };
 }

@@ -27562,6 +27562,7 @@
                 var plotLeft = chart.plotLeft;
                 var plotTop = chart.plotTop;
                 if (!chart.cancelClick) {
+
                     // On tracker click, fire the series and point events. #783, #1583
                     if (hoverPoint &&
                         this.inClass(pEvt.target, 'highcharts-tracker')) {
@@ -27576,12 +27577,16 @@
                         // When clicking outside a tracker, fire a chart event
                     }
                     else {
+
                         extend(pEvt, this.getCoordinates(pEvt));
                         // fire a click event in the chart
                         if (chart.isInsidePlot(pEvt.chartX - plotLeft, pEvt.chartY - plotTop, {
                             visiblePlotOnly: true
                         })) {
-                            fireEvent(chart, 'click', pEvt);
+                            try {
+                                fireEvent(chart, 'click', pEvt);
+                            } catch (err) { console.error(err) }
+
                         }
                     }
                 }
@@ -28202,6 +28207,7 @@
                 container.onmousedown = this.onContainerMouseDown.bind(this);
                 container.onmousemove = this.onContainerMouseMove.bind(this);
                 container.onclick = this.onContainerClick.bind(this);
+
                 this.eventsToUnbind.push(addEvent(container, 'mouseenter', this.onContainerMouseEnter.bind(this)));
                 this.eventsToUnbind.push(addEvent(container, 'mouseleave', this.onContainerMouseLeave.bind(this)));
                 if (!Pointer.unbindDocumentMouseUp) {
