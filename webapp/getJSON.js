@@ -468,6 +468,7 @@ GetJSONFrost.prototype.parse=function()
     for (item=0;item<json.totalItemCount;item++) // number of data items
     {
             referenceTime=new Date(json.data[item].referenceTime) 
+            console.log(JSON.stringify(json.data[item]))
             //console.log('referencetime',referenceTime)                    
             timestamp=referenceTime.getTime()-referenceTime.getTimezoneOffset()*60000  // local timezone time
             hhmm=('0'+referenceTime.getHours()).slice(-2)+':'+('0'+referenceTime.getMinutes()).slice(-2) // https://stackoverflow.com/questions/1267283/how-can-i-pad-a-value-with-leading-zeros
