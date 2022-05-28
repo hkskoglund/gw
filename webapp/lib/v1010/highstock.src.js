@@ -1590,6 +1590,7 @@
             /* eslint-enable valid-jsdoc */
             var e,
                 i;
+                
             eventArguments = eventArguments || {};
             if (doc.createEvent &&
                 (el.dispatchEvent ||
