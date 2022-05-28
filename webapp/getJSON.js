@@ -607,8 +607,8 @@ function UI()
     //this.getJSONFrost = new GetJSONFrost(window.location.hostname,port,'/api/frost.met.no/latest-hourly',this.options.frostapi_interval,this.options)
     //this.getJSONFrost.req.addEventListener("load",this.onJSONFrost.bind(this))
 
-    this.getJSONFrostLatest10Min = new GetJSONFrostLatest10Min(window.location.hostname,port,'/api/frost.met.no/latest-10min',this.options.frostapi_interval_10min,this.options)
-    this.getJSONFrostLatest10Min.req.addEventListener("load",this.onJSONFrostLatest10Min.bind(this))
+   // this.getJSONFrostLatest10Min = new GetJSONFrostLatest10Min(window.location.hostname,port,'/api/frost.met.no/latest-10min',this.options.frostapi_interval_10min,this.options)
+   // this.getJSONFrostLatest10Min.req.addEventListener("load",this.onJSONFrostLatest10Min.bind(this))
 
     
 }
