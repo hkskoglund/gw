@@ -1573,14 +1573,14 @@ UI.prototype.initWindBarbChart=function()
 UI.prototype.initCharts=function()
 {
     // Windrose demo https://jsfiddle.net/fq64pkhn/
-    var testChart=Highcharts.stockChart('testchart',{ title: { text: 'test chart' }}) // ipad1 problem "TypeError: 'undefined' is not an object -> when dragging/touching
+    //var testChart=Highcharts.stockChart('testchart',{ title: { text: 'test chart' }}) 
 
-  /*  this.initWindroseChart()
+    this.initWindroseChart()
     this.initTemperatureChart()
     this.initPressureChart()
     this.initRainChart()
     this.initSolarChart()
-    this.initWindBarbChart() */
+    this.initWindBarbChart() 
 }
 
 UI.prototype.onJSON=function (ev)
