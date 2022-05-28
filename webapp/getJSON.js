@@ -599,9 +599,9 @@ function UI()
     else
       port=window.location.port
 
-    this.getJSON=new GetJSON(window.location.hostname,port,'/api/livedata',this.options.interval,this.options)
-    this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
-    setTimeout(this.getJSON.changeInterval.bind(this.getJSON,this.options.slow_interval),this.options.fastRequestTimeout)
+    //this.getJSON=new GetJSON(window.location.hostname,port,'/api/livedata',this.options.interval,this.options)
+    //this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
+    //setTimeout(this.getJSON.changeInterval.bind(this.getJSON,this.options.slow_interval),this.options.fastRequestTimeout)
 
 
     //this.getJSONFrost = new GetJSONFrost(window.location.hostname,port,'/api/frost.met.no/latest-hourly',this.options.frostapi_interval,this.options)
@@ -710,10 +710,8 @@ UI.prototype.isIpad1=function()
    return navigator.userAgent.indexOf("iPad; CPU OS 5_1_1 like Mac OS X")!=-1
 }
 
-UI.prototype.initChart=function()
+UI.prototype.initWindroseChart=function()
 {
-    // Windrose demo https://jsfiddle.net/fq64pkhn/
-   
     this.windrosechart=Highcharts.chart('windrosechart', {
         chart: {
             animation: this.options.animation,
@@ -854,6 +852,10 @@ UI.prototype.initChart=function()
                 ]
     });
 
+}
+
+UI.prototype.initTemperatureChart=function()
+{
     var tempSeries=[
         {
                 name: 'Outdoor',
@@ -1008,105 +1010,112 @@ UI.prototype.initChart=function()
         
    })
 
-   var pressureSeries=[
-    {
-            name: 'Relative',
-            type: 'spline',
-            data: []
-        },
-        {
-            name: 'Absolute',
-            type: 'spline',
-            data: [],
-            visible: false
-        }]
+}
 
-    if (this.options.frostapi)
-       pressureSeries.push(
+UI.prototype.initPressureChart=function()
+{
+    var pressureSeries=[
         {
-            name: 'Sea-level pressure (QFF) MET.no',
-            type: 'spline',
-            data: [],
-            visible: false
-        })
-        
-
-    this.pressurechart= new Highcharts.stockChart({ chart : {
-        animation: this.options.animation,
-        renderTo: 'pressurechart',
-    },
-    tooltip: {
-        enabled: this.options.tooltip
-    },
-    rangeSelector: {
-        enabled: this.options.rangeSelector,
-        inputEnabled: false,
-        buttons: [{
-            type: 'hour',
-            count: 1,
-            text: '1h'
-        },
+                name: 'Relative',
+                type: 'spline',
+                data: []
+            },
             {
-            type: 'minute',
-            count: 15,
-            text: '15m'
-        },{
-            type: 'minute',
-            count: 1,
-            text: '1m'
-        },
-         {
-            type: 'all',
-            text: 'All'
-        }],
-        selected: 4,
-        verticalAlign: 'bottom'
-    },
-
-    scrollbar: {
-        enabled: false
-    },
-
-    navigator: {
-        enabled: this.options.rangeSelector
-    },
-
-    legend: {
-        enabled: true
-    },
+                name: 'Absolute',
+                type: 'spline',
+                data: [],
+                visible: false
+            }]
     
-    tooltip : {
-        enabled: this.options.tooltip,
-    },
-    credits: {
-        enabled: false
-    },
-    title: {
-        text: 'Pressure'
-    },
-    yAxis: [{
-        //https://api.highcharts.com/highcharts/yAxis.max
-        title: false,
-        tickInterval: 5,
-        //min: 950
-        //max : null
+        if (this.options.frostapi)
+           pressureSeries.push(
+            {
+                name: 'Sea-level pressure (QFF) MET.no',
+                type: 'spline',
+                data: [],
+                visible: false
+            })
+            
+    
+        this.pressurechart= new Highcharts.stockChart({ chart : {
+            animation: this.options.animation,
+            renderTo: 'pressurechart',
+        },
+        tooltip: {
+            enabled: this.options.tooltip
+        },
+        rangeSelector: {
+            enabled: this.options.rangeSelector,
+            inputEnabled: false,
+            buttons: [{
+                type: 'hour',
+                count: 1,
+                text: '1h'
+            },
+                {
+                type: 'minute',
+                count: 15,
+                text: '15m'
+            },{
+                type: 'minute',
+                count: 1,
+                text: '1m'
+            },
+             {
+                type: 'all',
+                text: 'All'
+            }],
+            selected: 4,
+            verticalAlign: 'bottom'
+        },
+    
+        scrollbar: {
+            enabled: false
+        },
+    
+        navigator: {
+            enabled: this.options.rangeSelector
+        },
+    
+        legend: {
+            enabled: true
+        },
         
-    }
-
-],
-    xAxis: [{
-        type: 'datetime',
-    }],
-
-    plotOptions: {
-        series: {
-            enableMouseTracking: this.options.mousetracking
+        tooltip : {
+            enabled: this.options.tooltip,
+        },
+        credits: {
+            enabled: false
+        },
+        title: {
+            text: 'Pressure'
+        },
+        yAxis: [{
+            //https://api.highcharts.com/highcharts/yAxis.max
+            title: false,
+            tickInterval: 5,
+            //min: 950
+            //max : null
+            
         }
-    },
+    
+    ],
+        xAxis: [{
+            type: 'datetime',
+        }],
+    
+        plotOptions: {
+            series: {
+                enableMouseTracking: this.options.mousetracking
+            }
+        },
+    
+        series: pressureSeries
+        })
+}
 
-    series: pressureSeries
-    })
-
+UI.prototype.initRainChart=function()
+{
     this.rainstatchart=new Highcharts.chart('rainstatchart',
                             { chart : { 
                                  animation: this.options.animation
@@ -1282,7 +1291,10 @@ UI.prototype.initChart=function()
                         
                         ] 
                         })
-    
+}
+
+UI.prototype.initSolarChart=function()
+{
     var solarSeries=[
         {
                 name: 'Irradiance',
@@ -1433,7 +1445,10 @@ UI.prototype.initChart=function()
 
                         series: solarSeries
                         })
+}
 
+UI.prototype.initWindBarbChart=function()
+{
     var windSeries= [{
         type: 'windbarb',
         data: [],
@@ -1553,7 +1568,17 @@ UI.prototype.initChart=function()
         series: windSeries
     
     });
+}
 
+UI.prototype.initChart=function()
+{
+    // Windrose demo https://jsfiddle.net/fq64pkhn/
+    this.initWindroseChart()
+    this.initTemperatureChart()
+    this.initPressureChart()
+    this.initRainChart()
+    this.initSolarChart()
+    this.initWindBarbChart()
 }
 
 UI.prototype.onJSON=function (ev)
