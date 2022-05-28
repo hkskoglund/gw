@@ -479,8 +479,9 @@ GetJSONFrost.prototype.parse=function()
             for (obsNr=0;obsNr<json.data[item].observations.length;obsNr++)
             {
                 observation=json.data[item].observations[obsNr]
-                console.log('observation '+JSON.stringify(observation))
                 elementId=observation.elementId
+                console.log(elementId+' '+JSON.stringify(observation))
+
 
                 unit=observation.unit
 
