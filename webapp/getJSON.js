@@ -374,8 +374,14 @@ GetJSON.prototype.transferComplete=function(evt)
     //console.log('transfer complete',evt)
     if (this.req.responseText.length > 0) {
         //console.log('json:'+this.req.responseText)
-        this.json = JSON.parse(this.req.responseText)
-        this.parse()
+        try {
+            this.json = JSON.parse(this.req.responseText)
+            this.parse()
+        } catch (err)
+        {
+            console.error('Failed parsing JSON')
+            console.error(JSON.stringify(err))
+        }
        
     } else
     {
@@ -435,16 +441,17 @@ GetJSONFrost.prototype.sendRequest=function()
     
 }
 
-
 GetJSONFrost.prototype.parse=function()
 {
-    var json=this.json // set by getJSON eventhandler, otherwise also available in evt.currentTarget.reponseText
+    var json=this.json 
    // https://frost.met.no/api.html#!/observations/observations
    if (json['@type'] != 'ObservationResponse' )
    {
        console.error('Not a ObservationResponse type, aborting parsing'+JSON.stringify(json))
        return
    }
+
+   console.log('JSON'+JSON.stringify(json))
 
    var item,
         obsNr,
@@ -455,56 +462,57 @@ GetJSONFrost.prototype.parse=function()
         elementId,
         unit,
         timeOffset,
-        lastObservation
+        lastObservation,
+        METno={}
 
-    this.METno={}
-
-   for (item=0;item<json.totalItemCount;item++) // number of data items
-   {
-        referenceTime=new Date(json.data[item].referenceTime)  
-        //console.log('referencetime',referenceTime)                    
-        timestamp=referenceTime.getTime()-referenceTime.getTimezoneOffset()*60000  // local timezone time
-        hhmm=('0'+referenceTime.getHours()).slice(-2)+':'+('0'+referenceTime.getMinutes()).slice(-2) // https://stackoverflow.com/questions/1267283/how-can-i-pad-a-value-with-leading-zeros
-       
-        for (obsNr=0;obsNr<json.data[item].observations.length;obsNr++)
-        {
-            observation=json.data[item].observations[obsNr]
-            elementId=observation.elementId
-
-            unit=observation.unit
-
-            if (unit==='degC')
-               unit='℃'
-            else if (unit==='percent')
-                unit='%'
-            else if (unit==='degrees')
-               unit='°'
-            else if (unit==='W/m2')
-              unit='W/㎡'
-
-            // Query result should have time offset PT0H
-            if (observation.timeOffset!=='PT0H')
-                // must add offset to referencetime
-                console.error('Skipping observation for time offset '+observation.timeOffset+' '+JSON.stringify(observation))
-            else
+            for (item=0;item<json.totalItemCount;item++) // number of data items
             {
+                    referenceTime=new Date(json.data[item].referenceTime) 
+                    throw new TypeError('typeerror test') 
+                    //console.log('referencetime',referenceTime)                    
+                    timestamp=referenceTime.getTime()-referenceTime.getTimezoneOffset()*60000  // local timezone time
+                    hhmm=('0'+referenceTime.getHours()).slice(-2)+':'+('0'+referenceTime.getMinutes()).slice(-2) // https://stackoverflow.com/questions/1267283/how-can-i-pad-a-value-with-leading-zeros
+                
+                    for (obsNr=0;obsNr<json.data[item].observations.length;obsNr++)
+                    {
+                        observation=json.data[item].observations[obsNr]
+                        elementId=observation.elementId
 
-                if (!this.METno[elementId])
-                    this.METno[elementId] = []
+                        unit=observation.unit
 
-                lastObservation=this.METno[elementId].slice(-1)[0]
-                if (!lastObservation || (lastObservation && lastObservation.timestamp !== timestamp)) // dont attempt to add multiple observations with same timestamp, for example PT1H and PT10M at 10:00
-                    this.METno[elementId].push({
-                        timestamp : timestamp,
-                        hhmm : hhmm,
-                        value : observation.value,
-                        unit : unit
-                    })
-        }
-           
-        }
+                        if (unit==='degC')
+                        unit='℃'
+                        else if (unit==='percent')
+                            unit='%'
+                        else if (unit==='degrees')
+                        unit='°'
+                        else if (unit==='W/m2')
+                        unit='W/㎡'
 
-   }
+                        // Query result should have time offset PT0H
+                        if (observation.timeOffset!=='PT0H')
+                            // must add offset to referencetime
+                            console.error('Skipping observation for time offset '+observation.timeOffset+' '+JSON.stringify(observation))
+                        else
+                        {
+
+                            if (!this.METno[elementId])
+                                this.METno[elementId] = []
+
+                            lastObservation=this.METno[elementId].slice(-1)[0]
+                            if (!lastObservation || (lastObservation && lastObservation.timestamp !== timestamp)) // dont attempt to add multiple observations with same timestamp, for example PT1H and PT10M at 10:00
+                                this.METno[elementId].push({
+                                    timestamp : timestamp,
+                                    hhmm : hhmm,
+                                    value : observation.value,
+                                    unit : unit
+                                })
+                        }
+                    
+                    }
+            }
+        
+
    console.log('METno '+JSON.stringify(this.METno),this.METno)
 
 }
