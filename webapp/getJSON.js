@@ -599,16 +599,16 @@ function UI()
     else
       port=window.location.port
 
-    //this.getJSON=new GetJSON(window.location.hostname,port,'/api/livedata',this.options.interval,this.options)
-    //this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
-    //setTimeout(this.getJSON.changeInterval.bind(this.getJSON,this.options.slow_interval),this.options.fastRequestTimeout)
+    this.getJSON=new GetJSON(window.location.hostname,port,'/api/livedata',this.options.interval,this.options)
+    this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
+    setTimeout(this.getJSON.changeInterval.bind(this.getJSON,this.options.slow_interval),this.options.fastRequestTimeout)
 
 
     //this.getJSONFrost = new GetJSONFrost(window.location.hostname,port,'/api/frost.met.no/latest-hourly',this.options.frostapi_interval,this.options)
     //this.getJSONFrost.req.addEventListener("load",this.onJSONFrost.bind(this))
 
-   // this.getJSONFrostLatest10Min = new GetJSONFrostLatest10Min(window.location.hostname,port,'/api/frost.met.no/latest-10min',this.options.frostapi_interval_10min,this.options)
-   // this.getJSONFrostLatest10Min.req.addEventListener("load",this.onJSONFrostLatest10Min.bind(this))
+    this.getJSONFrostLatest10Min = new GetJSONFrostLatest10Min(window.location.hostname,port,'/api/frost.met.no/latest-10min',this.options.frostapi_interval_10min,this.options)
+    this.getJSONFrostLatest10Min.req.addEventListener("load",this.onJSONFrostLatest10Min.bind(this))
 
     
 }
@@ -1573,6 +1573,8 @@ UI.prototype.initWindBarbChart=function()
 UI.prototype.initChart=function()
 {
     // Windrose demo https://jsfiddle.net/fq64pkhn/
+   // var testChart=Highcharts.stockChart('testchart',{ title: { text: 'test chart' }}) ipad1 problem "TypeError: 'undefined' is not an object -> when dragging/touching
+
     this.initWindroseChart()
     this.initTemperatureChart()
     this.initPressureChart()
