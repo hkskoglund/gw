@@ -465,7 +465,7 @@ GetJSONFrost.prototype.parse=function()
         lastObservation,
         METno={}
 
-        
+
     for (item=0;item<json.totalItemCount;item++) // number of data items
     {
             referenceTime=new Date(json.data[item].referenceTime) 
@@ -479,6 +479,7 @@ GetJSONFrost.prototype.parse=function()
             for (obsNr=0;obsNr<json.data[item].observations.length;obsNr++)
             {
                 observation=json.data[item].observations[obsNr]
+                console.log('observation '+JSON.stringify(observation))
                 elementId=observation.elementId
 
                 unit=observation.unit
