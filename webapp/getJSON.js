@@ -584,7 +584,7 @@ function UI()
         invalid_security_certificate : isIpad1, // have outdated security certificates for https request
         rangeSelector: !isIpad1,        // keeps memory for series
         mousetracking: !isIpad1,        // allocates memory for duplicate path for tracking
-        frostapi : true && navigator.language.toLowerCase()==='nb-no',    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
+        frostapi : true && (navigator.language.toLowerCase().indexOf('nb') !== -1),    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
         frostapi_interval_1h:     3600000,      // request interval 1 hour
         frostapi_interval_10min:   600000       // 10 min   
     }
@@ -616,9 +616,10 @@ function UI()
 UI.prototype.addObservationsMETno=function()
 {
     var series,
-    observation,
-    obsNr,
-    elementId
+        observation,
+        obsNr,
+        elementId,
+        lastOptionsData
 
     for (elementId in this.METno) 
     {
@@ -672,7 +673,11 @@ UI.prototype.addObservationsMETno=function()
             for (obsNr=0;obsNr<this.METno[elementId].length;obsNr++) {
                 observation=this.METno[elementId][obsNr]
                // console.log('addpoint',series.name,[observation.timestamp,observation.value])
-                series.addPoint([observation.timestamp,observation.value],false,this.options.shift,this.options.animation,false)
+               lastOptionsData=series.options.data.slice(-1)
+               if (lastOptionsData && lastOptionsData[0][0]!==observation.timestamp)
+                    series.addPoint([observation.timestamp,observation.value],false,this.options.shift,this.options.animation,false)
+                else
+                  console.warn(elementId+' Skippping observation already is series; timestamp '+observation.timestamp+' value '+observation.value,series) // same value of relative_humidity and air_pressure_at_at_sea_level each 1h is included each 10m in JSON
             }
             series=undefined
         }
