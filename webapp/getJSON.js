@@ -672,10 +672,12 @@ UI.prototype.addObservationsMETno=function()
         if (series) {
             for (obsNr=0;obsNr<this.METno[elementId].length;obsNr++) {
                 observation=this.METno[elementId][obsNr]
-               // console.log('addpoint',series.name,[observation.timestamp,observation.value])
                lastOptionsData=series.options.data.slice(-1)
-               if ((lastOptionsData.length===1 && lastOptionsData[0][0]!==observation.timestamp)|| lastOptionsData.length===0)
+               console.log('lastOptionsData',lastOptionsData,series.name)
+               if ((lastOptionsData.length===1 && lastOptionsData[0][0]!==observation.timestamp)|| lastOptionsData.length===0) {
+                    console.log('addpoint',series.name,[observation.timestamp,observation.value])
                     series.addPoint([observation.timestamp,observation.value],false,this.options.shift,this.options.animation,false)
+               }
                 else
                   console.warn(elementId+' Skippping observation already is series; timestamp '+observation.timestamp+' value '+observation.value,series) // same value of relative_humidity and air_pressure_at_at_sea_level each 1h is included each 10m in JSON
             }
@@ -904,14 +906,14 @@ UI.prototype.initTemperatureChart=function()
 
     if (this.options.frostapi)
            tempSeries.push(  {
-            name: 'METno Temperature',
+            name: 'METno Temperature 10min',
             type: 'spline',
             yAxis: 0,
             data: [],
             visible: false,
             zIndex : 2
         }, {
-            name: 'METno Humidity',
+            name: 'METno Humidity 1h',
             type: 'spline',
             yAxis: 1,
             data: [],
@@ -1035,7 +1037,7 @@ UI.prototype.initPressureChart=function()
         if (this.options.frostapi)
            pressureSeries.push(
             {
-                name: 'Sea-level pressure (QFF) MET.no',
+                name: 'METno Sea-level pressure (QFF) 1h',
                 type: 'spline',
                 data: [],
                 visible: false
