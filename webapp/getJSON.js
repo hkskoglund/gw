@@ -674,7 +674,7 @@ UI.prototype.addObservationsMETno=function()
                 observation=this.METno[elementId][obsNr]
                // console.log('addpoint',series.name,[observation.timestamp,observation.value])
                lastOptionsData=series.options.data.slice(-1)
-               if (lastOptionsData.length===1 && lastOptionsData[0][0]!==observation.timestamp)
+               if ((lastOptionsData.length===1 && lastOptionsData[0][0]!==observation.timestamp)|| lastOptionsData.length===0)
                     series.addPoint([observation.timestamp,observation.value],false,this.options.shift,this.options.animation,false)
                 else
                   console.warn(elementId+' Skippping observation already is series; timestamp '+observation.timestamp+' value '+observation.value,series) // same value of relative_humidity and air_pressure_at_at_sea_level each 1h is included each 10m in JSON
