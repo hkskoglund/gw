@@ -326,6 +326,7 @@ webserver()
                                 # query can be built using https://seklima.met.no/ -> developer tools "Network" pane
 
                                 l_sources=SN90450
+                                #l_sources=SN87640
                                 l_elements="air_temperature,surface_snow_thickness,air_pressure_at_sea_level,relative_humidity,max(wind_speed%20PT1H),max(wind_speed_of_gust%20PT1H),wind_from_direction,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)"
                                 l_timeresolution="PT1H"
 
@@ -340,6 +341,7 @@ webserver()
                                # https://web.postman.co/workspace/Test-av-frost%2Frim-MET~2bc0415b-9a14-431a-84ff-ad0748f8adae/request/21055109-f182896f-5ca9-484f-874f-91b2c594e624
                                
                                l_sources=SN90450
+                               #l_sources=SN87640
                                l_timeresolution="PT1M,PT10M,PT1H" # 1m, 10 min or 1 h measurements
                                l_elements="air_temperature,relative_humidity,wind_speed,max(wind_speed_of_gust%20PT10M),wind_from_direction,air_pressure_at_sea_level,mean(surface_downwelling_shortwave_flux_in_air%20PT1M)"
 

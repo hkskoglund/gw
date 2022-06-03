@@ -567,7 +567,7 @@ function UI()
     
     this.weatherElement=document.getElementById('divWeather')
 
-    var isIpad1=this.isIpad1()
+    var isLowMemoryDevice=this.isLowMemoryDevice()
 
     this.options={
         interval: 16000,                // milliseconds (ms) request time for livedata JSON
@@ -575,16 +575,17 @@ function UI()
         fastRequestTimeout : 60000*5,   // ms before starting slow request interval for livedata JSON
         fastRedrawTimeout : 60000*5,    // ms before, reverting to fixed redraw interval, during fast redraw charts are redrawn as fast as the JSON request interval
         redraw_interval: 60000,         // ms between each chart redraw
-        tooltip: !isIpad1,              // turn off for ipad1 - slow animation/disappearing
+        tooltip: !isLowMemoryDevice,              // turn off for ipad1 - slow animation/disappearing
         animation: false,               // turn off animation for all charts
         addpointIfChanged : true,       // only addpoint if value changes (keep memory footprint low),
         shift: false,                   // shift series flag
         shift_measurements_ipad1: 2250, // number of measurements before shifting (3600/16=225 samples/hours*10 hours)
         shift_measurements: 5400,       // 1 day= 225 samples*24 hours =5400
-        invalid_security_certificate : isIpad1, // have outdated security certificates for https request
-        rangeSelector: !isIpad1,        // keeps memory for series
-        mousetracking: !isIpad1,        // allocates memory for duplicate path for tracking
-        frostapi : true && (navigator.language.toLowerCase().indexOf('nb') !== -1),    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
+        invalid_security_certificate : isLowMemoryDevice, // have outdated security certificates for https request
+        rangeSelector: !isLowMemoryDevice,        // keeps memory for series
+        mousetracking: !isLowMemoryDevice,        // allocates memory for duplicate path for tracking
+        // navigator.languauge is "en-us" for LG Smart TV 2012
+        frostapi : true && ( (navigator.language.toLowerCase().indexOf('nb') !== -1) || this.isLGSmartTV2012()),    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
         frostapi_interval_1h:     3600000,      // request interval 1 hour
         frostapi_interval_10min:   600000       // 10 min   
     }
@@ -626,41 +627,48 @@ UI.prototype.addObservationsMETno=function()
         switch (elementId)
         {
             case 'air_pressure_at_sea_level' :
-                series = this.pressurechart.series[2]
+                if (this.pressurechart)
+                    series = this.pressurechart.series[2]
                 break
             
             case 'air_temperature' :
 
-                series=this.temperaturechart.series[4]
+                if (this.temperaturechart)
+                    series=this.temperaturechart.series[4]
                 break
 
             
             case 'relative_humidity' :
                 
-                series=this.temperaturechart.series[5]
-                break;
+                if (this.temperaturechart)
+                    series=this.temperaturechart.series[5]
+                break
 
             case 'wind_speed' :
 
-                series=this.windbarbchart.series[3]
+                if (this.windbarbchart)
+                    series=this.windbarbchart.series[3]
                 break
 
             case 'max(wind_speed PT1H)':
 
-                series=this.windbarbchart.series[3]
+                if (this.windbarbchart)
+                    series=this.windbarbchart.series[3]
                 break
                 
             // Multi-criteria case https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/switch
             case 'max(wind_speed_of_gust PT1H)':
             case 'max(wind_speed_of_gust PT10M)':
 
-                series=this.windbarbchart.series[4]
+                if (this.windbarbchart)
+                    series=this.windbarbchart.series[4]
                 break
 
             case 'mean(surface_downwelling_shortwave_flux_in_air PT1H)' :
             case 'mean(surface_downwelling_shortwave_flux_in_air PT1M)' :
                 
-                series=this.solarchart.series[2]
+                if (this.solarchart)
+                    series=this.solarchart.series[2]
                 break
 
             default : 
@@ -711,10 +719,22 @@ UI.prototype.onJSONFrostPrecipitationHour=function(evt)
 
 }
 
+UI.prototype.isLowMemoryDevice=function()
+{
+    return this.isIpad1() || this.isLGSmartTV2012()
+}
+
 UI.prototype.isIpad1=function()
 {
    // "Mozilla/5.0 (iPad; CPU OS 5_1_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B206 Safari/7534.48.3"
-   return navigator.userAgent.indexOf("iPad; CPU OS 5_1_1 like Mac OS X")!=-1
+   return navigator.userAgent.indexOf("iPad; CPU OS 5_1_1 like Mac OS X")!==-1
+}
+
+UI.prototype.isLGSmartTV2012=function()
+{
+    // https://www.lg.com/se/support/manuals?csSalesCode=42LM669T.AEN
+   // Mozilla/5.0 (X11; Linux; ko-KR) AppleWebKit/534.26+ (KHTML, like Gecko) Version/5.0 Safari/534.26
+   return navigator.userAgent.indexOf("Mozilla/5.0 (X11; Linux; ko-KR) AppleWebKit/534.26+ (KHTML, like Gecko) Version/5.0 Safari/534.26") !== -1
 }
 
 UI.prototype.initWindroseChart=function()
@@ -891,7 +911,7 @@ UI.prototype.initTemperatureChart=function()
                 zIndex: 4
             },
             {
-                name: 'Indoor humidity',
+                name: 'Indoor humidity ',
                 type: 'spline',
                 data: [],
                 
@@ -1121,7 +1141,7 @@ UI.prototype.initPressureChart=function()
         })
 }
 
-UI.prototype.initRainChart=function()
+UI.prototype.initRainstatChart=function()
 {
     this.rainstatchart=new Highcharts.chart('rainstatchart',
                             { chart : { 
@@ -1179,7 +1199,11 @@ UI.prototype.initRainChart=function()
                                     }
                             ]
                             })
-    
+                        }
+
+UI.prototype.initRainChart=function()
+{
+                 
     this.rainchart= new Highcharts.stockChart({ chart : {
                             animation: this.options.animation,
                             renderTo: 'rainchart',
@@ -1582,12 +1606,24 @@ UI.prototype.initCharts=function()
     // Windrose demo https://jsfiddle.net/fq64pkhn/
     //var testChart=Highcharts.stockChart('testchart',{ title: { text: 'test chart' }}) 
 
-    this.initWindroseChart()
-    this.initTemperatureChart()
-    this.initPressureChart()
-    this.initRainChart()
-    this.initSolarChart()
-    this.initWindBarbChart() 
+    if (this.isLGSmartTV2012()) {
+
+        this.initTemperatureChart()
+        this.initWindBarbChart() 
+        this.initWindroseChart()
+        this.initPressureChart()
+        //this.initRainChart()
+        //this.initRainstatChart()
+        this.initSolarChart()
+    } else {
+        this.initTemperatureChart()
+        this.initWindBarbChart() 
+        this.initWindroseChart()
+        this.initPressureChart()
+        this.initRainChart()
+        this.initRainstatChart()
+        this.initSolarChart()
+    }
 }
 
 UI.prototype.onJSON=function (ev)
@@ -1602,19 +1638,28 @@ UI.prototype.onJSON=function (ev)
     if (this.measurementCount===1 )
     {
         if (this.options.tooltip.enabled) {
-            this.rainchart.series[0].tooltipOptions.valueSuffix=' '+json.unitRainrate()
-            this.rainchart.series[1].tooltipOptions.valueSuffix=' '+json.unitRain()
-            this.rainchart.series[2].tooltipOptions.valueSuffix=' '+json.unitRain()
-            this.windbarbchart.series.forEach(function (series) { series.tooltipOptions.valueSuffix=' '+json.unitWind()})
-            this.temperaturechart.series[0].tooltipOptions.valueSuffix=' '+json.unitTemp()
-            this.temperaturechart.series[1].tooltipOptions.valueSuffix=' '+json.unitTemp()
-            this.pressurechart.series[0].tooltipOptions.valueSuffix=' '+json.unitPressure()
-            this.pressurechart.series[1].tooltipOptions.valueSuffix=' '+json.unitPressure()
-            this.solarchart.series[0].tooltipOptions.valueSuffix=' '+json.unitSolarlight()
+            if (this.rainchart) {
+                this.rainchart.series[0].tooltipOptions.valueSuffix=' '+json.unitRainrate()
+                this.rainchart.series[1].tooltipOptions.valueSuffix=' '+json.unitRain()
+                this.rainchart.series[2].tooltipOptions.valueSuffix=' '+json.unitRain()
+            }
+            if (this.windbarbchart)
+                this.windbarbchart.series.forEach(function (series) { series.tooltipOptions.valueSuffix=' '+json.unitWind()})
+            if (this.temperaturechart) {
+                this.temperaturechart.series[0].tooltipOptions.valueSuffix=' '+json.unitTemp()
+                this.temperaturechart.series[1].tooltipOptions.valueSuffix=' '+json.unitTemp()
+            }
+            if (this.pressurechart) {
+                this.pressurechart.series[0].tooltipOptions.valueSuffix=' '+json.unitPressure()
+                this.pressurechart.series[1].tooltipOptions.valueSuffix=' '+json.unitPressure()
+            }
+            if (this.solarchart)
+                this.solarchart.series[0].tooltipOptions.valueSuffix=' '+json.unitSolarlight()
         }
 
         if (this.options.frostapi) {
-            this.pressurechart.setCaption({ text: 'MET Norway data from https://frost.met.no API - CC 4.0'})
+            if (this.pressurechart)
+                this.pressurechart.setCaption({ text: 'MET Norway data from https://frost.met.no API - CC 4.0'})
         }
     }
 
@@ -1680,10 +1725,11 @@ UI.prototype.updateCharts=function()
     if (latest.air_temperature)
       tempSubtitle=tempSubtitle+' <b>METno</b> '+latest.air_temperature.value+' '+latest.air_temperature.unit+' '+latest.relative_humidity.value+' '+latest.relative_humidity.unit+' '+latest.air_temperature.hhmm
 
-    this.temperaturechart.update({ 
+    if (this.temperaturechart)
+        this.temperaturechart.update({ 
         subtitle: { text: tempSubtitle}
         //caption : { text: new Date(timestamp)}
-    },redraw)
+        },redraw)
 
     var windSubtitle='<b>Speed</b> '+ json.windspeedToString()+' <b>Gust</b> '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()
     var winddailymax=json.winddailymax()
@@ -1693,17 +1739,22 @@ UI.prototype.updateCharts=function()
     if (latest.wind_speed && latest['max(wind_speed_of_gust PT10M)'])
       windSubtitle=windSubtitle+' <b> METno Wind 10min</b> '+latest['wind_speed'].value+' '+latest['wind_speed'].unit+' <b>Gust max 10min</b> '+latest["max(wind_speed_of_gust PT10M)"].value+' '+latest['max(wind_speed_of_gust PT10M)'].unit+' ('+latest.wind_from_direction.value+latest.wind_from_direction.unit+') '+latest.wind_speed.hhmm
 
-    this.windbarbchart.update({ subtitle : { text: windSubtitle }},redraw)
+    if (this.windbarbchart)
+        this.windbarbchart.update({ subtitle : { text: windSubtitle }},redraw)
+        
     var solarSubtitle='<b>Irradiance</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')' 
     if (latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'])
         solarSubtitle=solarSubtitle+' <b>METno Mean 1m</b> '+latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'].value+ ' '+latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'].unit+' '+latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'].hhmm
 
-    this.solarchart.update({subtitle : { text: solarSubtitle }},redraw)
+    if (this.solarchart)
+        this.solarchart.update({subtitle : { text: solarSubtitle }},redraw)
     var pressureSubtitle='<b>Relative</b> '+json.pressureToString(json.relbaro())+' <b>Absolute</b> ' + json.pressureToString(json.absbaro())
     if (latest.air_pressure_at_sea_level)
        pressureSubtitle=pressureSubtitle+' <b>Sea-level pressure (QFF) METno</b> ' + latest.air_pressure_at_sea_level.value.toFixed(1) + ' '+latest.air_pressure_at_sea_level.unit +' '+latest.air_pressure_at_sea_level.hhmm
-    this.pressurechart.update({ subtitle : { text: pressureSubtitle }},redraw)
-    this.rainchart.update({subtitle: { text: '<b>Rain rate</b>'+' '+json.rainrateToString()}},redraw)
+    if (this.pressurechart)
+        this.pressurechart.update({ subtitle : { text: pressureSubtitle }},redraw)
+    if (this.rainchart)
+        this.rainchart.update({subtitle: { text: '<b>Rain rate</b>'+' '+json.rainrateToString()}},redraw)
     //this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())
 
     // Remove data if too old, otherwise they get skewed to the left
@@ -1720,51 +1771,67 @@ UI.prototype.updateCharts=function()
 
     var beufortScale=json.windgustspeed_beufort()
     var compassDirection=json.winddirection_compass_value()-1 
+    if (this.windrosechart) {
     var rosePoint=this.windrosechart.series[beufortScale].data[compassDirection]
 
         rosePoint.update(rosePoint.y+this.options.interval/60000,redraw)
-    
-    var dataLength=this.temperaturechart.series[0].options.data.length 
-    
-    if (!this.options.shift && ((this.isIpad1() && (dataLength > this.options.shift_measurements_ipad1)) ||  dataLength > this.shift_measurements))
-    {
-        console.log(Date()+'Starting to shift series, data length '+ dataLength)
-        this.options.shift=true
+    }
+
+    if (this.temperaturechart) {
+        var dataLength=this.temperaturechart.series[0].options.data.length 
+        
+        if (!this.options.shift && ((this.isLowMemoryDevice() && (dataLength > this.options.shift_measurements_ipad1)) ||  dataLength > this.shift_measurements))
+        {
+            console.log(Date()+'Starting to shift series, data length '+ dataLength)
+            this.options.shift=true
+        }
+
+        this.addpointIfChanged(this.temperaturechart.series[0],[timestamp,json.outtemp()])
+        this.addpointIfChanged(this.temperaturechart.series[1],[timestamp,json.intemp()])
+        this.addpointIfChanged(this.temperaturechart.series[2],[timestamp,json.outhumidity()])
+        this.addpointIfChanged(this.temperaturechart.series[3],[timestamp,json.inhumidity()])
     }
 
     // https://api.highcharts.com/class-reference/Highcharts.Series#addPoint
     
-    this.addpointIfChanged(this.temperaturechart.series[0],[timestamp,json.outtemp()])
-    this.addpointIfChanged(this.temperaturechart.series[1],[timestamp,json.intemp()])
-    this.addpointIfChanged(this.temperaturechart.series[2],[timestamp,json.outhumidity()])
-    this.addpointIfChanged(this.temperaturechart.series[3],[timestamp,json.inhumidity()])
-    this.addpointIfChanged(this.pressurechart.series[0],[timestamp,json.relbaro()])
-    this.addpointIfChanged(this.pressurechart.series[1],[timestamp,json.absbaro()])
-    this.windbarbchart.series[0].addPoint([timestamp,json.windgustspeed_mps(),json.winddirection()],redraw,this.options.shift,this.options.animation,false)
-    
-    // https://api.highcharts.com/highcharts/series.line.data
-    // only support m/s unit
-    //this.windbarbchart.series[1].addPoint({ x: timestamp, y: json.windspeed_mps() },redraw,this.options.shift,this.options.animation,false)
-    this.addpointIfChanged(this.windbarbchart.series[1],[timestamp,json.windspeed_mps()])
-    //this.windbarbchart.series[2].addPoint({ x: timestamp, y: json.windgustspeed_mps() },redraw,this.options.shift,this.options.animation,false)
-    this.addpointIfChanged(this.windbarbchart.series[2],[timestamp,json.windgustspeed_mps()])
-    var winddailymax=json.winddailymax()
-    if (winddailymax)
-    {
-        //this.windbarbchart.series[3].setData([['Wind daily max.',winddailymax]],false,this.options.animation,true)
+   if (this.pressurechart) {
+        this.addpointIfChanged(this.pressurechart.series[0],[timestamp,json.relbaro()])
+        this.addpointIfChanged(this.pressurechart.series[1],[timestamp,json.absbaro()])
+   }
+
+   if (this.windbarbchart) {
+        this.windbarbchart.series[0].addPoint([timestamp,json.windgustspeed_mps(),json.winddirection()],redraw,this.options.shift,this.options.animation,false)
+        
+        // https://api.highcharts.com/highcharts/series.line.data
+        // only support m/s unit
+        //this.windbarbchart.series[1].addPoint({ x: timestamp, y: json.windspeed_mps() },redraw,this.options.shift,this.options.animation,false)
+        this.addpointIfChanged(this.windbarbchart.series[1],[timestamp,json.windspeed_mps()])
+        //this.windbarbchart.series[2].addPoint({ x: timestamp, y: json.windgustspeed_mps() },redraw,this.options.shift,this.options.animation,false)
+        this.addpointIfChanged(this.windbarbchart.series[2],[timestamp,json.windgustspeed_mps()])
+        var winddailymax=json.winddailymax()
+        if (winddailymax)
+        {
+            //this.windbarbchart.series[3].setData([['Wind daily max.',winddailymax]],false,this.options.animation,true)
+        }
     }
 
-   //this.solarchart.series[0].addPoint([timestamp,json.solar_light()],false,this.options.shift,this.options.animation,false)
-   this.addpointIfChanged(this.solarchart.series[0],[timestamp,json.solar_light()])
-   // this.solarchart.series[1].addPoint([timestamp,json.solar_uv()],false, this.solarchart.series[1].points.length>37, false)
-   this.addpointIfChanged(this.solarchart.series[1],[timestamp, json.solar_uvi()])
-   this.addpointIfChanged(this.rainchart.series[0],[timestamp,json.rainrate()])
-   this.addpointIfChanged(this.rainchart.series[1],[timestamp,json.rainevent()])
-   this.addpointIfChanged(this.rainchart.series[2],[timestamp,json.rainday()])
+    if (this.solarchart) {
+        //this.solarchart.series[0].addPoint([timestamp,json.solar_light()],false,this.options.shift,this.options.animation,false)
+        this.addpointIfChanged(this.solarchart.series[0],[timestamp,json.solar_light()])
+        // this.solarchart.series[1].addPoint([timestamp,json.solar_uv()],false, this.solarchart.series[1].points.length>37, false)
+        this.addpointIfChanged(this.solarchart.series[1],[timestamp, json.solar_uvi()])
+    }
 
-    this.rainstatchart.series[0].setData([['hour',json.rainhour()],['day',json.rainday()],['event',json.rainevent()],['week',json.rainweek()]],redraw,this.options.animation)
-    this.rainstatchart.series[1].setData([null,null,null,null,['month',json.rainmonth()],['year',json.rainyear()]],redraw,this.options.animation)
+    if (this.rainchart) {
+        this.addpointIfChanged(this.rainchart.series[0],[timestamp,json.rainrate()])
+        this.addpointIfChanged(this.rainchart.series[1],[timestamp,json.rainevent()])
+        this.addpointIfChanged(this.rainchart.series[2],[timestamp,json.rainday()])
+    }
 
+    if (this.rainstatchart) {
+        this.rainstatchart.series[0].setData([['hour',json.rainhour()],['day',json.rainday()],['event',json.rainevent()],['week',json.rainweek()]],redraw,this.options.animation)
+        this.rainstatchart.series[1].setData([null,null,null,null,['month',json.rainmonth()],['year',json.rainyear()]],redraw,this.options.animation)
+    }
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
 }
@@ -1780,9 +1847,11 @@ UI.prototype.redrawChart=function()
 {
     // https://api.highcharts.com/class-reference/Highcharts.Axis#setExtremes
    // y-axis start on 0 by default
-    if (this.pressurechart.series[0].dataMin && this.pressurechart.series[0].dataMax)
-        this.pressurechart.series[0].yAxis.setExtremes(this.pressurechart.series[0].dataMin-2,this.pressurechart.series[0].dataMax+2,false)
-
+    
+   if (this.pressurechart) {
+        if (this.pressurechart.series[0].dataMin && this.pressurechart.series[0].dataMax)
+                this.pressurechart.series[0].yAxis.setExtremes(this.pressurechart.series[0].dataMin-2,this.pressurechart.series[0].dataMax+2,false)
+    }
     //console.log('redraw all charts')
     Highcharts.charts.forEach(function (chart) { chart.redraw() })
 
