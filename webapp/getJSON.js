@@ -521,16 +521,16 @@ GetJSONFrost.prototype.parse=function()
 
 }
 
-function GetJSONFrostLatest10Min(host,port,path,interval,options)
+function getJSONFrostLatest15Min(host,port,path,interval,options)
 {
     GetJSONFrost.call(this,host,port,path,interval,options)
 }
 
-GetJSONFrostLatest10Min.prototype= Object.create(GetJSONFrost.prototype)
+getJSONFrostLatest15Min.prototype= Object.create(GetJSONFrost.prototype)
 
-GetJSONFrostLatest10Min.prototype.sendRequest=function()
+getJSONFrostLatest15Min.prototype.sendRequest=function()
 {
-    this.req.open("GET",'/api/frost.met.no/latest-10min')
+    this.req.open("GET",this.url)
     this.req.setRequestHeader("Accept","application/json")
     this.req.setRequestHeader("Authorization", this.authentication);
     this.req.send()
@@ -545,7 +545,7 @@ GetJSONFrostLatest1H.prototype= Object.create(GetJSONFrost.prototype)
 
 GetJSONFrostLatest1H.prototype.sendRequest=function()
 {
-    this.req.open("GET",'/api/frost.met.no/latest-1H')
+    this.req.open("GET",this.url)
     this.req.setRequestHeader("Accept","application/json")
     this.req.setRequestHeader("Authorization", this.authentication);
     this.req.send()
@@ -602,7 +602,8 @@ function UI()
         // navigator.languauge is "en-us" for LG Smart TV 2012
         frostapi : true && ( (navigator.language.toLowerCase().indexOf('nb') !== -1) || this.isLGSmartTV2012()),    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
         frostapi_interval_1h:     3600000,      // request interval 1 hour
-        frostapi_interval_10min:   600000       // 10 min   
+        frostapi_interval_10min:   600000,      // 10 min
+        frostapi_interval_15min:   900000   
     }
 
     //this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
@@ -624,8 +625,8 @@ function UI()
     //this.getJSONFrost = new GetJSONFrost(window.location.hostname,port,'/api/frost.met.no/latest-hourly',this.options.frostapi_interval,this.options)
     //this.getJSONFrost.req.addEventListener("load",this.onJSONFrost.bind(this))
 
-    this.getJSONFrostLatest10Min = new GetJSONFrostLatest10Min(window.location.hostname,port,'/api/frost.met.no/latest-10min',this.options.frostapi_interval_10min,this.options)
-    this.getJSONFrostLatest10Min.req.addEventListener("load",this.onJSONFrostLatest10Min.bind(this))
+    this.getJSONFrostLatest15Min = new getJSONFrostLatest15Min(window.location.hostname,port,'/api/frost.met.no/latest-15min',this.options.frostapi_interval_15min,this.options)
+    this.getJSONFrostLatest15Min.req.addEventListener("load",this.onJSONFrostLatest10Min.bind(this))
 
     this.getJSONFrostLatest1H = new GetJSONFrostLatest1H(window.location.hostname,port,'/api/frost.met.no/latest-1H',this.options.frostapi_interval_1h,this.options)
     this.getJSONFrostLatest1H.req.addEventListener("load",this.onJSONFrostLatest1H.bind(this))
@@ -733,7 +734,7 @@ UI.prototype.updateLatestMETno=function()
 
 UI.prototype.onJSONFrostLatest10Min=function(evt)
 {
-    this.METno=this.getJSONFrostLatest10Min.METno
+    this.METno=this.getJSONFrostLatest15Min.METno
     this.updateLatestMETno()
     this.updateChartsMETno()
     this.addObservationsMETno()
