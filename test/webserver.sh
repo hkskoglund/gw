@@ -320,17 +320,18 @@ webserver()
                         *".js"|*".css"|*".html") sendFile 
                                         ;;
 
-                        /api/frost.met.no/latest-hour)
+                        /api/frost.met.no/latest-1H)
 
                                 # ipad1 does not have updated security certificates to access frost.met.no directly with XmlHttpRequest, using this endpoint allows curl to get the data
                                 # query can be built using https://seklima.met.no/ -> developer tools "Network" pane
 
                                 l_sources=SN90450
                                 #l_sources=SN87640
-                                l_elements="air_temperature,surface_snow_thickness,air_pressure_at_sea_level,relative_humidity,max(wind_speed%20PT1H),max(wind_speed_of_gust%20PT1H),wind_from_direction,mean(surface_downwelling_shortwave_flux_in_air%20PT1H)"
+                                l_elements="air_pressure_at_sea_level,relative_humidity,surface_snow_thickness"
                                 l_timeresolution="PT1H"
+                                l_referencetime=latest
 
-                                sendMETnoRequest "https://frost.met.no/observations/v0.jsonld?elements=$l_elements&referencetime=latest&sources=$l_sources&timeresolutions=$l_timeresolution&timeoffsets=PT0H"
+                                sendMETnoRequest "https://frost.met.no/observations/v0.jsonld?elements=$l_elements&referencetime=$l_referencetime&sources=$l_sources&timeresolutions=$l_timeresolution&timeoffsets=PT0H"
 
                                 unset l_sources l_elements l_timeresolution
                                
@@ -342,12 +343,16 @@ webserver()
                                
                                l_sources=SN90450
                                #l_sources=SN87640
-                               l_timeresolution="PT1M,PT10M,PT1H" # 1m, 10 min or 1 h measurements
-                               l_elements="air_temperature,relative_humidity,wind_speed,max(wind_speed_of_gust%20PT10M),wind_from_direction,air_pressure_at_sea_level,mean(surface_downwelling_shortwave_flux_in_air%20PT1M)"
+                               l_timeresolution="PT1M,PT10M" # 1m, 10 min
+                               l_elements="air_temperature,wind_speed,max(wind_speed_of_gust%20PT10M),wind_from_direction,mean(surface_downwelling_shortwave_flux_in_air%20PT1M)"
+                               #l_referencetime="latest"
+                               l_referencetime_start=$(date -d "10 minutes ago" --utc +%FT%TZ)
+                               l_referencetime_end=$(date --utc +%FT%TZ)
+                               l_referencetime=$l_referencetime_start/$l_referencetime_end
 
-                               sendMETnoRequest  "https://frost.met.no/observations/v0.jsonld?elements=$l_elements&referencetime=latest&sources=$l_sources&timeresolutions=$l_timeresolution"
+                               sendMETnoRequest  "https://frost.met.no/observations/v0.jsonld?elements=$l_elements&referencetime=$l_referencetime&sources=$l_sources&timeresolutions=$l_timeresolution"
 
-                               unset l_sources l_timeresolution l_elements
+                               unset l_sources l_timeresolution l_elements l_referencetime l_referencetime_start l_referencetime_end
                                ;;
 
                         /api/frost.met.no/*)
@@ -355,10 +360,10 @@ webserver()
                                 # runs request as specified
                                 appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
                                 appendHttpDefaultHeaders
-                                l_path=${HTTP_REQUEST_ABSPATH#/api/frost.met.no/}
-                                sendMETnoRequest "https://frost.met.no/$l_path"
+                                l_query=${HTTP_REQUEST_ABSPATH#/api/frost.met.no/}
+                                sendMETnoRequest "https://frost.met.no/$l_query"
                               
-                                unset l_path
+                                unset l_query
 
                                 ;;
                         

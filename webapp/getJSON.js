@@ -469,18 +469,18 @@ GetJSONFrost.prototype.parse=function()
     for (item=0;item<json.totalItemCount;item++) // number of data items
     {
             referenceTime=new Date(json.data[item].referenceTime) 
-            console.log('referenceTime '+referenceTime)
-            console.log(JSON.stringify(json.data[item]))
+           // console.log('referenceTime '+referenceTime)
+           // console.log(JSON.stringify(json.data[item]))
             //console.log('referencetime',referenceTime)                    
             timestamp=referenceTime.getTime()-referenceTime.getTimezoneOffset()*60000  // local timezone time
             hhmm=('0'+referenceTime.getHours()).slice(-2)+':'+('0'+referenceTime.getMinutes()).slice(-2) // https://stackoverflow.com/questions/1267283/how-can-i-pad-a-value-with-leading-zeros
         
-            console.log('observations '+json.data[item].observations.length)
+           // console.log('observations '+json.data[item].observations.length)
             for (obsNr=0;obsNr<json.data[item].observations.length;obsNr++)
             {
                 observation=json.data[item].observations[obsNr]
                 elementId=observation.elementId
-                console.log(elementId+' '+JSON.stringify(observation))
+             //   console.log(elementId+' '+JSON.stringify(observation))
 
 
                 unit=observation.unit
@@ -531,6 +531,21 @@ GetJSONFrostLatest10Min.prototype= Object.create(GetJSONFrost.prototype)
 GetJSONFrostLatest10Min.prototype.sendRequest=function()
 {
     this.req.open("GET",'/api/frost.met.no/latest-10min')
+    this.req.setRequestHeader("Accept","application/json")
+    this.req.setRequestHeader("Authorization", this.authentication);
+    this.req.send()
+}
+
+function GetJSONFrostLatest1H(host,port,path,interval,options)
+{
+    GetJSONFrost.call(this,host,port,path,interval,options)
+}
+
+GetJSONFrostLatest1H.prototype= Object.create(GetJSONFrost.prototype)
+
+GetJSONFrostLatest1H.prototype.sendRequest=function()
+{
+    this.req.open("GET",'/api/frost.met.no/latest-1H')
     this.req.setRequestHeader("Accept","application/json")
     this.req.setRequestHeader("Authorization", this.authentication);
     this.req.send()
@@ -600,10 +615,11 @@ function UI()
     else
       port=window.location.port
 
+    this.METnoLatestObservation={}
+
     this.getJSON=new GetJSON(window.location.hostname,port,'/api/livedata',this.options.interval,this.options)
     this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
     setTimeout(this.getJSON.changeInterval.bind(this.getJSON,this.options.slow_interval),this.options.fastRequestTimeout)
-
 
     //this.getJSONFrost = new GetJSONFrost(window.location.hostname,port,'/api/frost.met.no/latest-hourly',this.options.frostapi_interval,this.options)
     //this.getJSONFrost.req.addEventListener("load",this.onJSONFrost.bind(this))
@@ -611,6 +627,8 @@ function UI()
     this.getJSONFrostLatest10Min = new GetJSONFrostLatest10Min(window.location.hostname,port,'/api/frost.met.no/latest-10min',this.options.frostapi_interval_10min,this.options)
     this.getJSONFrostLatest10Min.req.addEventListener("load",this.onJSONFrostLatest10Min.bind(this))
 
+    this.getJSONFrostLatest1H = new GetJSONFrostLatest1H(window.location.hostname,port,'/api/frost.met.no/latest-1H',this.options.frostapi_interval_1h,this.options)
+    this.getJSONFrostLatest1H.req.addEventListener("load",this.onJSONFrostLatest1H.bind(this))
     
 }
 
@@ -620,21 +638,25 @@ UI.prototype.addObservationsMETno=function()
         observation,
         obsNr,
         elementId,
-        lastOptionsData
+        lastOptionsData,
+        subtitle
 
     for (elementId in this.METno) 
     {
         switch (elementId)
         {
             case 'air_pressure_at_sea_level' :
+
                 if (this.pressurechart)
                     series = this.pressurechart.series[2]
                 break
             
             case 'air_temperature' :
 
-                if (this.temperaturechart)
+                if (this.temperaturechart) {
                     series=this.temperaturechart.series[4]
+                }
+
                 break
 
             
@@ -681,13 +703,14 @@ UI.prototype.addObservationsMETno=function()
             for (obsNr=0;obsNr<this.METno[elementId].length;obsNr++) {
                 observation=this.METno[elementId][obsNr]
                lastOptionsData=series.options.data.slice(-1)
-               console.log('lastOptionsData',lastOptionsData,series.name)
+              // console.log('lastOptionsData',lastOptionsData,series.name)
                if ((lastOptionsData.length===1 && lastOptionsData[0][0]!==observation.timestamp)|| lastOptionsData.length===0) {
-                    console.log('addpoint',series.name,[observation.timestamp,observation.value])
+                //    console.log('addpoint',series.name,[observation.timestamp,observation.value])
                     series.addPoint([observation.timestamp,observation.value],false,this.options.shift,this.options.animation,false)
                }
                 else
                   console.warn(elementId+' Skippping observation already is series; timestamp '+observation.timestamp+' value '+observation.value,series) // same value of relative_humidity and air_pressure_at_at_sea_level each 1h is included each 10m in JSON
+
             }
             series=undefined
         }
@@ -695,17 +718,43 @@ UI.prototype.addObservationsMETno=function()
     }
 }
 
+UI.prototype.updateLatestMETno=function()
+{
+     var METno=this.METno,
+        latest=this.METnoLatestObservation
+
+    // Copy latest observation
+
+    for (elementId in METno)
+       latest[elementId]=METno[elementId][METno[elementId].length-1]
+
+    console.log('METnoLatestObservation',latest)
+}
+
 UI.prototype.onJSONFrostLatest10Min=function(evt)
 {
     this.METno=this.getJSONFrostLatest10Min.METno
+    this.updateLatestMETno()
+    this.updateChartsMETno()
     this.addObservationsMETno()
 }
 
 UI.prototype.onJSONFrost=function(evt)
 {
    this.METno=this.getJSONFrost.METno
+   this.updateLatestMETno()
+   this.updateChartsMETno()
    this.addObservationsMETno()
 }
+
+UI.prototype.onJSONFrostLatest1H=function(evt)
+{
+    this.METno=this.getJSONFrostLatest1H.METno
+    this.updateLatestMETno()
+    this.updateChartsMETno()
+    this.addObservationsMETno()
+}
+
 
 UI.prototype.onJSONFrostPrecipitationHour=function(evt)
 {
@@ -1054,7 +1103,8 @@ UI.prototype.initPressureChart=function()
                 visible: false
             }]
     
-        if (this.options.frostapi)
+        var pressureCaption
+        if (this.options.frostapi) {
            pressureSeries.push(
             {
                 name: 'METno Sea-level pressure (QFF) 1h',
@@ -1062,6 +1112,8 @@ UI.prototype.initPressureChart=function()
                 data: [],
                 visible: false
             })
+            pressureCaption=  'MET Norway data from https://frost.met.no API - CC 4.0'
+        }
             
     
         this.pressurechart= new Highcharts.stockChart({ chart : {
@@ -1137,7 +1189,11 @@ UI.prototype.initPressureChart=function()
             }
         },
     
-        series: pressureSeries
+        series: pressureSeries,
+
+        caption : { 
+            text: pressureCaption
+        }
         })
 }
 
@@ -1657,10 +1713,7 @@ UI.prototype.onJSON=function (ev)
                 this.solarchart.series[0].tooltipOptions.valueSuffix=' '+json.unitSolarlight()
         }
 
-        if (this.options.frostapi) {
-            if (this.pressurechart)
-                this.pressurechart.setCaption({ text: 'MET Norway data from https://frost.met.no API - CC 4.0'})
-        }
+     
     }
 
     this.outtempElement.textContent=json.outtemp()
@@ -1706,55 +1759,123 @@ UI.prototype.setChartRedrawInterval=function()
     }
 }
 
+UI.prototype.updateChartsMETno=function()
+{
+    this.updateTemperatureSubtitle()
+    this.updateWindSubtitle()
+    this.updateSolarSubtitle()
+    this.updatePressureSubtitle()
+    
+}
+
+UI.prototype.updateTemperatureSubtitle=function()
+{
+    var json=this.getJSON,
+        tempSubtitle='',
+        redraw=false,
+        latest=this.METnoLatestObservation
+    
+    if (json && json.data)
+       tempSubtitle='<b>Outdoor</b> '+json.outtempToString()+' '+ json.outhumidityToString()+' <b>Indoor</b> '+json.intempToString()+json.inhumidityToString()
+
+    if (latest && latest.air_temperature) 
+        tempSubtitle=tempSubtitle+'<br><b>METno</b> '+latest.air_temperature.value+' '+latest.air_temperature.unit
+
+    if (latest && latest.relative_humidity) // only each 1h
+        tempSubtitle=tempSubtitle+' '+latest.relative_humidity.value+' '+latest.relative_humidity.unit
+
+    if (latest && latest.air_temperature)
+        tempSubtitle=tempSubtitle+' '+latest.air_temperature.hhmm
+
+    if (this.temperaturechart)
+        this.temperaturechart.update({ 
+        subtitle: { text: tempSubtitle }
+        //caption : { text: new Date(timestamp)}
+        },redraw)
+}
+
+UI.prototype.updateWindSubtitle=function()
+{
+    var json=this.getJSON,
+        windSubtitle='',
+        redraw=false,
+        latest=this.METnoLatestObservation
+      
+    if (json && json.data) {
+        windSubtitle='<b>Speed</b> '+ json.windspeedToString()+' <b>Gust</b> '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()
+        var winddailymax=json.winddailymax()
+        if (winddailymax)
+            windSubtitle=windSubtitle + ' <b>Max today</b> '+json.winddailymaxToString()
+    }
+
+    if (latest && latest.wind_speed && latest['max(wind_speed_of_gust PT10M)']) {
+        windSubtitle=windSubtitle+'<br><b>METno Speed</b> '+latest['wind_speed'].value+' '+latest['wind_speed'].unit+' <b>Gust</b> '+latest["max(wind_speed_of_gust PT10M)"].value+' '+latest['max(wind_speed_of_gust PT10M)'].unit+' ('+latest.wind_from_direction.value+latest.wind_from_direction.unit+') '+latest.wind_speed.hhmm
+    }
+
+    if (this.windbarbchart)
+        this.windbarbchart.update({ subtitle : { text: windSubtitle  }},redraw)
+
+}
+
+UI.prototype.updateSolarSubtitle=function()
+{
+    var json=this.getJSON,
+        solarSubtitle='',
+       redraw=false,
+       latest=this.METnoLatestObservation
+
+    if (json && json.data)
+       solarSubtitle='<b>Irradiance</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'
+
+     if (latest && latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'])
+         solarSubtitle=solarSubtitle+'<br><b>METno Mean 1m</b> '+latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'].value+ ' '+latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'].unit+' '+latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'].hhmm
+ 
+    if (this.solarchart)
+        this.solarchart.update({subtitle : { text: solarSubtitle }},redraw)
+
+}
+
+UI.prototype.updatePressureSubtitle=function()
+{
+    var json=this.getJSON,
+        pressureSubtitle='',
+        redraw=false,
+        latest=this.METnoLatestObservation
+
+    if (json && json.data)
+        pressureSubtitle='<b>Relative</b> '+json.pressureToString(json.relbaro())+' <b>Absolute</b> ' + json.pressureToString(json.absbaro())
+
+    if (latest && latest.air_pressure_at_sea_level) // each 1h
+        pressureSubtitle=pressureSubtitle+'<br><b>METno Sea-level pressure (QFF)</b> ' + latest.air_pressure_at_sea_level.value.toFixed(1) + ' '+latest.air_pressure_at_sea_level.unit +' '+latest.air_pressure_at_sea_level.hhmm
+   
+    if (this.pressurechart)
+        this.pressurechart.update({ subtitle : { text: pressureSubtitle }},redraw)
+
+}
+
+UI.prototype.updateRainSubtitle=function()
+{
+    var json=this.getJSON,
+        rainSubtitle='',
+        redraw=false
+
+    rainSubtitle='<b>Rain rate</b>'+' '+json.rainrateToString()
+    if (this.rainchart)
+        this.rainchart.update({subtitle: { text: rainSubtitle }},redraw)
+}
+
 UI.prototype.updateCharts=function()
 {
     var json=this.getJSON,
         timestamp=json.timestamp(),
-        simulationSubtitle='',
-        shiftseries=false,
-        redraw=false,
-        METno=this.METno,
-        latest = {},
-        elementId
+        redraw=false
 
-    
-    for (elementId in METno)
-       latest[elementId]=METno[elementId][METno[elementId].length-1]
-
-    var tempSubtitle='<b>Outdoor</b> '+json.outtempToString()+' '+ json.outhumidityToString()+' <b>Indoor</b> '+json.intempToString()+json.inhumidityToString()
-    if (latest.air_temperature)
-      tempSubtitle=tempSubtitle+' <b>METno</b> '+latest.air_temperature.value+' '+latest.air_temperature.unit+' '+latest.relative_humidity.value+' '+latest.relative_humidity.unit+' '+latest.air_temperature.hhmm
-
-    if (this.temperaturechart)
-        this.temperaturechart.update({ 
-        subtitle: { text: tempSubtitle}
-        //caption : { text: new Date(timestamp)}
-        },redraw)
-
-    var windSubtitle='<b>Speed</b> '+ json.windspeedToString()+' <b>Gust</b> '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()
-    var winddailymax=json.winddailymax()
-    if (winddailymax)
-       windSubtitle=windSubtitle+' <b>Max today</b> '+json.winddailymaxToString()
-
-    if (latest.wind_speed && latest['max(wind_speed_of_gust PT10M)'])
-      windSubtitle=windSubtitle+' <b> METno Wind 10min</b> '+latest['wind_speed'].value+' '+latest['wind_speed'].unit+' <b>Gust max 10min</b> '+latest["max(wind_speed_of_gust PT10M)"].value+' '+latest['max(wind_speed_of_gust PT10M)'].unit+' ('+latest.wind_from_direction.value+latest.wind_from_direction.unit+') '+latest.wind_speed.hhmm
-
-    if (this.windbarbchart)
-        this.windbarbchart.update({ subtitle : { text: windSubtitle }},redraw)
-        
-    var solarSubtitle='<b>Irradiance</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')' 
-    if (latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'])
-        solarSubtitle=solarSubtitle+' <b>METno Mean 1m</b> '+latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'].value+ ' '+latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'].unit+' '+latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'].hhmm
-
-    if (this.solarchart)
-        this.solarchart.update({subtitle : { text: solarSubtitle }},redraw)
-    var pressureSubtitle='<b>Relative</b> '+json.pressureToString(json.relbaro())+' <b>Absolute</b> ' + json.pressureToString(json.absbaro())
-    if (latest.air_pressure_at_sea_level)
-       pressureSubtitle=pressureSubtitle+' <b>Sea-level pressure (QFF) METno</b> ' + latest.air_pressure_at_sea_level.value.toFixed(1) + ' '+latest.air_pressure_at_sea_level.unit +' '+latest.air_pressure_at_sea_level.hhmm
-    if (this.pressurechart)
-        this.pressurechart.update({ subtitle : { text: pressureSubtitle }},redraw)
-    if (this.rainchart)
-        this.rainchart.update({subtitle: { text: '<b>Rain rate</b>'+' '+json.rainrateToString()}},redraw)
+    this.updateTemperatureSubtitle()
+    this.updateWindSubtitle()
+    this.updateSolarSubtitle()
+    this.updatePressureSubtitle()
+    this.updateRainSubtitle()
+ 
     //this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())
 
     // Remove data if too old, otherwise they get skewed to the left
