@@ -22,7 +22,7 @@ function GetJSON(host,port,path,interval,options) {
   
   }
 
-GetJSON.prototype.WindCompassDirection = {
+GetJSON.prototype.WindnewCompassDirection = {
     WIND_N:      1,
     WIND_NNE:    2,
     WIND_NE:     3,
@@ -788,7 +788,14 @@ UI.prototype.isLGSmartTV2012=function()
 }
 
 UI.prototype.initWindroseChart=function()
+
 {
+    var beufort
+
+    this.windrosedata=[]
+    for (beufort=0;beufort<12;beufort++)
+        this.windrosedata.push([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+
     this.windrosechart=Highcharts.chart('windrosechart', {
         chart: {
             animation: this.options.animation,
@@ -810,7 +817,7 @@ UI.prototype.initWindroseChart=function()
         },
     
         subtitle: {
-            text: 'Based on windgust data, values in minutes',
+            text: 'Based on windgust data',
             //align: 'left'
         },
     
@@ -853,7 +860,7 @@ UI.prototype.initWindroseChart=function()
                 pointPlacement: 'on',
                 tooltip: {
                     valueDecimals : 1,
-                    valueSuffix : ' min.'
+                    valueSuffix : ' %'
                 }
             }
         },
@@ -1891,12 +1898,21 @@ UI.prototype.updateCharts=function()
   //      this.solarchart.series.forEach(function (element) { element.setData([]) })
   //  }
 
-    var beufortScale=json.windgustspeed_beufort()
-    var compassDirection=json.winddirection_compass_value()-1 
+    var newBeufortScale=json.windgustspeed_beufort()
+    var newCompassDirection=json.winddirection_compass_value()-1 
+    this.windrosedata[newBeufortScale][newCompassDirection]=this.windrosedata[newBeufortScale][newCompassDirection]+1
+    //console.log(this.windrosedata)
     if (this.windrosechart) {
-    var rosePoint=this.windrosechart.series[beufortScale].data[compassDirection]
-
-        rosePoint.update(rosePoint.y+this.options.interval/60000,redraw)
+        var beufort
+        var percentArr
+        for (beufort=0;beufort<12;beufort++) {
+            percentArr=[]
+            this.windrosedata[beufort].forEach(function (measurement) { 
+                percentArr.push(measurement/this.measurementCount*100)
+            }.bind(this))
+            //console.log('percentarray',percentArr)
+            this.windrosechart.series[beufort].setData(percentArr,redraw,this.options.animation,true) // updatePoints=true 
+        }
     }
 
     if (this.temperaturechart) {
