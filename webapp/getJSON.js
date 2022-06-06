@@ -618,6 +618,46 @@ function UI()
 
     this.METnoLatestObservation={}
 
+    this.initRequests(port)
+    //this.testMemory()
+    
+}
+
+UI.prototype.testMemory=function()
+// Allocates 1MB until memory is exausted and generates LowMemory log on ipad1
+{
+    console.log('typeof Uint8Array: ' + typeof Uint8Array)
+
+    if (typeof Uint8Array !== 'function' && typeof Uint8Array !== 'object')
+    {
+        console.error('Uint8Array not available')
+        return
+    } 
+
+    var heap=[]
+    var bytes=0
+    var Mebibyte=1024*1024 // https://en.wikipedia.org/wiki/Megabyte
+
+    while (true) {
+        heap.push(new Uint8Array(Mebibyte))
+        bytes+=Mebibyte
+        //console.log('Allocated MB'+bytes/Mebibyte)
+        alert(bytes/Mebibyte +' MB allocated')
+        // Ipad1 : LowMemory-{date}.plist
+        //               Count resident pages
+        // MobileSafari  37995
+        // https://developer.apple.com/library/archive/documentation/Performance/Conceptual/ManagingMemory/Articles/AboutMemory.html
+        // "In OS X and in earlier versions of iOS, the size of a page is 4 kilobytes. "
+        // Total Memory usage: 4096 bytes/page*37995 page=155463680 bytes
+        // Test: able to allocate 113 MB
+        // https://en.wikipedia.org/wiki/IPad_(1st_generation)
+        // Memory : 256 GB
+    }
+}
+
+UI.prototype.initRequests=function(port)
+{
+
     this.getJSON=new GetJSON(window.location.hostname,port,'/api/livedata',this.options.interval,this.options)
     this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
     setTimeout(this.getJSON.changeInterval.bind(this.getJSON,this.options.slow_interval),this.options.fastRequestTimeout)
@@ -630,7 +670,6 @@ function UI()
 
     this.getJSONFrostLatest1H = new GetJSONFrostLatest1H(window.location.hostname,port,'/api/frost.met.no/latest-1H',this.options.frostapi_interval_1h,this.options)
     this.getJSONFrostLatest1H.req.addEventListener("load",this.onJSONFrostLatest1H.bind(this))
-    
 }
 
 UI.prototype.addObservationsMETno=function()
@@ -1086,7 +1125,9 @@ UI.prototype.initTemperatureChart=function()
                 // https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-events-legenditemclick/
                 // https://api.highcharts.com/highcharts/series.line.events.legendItemClick?_ga=2.179134500.1422516645.1651056622-470753587.1650372441
                 // https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-events-show/
-                
+                dataGrouping: { 
+                    groupPixelWidth: 30
+                }
             }
         },
 
@@ -1193,7 +1234,10 @@ UI.prototype.initPressureChart=function()
     
         plotOptions: {
             series: {
-                enableMouseTracking: this.options.mousetracking
+                enableMouseTracking: this.options.mousetracking,
+                dataGrouping: { 
+                    groupPixelWidth: 30
+                }
             }
         },
     
@@ -1339,7 +1383,10 @@ UI.prototype.initRainChart=function()
                         }],
                         plotOptions: {
                             series: {
-                                enableMouseTracking: this.options.mousetracking
+                                enableMouseTracking: this.options.mousetracking,
+                                dataGrouping: { 
+                                    groupPixelWidth: 30
+                                }
                             }
                         },
                         series: [
@@ -1534,7 +1581,11 @@ UI.prototype.initSolarChart=function()
 
                         plotOptions: {
                             series: {
-                                enableMouseTracking: this.options.mousetracking
+                                enableMouseTracking: this.options.mousetracking,
+                                dataGrouping: { 
+                                    groupPixelWidth: 30
+                                }
+
                             }
                         },
 
