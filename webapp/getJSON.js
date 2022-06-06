@@ -1878,7 +1878,7 @@ UI.prototype.updateTemperatureSubtitle=function()
 
     if (this.temperaturechart)
         this.temperaturechart.update({ 
-        title: { text: tempSubtitle }
+        subtitle: { text: tempSubtitle }
         //caption : { text: new Date(timestamp)}
         },redraw)
 }
