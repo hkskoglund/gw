@@ -1073,7 +1073,13 @@ UI.prototype.initTemperatureChart=function()
         },
 
         navigator: {
-            enabled: this.options.rangeSelector
+            enabled: this.options.rangeSelector,
+            series: {
+                type: 'spline',
+                dataGrouping: {
+                    groupPixelWidth: 30
+                }
+            }
         },
 
         legend: {
@@ -1202,7 +1208,13 @@ UI.prototype.initPressureChart=function()
         },
     
         navigator: {
-            enabled: this.options.rangeSelector
+            enabled: this.options.rangeSelector,
+            series: {
+                type: 'spline',
+                dataGrouping: {
+                    groupPixelWidth: 30
+                }
+            }
         },
     
         legend: {
@@ -1346,7 +1358,13 @@ UI.prototype.initRainChart=function()
                         },
                     
                         navigator: {
-                            enabled: this.options.rangeSelector
+                            enabled: this.options.rangeSelector,
+                            series: {
+                                type: 'spline',
+                                dataGrouping: {
+                                    groupPixelWidth: 30
+                                }
+                            }
                         },
                     
                         legend: {
@@ -1526,7 +1544,13 @@ UI.prototype.initSolarChart=function()
                         },
 
                         navigator: {
-                            enabled: this.options.rangeSelector
+                            enabled: this.options.rangeSelector,
+                            series: {
+                                type: 'spline',
+                                dataGrouping: {
+                                    groupPixelWidth: 30
+                                }
+                            }
                         },
 
                         legend: {
@@ -1673,7 +1697,13 @@ UI.prototype.initWindBarbChart=function()
         },
 
         navigator: {
-            enabled: this.options.rangeSelector
+            enabled: this.options.rangeSelector,
+            series: {
+                type: 'spline',
+                dataGrouping: {
+                    groupPixelWidth: 30
+                }
+            }
         },
 
         legend: {
@@ -1848,7 +1878,7 @@ UI.prototype.updateTemperatureSubtitle=function()
 
     if (this.temperaturechart)
         this.temperaturechart.update({ 
-        subtitle: { text: tempSubtitle }
+        title: { text: tempSubtitle }
         //caption : { text: new Date(timestamp)}
         },redraw)
 }
