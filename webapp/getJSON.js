@@ -12,6 +12,7 @@ function GetJSON(host,port,path,interval,options) {
     
     this.setUrl(host,port,path)
 
+
     this.req=new XMLHttpRequest()
     
     this.req.addEventListener("load", this.transferComplete.bind(this))
@@ -19,6 +20,8 @@ function GetJSON(host,port,path,interval,options) {
     this.req.addEventListener("onabort",this.transferAbort.bind(this))
 
     this.changeInterval(interval)
+
+    console.log('GetJSON',this)
   
   }
 
@@ -407,7 +410,7 @@ GetJSONFrostPrecipitation.prototype= Object.create(GetJSON.prototype)
 function GetJSONFrost(host,port,path,interval,options)
 {
     GetJSON.call(this,host,port,path,interval,options)
-    this.authentication="Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:")
+    this.options=options.frostapi
 }
 
 GetJSONFrost.prototype= Object.create(GetJSON.prototype)
@@ -436,7 +439,7 @@ GetJSONFrost.prototype.sendRequest=function()
     latestHourURL='/api/frost.met.no/latest-hour' // use curl on local network web server to bypass CORS
     this.req.open("GET",latestHourURL)
     this.req.setRequestHeader("Accept","application/json")
-    this.req.setRequestHeader("Authorization", this.authentication);
+    this.req.setRequestHeader("Authorization", this.options.authorization);
     this.req.send()
     
 }
@@ -532,7 +535,7 @@ getJSONFrostLatest15Min.prototype.sendRequest=function()
 {
     this.req.open("GET",this.url)
     this.req.setRequestHeader("Accept","application/json")
-    this.req.setRequestHeader("Authorization", this.authentication);
+    this.req.setRequestHeader("Authorization", this.options.authorization);
     this.req.send()
 }
 
@@ -547,7 +550,7 @@ GetJSONFrostLatest1H.prototype.sendRequest=function()
 {
     this.req.open("GET",this.url)
     this.req.setRequestHeader("Accept","application/json")
-    this.req.setRequestHeader("Authorization", this.authentication);
+    this.req.setRequestHeader("Authorization", this.options.authorization);
     this.req.send()
 }
 
@@ -582,14 +585,24 @@ function UI()
     
     this.weatherElement=document.getElementById('divWeather')
 
-    var isLowMemoryDevice=this.isLowMemoryDevice()
+    var forceLowMemoryDevice=true
+    var isLowMemoryDevice=this.isLowMemoryDevice() || forceLowMemoryDevice
+
+    this.requestInterval={
+        hour1:   3600000,
+        min15:    900000,
+        min10:    600000,
+        min5:     300000,
+        min1:      60000,
+        second16:  16000
+    }
 
     this.options={
-        interval: 16000,                // milliseconds (ms) request time for livedata JSON
-        slow_interval: 60000,           // ms slow request for livedata JSON
-        fastRequestTimeout : 60000*5,   // ms before starting slow request interval for livedata JSON
-        fastRedrawTimeout : 60000*5,    // ms before, reverting to fixed redraw interval, during fast redraw charts are redrawn as fast as the JSON request interval
-        redraw_interval: 60000,         // ms between each chart redraw
+        interval: this.requestInterval.second16,  //  milliseconds (ms) request time for livedata JSON
+        slow_interval: this.requestInterval.min1,           // ms slow request for livedata JSON
+        fastRequestTimeout : this.requestInterval.min5,   // ms before starting slow request interval for livedata JSON
+        fastRedrawTimeout : this.requestInterval.min5,    // ms before, reverting to fixed redraw interval, during fast redraw charts are redrawn as fast as the JSON request interval
+        redraw_interval: this.requestInterval.min1,         // ms between each chart redraw
         tooltip: !isLowMemoryDevice,              // turn off for ipad1 - slow animation/disappearing
         animation: false,               // turn off animation for all charts
         addpointIfChanged : true,       // only addpoint if value changes (keep memory footprint low),
@@ -599,11 +612,16 @@ function UI()
         invalid_security_certificate : isLowMemoryDevice, // have outdated security certificates for https request
         rangeSelector: !isLowMemoryDevice,        // keeps memory for series
         mousetracking: !isLowMemoryDevice,        // allocates memory for duplicate path for tracking
+        forceLowMemoryDevice : forceLowMemoryDevice,        // for testing
         // navigator.languauge is "en-us" for LG Smart TV 2012
-        frostapi : true && ( (navigator.language.toLowerCase().indexOf('nb') !== -1) || this.isLGSmartTV2012()),    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
-        frostapi_interval_1h:     3600000,      // request interval 1 hour
-        frostapi_interval_10min:   600000,      // 10 min
-        frostapi_interval_15min:   900000   
+        frostapi : {
+            authorization: "Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:"), // http basic authorization header 
+            enabled : true && ( (navigator.language.toLowerCase().indexOf('nb') !== -1) || this.isLGSmartTV2012()),    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
+        },
+        wundergroundapi: {
+            apiKey: '9b606f1b6dde4afba06f1b6dde2afb1a',
+            enabled : false
+        }
     }
 
     //this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
@@ -665,11 +683,13 @@ UI.prototype.initRequests=function(port)
     //this.getJSONFrost = new GetJSONFrost(window.location.hostname,port,'/api/frost.met.no/latest-hourly',this.options.frostapi_interval,this.options)
     //this.getJSONFrost.req.addEventListener("load",this.onJSONFrost.bind(this))
 
-    this.getJSONFrostLatest15Min = new getJSONFrostLatest15Min(window.location.hostname,port,'/api/frost.met.no/latest-15min',this.options.frostapi_interval_15min,this.options)
-    this.getJSONFrostLatest15Min.req.addEventListener("load",this.onJSONFrostLatest10Min.bind(this))
+    if (this.options.frostapi.enabled) {
+        this.getJSONFrostLatest15Min = new getJSONFrostLatest15Min(window.location.hostname,port,'/api/frost.met.no/latest-15min',this.requestInterval.min15,this.options)
+        this.getJSONFrostLatest15Min.req.addEventListener("load",this.onJSONFrostLatest15Min.bind(this))
 
-    this.getJSONFrostLatest1H = new GetJSONFrostLatest1H(window.location.hostname,port,'/api/frost.met.no/latest-1H',this.options.frostapi_interval_1h,this.options)
-    this.getJSONFrostLatest1H.req.addEventListener("load",this.onJSONFrostLatest1H.bind(this))
+        this.getJSONFrostLatest1H = new GetJSONFrostLatest1H(window.location.hostname,port,'/api/frost.met.no/latest-1H',this.requestInterval.hour1,this.options)
+        this.getJSONFrostLatest1H.req.addEventListener("load",this.onJSONFrostLatest1H.bind(this))
+    }
 }
 
 UI.prototype.addObservationsMETno=function()
@@ -771,11 +791,11 @@ UI.prototype.updateLatestMETno=function()
     console.log('METnoLatestObservation',latest)
 }
 
-UI.prototype.onJSONFrostLatest10Min=function(evt)
+UI.prototype.onJSONFrostLatest15Min=function(evt)
 {
     this.METno=this.getJSONFrostLatest15Min.METno
     this.updateLatestMETno()
-    this.updateChartsMETno()
+    this.updateSubtitleMETno()
     this.addObservationsMETno()
 }
 
@@ -783,7 +803,7 @@ UI.prototype.onJSONFrost=function(evt)
 {
    this.METno=this.getJSONFrost.METno
    this.updateLatestMETno()
-   this.updateChartsMETno()
+   this.updateSubtitleMETno()
    this.addObservationsMETno()
 }
 
@@ -791,7 +811,7 @@ UI.prototype.onJSONFrostLatest1H=function(evt)
 {
     this.METno=this.getJSONFrostLatest1H.METno
     this.updateLatestMETno()
-    this.updateChartsMETno()
+    this.updateSubtitleMETno()
     this.addObservationsMETno()
 }
 
@@ -1020,7 +1040,7 @@ UI.prototype.initTemperatureChart=function()
             }
            ] 
 
-    if (this.options.frostapi)
+    if (this.options.frostapi.enabled)
            tempSeries.push(  {
             name: 'METno Temperature 10min',
             type: 'spline',
@@ -1159,7 +1179,7 @@ UI.prototype.initPressureChart=function()
             }]
     
         var pressureCaption
-        if (this.options.frostapi) {
+        if (this.options.frostapi.enabled) {
            pressureSeries.push(
             {
                 name: 'METno Sea-level pressure (QFF) 1h',
@@ -1260,6 +1280,84 @@ UI.prototype.initPressureChart=function()
         }
         })
 }
+
+UI.prototype.initLatestChart=function()
+{
+    this.latestChart=new Highcharts.chart('latestChart',
+                            { chart : { 
+                                 animation: this.options.animation
+                                },
+                                title: {
+                                    text: 'Latest observations'
+                                },
+                                credits: {
+                                    enabled: false
+                                },
+                                // Temperature
+                                yAxis: [{
+                                    title: { text : 'Temperature' },
+                                    //max: 60
+                                },
+                                // Humidity
+                                {
+                                    min: 0,
+                                    max: 100,
+                                    title: { text : 'Humidity' },
+                                    opposite: true,
+                                },
+                                    // Wind
+                                    {
+                                        min: 0,
+                                        title: { text : 'Wind speed' },
+                                        opposite: true,
+                                    },
+                                    // Pressure
+                                    {
+                                        min: 0,
+                                        title: false,
+                                        opposite: true,
+                                    }
+                            ],
+                                xAxis: [{
+                                 type: 'column',
+                                 categories: ['Outdoor','Indoor','METno','Wunderground']
+                                }],
+                               
+                                tooltip: {
+                                    enabled: this.options.tooltip
+                                },
+                                series: [
+                                    {
+                                        name: 'Temperature',
+                                        type: 'column',
+                                        data: [8.6,23.3],
+                                        dataLabels: {
+                                            enabled: true
+                                        }
+                                    },
+                                    {
+                                        name: 'Humidity',
+                                        type: 'column',
+                                        yAxis: 1,
+                                        data: [70,40],
+                                        dataLabels: {
+                                            enabled: true
+                                        }
+                                    },
+                                    {
+                                        name: 'Wind speed',
+                                        type: 'column',
+                                        yAxis: 2,
+                                        data: [3.3,null],
+                                        dataLabels: {
+                                            enabled: true
+                                        }
+                                    }
+                                   
+                            ]
+                            })
+}
+
 
 UI.prototype.initRainstatChart=function()
 {
@@ -1498,7 +1596,7 @@ UI.prototype.initSolarChart=function()
                ]
             }] 
         
-        if (this.options.frostapi)
+        if (this.options.enabled)
           solarSeries.push( {
             // shortwave 295-2800nm (ultraviolet,visible,infrared)
             //https://frost.met.no/elements/v0.jsonld?fields=id,oldElementCodes,category,name,description,unit,sensorLevelType,sensorLevelUnit,sensorLevelDefaultValue,sensorLevelValues,cmMethod,cmMethodDescription,cmInnerMethod,cmInnerMethodDescription,status&lang=en-US
@@ -1640,7 +1738,7 @@ UI.prototype.initWindBarbChart=function()
         name: 'Wind gust',
     }]
 
-    if (this.options.frostapi)
+    if (this.options.frostapi.enabled)
     {
        windSeries.push(
         {
@@ -1761,13 +1859,14 @@ UI.prototype.initCharts=function()
         //this.initRainstatChart()
         this.initSolarChart()
     } else {
+        this.initLatestChart()
         this.initTemperatureChart()
         this.initWindBarbChart() 
         this.initWindroseChart()
         this.initPressureChart()
         this.initRainChart()
         this.initRainstatChart()
-        this.initSolarChart()
+        this.initSolarChart() 
     }
 }
 
@@ -1848,7 +1947,7 @@ UI.prototype.setChartRedrawInterval=function()
     }
 }
 
-UI.prototype.updateChartsMETno=function()
+UI.prototype.updateSubtitleMETno=function()
 {
     this.updateTemperatureSubtitle()
     this.updateWindSubtitle()
@@ -1979,13 +2078,15 @@ UI.prototype.updateCharts=function()
   //      this.solarchart.series.forEach(function (element) { element.setData([]) })
   //  }
 
-    var newBeufortScale=json.windgustspeed_beufort()
-    var newCompassDirection=json.winddirection_compass_value()-1 
-    this.windrosedata[newBeufortScale][newCompassDirection]=this.windrosedata[newBeufortScale][newCompassDirection]+1
+   
     //console.log(this.windrosedata)
     if (this.windrosechart) {
-        var beufort
+         var newBeufortScale=json.windgustspeed_beufort()
+        var newCompassDirection=json.winddirection_compass_value()-1 
+          var beufort
         var percentArr
+        this.windrosedata[newBeufortScale][newCompassDirection]=this.windrosedata[newBeufortScale][newCompassDirection]+1
+      
         for (beufort=0;beufort<12;beufort++) {
             percentArr=[]
             this.windrosedata[beufort].forEach(function (measurement) { 

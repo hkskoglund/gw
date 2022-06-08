@@ -9845,7 +9845,9 @@
              * @param {number|string|Highcharts.SVGPathArray} value
              * @param {string} key
              * @param {Highcharts.SVGDOMElement} element
+             * 
              */
+           
             SVGElement.prototype.dSetter = function (value, key, element) {
                 if (isArray(value)) {
                     // Backwards compatibility, convert one-dimensional array into an
@@ -9858,8 +9860,10 @@
                         if (!seg || !seg.join) {
                             return (seg || '').toString();
                         }
-                        return (i ? acc + ' ' : '') + seg.join(' ');
-                    }, '');
+                        
+                    return (i ? acc + ' ' : '') + seg.join(' ');
+
+                }, ''); 
                 }
                 if (/(NaN| {2}|^$)/.test(value)) {
                     value = 'M 0 0';
@@ -9868,6 +9872,7 @@
                 // DOM, causing flickering in some cases in Edge/IE (#6747). Also
                 // possible performance gain.
                 if (this[key] !== value) {
+                        //console.log(element)
                     element.setAttribute(key, value);
                     this[key] = value;
                 }
