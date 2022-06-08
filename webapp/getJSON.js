@@ -1350,7 +1350,8 @@ UI.prototype.initLatestChart=function()
                                         data: [],
                                         dataLabels: {
                                             enabled: true
-                                        }
+                                        },
+                                        visible: false
                                     },
                                     {
                                         name: 'Wind speed',
@@ -1377,7 +1378,8 @@ UI.prototype.initLatestChart=function()
                                         data: [],
                                         dataLabels: {
                                             enabled: true
-                                        }
+                                        },
+                                        visible: false
                                     },
                                     {
                                         name: 'Irradiance',
@@ -1386,7 +1388,8 @@ UI.prototype.initLatestChart=function()
                                         data: [],
                                         dataLabels: {
                                             enabled: true
-                                        }
+                                        },
+                                        visible: false
                                     }
                                    
                             ]
