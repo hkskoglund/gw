@@ -1304,6 +1304,7 @@ UI.prototype.initLatestChart=function()
                                     max: 100,
                                     title: { text : 'Humidity' },
                                     opposite: true,
+                                    visible: false
                                 },
                                     // Wind
                                     {
@@ -1316,6 +1317,13 @@ UI.prototype.initLatestChart=function()
                                         min: 0,
                                         title: false,
                                         opposite: true,
+                                        visible: false
+                                    },
+                                    // Irradiance
+                                    {
+                                        min: 0,
+                                        title: false,
+                                        visible: false
                                     }
                             ],
                                 xAxis: [{
@@ -1330,7 +1338,7 @@ UI.prototype.initLatestChart=function()
                                     {
                                         name: 'Temperature',
                                         type: 'column',
-                                        data: [8.6,23.3],
+                                        data: [],
                                         dataLabels: {
                                             enabled: true
                                         }
@@ -1339,7 +1347,7 @@ UI.prototype.initLatestChart=function()
                                         name: 'Humidity',
                                         type: 'column',
                                         yAxis: 1,
-                                        data: [70,40],
+                                        data: [],
                                         dataLabels: {
                                             enabled: true
                                         }
@@ -1348,7 +1356,34 @@ UI.prototype.initLatestChart=function()
                                         name: 'Wind speed',
                                         type: 'column',
                                         yAxis: 2,
-                                        data: [3.3,null],
+                                        data: [],
+                                        dataLabels: {
+                                            enabled: true
+                                        }
+                                    },
+                                    {
+                                        name: 'Wind gust',
+                                        type: 'column',
+                                        yAxis: 2,
+                                        data: [],
+                                        dataLabels: {
+                                            enabled: true
+                                        }
+                                    },
+                                    {
+                                        name: 'Pressure',
+                                        type: 'column',
+                                        yAxis: 3,
+                                        data: [],
+                                        dataLabels: {
+                                            enabled: true
+                                        }
+                                    },
+                                    {
+                                        name: 'Irradiance',
+                                        type: 'column',
+                                        yAxis: 4,
+                                        data: [],
                                         dataLabels: {
                                             enabled: true
                                         }
@@ -2078,6 +2113,16 @@ UI.prototype.updateCharts=function()
   //      this.solarchart.series.forEach(function (element) { element.setData([]) })
   //  }
 
+    if (this.latestChart) {
+        this.latestChart.series[0].setData([json.outtemp(),json.intemp()],redraw,this.options.animation,true)
+        this.latestChart.series[1].setData([json.outhumidity(),json.inhumidity()],redraw,this.options.animation,true)
+        this.latestChart.series[2].setData([json.windspeed_mps()],redraw,this.options.animation,true)
+        this.latestChart.series[3].setData([json.windgustspeed_mps()],redraw,this.options.animation,true)
+        this.latestChart.series[4].setData([json.relbaro()],redraw,this.options.animation,true)
+        this.latestChart.series[5].setData([json.solar_light()],redraw,this.options.animation,true)
+        
+        
+    }
    
     //console.log(this.windrosedata)
     if (this.windrosechart) {
