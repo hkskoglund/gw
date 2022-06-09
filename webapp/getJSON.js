@@ -684,6 +684,7 @@ function UI()
     }
 
     this.options={
+        stationName: 'Tomasjord',
         interval: this.requestInterval.second16,  //  milliseconds (ms) request time for livedata JSON
         slow_interval: this.requestInterval.min1,           // ms slow request for livedata JSON
         fastRequestTimeout : this.requestInterval.min5,   // ms before starting slow request interval for livedata JSON
@@ -703,10 +704,12 @@ function UI()
         frostapi : {
             authorization: "Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:"), // http basic authorization header 
             enabled : true && ( (navigator.language.toLowerCase().indexOf('nb') !== -1) || this.isLGSmartTV2012()),    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
+            stationName: 'METno SN90450 Tromsø'
         },
         wundergroundapi: {
             apiKey: '9b606f1b6dde4afba06f1b6dde2afb1a',
             stationId: 'IENGEN26',
+            stationName: 'Engenes',
             interval: this.requestInterval.min15,
             enabled : true
         }
@@ -1433,6 +1436,10 @@ UI.prototype.initPressureChart=function()
 
 UI.prototype.initLatestChart=function()
 {
+    var stationNames=[]
+    stationNames.push(this.options.stationName)
+    stationNames.push(this.options.wundergroundapi.stationName)
+    stationNames.push(this.options.frostapi.stationName)
 
     this.latestChart=new Highcharts.chart('latestChart',
                             { chart : { 
@@ -1486,7 +1493,7 @@ UI.prototype.initLatestChart=function()
                             ],
                                 xAxis: [{
                                  type: 'column',
-                                 categories: ['Outdoor','Wunderground','METno']
+                                 categories: stationNames
                                 }],
                                
                                 tooltip: {
