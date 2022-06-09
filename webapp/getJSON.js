@@ -1,17 +1,13 @@
 // by default functions are added to window object
 
-function GetJSON(host,port,path,interval,options) {
+function GetJSON(url,interval,options) {
 // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest
 // https://stackoverflow.com/questions/1973140/parsing-json-from-xmlhttprequest-responsejson
 // https://developer.mozilla.org/en-US/docs/Web/API/setInterval
 
-    this.host=host
-    this.port=port
-    this.path=path
     this.options=options
     
-    this.setUrl(host,port,path)
-
+    this.url=url
 
     this.req=new XMLHttpRequest()
     
@@ -19,7 +15,7 @@ function GetJSON(host,port,path,interval,options) {
     this.req.addEventListener("error", this.transferError.bind(this))
     this.req.addEventListener("onabort",this.transferAbort.bind(this))
 
-    this.changeInterval(interval)
+    this.sendRequestInterval(interval)
 
     console.log('GetJSON',this)
   
@@ -58,11 +54,11 @@ GetJSON.prototype.Mode = {
     light_wattm2 : 1
 }
 
-GetJSON.prototype.changeInterval= function(interval)
+GetJSON.prototype.sendRequestInterval= function(interval)
 {
     if (!interval)
       {
-          console.error('ChangeInterval: Refusing to set undefined interval: '+interval)
+          console.error('sendRequestInterval: Refusing to set undefined interval: '+interval)
           return
       }
 
@@ -95,12 +91,6 @@ GetJSON.prototype.transferAbort = function(ev)
     console.warn('request aborted '+JSON.stringify(ev))
 }
 
-GetJSON.prototype.setUrl=function(host,port,path)
-{ 
-
-    this.url='http://'+host+':'+port+path
-    //console.log('request data from url:'+this.url)
-}
 
 GetJSON.prototype.timestamp=function()
 {
@@ -379,6 +369,8 @@ GetJSON.prototype.transferComplete=function(evt)
         //console.log('json:'+this.req.responseText)
         try {
             this.json = JSON.parse(this.req.responseText)
+            //console.dir(this.json, { depth: null })
+
             this.parse()
         } catch (err)
         {
@@ -399,17 +391,111 @@ GetJSON.prototype.transferError=function(evt)
     console.error('Failed to receive json for '+this.url,evt);
 }
 
-function GetJSONFrostPrecipitation(host,port,path,interval,options)
+function GetJSONFrostPrecipitation(url,interval,options)
 {
-    GetJSON.call(this,host,port,path,interval,options)
+    GetJSON.call(this,url,interval,options)
 }
 
 GetJSONFrostPrecipitation.prototype= Object.create(GetJSON.prototype)
 
-
-function GetJSONFrost(host,port,path,interval,options)
+function WindConverter()
 {
-    GetJSON.call(this,host,port,path,interval,options)
+
+}
+
+WindConverter.prototype.fromKmhToMps=function(kmh)
+{
+    return kmh*5/18
+}
+
+function GetJSONWUCurrentConditions(url,interval,options)
+{
+    GetJSON.call(this,url,interval,options)
+    this.options=options.wundergroundapi
+    this.windConverter=new WindConverter()
+}
+
+GetJSONWUCurrentConditions.prototype= Object.create(GetJSON.prototype)
+
+/*  {
+        "stationID": "IENGEN26",
+        "obsTimeUtc": "2022-06-09T13:32:48Z",
+        "obsTimeLocal": "2022-06-09 15:32:48",
+        "neighborhood": "Engenes",
+        "softwareType": "GW1000A_V1.7.3",
+        "country": "NO",
+        "solarRadiation": 132.1,
+        "lon": 17.155897,
+        "realtimeFrequency": null,
+        "epoch": 1654781568,
+        "lat": 68.920051,
+        "uv": 0,
+        "winddir": 302,
+        "humidity": 77,
+        "qcStatus": -1,
+        "metric": {
+          "temp": 6.7,
+          "heatIndex": 6.7,
+          "dewpt": 3,
+          "windChill": 4.5,
+          "windSpeed": 11.2,
+          "windGust": 14.4,
+          "pressure": 1010.3,
+          "precipRate": 0,
+          "precipTotal": 0,
+          "elev": 14.6
+        }
+      } */
+
+GetJSONWUCurrentConditions.prototype.parse=function()
+{
+    if (this.json.observations && this.json.observations[0]) {
+        this.data=this.json.observations[0]
+        console.log('wu data '+JSON.stringify(this.data))
+    } else
+        console.error('Not a WU observation '+JSON.stringify(this.json))
+}
+
+GetJSONWUCurrentConditions.prototype.outtemp=function()
+{
+    return this.data.metric.temp
+}
+
+GetJSONWUCurrentConditions.prototype.outhumidity=function()
+{
+    return this.data.humidity
+}
+
+
+GetJSONWUCurrentConditions.prototype.wind_speed=function()
+{
+    return this.windConverter.fromKmhToMps(this.data.metric.windSpeed)
+}
+
+GetJSONWUCurrentConditions.prototype.windgust_speed=function()
+{
+    return this.windConverter.fromKmhToMps(this.data.metric.windGust)
+}
+
+GetJSONWUCurrentConditions.prototype.winddirection=function()
+{
+    return this.data.winddir
+}
+
+GetJSONWUCurrentConditions.prototype.relbaro=function()
+{
+    return this.data.metric.pressure
+}
+
+GetJSONWUCurrentConditions.prototype.solar_light=function()
+{
+    return this.data.solarRadiation
+}
+
+
+function GetJSONFrost(url,interval,options)
+{
+    GetJSON.call(this,url,interval,options)
     this.options=options.frostapi
 }
 
@@ -524,9 +610,9 @@ GetJSONFrost.prototype.parse=function()
 
 }
 
-function getJSONFrostLatest15Min(host,port,path,interval,options)
+function getJSONFrostLatest15Min(url,interval,options)
 {
-    GetJSONFrost.call(this,host,port,path,interval,options)
+    GetJSONFrost.call(this,url,interval,options)
 }
 
 getJSONFrostLatest15Min.prototype= Object.create(GetJSONFrost.prototype)
@@ -539,9 +625,9 @@ getJSONFrostLatest15Min.prototype.sendRequest=function()
     this.req.send()
 }
 
-function GetJSONFrostLatest1H(host,port,path,interval,options)
+function GetJSONFrostLatest1H(url,interval,options)
 {
-    GetJSONFrost.call(this,host,port,path,interval,options)
+    GetJSONFrost.call(this,url,interval,options)
 }
 
 GetJSONFrostLatest1H.prototype= Object.create(GetJSONFrost.prototype)
@@ -620,7 +706,9 @@ function UI()
         },
         wundergroundapi: {
             apiKey: '9b606f1b6dde4afba06f1b6dde2afb1a',
-            enabled : false
+            stationId: 'IENGEN26',
+            interval: this.requestInterval.min15,
+            enabled : true
         }
     }
 
@@ -676,19 +764,25 @@ UI.prototype.testMemory=function()
 UI.prototype.initRequests=function(port)
 {
 
-    this.getJSON=new GetJSON(window.location.hostname,port,'/api/livedata',this.options.interval,this.options)
+    this.getJSON=new GetJSON(window.location.origin+'/api/livedata',this.options.interval,this.options)
     this.getJSON.req.addEventListener("load",this.onJSON.bind(this))
-    setTimeout(this.getJSON.changeInterval.bind(this.getJSON,this.options.slow_interval),this.options.fastRequestTimeout)
+    setTimeout(this.getJSON.sendRequestInterval.bind(this.getJSON,this.options.slow_interval),this.options.fastRequestTimeout)
 
     //this.getJSONFrost = new GetJSONFrost(window.location.hostname,port,'/api/frost.met.no/latest-hourly',this.options.frostapi_interval,this.options)
     //this.getJSONFrost.req.addEventListener("load",this.onJSONFrost.bind(this))
 
     if (this.options.frostapi.enabled) {
-        this.getJSONFrostLatest15Min = new getJSONFrostLatest15Min(window.location.hostname,port,'/api/frost.met.no/latest-15min',this.requestInterval.min15,this.options)
+        this.getJSONFrostLatest15Min = new getJSONFrostLatest15Min(window.location.origin+'/api/frost.met.no/latest-15min',this.requestInterval.min15,this.options)
         this.getJSONFrostLatest15Min.req.addEventListener("load",this.onJSONFrostLatest15Min.bind(this))
 
-        this.getJSONFrostLatest1H = new GetJSONFrostLatest1H(window.location.hostname,port,'/api/frost.met.no/latest-1H',this.requestInterval.hour1,this.options)
+        this.getJSONFrostLatest1H = new GetJSONFrostLatest1H(window.location.origin+'/api/frost.met.no/latest-1H',this.requestInterval.hour1,this.options)
         this.getJSONFrostLatest1H.req.addEventListener("load",this.onJSONFrostLatest1H.bind(this))
+    }
+
+    if (this.options.wundergroundapi.enabled) {
+        var wu=this.options.wundergroundapi
+        this.getJSONWUCurrentConditions = new GetJSONWUCurrentConditions('https://api.weather.com/v2/pws/observations/current?apiKey='+wu.apiKey+'&stationId='+wu.stationId+'&numericPrecision=decimal&format=json&units=m',this.options.wundergroundapi.interval,this.options)
+        this.getJSONWUCurrentConditions.req.addEventListener("load",this.onJSONWUCurrentConditions.bind(this))
     }
 }
 
@@ -793,17 +887,52 @@ UI.prototype.updateLatestMETno=function()
 
 UI.prototype.onJSONFrostLatest15Min=function(evt)
 {
+
+    var redraw=false,
+        animation=this.options.animation
+
     this.METno=this.getJSONFrostLatest15Min.METno
     this.updateLatestMETno()
-    this.updateSubtitleMETno()
     this.addObservationsMETno()
+
+    if (this.latestChart)
+    {
+        var categoryX=2 // METno
+
+        if (this.METnoLatestObservation.air_temperature)
+            this.latestChart.series[0].options.data[categoryX]=this.METnoLatestObservation.air_temperature.value
+
+        if (this.METnoLatestObservation.relative_humidity)
+            this.latestChart.series[1].options.data[categoryX]=this.METnoLatestObservation.relative_humidity.value
+        
+        if (this.METnoLatestObservation.wind_speed)
+            this.latestChart.series[2].options.data[categoryX]=this.METnoLatestObservation.wind_speed.value
+        
+        if (this.METnoLatestObservation['max(wind_speed_of_gust PT10M)'])
+            this.latestChart.series[3].options.data[categoryX]=this.METnoLatestObservation['max(wind_speed_of_gust PT10M)'].value
+
+        if (this.METnoLatestObservation.wind_from_direction)
+            this.latestChart.series[4].options.data[categoryX]=this.METnoLatestObservation.wind_from_direction.value
+
+        
+        if (this.METnoLatestObservation.air_pressure_at_sea_level)
+            this.latestChart.series[5].options.data[categoryX]=this.METnoLatestObservation.air_pressure_at_sea_level.value
+        
+        if (this.METnoLatestObservation['mean(surface_downwelling_shortwave_flux_in_air PT1M)'])
+            this.latestChart.series[6].options.data[categoryX]=this.METnoLatestObservation['mean(surface_downwelling_shortwave_flux_in_air PT1M)'].value
+        
+        this.latestChart.series.forEach(function (series) {
+            series.setData(series.options.data,redraw,animation)
+        })
+        
+
+    } 
 }
 
 UI.prototype.onJSONFrost=function(evt)
 {
    this.METno=this.getJSONFrost.METno
    this.updateLatestMETno()
-   this.updateSubtitleMETno()
    this.addObservationsMETno()
 }
 
@@ -811,10 +940,8 @@ UI.prototype.onJSONFrostLatest1H=function(evt)
 {
     this.METno=this.getJSONFrostLatest1H.METno
     this.updateLatestMETno()
-    this.updateSubtitleMETno()
     this.addObservationsMETno()
 }
-
 
 UI.prototype.onJSONFrostPrecipitationHour=function(evt)
 {
@@ -825,7 +952,30 @@ UI.prototype.onJSONFrostPrecipitationHour=function(evt)
     var precipitationHour=json.data[json.data.length-1].observations[0].value
     //console.log('precipitation today: '+ precipitationDay+' precip. hour: '+precipitationHour)
     this.rainstatchart.series[2].setData([['hour',precipitationHour],['day',precipitationDay],null,null,null],false,this.options.animation)
+}
 
+UI.prototype.onJSONWUCurrentConditions=function(evt)
+{
+    var getjson=this.getJSONWUCurrentConditions,
+        redraw=false,
+        animation=this.options.animation
+        categoryX=1 // Wunderground
+
+    //console.log('wu cc',evt,this)
+    if (this.latestChart)
+    {
+        this.latestChart.series[0].options.data[categoryX]=getjson.outtemp()
+        this.latestChart.series[1].options.data[categoryX]=getjson.outhumidity()
+        this.latestChart.series[2].options.data[categoryX]=getjson.wind_speed()
+        this.latestChart.series[3].options.data[categoryX]=getjson.windgust_speed()
+        this.latestChart.series[4].options.data[categoryX]=getjson.winddirection()
+        this.latestChart.series[5].options.data[categoryX]=getjson.relbaro()
+        this.latestChart.series[6].options.data[categoryX]=getjson.solar_light()
+        
+        this.latestChart.series.forEach(function (series) {
+            series.setData(series.options.data,redraw,animation)
+        })
+    }
 }
 
 UI.prototype.isLowMemoryDevice=function()
@@ -1283,6 +1433,7 @@ UI.prototype.initPressureChart=function()
 
 UI.prototype.initLatestChart=function()
 {
+
     this.latestChart=new Highcharts.chart('latestChart',
                             { chart : { 
                                  animation: this.options.animation
@@ -1312,6 +1463,13 @@ UI.prototype.initLatestChart=function()
                                         title: { text : 'Wind speed' },
                                         opposite: true,
                                     },
+                                    // Wind direction
+                                    {
+                                        min: 0,
+                                        title: { text : 'Wind dir.' },
+                                        opposite: true,
+                                        visible: false
+                                    },
                                     // Pressure
                                     {
                                         min: 0,
@@ -1328,7 +1486,7 @@ UI.prototype.initLatestChart=function()
                             ],
                                 xAxis: [{
                                  type: 'column',
-                                 categories: ['Outdoor','Indoor','METno','Wunderground']
+                                 categories: ['Outdoor','Wunderground','METno']
                                 }],
                                
                                 tooltip: {
@@ -1338,7 +1496,6 @@ UI.prototype.initLatestChart=function()
                                     {
                                         name: 'Temperature',
                                         type: 'column',
-                                        data: [],
                                         dataLabels: {
                                             enabled: true
                                         }
@@ -1347,7 +1504,6 @@ UI.prototype.initLatestChart=function()
                                         name: 'Humidity',
                                         type: 'column',
                                         yAxis: 1,
-                                        data: [],
                                         dataLabels: {
                                             enabled: true
                                         },
@@ -1357,16 +1513,25 @@ UI.prototype.initLatestChart=function()
                                         name: 'Wind speed',
                                         type: 'column',
                                         yAxis: 2,
-                                        data: [],
                                         dataLabels: {
-                                            enabled: true
+                                            enabled: true,
+                                            // https://www.highcharts.com/docs/chart-concepts/labels-and-string-formatting?_ga=2.200835883.424482256.1654686807-470753587.1650372441#format-strings
+                                            format : '{point.y:.1f}'
                                         }
                                     },
                                     {
                                         name: 'Wind gust',
                                         type: 'column',
                                         yAxis: 2,
-                                        data: [],
+                                        dataLabels: {
+                                            enabled: true,
+                                            format : '{point.y:.1f}'
+                                        }
+                                    },
+                                    {
+                                        name: 'Wind dir.',
+                                        type: 'column',
+                                        yAxis: 3,
                                         dataLabels: {
                                             enabled: true
                                         }
@@ -1374,18 +1539,17 @@ UI.prototype.initLatestChart=function()
                                     {
                                         name: 'Pressure',
                                         type: 'column',
-                                        yAxis: 3,
-                                        data: [],
+                                        yAxis: 4,
                                         dataLabels: {
-                                            enabled: true
+                                            enabled: true,
+                                            format : '{point.y:.1f}'
                                         },
                                         visible: false
                                     },
                                     {
                                         name: 'Irradiance',
                                         type: 'column',
-                                        yAxis: 4,
-                                        data: [],
+                                        yAxis: 5,
                                         dataLabels: {
                                             enabled: true
                                         },
@@ -1394,6 +1558,15 @@ UI.prototype.initLatestChart=function()
                                    
                             ]
                             })
+
+    this.latestChart.series.forEach(function (series) {
+        
+    series.options.data=[]; 
+        
+    series.xAxis.categories.forEach(function (category) { 
+        series.options.data.push(null )})
+    })
+
 }
 
 
@@ -1985,123 +2158,13 @@ UI.prototype.setChartRedrawInterval=function()
     }
 }
 
-UI.prototype.updateSubtitleMETno=function()
-{
-    this.updateTemperatureSubtitle()
-    this.updateWindSubtitle()
-    this.updateSolarSubtitle()
-    this.updatePressureSubtitle()
-    
-}
-
-UI.prototype.updateTemperatureSubtitle=function()
-{
-    var json=this.getJSON,
-        tempSubtitle='',
-        redraw=false,
-        latest=this.METnoLatestObservation
-    
-    if (json && json.data)
-       tempSubtitle='<b>Outdoor</b> '+json.outtempToString()+' '+ json.outhumidityToString()+' <b>Indoor</b> '+json.intempToString()+json.inhumidityToString()
-
-    if (latest && latest.air_temperature) 
-        tempSubtitle=tempSubtitle+'<br><b>METno</b> '+latest.air_temperature.value+' '+latest.air_temperature.unit
-
-    if (latest && latest.relative_humidity) // only each 1h
-        tempSubtitle=tempSubtitle+' '+latest.relative_humidity.value+' '+latest.relative_humidity.unit
-
-    if (latest && latest.air_temperature)
-        tempSubtitle=tempSubtitle+' '+latest.air_temperature.hhmm
-
-    if (this.temperaturechart)
-        this.temperaturechart.update({ 
-        subtitle: { text: tempSubtitle }
-        //caption : { text: new Date(timestamp)}
-        },redraw)
-}
-
-UI.prototype.updateWindSubtitle=function()
-{
-    var json=this.getJSON,
-        windSubtitle='',
-        redraw=false,
-        latest=this.METnoLatestObservation
-      
-    if (json && json.data) {
-        windSubtitle='<b>Speed</b> '+ json.windspeedToString()+' <b>Gust</b> '+ json.windgustspeedToString()+' '+json.winddirection_compass()+' '+json.windgustbeufort_description()
-        var winddailymax=json.winddailymax()
-        if (winddailymax)
-            windSubtitle=windSubtitle + ' <b>Max today</b> '+json.winddailymaxToString()
-    }
-
-    if (latest && latest.wind_speed && latest['max(wind_speed_of_gust PT10M)']) {
-        windSubtitle=windSubtitle+'<br><b>METno Speed</b> '+latest['wind_speed'].value+' '+latest['wind_speed'].unit+' <b>Gust</b> '+latest["max(wind_speed_of_gust PT10M)"].value+' '+latest['max(wind_speed_of_gust PT10M)'].unit+' ('+latest.wind_from_direction.value+latest.wind_from_direction.unit+') '+latest.wind_speed.hhmm
-    }
-
-    if (this.windbarbchart)
-        this.windbarbchart.update({ subtitle : { text: windSubtitle  }},redraw)
-
-}
-
-UI.prototype.updateSolarSubtitle=function()
-{
-    var json=this.getJSON,
-        solarSubtitle='',
-       redraw=false,
-       latest=this.METnoLatestObservation
-
-    if (json && json.data)
-       solarSubtitle='<b>Irradiance</b> '+json.solar_lightToString()+' <b>UVI</b> ' +json.solar_uvi_description() +' ('+json.solar_uvi()+')'
-
-     if (latest && latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'])
-         solarSubtitle=solarSubtitle+'<br><b>METno Mean 1m</b> '+latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'].value+ ' '+latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'].unit+' '+latest['mean(surface_downwelling_shortwave_flux_in_air PT1M)'].hhmm
- 
-    if (this.solarchart)
-        this.solarchart.update({subtitle : { text: solarSubtitle }},redraw)
-
-}
-
-UI.prototype.updatePressureSubtitle=function()
-{
-    var json=this.getJSON,
-        pressureSubtitle='',
-        redraw=false,
-        latest=this.METnoLatestObservation
-
-    if (json && json.data)
-        pressureSubtitle='<b>Relative</b> '+json.pressureToString(json.relbaro())+' <b>Absolute</b> ' + json.pressureToString(json.absbaro())
-
-    if (latest && latest.air_pressure_at_sea_level) // each 1h
-        pressureSubtitle=pressureSubtitle+'<br><b>METno Sea-level pressure (QFF)</b> ' + latest.air_pressure_at_sea_level.value.toFixed(1) + ' '+latest.air_pressure_at_sea_level.unit +' '+latest.air_pressure_at_sea_level.hhmm
-   
-    if (this.pressurechart)
-        this.pressurechart.update({ subtitle : { text: pressureSubtitle }},redraw)
-
-}
-
-UI.prototype.updateRainSubtitle=function()
-{
-    var json=this.getJSON,
-        rainSubtitle='',
-        redraw=false
-
-    rainSubtitle='<b>Rain rate</b>'+' '+json.rainrateToString()
-    if (this.rainchart)
-        this.rainchart.update({subtitle: { text: rainSubtitle }},redraw)
-}
-
 UI.prototype.updateCharts=function()
 {
     var json=this.getJSON,
         timestamp=json.timestamp(),
-        redraw=false
+        redraw=false,
+        animation=this.options.animation
 
-    this.updateTemperatureSubtitle()
-    this.updateWindSubtitle()
-    this.updateSolarSubtitle()
-    this.updatePressureSubtitle()
-    this.updateRainSubtitle()
- 
     //this.pressurechart.subtitle.element.textContent='Relative ' + json.pressureToString(json.relbaro()) + ' Absolute ' + json.pressureToString(json.absbaro())
 
     // Remove data if too old, otherwise they get skewed to the left
@@ -2116,16 +2179,23 @@ UI.prototype.updateCharts=function()
   //      this.solarchart.series.forEach(function (element) { element.setData([]) })
   //  }
 
-    if (this.latestChart) {
-        this.latestChart.series[0].setData([json.outtemp(),json.intemp()],redraw,this.options.animation,true)
-        this.latestChart.series[1].setData([json.outhumidity(),json.inhumidity()],redraw,this.options.animation,true)
-        this.latestChart.series[2].setData([json.windspeed_mps()],redraw,this.options.animation,true)
-        this.latestChart.series[3].setData([json.windgustspeed_mps()],redraw,this.options.animation,true)
-        this.latestChart.series[4].setData([json.relbaro()],redraw,this.options.animation,true)
-        this.latestChart.series[5].setData([json.solar_light()],redraw,this.options.animation,true)
-        
+     if (this.latestChart) {
+        this.latestChart.series[0].options.data[0]=json.outtemp()
+        //this.latestChart.series[0].options.data[1]=json.intemp()
+        this.latestChart.series[1].options.data[0]=json.outhumidity()
+        //this.latestChart.series[1].options.data[1]=json.inhumidity()
+        this.latestChart.series[2].options.data[0]=json.windspeed_mps()
+        this.latestChart.series[3].options.data[0]=json.windgustspeed_mps()
+        this.latestChart.series[4].options.data[0]=json.winddirection()
+        this.latestChart.series[5].options.data[0]=json.relbaro()
+        this.latestChart.series[6].options.data[0]=json.solar_light()
+
+        this.latestChart.series.forEach(function (series) {
+            series.setData(series.options.data,redraw,animation)
+        })
         
     }
+    
    
     //console.log(this.windrosedata)
     if (this.windrosechart) {
