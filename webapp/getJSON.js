@@ -1,4 +1,13 @@
-// by default functions are added to window object
+window.addEventListener('load', function initui() {
+    // console.log('onload event, init ui')
+    // console.log('window location',window.location)
+    try {
+         var ui = new UI()
+    } catch (err)
+    {
+        console.error(JSON.stringify(err))
+    }
+ })
 
 function GetJSON(url,interval,options) {
 // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest
@@ -417,41 +426,12 @@ function GetJSONWUCurrentConditions(url,interval,options)
 
 GetJSONWUCurrentConditions.prototype= Object.create(GetJSON.prototype)
 
-/*  {
-        "stationID": "IENGEN26",
-        "obsTimeUtc": "2022-06-09T13:32:48Z",
-        "obsTimeLocal": "2022-06-09 15:32:48",
-        "neighborhood": "Engenes",
-        "softwareType": "GW1000A_V1.7.3",
-        "country": "NO",
-        "solarRadiation": 132.1,
-        "lon": 17.155897,
-        "realtimeFrequency": null,
-        "epoch": 1654781568,
-        "lat": 68.920051,
-        "uv": 0,
-        "winddir": 302,
-        "humidity": 77,
-        "qcStatus": -1,
-        "metric": {
-          "temp": 6.7,
-          "heatIndex": 6.7,
-          "dewpt": 3,
-          "windChill": 4.5,
-          "windSpeed": 11.2,
-          "windGust": 14.4,
-          "pressure": 1010.3,
-          "precipRate": 0,
-          "precipTotal": 0,
-          "elev": 14.6
-        }
-      } */
-
 GetJSONWUCurrentConditions.prototype.parse=function()
 {
     if (this.json.observations && this.json.observations[0]) {
         this.data=this.json.observations[0]
-        console.log('wu data '+JSON.stringify(this.data))
+       // console.log('wu data '+JSON.stringify(this.data))
+       console.log('WU',this.data)
     } else
         console.error('Not a WU observation '+JSON.stringify(this.json))
 }
@@ -622,46 +602,46 @@ GetJSONFrost.prototype.parse=function()
             }
     }
 
-   console.log('data '+JSON.stringify(this.data),this.data)
+   console.log('METno',this.data)
 
 }
 
 GetJSONFrost.prototype.outtemp=function()
 {
-    return this.latestObservation('air_temperature')
+    return this.getLatestObservation('air_temperature')
 }
 
 GetJSONFrost.prototype.windspeed=function()
 {
-    return this.latestObservation('wind_speed')
+    return this.getLatestObservation('wind_speed')
 }
 
 GetJSONFrost.prototype.windgust=function()
 {
-    return this.latestObservation("max(wind_speed_of_gust PT10M)")
+    return this.getLatestObservation("max(wind_speed_of_gust PT10M)")
 }
 
 GetJSONFrost.prototype.winddirection=function()
 {
-    return this.latestObservation('wind_from_direction')
+    return this.getLatestObservation('wind_from_direction')
 }
 
 GetJSONFrost.prototype.solar_light=function()
 {
-    return this.latestObservation("mean(surface_downwelling_shortwave_flux_in_air PT1M)")
+    return this.getLatestObservation("mean(surface_downwelling_shortwave_flux_in_air PT1M)")
 }
 
 GetJSONFrost.prototype.relbaro=function()
 {
-    return this.latestObservation("air_pressure_at_sea_level")
+    return this.getLatestObservation("air_pressure_at_sea_level")
 }
 
 GetJSONFrost.prototype.outhumidity=function()
 {
-    return this.latestObservation("relative_humidity")
+    return this.getLatestObservation("relative_humidity")
 }
 
-GetJSONFrost.prototype.latestObservation=function(element)
+GetJSONFrost.prototype.getLatestObservation=function(element)
 {
     var data=this.data[element]
     if (data)
@@ -869,7 +849,7 @@ UI.prototype.onJSONHolfuyLive=function(evt)
     console.log('holfuy',evt)
 }
 
-UI.prototype.addObservationsMETno=function()
+UI.prototype.addObservationsMETno=function(data)
 {
     var series,
         observation,
@@ -877,67 +857,66 @@ UI.prototype.addObservationsMETno=function()
         elementId,
         lastOptionsData
 
-    for (elementId in this.METno) 
+    for (elementId in data) 
     {
         switch (elementId)
         {
             case 'air_pressure_at_sea_level' :
 
                 if (this.pressurechart)
-                    series = this.pressurechart.series[2]
+                    series = this.pressurechart.get('series-metno-air_pressure_at_sea_level')
                 break
             
             case 'air_temperature' :
 
                 if (this.temperaturechart) {
-                    series=this.temperaturechart.series[4]
+                    series=this.temperaturechart.get('series-metno-temperature10min')
                 }
 
                 break
-
             
             case 'relative_humidity' :
                 
                 if (this.temperaturechart)
-                    series=this.temperaturechart.series[5]
+                    series=this.temperaturechart.get('series-metno-humidity1h')
                 break
 
             case 'wind_speed' :
 
                 if (this.windbarbchart)
-                    series=this.windbarbchart.series[3]
+                    series=this.windbarbchart.get('series-metno-windmean10min')
                 break
 
-            case 'max(wind_speed PT1H)':
+         /*   case 'max(wind_speed PT1H)':
 
                 if (this.windbarbchart)
                     series=this.windbarbchart.series[3]
-                break
+                break */
                 
             // Multi-criteria case https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/switch
             case 'max(wind_speed_of_gust PT1H)':
             case 'max(wind_speed_of_gust PT10M)':
 
                 if (this.windbarbchart)
-                    series=this.windbarbchart.series[4]
+                    series=this.windbarbchart.get('series-metno-windgustmax10min')
                 break
 
             case 'mean(surface_downwelling_shortwave_flux_in_air PT1H)' :
             case 'mean(surface_downwelling_shortwave_flux_in_air PT1M)' :
                 
                 if (this.solarchart)
-                    series=this.solarchart.series[2]
+                    series=this.solarchart.get('series-metno-irradiance-mean1m')
                 break
 
             default : 
                 
-                console.error('Unsupported elementId '+elementId+' not added to series')
+                console.warn('METno elementId '+elementId+' not added to series/chart')
                 break
         }
 
         if (series) {
-            for (obsNr=0;obsNr<this.METno[elementId].length;obsNr++) {
-                observation=this.METno[elementId][obsNr]
+            for (obsNr=0;obsNr<data[elementId].length;obsNr++) {
+                observation=data[elementId][obsNr]
                lastOptionsData=series.options.data.slice(-1)
               // console.log('lastOptionsData',lastOptionsData,series.name)
                if ((lastOptionsData.length===1 && lastOptionsData[0][0]!==observation.timestamp)|| lastOptionsData.length===0) {
@@ -950,53 +929,48 @@ UI.prototype.addObservationsMETno=function()
             }
             series=undefined
         }
-
     }
 }
 
-UI.prototype.onJSONFrostLatest15Min=function(evt)
+UI.prototype.updateLatestChart=function(request)
 {
-
     var redraw=false,
         animation=this.options.animation
-
-    this.METno=this.getJSONFrostLatest15Min.data
-    this.addObservationsMETno()
 
     if (this.latestChart)
     {
         var stationIndex=2 // METno
 
-        var outtemp=this.getJSONFrostLatest15Min.outtemp()
+        var outtemp=request.outtemp()
         if (outtemp)
             this.latestChart.get('series-temperature').options.data[stationIndex]=outtemp
 
-        var humidity=this.getJSONFrostLatest15Min.outhumidity()
+        var humidity=request.outhumidity()
 
         if (humidity)
             this.latestChart.get('series-humidity').options.data[stationIndex]=humidity
         
-        var windspeed=this.getJSONFrostLatest15Min.windspeed()
+        var windspeed=request.windspeed()
 
         if (windspeed)
             this.latestChart.get('series-windspeed').options.data[stationIndex]=windspeed
     
-        var windgust=this.getJSONFrostLatest15Min.windgust()
+        var windgust=request.windgust()
         
         if (windgust)
             this.latestChart.get('series-windgust').options.data[stationIndex]=windgust
 
-        var winddirection=this.getJSONFrostLatest15Min.winddirection()
+        var winddirection=request.winddirection()
         
         if (winddirection)
             this.latestChart.get('series-winddirection').options.data[stationIndex]=winddirection
 
-        var relbaro=this.getJSONFrostLatest15Min.relbaro()
+        var relbaro=request.relbaro()
 
         if (relbaro)
             this.latestChart.get('series-relbaro').options.data[stationIndex]=relbaro
         
-         var irradiance=this.getJSONFrostLatest15Min.solar_light()
+         var irradiance=request.solar_light()
 
         if (irradiance)
             this.latestChart.get('series-irradiance').options.data[stationIndex]=irradiance
@@ -1008,16 +982,22 @@ UI.prototype.onJSONFrostLatest15Min=function(evt)
     } 
 }
 
+UI.prototype.onJSONFrostLatest15Min=function(evt)
+{
+    this.addObservationsMETno(this.getJSONFrostLatest15Min.data)
+    this.updateLatestChart(this.getJSONFrostLatest15Min)
+}
+
 UI.prototype.onJSONFrost=function(evt)
 {
-   this.METno=this.getJSONFrost.data
-   this.addObservationsMETno()
+   this.addObservationsMETno(this.getJSONFrost.data)
+   this.updateLatestChart(this.getJSONFrost)
 }
 
 UI.prototype.onJSONFrostLatest1H=function(evt)
 {
-    this.METno=this.getJSONFrostLatest1H.data
-    this.addObservationsMETno()
+    this.addObservationsMETno(this.getJSONFrostLatest1H.data)
+    this.updateLatestChart(this.getJSONFrostLatest1H)
 }
 
 UI.prototype.onJSONFrostPrecipitationHour=function(evt)
@@ -1231,6 +1211,7 @@ UI.prototype.initTemperatureChart=function()
     var tempSeries=[
         {
                 name: 'Outdoor',
+                id:'series-outdoor',
                 type: 'spline',
                 yAxis: 0,
                 data: [],
@@ -1238,6 +1219,7 @@ UI.prototype.initTemperatureChart=function()
             },
             {
                 name: 'Indoor',
+                id: 'series-indoor',
                 type: 'spline',
                 data: [],
                 yAxis: 0,
@@ -1246,6 +1228,7 @@ UI.prototype.initTemperatureChart=function()
             },
             {
                 name: 'Outdoor humidity',
+                series:'series-outdoor-humidity',
                 type: 'spline',
                 data: [],
                 yAxis: 1,
@@ -1257,6 +1240,7 @@ UI.prototype.initTemperatureChart=function()
             },
             {
                 name: 'Indoor humidity ',
+                id: 'series-indoor-humidity',
                 type: 'spline',
                 data: [],
                 
@@ -1272,6 +1256,7 @@ UI.prototype.initTemperatureChart=function()
     if (this.options.frostapi.enabled)
            tempSeries.push(  {
             name: 'METno Temperature 10min',
+            id:'series-metno-temperature10min',
             type: 'spline',
             yAxis: 0,
             data: [],
@@ -1279,6 +1264,7 @@ UI.prototype.initTemperatureChart=function()
             zIndex : 2
         }, {
             name: 'METno Humidity 1h',
+            id: 'series-metno-humidity1h',
             type: 'spline',
             yAxis: 1,
             data: [],
@@ -1397,11 +1383,13 @@ UI.prototype.initPressureChart=function()
     var pressureSeries=[
         {
                 name: 'Relative',
+                id: 'series-relbaro',
                 type: 'spline',
                 data: []
             },
             {
                 name: 'Absolute',
+                id:'series-absbaro',
                 type: 'spline',
                 data: [],
                 visible: false
@@ -1411,6 +1399,7 @@ UI.prototype.initPressureChart=function()
            pressureSeries.push(
             {
                 name: 'METno Sea-level pressure (QFF) 1h',
+                id: 'series-metno-air_pressure_at_sea_level',
                 type: 'spline',
                 data: [],
                 visible: false
@@ -1508,10 +1497,8 @@ UI.prototype.initPressureChart=function()
 UI.prototype.initLatestChart=function()
 {
     var stationNames=[]
-    stationNames.push(this.options.stationName)
-    stationNames.push(this.options.wundergroundapi.stationName)
-    stationNames.push(this.options.frostapi.stationName)
-
+    stationNames.push(this.options.stationName,this.options.wundergroundapi.stationName,this.options.frostapi.stationName)
+    
     this.latestChart=new Highcharts.chart('latestChart',
                             { chart : { 
                                  animation: this.options.animation
@@ -1891,6 +1878,7 @@ UI.prototype.initSolarChart=function()
             //https://frost.met.no/elements/v0.jsonld?fields=id,oldElementCodes,category,name,description,unit,sensorLevelType,sensorLevelUnit,sensorLevelDefaultValue,sensorLevelValues,cmMethod,cmMethodDescription,cmInnerMethod,cmInnerMethodDescription,status&lang=en-US
             // https://frost.met.no/elementtable
             name: 'METno Solar mean 1m',
+            id:'series-metno-irradiance-mean1m',
             type: 'spline',
             yAxis: 0,
             data: [],
@@ -2018,6 +2006,7 @@ UI.prototype.initWindBarbChart=function()
         type: 'areaspline',
         data: [],
         name: 'Wind',
+        id:'series-wind',
         zIndex: 3
     },
     {
@@ -2025,6 +2014,7 @@ UI.prototype.initWindBarbChart=function()
         data: [],
         zIndex: 2,
         name: 'Wind gust',
+        id:'series-windgust'
     }]
 
     if (this.options.frostapi.enabled)
@@ -2035,6 +2025,7 @@ UI.prototype.initWindBarbChart=function()
             data: [],
             //zIndex: 2,
             name: 'METno Wind mean 10min',
+            id:'series-metno-windmean10min',
             visible: false
         })
 
@@ -2044,6 +2035,7 @@ UI.prototype.initWindBarbChart=function()
             data: [],
             //zIndex: 2,
             name: 'METno Wind gust max 10min',
+            id: 'series-metno-windgustmax10min',
             visible: false
         })
     }
@@ -2438,16 +2430,5 @@ Number.isInteger = Number.isInteger || function(value) {
       Math.floor(value) === value;
   };
 
-
-window.onload = function init() {
-   // console.log('onload event, init ui')
-   // console.log('window location',window.location)
-   try {
-        var ui = new UI()
-   } catch (err)
-   {
-       console.error(JSON.stringify(err))
-   }
-    
-}
+   
 
