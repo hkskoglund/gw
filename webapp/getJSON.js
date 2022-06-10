@@ -1634,7 +1634,8 @@ UI.prototype.initLatestChart=function()
                                         dataLabels: {
                                             enabled: true
                                         },
-                                        visible: false
+                                        visible: false,
+                                        zones : this.zones.uvi
                                     }
                                    
                             ]
@@ -1805,26 +1806,7 @@ UI.prototype.initRainChart=function()
                                     data: [],
                                     //https://en.wikipedia.org/wiki/Rain#Intensity
                                     //zoneAxis: 'y',
-                                    zones: [
-                                        {   
-                                            // max value for zone < 2.5
-                                            value: 2.5,
-                                            color: '#2a9502'    // green
-                                           
-                                        },
-                                        {   
-                                            value: 7.6,
-                                            color: '#f7e400'    // yellow
-                                           
-                                        },
-                                        {   
-                                            value: 50,
-                                            color: '#f85900'    // orange
-                                        },
-                                        {
-                                            color: '#d8220e'    // redish
-                                        },
-                                   ]
+                                    zones: this.zones.rainrate
                             },
                             {
                                 name: 'Rain event',
@@ -1867,26 +1849,7 @@ UI.prototype.initSolarChart=function()
                 yAxis: 1,
                 data: [],
                 
-                zones: [{
-                    value: 2,
-                    color:  '#2a9502'   // green
-                },
-                {   
-                    value: 5,
-                    color: '#f7e400'    // yellow
-                },
-                {   
-                    value: 7,
-                    color: '#f85900'    // orange
-                },
-                {   
-                    value: 10,
-                    color: '#d8220e'    // redish
-                },
-                {   
-                    color: '#6b49c8'    // magenta
-                }
-               ]
+                zones: this.zones.uvi
             }] 
         
         if (this.options.enabled)
@@ -2141,6 +2104,49 @@ UI.prototype.initCharts=function()
 {
     // Windrose demo https://jsfiddle.net/fq64pkhn/
     //var testChart=Highcharts.stockChart('testchart',{ title: { text: 'test chart' }}) 
+    this.zones = {
+        uvi : [{
+            value: 2,
+            color:  '#2a9502'   // green
+        },
+        {   
+            value: 5,
+            color: '#f7e400'    // yellow
+        },
+        {   
+            value: 7,
+            color: '#f85900'    // orange
+        },
+        {   
+            value: 10,
+            color: '#d8220e'    // redish
+        },
+        {   
+            color: '#6b49c8'    // magenta
+        }
+       ],
+
+       rainrate: [
+        {   
+            // max value for zone < 2.5
+            value: 2.5,
+            color: '#2a9502'    // green
+           
+        },
+        {   
+            value: 7.6,
+            color: '#f7e400'    // yellow
+           
+        },
+        {   
+            value: 50,
+            color: '#f85900'    // orange
+        },
+        {
+            color: '#d8220e'    // redish
+        },
+        ]
+    }
 
     if (this.isLGSmartTV2012()) {
 
