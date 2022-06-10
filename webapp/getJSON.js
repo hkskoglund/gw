@@ -497,6 +497,11 @@ GetJSONWUCurrentConditions.prototype.solar_light=function()
     return this.data.solarRadiation
 }
 
+GetJSONWUCurrentConditions.prototype.solar_uvi=function()
+{
+    return this.data.uv
+}
+
 function GetJSONHolfuyLive(url,interval,options)
 {
     GetJSON.call(this,url,interval,options)
@@ -696,7 +701,7 @@ function UI()
     }
 
     this.options={
-        stationName: 'GW Tomasjord',
+        stationName: 'Tomasjord',
         interval: this.requestInterval.second16,  //  milliseconds (ms) request time for livedata JSON
         slow_interval: this.requestInterval.min1,           // ms slow request for livedata JSON
         fastRequestTimeout : this.requestInterval.min5,   // ms before starting slow request interval for livedata JSON
@@ -724,7 +729,7 @@ function UI()
             doc: 'https://docs.google.com/document/d/1eKCnKXI9xnoMGRRzOL1xPCBihNV2rOet08qpE_gArAY',
             apiKey: '9b606f1b6dde4afba06f1b6dde2afb1a', // get a personal api key from https://www.wunderground.com/member/api-keys
             stationId: 'IENGEN26',
-            stationName: 'WU IENGEN26 Engenes',
+            stationName: 'Engenes',
             interval: this.requestInterval.min15,
             enabled : true
         },
@@ -1011,7 +1016,8 @@ UI.prototype.onJSONWUCurrentConditions=function(evt)
         this.latestChart.get('series-winddirection').options.data[stationIndex]=wuCurrentConditionsJSON.winddirection()
         this.latestChart.get('series-relbaro').options.data[stationIndex]=wuCurrentConditionsJSON.relbaro()
         this.latestChart.get('series-irradiance').options.data[stationIndex]=wuCurrentConditionsJSON.solar_light()
-        
+        this.latestChart.get('series-UVI').options.data[stationIndex]=wuCurrentConditionsJSON.solar_uvi()        
+
         this.latestChart.series.forEach(function (series) {
             series.setData(series.options.data,redraw,animation)
         })
@@ -1483,8 +1489,9 @@ UI.prototype.initLatestChart=function()
                                 credits: {
                                     enabled: false
                                 },
-                                // Temperature
-                                yAxis: [{
+                                yAxis: [
+                                    // Temperature
+                                    {
                                     title: { text : 'Temperature' },
                                     //max: 60
                                 },
@@ -1521,6 +1528,12 @@ UI.prototype.initLatestChart=function()
                                         min: 0,
                                         title: false,
                                         visible: false
+                                    },
+                                    // UVI
+                                    {
+                                        min: 0,
+                                        title: false,
+                                        visible: false
                                     }
                             ],
                                 xAxis: [{
@@ -1532,7 +1545,7 @@ UI.prototype.initLatestChart=function()
                                     enabled: this.options.tooltip
                                 },
                                 caption : { 
-                                    text: 'Sources: GW http:/*//api/livedata, WU data https://api.weather.com, METno data https://frost.met.no - CC 4.0'
+                                    text: 'API: <b>WU</b> https://api.weather.com, <b>METno</b> https://frost.met.no - CC 4.0'
                                 },
                                 series: [
                                     {
@@ -1612,6 +1625,16 @@ UI.prototype.initLatestChart=function()
                                             enabled: true
                                         },
                                         visible: false
+                                    },
+                                    {
+                                        name: 'UVI',
+                                        id: 'series-UVI',
+                                        type: 'column',
+                                        yAxis: 6,
+                                        dataLabels: {
+                                            enabled: true
+                                        },
+                                        visible: false
                                     }
                                    
                             ]
@@ -1619,11 +1642,11 @@ UI.prototype.initLatestChart=function()
 
     this.latestChart.series.forEach(function (series) {
         
-    series.options.data=[]; 
-            
-       series.xAxis.categories.forEach(function (category) { 
-            series.options.data.push(null ) 
-        }) 
+        series.options.data=[]; 
+                
+        series.xAxis.categories.forEach(function (category) { 
+                series.options.data.push(null) 
+            }) 
     }) 
 
 }
@@ -2249,6 +2272,7 @@ UI.prototype.updateCharts=function()
         this.latestChart.get('series-winddirection').options.data[stationIndex]=livedataJSON.winddirection()
         this.latestChart.get('series-relbaro').options.data[stationIndex]=livedataJSON.relbaro()
         this.latestChart.get('series-irradiance').options.data[stationIndex]=livedataJSON.solar_light()
+        this.latestChart.get('series-UVI').options.data[stationIndex]=livedataJSON.solar_uvi()        
 
         this.latestChart.series.forEach(function (series) {
             series.setData(series.options.data,redraw,animation)
