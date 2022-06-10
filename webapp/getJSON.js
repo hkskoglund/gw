@@ -570,7 +570,7 @@ GetJSONFrost.prototype.parse=function()
         timeOffset,
         lastObservation
 
-    this.METno={}
+    this.data={}
 
     for (item=0;item<json.totalItemCount;item++) // number of data items
     {
@@ -588,17 +588,16 @@ GetJSONFrost.prototype.parse=function()
                 elementId=observation.elementId
              //   console.log(elementId+' '+JSON.stringify(observation))
 
-
                 unit=observation.unit
 
                 if (unit==='degC')
-                unit='℃'
+                    unit='℃'
                 else if (unit==='percent')
                     unit='%'
                 else if (unit==='degrees')
-                unit='°'
+                    unit='°'
                 else if (unit==='W/m2')
-                unit='W/㎡'
+                    unit='W/㎡'
 
                 // Query result should have time offset PT0H
                 if (observation.timeOffset!=='PT0H')
@@ -607,12 +606,12 @@ GetJSONFrost.prototype.parse=function()
                 else
                 {
 
-                    if (!this.METno[elementId])
-                        this.METno[elementId] = []
+                    if (!this.data[elementId])
+                        this.data[elementId] = []
 
-                    lastObservation=this.METno[elementId].slice(-1)[0]
+                    lastObservation=this.data[elementId].slice(-1)[0]
                     if (!lastObservation || (lastObservation && lastObservation.timestamp !== timestamp)) // dont attempt to add multiple observations with same timestamp, for example PT1H and PT10M at 10:00
-                        this.METno[elementId].push({
+                        this.data[elementId].push({
                             timestamp : timestamp,
                             hhmm : hhmm,
                             value : observation.value,
@@ -623,8 +622,50 @@ GetJSONFrost.prototype.parse=function()
             }
     }
 
-   console.log('METno '+JSON.stringify(this.METno),this.METno)
+   console.log('data '+JSON.stringify(this.data),this.data)
 
+}
+
+GetJSONFrost.prototype.outtemp=function()
+{
+    return this.latestObservation('air_temperature')
+}
+
+GetJSONFrost.prototype.windspeed=function()
+{
+    return this.latestObservation('wind_speed')
+}
+
+GetJSONFrost.prototype.windgust=function()
+{
+    return this.latestObservation("max(wind_speed_of_gust PT10M)")
+}
+
+GetJSONFrost.prototype.winddirection=function()
+{
+    return this.latestObservation('wind_from_direction')
+}
+
+GetJSONFrost.prototype.solar_light=function()
+{
+    return this.latestObservation("mean(surface_downwelling_shortwave_flux_in_air PT1M)")
+}
+
+GetJSONFrost.prototype.relbaro=function()
+{
+    return this.latestObservation("air_pressure_at_sea_level")
+}
+
+GetJSONFrost.prototype.outhumidity=function()
+{
+    return this.latestObservation("relative_humidity")
+}
+
+GetJSONFrost.prototype.latestObservation=function(element)
+{
+    var data=this.data[element]
+    if (data)
+        return data[data.length-1].value
 }
 
 function getJSONFrostLatest15Min(url,interval,options)
@@ -752,8 +793,6 @@ function UI()
     else
       port=window.location.port
 
-    this.METnoLatestObservation={}
-
     this.initJSONRequests(port)
     //this.testMemory()
     
@@ -836,8 +875,7 @@ UI.prototype.addObservationsMETno=function()
         observation,
         obsNr,
         elementId,
-        lastOptionsData,
-        subtitle
+        lastOptionsData
 
     for (elementId in this.METno) 
     {
@@ -916,74 +954,69 @@ UI.prototype.addObservationsMETno=function()
     }
 }
 
-UI.prototype.updateLatestMETno=function()
-{
-     var METno=this.METno,
-        latest=this.METnoLatestObservation
-
-    // Copy latest observation
-
-    for (elementId in METno)
-       latest[elementId]=METno[elementId][METno[elementId].length-1]
-
-    console.log('METnoLatestObservation',latest)
-}
-
 UI.prototype.onJSONFrostLatest15Min=function(evt)
 {
 
     var redraw=false,
         animation=this.options.animation
 
-    this.METno=this.getJSONFrostLatest15Min.METno
-    this.updateLatestMETno()
+    this.METno=this.getJSONFrostLatest15Min.data
     this.addObservationsMETno()
 
     if (this.latestChart)
     {
         var stationIndex=2 // METno
 
-        if (this.METnoLatestObservation.air_temperature)
-            this.latestChart.get('series-temperature').options.data[stationIndex]=this.METnoLatestObservation.air_temperature.value
+        var outtemp=this.getJSONFrostLatest15Min.outtemp()
+        if (outtemp)
+            this.latestChart.get('series-temperature').options.data[stationIndex]=outtemp
 
-        if (this.METnoLatestObservation.relative_humidity)
-            this.latestChart.get('series-humidity').options.data[stationIndex]=this.METnoLatestObservation.relative_humidity.value
-        
-        if (this.METnoLatestObservation.wind_speed)
-            this.latestChart.get('series-windspeed').options.data[stationIndex]=this.METnoLatestObservation.wind_speed.value
-        
-        if (this.METnoLatestObservation['max(wind_speed_of_gust PT10M)'])
-            this.latestChart.get('series-windgust').options.data[stationIndex]=this.METnoLatestObservation['max(wind_speed_of_gust PT10M)'].value
+        var humidity=this.getJSONFrostLatest15Min.outhumidity()
 
-        if (this.METnoLatestObservation.wind_from_direction)
-            this.latestChart.get('series-winddirection').options.data[stationIndex]=this.METnoLatestObservation.wind_from_direction.value
+        if (humidity)
+            this.latestChart.get('series-humidity').options.data[stationIndex]=humidity
+        
+        var windspeed=this.getJSONFrostLatest15Min.windspeed()
 
+        if (windspeed)
+            this.latestChart.get('series-windspeed').options.data[stationIndex]=windspeed
+    
+        var windgust=this.getJSONFrostLatest15Min.windgust()
         
-        if (this.METnoLatestObservation.air_pressure_at_sea_level)
-            this.latestChart.get('series-relbaro').options.data[stationIndex]=this.METnoLatestObservation.air_pressure_at_sea_level.value
+        if (windgust)
+            this.latestChart.get('series-windgust').options.data[stationIndex]=windgust
+
+        var winddirection=this.getJSONFrostLatest15Min.winddirection()
         
-        if (this.METnoLatestObservation['mean(surface_downwelling_shortwave_flux_in_air PT1M)'])
-            this.latestChart.get('series-irradiance').options.data[stationIndex]=this.METnoLatestObservation['mean(surface_downwelling_shortwave_flux_in_air PT1M)'].value
+        if (winddirection)
+            this.latestChart.get('series-winddirection').options.data[stationIndex]=winddirection
+
+        var relbaro=this.getJSONFrostLatest15Min.relbaro()
+
+        if (relbaro)
+            this.latestChart.get('series-relbaro').options.data[stationIndex]=relbaro
+        
+         var irradiance=this.getJSONFrostLatest15Min.solar_light()
+
+        if (irradiance)
+            this.latestChart.get('series-irradiance').options.data[stationIndex]=irradiance
         
         this.latestChart.series.forEach(function (series) {
             series.setData(series.options.data,redraw,animation)
         })
-        
 
     } 
 }
 
 UI.prototype.onJSONFrost=function(evt)
 {
-   this.METno=this.getJSONFrost.METno
-   this.updateLatestMETno()
+   this.METno=this.getJSONFrost.data
    this.addObservationsMETno()
 }
 
 UI.prototype.onJSONFrostLatest1H=function(evt)
 {
-    this.METno=this.getJSONFrostLatest1H.METno
-    this.updateLatestMETno()
+    this.METno=this.getJSONFrostLatest1H.data
     this.addObservationsMETno()
 }
 
