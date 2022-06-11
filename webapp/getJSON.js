@@ -506,6 +506,11 @@ GetJSONWUCurrentConditions.prototype.solar_uvi=function()
     return this.data.uv
 }
 
+GetJSONWUCurrentConditions.prototype.rainrate=function()
+{
+    return this.data.metric.precipRate
+}
+
 function GetJSONHolfuyLive(url,interval,options)
 {
     GetJSON.call(this,url,interval)
@@ -701,7 +706,7 @@ function UI()
             apiKey: '9b606f1b6dde4afba06f1b6dde2afb1a', // get a personal api key from https://www.wunderground.com/member/api-keys
             stationId: 'IENGEN26',
             stationName: 'Engenes',
-            interval: this.requestInterval.min15,
+            interval: this.requestInterval.min5,
             enabled : true
         },
         holfuyapi: {
@@ -778,7 +783,7 @@ UI.prototype.initJSONRequests=function(port)
     if (this.options.wundergroundapi.enabled) {
         var wu=this.options.wundergroundapi
         this.getJSONWUCurrentConditions = new GetJSONWUCurrentConditions('https://api.weather.com/v2/pws/observations/current?apiKey='+wu.apiKey+'&stationId='+wu.stationId+'&numericPrecision=decimal&format=json&units=m',this.options.wundergroundapi.interval,this.options)
-        this.getJSONWUCurrentConditions.req.addEventListener("load",this.onJSONWUCurrentConditions.bind(this))
+        this.getJSONWUCurrentConditions.req.addEventListener("load",this.onJSONWUCurrentConditions.bind(this,this.getJSONWUCurrentConditions))
     }
 
     if (this.options.holfuyapi.enabled)
@@ -944,25 +949,26 @@ UI.prototype.onJSONFrostPrecipitationHour=function(evt)
     this.rainstatchart.series[2].setData([['hour',precipitationHour],['day',precipitationDay],null,null,null],false,this.options.animation)
 }
 
-UI.prototype.onJSONWUCurrentConditions=function(evt)
+UI.prototype.onJSONWUCurrentConditions=function(jsonReq,evt)
+// candidate for refactoring into one function with updateCharts/onJSONLivedata
 {
-    var wuCurrentConditionsJSON=this.getJSONWUCurrentConditions,
-        redraw=false,
+    var redraw=false,
         animation=this.options.animation
         stationIndex=1 // Wunderground
 
     //console.log('wu cc',evt,this)
     if (this.latestChart)
     {
-        this.latestChart.get('series-temperature').options.data[stationIndex]=wuCurrentConditionsJSON.outtemp()
-        this.latestChart.get('series-windchill').options.data[stationIndex]=wuCurrentConditionsJSON.windchill()
-        this.latestChart.get('series-humidity').options.data[stationIndex]=wuCurrentConditionsJSON.outhumidity()
-        this.latestChart.get('series-windspeed').options.data[stationIndex]=wuCurrentConditionsJSON.wind_speed()
-        this.latestChart.get('series-windgust').options.data[stationIndex]=wuCurrentConditionsJSON.windgust_speed()
-        this.latestChart.get('series-winddirection').options.data[stationIndex]=wuCurrentConditionsJSON.winddirection()
-        this.latestChart.get('series-relbaro').options.data[stationIndex]=wuCurrentConditionsJSON.relbaro()
-        this.latestChart.get('series-irradiance').options.data[stationIndex]=wuCurrentConditionsJSON.solar_light()
-        this.latestChart.get('series-UVI').options.data[stationIndex]=wuCurrentConditionsJSON.solar_uvi()        
+        this.latestChart.get('series-temperature').options.data[stationIndex]=jsonReq.outtemp()
+        this.latestChart.get('series-windchill').options.data[stationIndex]=jsonReq.windchill()
+        this.latestChart.get('series-humidity').options.data[stationIndex]=jsonReq.outhumidity()
+        this.latestChart.get('series-windspeed').options.data[stationIndex]=jsonReq.wind_speed()
+        this.latestChart.get('series-windgust').options.data[stationIndex]=jsonReq.windgust_speed()
+        this.latestChart.get('series-winddirection').options.data[stationIndex]=jsonReq.winddirection()
+        this.latestChart.get('series-relbaro').options.data[stationIndex]=jsonReq.relbaro()
+        this.latestChart.get('series-irradiance').options.data[stationIndex]=jsonReq.solar_light()
+        this.latestChart.get('series-UVI').options.data[stationIndex]=jsonReq.solar_uvi()
+        this.latestChart.get('series-rainrate').options.data[stationIndex]=jsonReq.rainrate()        
 
         this.latestChart.series.forEach(function (series) {
             series.setData(series.options.data,redraw,animation)
@@ -1487,6 +1493,11 @@ UI.prototype.initLatestChart=function()
                                         min: 0,
                                         title: false,
                                         visible: false
+                                    },
+                                    // Rain rate
+                                    {
+                                        min: 0,
+                                        title: false,
                                     }
                             ],
                                 xAxis: [{
@@ -1559,6 +1570,18 @@ UI.prototype.initLatestChart=function()
                                         }
                                     },
                                     {
+                                        name: 'Rainrate',
+                                        id: 'series-rainrate',
+                                        type: 'column',
+                                        yAxis: 7,
+                                        dataLabels: {
+                                            enabled: true,
+                                            format : '{point.y:.1f}'
+                                        },
+                                        visible: true,
+                                        //zones:  this.zones.rainrate
+                                    },
+                                    {
                                         name: 'Pressure',
                                         id: 'series-relbaro',
                                         type: 'column',
@@ -1588,8 +1611,9 @@ UI.prototype.initLatestChart=function()
                                             enabled: true
                                         },
                                         visible: false,
-                                        zones : this.zones.uvi
-                                    }
+                                       // zones : this.zones.uvi
+                                    },
+                                   
                                    
                             ]
                             })
@@ -2235,7 +2259,8 @@ UI.prototype.updateCharts=function()
         this.latestChart.get('series-winddirection').options.data[stationIndex]=livedataJSON.winddirection()
         this.latestChart.get('series-relbaro').options.data[stationIndex]=livedataJSON.relbaro()
         this.latestChart.get('series-irradiance').options.data[stationIndex]=livedataJSON.solar_light()
-        this.latestChart.get('series-UVI').options.data[stationIndex]=livedataJSON.solar_uvi()        
+        this.latestChart.get('series-UVI').options.data[stationIndex]=livedataJSON.solar_uvi()
+        this.latestChart.get('series-rainrate').options.data[stationIndex]=livedataJSON.rainrate()        
 
         this.latestChart.series.forEach(function (series) {
             series.setData(series.options.data,redraw,animation)
