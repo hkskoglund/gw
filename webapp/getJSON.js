@@ -764,15 +764,15 @@ UI.prototype.initJSONRequests=function(port)
 {
 
     this.getJSON=new GetJSONLivedata(window.location.origin+'/api/livedata',this.options.interval,this.options)
-    this.getJSON.req.addEventListener("load",this.onJSONLivedata.bind(this))
+    this.getJSON.req.addEventListener("load",this.onJSONLivedata.bind(this,this.getJSON))
     setTimeout(this.getJSON.sendInterval.bind(this.getJSON,this.options.slow_interval),this.options.fastRequestTimeout)
 
     if (this.options.frostapi.enabled) {
         this.getJSONFrostLatest15Min = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest-15min',this.requestInterval.min15,this.options)
-        this.getJSONFrostLatest15Min.req.addEventListener("load",this.onJSONFrostLatest15Min.bind(this))
+        this.getJSONFrostLatest15Min.req.addEventListener("load",this.onJSONFrost.bind(this,this.getJSONFrostLatest15Min))
 
         this.getJSONFrostLatest1H = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest-1H',this.requestInterval.hour1,this.options)
-        this.getJSONFrostLatest1H.req.addEventListener("load",this.onJSONFrostLatest1H.bind(this))
+        this.getJSONFrostLatest1H.req.addEventListener("load",this.onJSONFrost.bind(this,this.getJSONFrostLatest1H))
     }
 
     if (this.options.wundergroundapi.enabled) {
@@ -802,7 +802,7 @@ UI.prototype.addObservationsMETno=function(data)
         observation,
         obsNr,
         elementId,
-        lastOptionsData
+        lastSeriesData
 
     for (elementId in data) 
     {
@@ -858,24 +858,22 @@ UI.prototype.addObservationsMETno=function(data)
             default : 
                 
                 console.warn('METno elementId '+elementId+' not added to series/chart')
-                break
+                continue
+                
         }
 
-        if (series) {
-            for (obsNr=0;obsNr<data[elementId].length;obsNr++) {
-                observation=data[elementId][obsNr]
-               lastOptionsData=series.options.data.slice(-1)
-              // console.log('lastOptionsData',lastOptionsData,series.name)
-               if ((lastOptionsData.length===1 && lastOptionsData[0][0]!==observation.timestamp)|| lastOptionsData.length===0) {
+        lastSeriesData=series.options.data[series.options.data.length-1]
+        data[elementId].forEach(function _addObservation(observation) {
+            if (!lastSeriesData || (lastSeriesData[0]!==observation.timestamp)) {
                 //    console.log('addpoint',series.name,[observation.timestamp,observation.value])
                     series.addPoint([observation.timestamp,observation.value],false,this.options.shift,this.options.animation,false)
-               }
-                else
-                  console.warn(elementId+' Skippping observation already is series; timestamp '+observation.timestamp+' value '+observation.value,series) // same value of relative_humidity and air_pressure_at_at_sea_level each 1h is included each 10m in JSON
-
             }
-            series=undefined
-        }
+                else
+                console.warn(elementId+' Skippping observation already is series; timestamp '+observation.timestamp+' value '+observation.value,series) // same value of relative_humidity and air_pressure_at_at_sea_level each 1h is included each 10m in JSON
+
+            }.bind(this))
+
+        series=undefined
     }
 }
 
@@ -929,22 +927,10 @@ UI.prototype.updateLatestChart=function(METnoRequest)
     } 
 }
 
-UI.prototype.onJSONFrostLatest15Min=function(evt)
+UI.prototype.onJSONFrost=function(jsonReq,evt)
 {
-    this.addObservationsMETno(this.getJSONFrostLatest15Min.data)
-    this.updateLatestChart(this.getJSONFrostLatest15Min)
-}
-
-UI.prototype.onJSONFrost=function(evt)
-{
-   this.addObservationsMETno(this.getJSONFrost.data)
-   this.updateLatestChart(this.getJSONFrost)
-}
-
-UI.prototype.onJSONFrostLatest1H=function(evt)
-{
-    this.addObservationsMETno(this.getJSONFrostLatest1H.data)
-    this.updateLatestChart(this.getJSONFrostLatest1H)
+   this.addObservationsMETno(jsonReq.data)
+   this.updateLatestChart(jsonReq)
 }
 
 UI.prototype.onJSONFrostPrecipitationHour=function(evt)
@@ -2141,9 +2127,8 @@ UI.prototype.initCharts=function()
     }
 }
 
-UI.prototype.onJSONLivedata=function (ev)
+UI.prototype.onJSONLivedata=function (jsonReq,ev)
 {
-    var json=this.getJSON
     // Show when data is available
    // if (this.weatherElement.style.display==="none")
    //   this.weatherElement.style.display="block"
@@ -2154,47 +2139,47 @@ UI.prototype.onJSONLivedata=function (ev)
     {
         if (this.options.tooltip.enabled) {
             if (this.rainchart) {
-                this.rainchart.series[0].tooltipOptions.valueSuffix=' '+json.unitRainrate()
-                this.rainchart.series[1].tooltipOptions.valueSuffix=' '+json.unitRain()
-                this.rainchart.series[2].tooltipOptions.valueSuffix=' '+json.unitRain()
+                this.rainchart.series[0].tooltipOptions.valueSuffix=' '+jsonReq.unitRainrate()
+                this.rainchart.series[1].tooltipOptions.valueSuffix=' '+jsonReq.unitRain()
+                this.rainchart.series[2].tooltipOptions.valueSuffix=' '+jsonReq.unitRain()
             }
             if (this.windbarbchart)
-                this.windbarbchart.series.forEach(function (series) { series.tooltipOptions.valueSuffix=' '+json.unitWind()})
+                this.windbarbchart.series.forEach(function (series) { series.tooltipOptions.valueSuffix=' '+jsonReq.unitWind()})
             if (this.temperaturechart) {
-                this.temperaturechart.series[0].tooltipOptions.valueSuffix=' '+json.unitTemp()
-                this.temperaturechart.series[1].tooltipOptions.valueSuffix=' '+json.unitTemp()
+                this.temperaturechart.series[0].tooltipOptions.valueSuffix=' '+jsonReq.unitTemp()
+                this.temperaturechart.series[1].tooltipOptions.valueSuffix=' '+jsonReq.unitTemp()
             }
             if (this.pressurechart) {
-                this.pressurechart.series[0].tooltipOptions.valueSuffix=' '+json.unitPressure()
-                this.pressurechart.series[1].tooltipOptions.valueSuffix=' '+json.unitPressure()
+                this.pressurechart.series[0].tooltipOptions.valueSuffix=' '+jsonReq.unitPressure()
+                this.pressurechart.series[1].tooltipOptions.valueSuffix=' '+jsonReq.unitPressure()
             }
             if (this.solarchart)
-                this.solarchart.series[0].tooltipOptions.valueSuffix=' '+json.unitSolarlight()
+                this.solarchart.series[0].tooltipOptions.valueSuffix=' '+jsonReq.unitSolarlight()
         }
 
      
     }
 
-    this.outtempElement.textContent=json.outtemp()
-    this.intempElement.textContent=json.intemp()
-    this.unitTempElement.textContent=json.unitTemp()
+    this.outtempElement.textContent=jsonReq.outtemp()
+    this.intempElement.textContent=jsonReq.intemp()
+    this.unitTempElement.textContent=jsonReq.unitTemp()
 
-    this.windspeedElement.textContent=json.windspeed()
-    this.windgustspeedElement.textContent=json.windgustspeed()
-    this.winddirection_compassElement.textContent=json.winddirection_compass()
-    this.windgustspeed_beufort_descriptionElement.textContent=json.windgustbeufort_description()
-    this.unitWindElement.textContent=json.unitWind()
-    this.meter_windgustspeedElement.value=json.windgustspeed()
+    this.windspeedElement.textContent=jsonReq.windspeed()
+    this.windgustspeedElement.textContent=jsonReq.windgustspeed()
+    this.winddirection_compassElement.textContent=jsonReq.winddirection_compass()
+    this.windgustspeed_beufort_descriptionElement.textContent=jsonReq.windgustbeufort_description()
+    this.unitWindElement.textContent=jsonReq.unitWind()
+    this.meter_windgustspeedElement.value=jsonReq.windgustspeed()
 
-    this.relbaroElement.textContent=json.relbaro()
-    this.absbaroElement.textContent=json.absbaro()
-    this.unitpressureElement.textContent=json.unitPressure()
+    this.relbaroElement.textContent=jsonReq.relbaro()
+    this.absbaroElement.textContent=jsonReq.absbaro()
+    this.unitpressureElement.textContent=jsonReq.unitPressure()
 
-    this.solar_lightElement.textContent=json.solar_light()
-    this.unit_solar_lightElement.textContent=json.unitSolarlight()
-    this.solar_uvElement.textContent=json.solar_uv()
-    this.unit_solar_uvElement.textContent=json.unitSolarUV()
-    this.solar_uviElement.textContent=json.solar_uvi()
+    this.solar_lightElement.textContent=jsonReq.solar_light()
+    this.unit_solar_lightElement.textContent=jsonReq.unitSolarlight()
+    this.solar_uvElement.textContent=jsonReq.solar_uv()
+    this.unit_solar_uvElement.textContent=jsonReq.unitSolarUV()
+    this.solar_uviElement.textContent=jsonReq.solar_uvi()
 
     this.updateCharts()
 
@@ -2257,7 +2242,6 @@ UI.prototype.updateCharts=function()
         })
         
     }
-    
    
     //console.log(this.windrosedata)
     if (this.windrosechart) {
@@ -2286,17 +2270,17 @@ UI.prototype.updateCharts=function()
             this.options.shift=true
         }
 
-        this.addpointIfChanged(this.temperaturechart.series[0],[timestamp,livedataJSON.outtemp()])
-        this.addpointIfChanged(this.temperaturechart.series[1],[timestamp,livedataJSON.intemp()])
-        this.addpointIfChanged(this.temperaturechart.series[2],[timestamp,livedataJSON.outhumidity()])
-        this.addpointIfChanged(this.temperaturechart.series[3],[timestamp,livedataJSON.inhumidity()])
+        this.temperaturechart.series[0].addPoint([timestamp,livedataJSON.outtemp()],this.options.shift,this.options.animation,false)
+        this.temperaturechart.series[1].addPoint([timestamp,livedataJSON.intemp()],this.options.shift,this.options.animation,false)
+        this.temperaturechart.series[2].addPoint([timestamp,livedataJSON.outhumidity()],this.options.shift,this.options.animation,false)
+        this.temperaturechart.series[3].addPoint([timestamp,livedataJSON.inhumidity()],this.options.shift,this.options.animation,false)
     }
 
     // https://api.highcharts.com/class-reference/Highcharts.Series#addPoint
     
    if (this.pressurechart) {
-        this.addpointIfChanged(this.pressurechart.series[0],[timestamp,livedataJSON.relbaro()])
-        this.addpointIfChanged(this.pressurechart.series[1],[timestamp,livedataJSON.absbaro()])
+        this.pressurechart.series[0].addPoint([timestamp,livedataJSON.relbaro()],this.options.shift,this.options.animation,false)
+        this.pressurechart.series[1].addPoint([timestamp,livedataJSON.absbaro()],this.options.shift,this.options.animation,false)
    }
 
    if (this.windbarbchart) {
@@ -2305,9 +2289,9 @@ UI.prototype.updateCharts=function()
         // https://api.highcharts.com/highcharts/series.line.data
         // only support m/s unit
         //this.windbarbchart.series[1].addPoint({ x: timestamp, y: livedataJSON.windspeed_mps() },redraw,this.options.shift,this.options.animation,false)
-        this.addpointIfChanged(this.windbarbchart.series[1],[timestamp,livedataJSON.windspeed_mps()])
+        this.windbarbchart.series[1].addPoint([timestamp,livedataJSON.windspeed_mps()],this.options.shift,this.options.animation,false)
         //this.windbarbchart.series[2].addPoint({ x: timestamp, y: livedataJSON.windgustspeed_mps() },redraw,this.options.shift,this.options.animation,false)
-        this.addpointIfChanged(this.windbarbchart.series[2],[timestamp,livedataJSON.windgustspeed_mps()])
+        this.windbarbchart.series[2].addPoint([timestamp,livedataJSON.windgustspeed_mps()],this.options.shift,this.options.animation,false)
         var winddailymax=livedataJSON.winddailymax()
         if (winddailymax)
         {
@@ -2317,15 +2301,15 @@ UI.prototype.updateCharts=function()
 
     if (this.solarchart) {
         //this.solarchart.series[0].addPoint([timestamp,livedataJSON.solar_light()],false,this.options.shift,this.options.animation,false)
-        this.addpointIfChanged(this.solarchart.series[0],[timestamp,livedataJSON.solar_light()])
+        this.solarchart.series[0].addPoint([timestamp,livedataJSON.solar_light()],this.options.shift,this.options.animation,false)
         // this.solarchart.series[1].addPoint([timestamp,livedataJSON.solar_uv()],false, this.solarchart.series[1].points.length>37, false)
-        this.addpointIfChanged(this.solarchart.series[1],[timestamp, livedataJSON.solar_uvi()])
+        this.solarchart.series[1].addPoint([timestamp, livedataJSON.solar_uvi()],this.options.shift,this.options.animation,false)
     }
 
     if (this.rainchart) {
-        this.addpointIfChanged(this.rainchart.series[0],[timestamp,livedataJSON.rainrate()])
-        this.addpointIfChanged(this.rainchart.series[1],[timestamp,livedataJSON.rainevent()])
-        this.addpointIfChanged(this.rainchart.series[2],[timestamp,livedataJSON.rainday()])
+        this.rainchart.series[0].addPoint([timestamp,livedataJSON.rainrate()],this.options.shift,this.options.animation,false)
+        this.rainchart.series[1].addPoint([timestamp,livedataJSON.rainevent()],this.options.shift,this.options.animation,false)
+        this.rainchart.series[2].addPoint([timestamp,livedataJSON.rainday()],this.options.shift,this.options.animation,false)
     }
 
     if (this.rainstatchart) {
@@ -2334,13 +2318,6 @@ UI.prototype.updateCharts=function()
     }
    // console.log('data min/max',this.windchart.series[0].yAxis.dataMin,this.windchart.series[0].yAxis.dataMax)
    
-}
-
-UI.prototype.addpointIfChanged=function(series,xy)
-// Added to limit the number of points generated/memory footprint, for example not necessary to store alot of points when rainrate is constantly 0 
-{
-    series.addPoint(xy,false,this.options.shift,this.options.animation,false)
-    // optimization deprecated, series may be grouped automatically by Highstock, hard to update latest point
 }
 
 UI.prototype.redrawChart=function()
