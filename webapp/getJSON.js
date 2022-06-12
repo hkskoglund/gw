@@ -585,8 +585,7 @@ GetJSONFrost.prototype.parse=function()
         observation,
         elementId,
         unit,
-        lastObservation,
-        latestReferencetime=0
+        lastObservation
 
     this.data= {}
 
@@ -597,8 +596,9 @@ GetJSONFrost.prototype.parse=function()
            // console.log(JSON.stringify(json.data[item]))
             timestamp=referenceTime.getTime()-referenceTime.getTimezoneOffset()*60000  // local timezone time
             hhmmss=DateUtil.prototype.getHHMMSS(referenceTime)
-            if (referenceTime>latestReferencetime) {
+            if (referenceTime>this.options.latestReferencetime) {
                 this.options.latestHHMMSS=hhmmss
+                this.options.latestReferencetime=referenceTime
             }
         
            // console.log('observations '+json.data[item].observations.length)
@@ -721,10 +721,11 @@ function UI()
             doc: 'https://frost.met.no/index.html',
             authorization: "Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:"), // http basic authorization header -> get key from https://frost.met.no/howto.html
             enabled : true && ( (navigator.language.toLowerCase().indexOf('nb') !== -1) || this.isLGSmartTV2012()),    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
-            stationName: 'SN90450 Tromsø',
+            stationName: 'Værvarslinga SN90450',
             stationId: 'SN90450',
             stationIndex: 2,
-            latestHHMMSS: ''
+            latestHHMMSS: '',
+            latestReferencetime : 0
         },
         wundergroundapi: {
             doc: 'https://docs.google.com/document/d/1eKCnKXI9xnoMGRRzOL1xPCBihNV2rOet08qpE_gArAY',
@@ -734,7 +735,7 @@ function UI()
             stationIndex: 1,
             interval: this.requestInterval.min5,
             enabled : true,
-            latestHHMMSS : ''
+            latestHHMMSS : '',
         },
         holfuyapi: {
             doc: 'http://api.holfuy.com/live/', // does not support CORS in Chrome/Edge (use curl on backend?), but works in Firefox 100.0.1
