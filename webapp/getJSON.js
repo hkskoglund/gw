@@ -159,6 +159,7 @@ GetJSONLivedata.prototype.Mode = {
 
 GetJSONLivedata.prototype.timestamp=function()
 {
+    // When gw system setting for time is AUTO=1, this will be in the local timezone
     return this.data.timestamp
 }
 
@@ -442,10 +443,20 @@ WindConverter.prototype.fromKmhToMps=function(kmh)
     return kmh*5/18
 }
 
+function DateUtil()
+{
+}
+
+DateUtil.prototype.getHHMMSS=function(date)
+{
+    
+   return ('0'+date.getHours()).slice(-2)+':'+('0'+date.getMinutes()).slice(-2)+':'+('0'+date.getSeconds()).slice(-2) // https://stackoverflow.com/questions/1267283/how-can-i-pad-a-value-with-leading-zeros  
+}
+
 function GetJSONWUCurrentConditions(url,interval,options)
 {
     GetJSON.call(this,url,interval)
-    this.options=options.wundergroundapi
+    this.options=options
     this.windConverter=new WindConverter()
 }
 
@@ -459,6 +470,11 @@ GetJSONWUCurrentConditions.prototype.parse=function()
        console.log('WU',this.data)
     } else
         console.error('Not a WU observation '+JSON.stringify(this.json))
+}
+
+GetJSONWUCurrentConditions.prototype.timestamp=function()
+{
+    return this.data.epoch*1000
 }
 
 GetJSONWUCurrentConditions.prototype.outtemp=function()
@@ -514,7 +530,7 @@ GetJSONWUCurrentConditions.prototype.rainrate=function()
 function GetJSONHolfuyLive(url,interval,options)
 {
     GetJSON.call(this,url,interval)
-    this.options=options.holfuyapi
+    this.options=options
 }
 
 GetJSONHolfuyLive.prototype= Object.create(GetJSON.prototype)
@@ -522,7 +538,7 @@ GetJSONHolfuyLive.prototype= Object.create(GetJSON.prototype)
 function GetJSONFrost(url,interval,options)
 {
     GetJSON.call(this,url,interval)
-    this.options=options.frostapi
+    this.options=options
 }
 
 GetJSONFrost.prototype= Object.create(GetJSON.prototype)
@@ -565,22 +581,25 @@ GetJSONFrost.prototype.parse=function()
         obsNr,
         referenceTime,
         timestamp,
-        hhmm,
+        hhmmss,
         observation,
         elementId,
         unit,
-        lastObservation
+        lastObservation,
+        latestReferencetime=0
 
-    this.data={}
+    this.data= {}
 
     for (item=0;item<json.totalItemCount;item++) // number of data items
     {
-            referenceTime=new Date(json.data[item].referenceTime) 
+            referenceTime=new Date(json.data[item].referenceTime)
            // console.log('referenceTime '+referenceTime)
            // console.log(JSON.stringify(json.data[item]))
-            //console.log('referencetime',referenceTime)                    
             timestamp=referenceTime.getTime()-referenceTime.getTimezoneOffset()*60000  // local timezone time
-            hhmm=('0'+referenceTime.getHours()).slice(-2)+':'+('0'+referenceTime.getMinutes()).slice(-2) // https://stackoverflow.com/questions/1267283/how-can-i-pad-a-value-with-leading-zeros
+            hhmmss=DateUtil.prototype.getHHMMSS(referenceTime)
+            if (referenceTime>latestReferencetime) {
+                this.options.latestHHMMSS=hhmmss
+            }
         
            // console.log('observations '+json.data[item].observations.length)
             for (obsNr=0;obsNr<json.data[item].observations.length;obsNr++)
@@ -614,7 +633,7 @@ GetJSONFrost.prototype.parse=function()
                     if (!lastObservation || (lastObservation && lastObservation.timestamp !== timestamp)) // dont attempt to add multiple observations with same timestamp, for example PT1H and PT10M at 10:00
                         this.data[elementId].push({
                             timestamp : timestamp,
-                            hhmm : hhmm,
+                            hhmmss : hhmmss,
                             value : observation.value,
                             unit : unit
                         })
@@ -677,16 +696,15 @@ function UI()
     }
 
     this.options={
-        stationName: 'Tomasjord',
         interval: this.requestInterval.second16,  //  milliseconds (ms) request time for livedata JSON
         slow_interval: this.requestInterval.min1,           // ms slow request for livedata JSON
         fastRequestTimeout : this.requestInterval.min5,   // ms before starting slow request interval for livedata JSON
         fastRedrawTimeout : this.requestInterval.min5,    // ms before, reverting to fixed redraw interval, during fast redraw charts are redrawn as fast as the JSON request interval
         redraw_interval: this.requestInterval.min1,         // ms between each chart redraw
         tooltip: !isLowMemoryDevice,              // turn off for ipad1 - slow animation/disappearing
-        animation: false,               // turn off animation for all charts
+        animation: !isLowMemoryDevice,               // turn off animation for all charts
         addpointIfChanged : true,       // only addpoint if value changes (keep memory footprint low),
-        shift: false,                   // shift series flag
+        shift: true,                   // shift series flag
         shift_measurements_ipad1: 2250, // number of measurements before shifting (3600/16=225 samples/hours*10 hours)
         shift_measurements: 5400,       // 1 day= 225 samples*24 hours =5400
         invalid_security_certificate : isLowMemoryDevice, // have outdated security certificates for https request
@@ -694,27 +712,37 @@ function UI()
         mousetracking: !isLowMemoryDevice,        // allocates memory for duplicate path for tracking
         forceLowMemoryDevice : forceLowMemoryDevice,        // for testing
         // navigator.languauge is "en-us" for LG Smart TV 2012
+        gwapi: {
+            stationName: 'Tomasjord',
+            stationIndex: 0, // Category index
+            latestHHMMSS: ''
+        },
         frostapi : {
             doc: 'https://frost.met.no/index.html',
-            authorization: "Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:"), // http basic authorization header 
+            authorization: "Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:"), // http basic authorization header -> get key from https://frost.met.no/howto.html
             enabled : true && ( (navigator.language.toLowerCase().indexOf('nb') !== -1) || this.isLGSmartTV2012()),    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
-            stationName: 'METno SN90450 Tromsø',
-            stationId: 'SN90450'
+            stationName: 'SN90450 Tromsø',
+            stationId: 'SN90450',
+            stationIndex: 2,
+            latestHHMMSS: ''
         },
         wundergroundapi: {
             doc: 'https://docs.google.com/document/d/1eKCnKXI9xnoMGRRzOL1xPCBihNV2rOet08qpE_gArAY',
             apiKey: '9b606f1b6dde4afba06f1b6dde2afb1a', // get a personal api key from https://www.wunderground.com/member/api-keys
             stationId: 'IENGEN26',
             stationName: 'Engenes',
+            stationIndex: 1,
             interval: this.requestInterval.min5,
-            enabled : true
+            enabled : true,
+            latestHHMMSS : ''
         },
         holfuyapi: {
             doc: 'http://api.holfuy.com/live/', // does not support CORS in Chrome/Edge (use curl on backend?), but works in Firefox 100.0.1
             stationId: '101', // Test
             stationName: 'test',
             interval: this.requestInterval.hour1,
-            enabled: false
+            enabled: false,
+            latestHHMMSS : ''
         }
     }
 
@@ -768,21 +796,21 @@ UI.prototype.testMemory=function()
 UI.prototype.initJSONRequests=function(port)
 {
 
-    this.getJSON=new GetJSONLivedata(window.location.origin+'/api/livedata',this.options.interval,this.options)
+    this.getJSON=new GetJSONLivedata(window.location.origin+'/api/livedata',this.options.interval,this.options.gwapi)
     this.getJSON.req.addEventListener("load",this.onJSONLivedata.bind(this,this.getJSON))
     setTimeout(this.getJSON.sendInterval.bind(this.getJSON,this.options.slow_interval),this.options.fastRequestTimeout)
 
     if (this.options.frostapi.enabled) {
-        this.getJSONFrostLatest15Min = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest-15min',this.requestInterval.min15,this.options)
+        this.getJSONFrostLatest15Min = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest-15min',this.requestInterval.min15,this.options.frostapi)
         this.getJSONFrostLatest15Min.req.addEventListener("load",this.onJSONFrost.bind(this,this.getJSONFrostLatest15Min))
 
-        this.getJSONFrostLatest1H = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest-1H',this.requestInterval.hour1,this.options)
+        this.getJSONFrostLatest1H = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest-1H',this.requestInterval.hour1,this.options.frostapi)
         this.getJSONFrostLatest1H.req.addEventListener("load",this.onJSONFrost.bind(this,this.getJSONFrostLatest1H))
     }
 
     if (this.options.wundergroundapi.enabled) {
         var wu=this.options.wundergroundapi
-        this.getJSONWUCurrentConditions = new GetJSONWUCurrentConditions('https://api.weather.com/v2/pws/observations/current?apiKey='+wu.apiKey+'&stationId='+wu.stationId+'&numericPrecision=decimal&format=json&units=m',this.options.wundergroundapi.interval,this.options)
+        this.getJSONWUCurrentConditions = new GetJSONWUCurrentConditions('https://api.weather.com/v2/pws/observations/current?apiKey='+wu.apiKey+'&stationId='+wu.stationId+'&numericPrecision=decimal&format=json&units=m',this.options.wundergroundapi.interval,this.options.wundergroundapi)
         this.getJSONWUCurrentConditions.req.addEventListener("load",this.onJSONWUCurrentConditions.bind(this,this.getJSONWUCurrentConditions))
     }
 
@@ -882,18 +910,22 @@ UI.prototype.addObservationsMETno=function(data)
     }
 }
 
-UI.prototype.updateLatestChart=function(METnoRequest)
+UI.prototype.updateFrostLatestChart=function(METnoRequest)
 {
     var redraw=false,
         animation=this.options.animation
 
     if (this.latestChart)
     {
-        var stationIndex=2 // METno
+        var stationIndex=this.options.frostapi.stationIndex // METno
+
+        this.updateStationTimestampLatestChart()
 
         var outtemp=METnoRequest.getLatestObservation('air_temperature')
         if (outtemp)
+        {
             this.latestChart.get('series-temperature').options.data[stationIndex]=outtemp
+        }
 
         var humidity=METnoRequest.getLatestObservation('relative_humidity')
 
@@ -935,7 +967,7 @@ UI.prototype.updateLatestChart=function(METnoRequest)
 UI.prototype.onJSONFrost=function(jsonReq,evt)
 {
    this.addObservationsMETno(jsonReq.data)
-   this.updateLatestChart(jsonReq)
+   this.updateFrostLatestChart(jsonReq)
 }
 
 UI.prototype.onJSONFrostPrecipitationHour=function(evt)
@@ -954,7 +986,9 @@ UI.prototype.onJSONWUCurrentConditions=function(jsonReq,evt)
 {
     var redraw=false,
         animation=this.options.animation
-        stationIndex=1 // Wunderground
+        stationIndex=this.options.wundergroundapi.stationIndex // Wunderground
+
+    this.options.wundergroundapi.latestHHMMSS=DateUtil.prototype.getHHMMSS(new Date(jsonReq.timestamp()))
 
     //console.log('wu cc',evt,this)
     if (this.latestChart)
@@ -1435,12 +1469,11 @@ UI.prototype.initPressureChart=function()
 
 UI.prototype.initLatestChart=function()
 {
-    var stationNames=[]
-    stationNames.push(this.options.stationName,this.options.wundergroundapi.stationName,this.options.frostapi.stationName)
+    var stationNames=this.getStationNamesHHMM()
     
     this.latestChart=new Highcharts.chart('latestChart',
                             { chart : { 
-                                 animation: this.options.animation
+                                 //animation: this.options.animation
                                 },
                                 title: {
                                     text: 'Latest observations'
@@ -2209,30 +2242,54 @@ UI.prototype.onJSONLivedata=function (jsonReq,ev)
 
     if (!this.fastRedrawTimeoutId)
     {
-        console.log('Setting fast redraw timeout '+this.options.fastRedrawTimeout)
+        console.log('Setting fast chart redraw timeout '+this.options.fastRedrawTimeout)
         this.fastRedrawTimeoutId=setTimeout(this.setChartRedrawInterval.bind(this),this.options.fastRedrawTimeout)
         this.redrawChart()
-    } else if (!this.chartRedrawIntevalId)
+    } else if (!this.chartRedrawInterval)
         this.redrawChart()
 
 }
 
 UI.prototype.setChartRedrawInterval=function()
 {
-    if  (!this.chartRedrawIntevalId)
+    if  (!this.chartRedrawInterval)
     {
       this.redrawChart()
       console.log('Setting chart redraw interval '+this.options.redraw_interval)
-      this.chartRedrawIntevalId=setInterval(this.redrawChart.bind(this),this.options.redraw_interval)
+      this.chartRedrawInterval=setInterval(this.redrawChart.bind(this),this.options.redraw_interval)
     }
+}
+
+UI.prototype.getStationNamesHHMM=function()
+{
+    var stationNames=[]
+    stationNames[this.options.gwapi.stationIndex]=this.options.gwapi.stationName+' '+this.options.gwapi.latestHHMMSS
+    stationNames[this.options.frostapi.stationIndex]=this.options.frostapi.stationName+' '+this.options.frostapi.latestHHMMSS
+    stationNames[this.options.wundergroundapi.stationIndex]=this.options.wundergroundapi.stationName+' '+this.options.wundergroundapi.latestHHMMSS
+    
+    return stationNames
+}
+
+UI.prototype.updateStationTimestampLatestChart=function()
+{
+    var redraw=false
+
+    if (!this.latestChart)
+        return
+    
+    this.latestChart.xAxis[0].setCategories(this.getStationNamesHHMM(),redraw)
 }
 
 UI.prototype.updateCharts=function()
 {
     var livedataJSON=this.getJSON,
         timestamp=livedataJSON.timestamp(),
+        hhmmss=DateUtil.prototype.getHHMMSS(new Date(timestamp+new Date().getTimezoneOffset()*60000)) // assumes same timezone on GW as local computer
         redraw=false,
-        animation=this.options.animation
+        animation=this.options.animation,
+        stationIndex=this.options.gwapi.stationIndex
+
+    this.options.gwapi.latestHHMMSS=hhmmss
 
     //this.pressurechart.subtitle.element.textContent='Relative ' + livedataJSON.pressureToString(livedataJSON.relbaro()) + ' Absolute ' + livedataJSON.pressureToString(livedataJSON.absbaro())
 
@@ -2249,7 +2306,7 @@ UI.prototype.updateCharts=function()
   //  }
 
      if (this.latestChart) {
-         var stationIndex=0
+        this.updateStationTimestampLatestChart()
         this.latestChart.get('series-temperature').options.data[stationIndex]=livedataJSON.outtemp()
         //this.latestChart.series[0].options.data[1]=livedataJSON.intemp()
         this.latestChart.get('series-humidity').options.data[stationIndex]=livedataJSON.outhumidity()
