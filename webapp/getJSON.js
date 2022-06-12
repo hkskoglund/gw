@@ -694,7 +694,7 @@ function UI()
         tooltip: !isLowMemoryDevice,              // turn off for ipad1 - slow animation/disappearing
         animation: !isLowMemoryDevice,               // turn off animation for all charts
         addpointIfChanged : true,       // only addpoint if value changes (keep memory footprint low),
-        shift: true,                   // shift series flag
+        shift: false,                   // shift series flag
         shift_measurements_ipad1: 2250, // number of measurements before shifting (3600/16=225 samples/hours*10 hours)
         shift_measurements: 5400,       // 1 day= 225 samples*24 hours =5400
         invalid_security_certificate : isLowMemoryDevice, // have outdated security certificates for https request
