@@ -29,14 +29,13 @@ window.addEventListener('load', function initui() {
     }
  })
 
- function GetJSON(url,interval) {
-
-    this.options={}
-    
+ function GetJSON(url,interval,options) {
+   
     this.url=url
+    this.interval=interval
+    this.options=options
 
     this.req=new XMLHttpRequest()
-    
     this.req.addEventListener("load", this.transferComplete.bind(this))
     this.req.addEventListener("error", this.transferError.bind(this))
     this.req.addEventListener("abort",this.transferAbort.bind(this))
@@ -117,10 +116,8 @@ function GetJSONLivedata(url,interval,options) {
 // https://stackoverflow.com/questions/1973140/parsing-json-from-xmlhttprequest-responsejson
 // https://developer.mozilla.org/en-US/docs/Web/API/setInterval
 
-     GetJSON.call(this,url,interval)
-     this.options=options
-  
-  }
+     GetJSON.call(this,url,interval,options)
+}
 
 GetJSONLivedata.prototype= Object.create(GetJSON.prototype)
 
@@ -428,7 +425,7 @@ GetJSONLivedata.prototype.parse=function()
 
 function GetJSONFrostPrecipitation(url,interval,options)
 {
-    GetJSON.call(this,url,interval)
+    GetJSON.call(this,url,interval,options)
 }
 
 GetJSONFrostPrecipitation.prototype= Object.create(GetJSON.prototype)
@@ -455,9 +452,7 @@ DateUtil.prototype.getHHMMSS=function(date)
 
 function GetJSONWUCurrentConditions(url,interval,options)
 {
-    GetJSON.call(this,url,interval)
-    this.options=options
-    this.windConverter=new WindConverter()
+    GetJSON.call(this,url,interval,options)
 }
 
 GetJSONWUCurrentConditions.prototype= Object.create(GetJSON.prototype)
@@ -494,12 +489,12 @@ GetJSONWUCurrentConditions.prototype.outhumidity=function()
 
 GetJSONWUCurrentConditions.prototype.wind_speed=function()
 {
-    return this.windConverter.fromKmhToMps(this.data.metric.windSpeed)
+    return WindConverter.prototype.fromKmhToMps(this.data.metric.windSpeed)
 }
 
 GetJSONWUCurrentConditions.prototype.windgust_speed=function()
 {
-    return this.windConverter.fromKmhToMps(this.data.metric.windGust)
+    return WindConverter.prototype.fromKmhToMps(this.data.metric.windGust)
 }
 
 GetJSONWUCurrentConditions.prototype.winddirection=function()
@@ -529,16 +524,14 @@ GetJSONWUCurrentConditions.prototype.rainrate=function()
 
 function GetJSONHolfuyLive(url,interval,options)
 {
-    GetJSON.call(this,url,interval)
-    this.options=options
+    GetJSON.call(this,url,interval,options)
 }
 
 GetJSONHolfuyLive.prototype= Object.create(GetJSON.prototype)
 
 function GetJSONFrost(url,interval,options)
 {
-    GetJSON.call(this,url,interval)
-    this.options=options
+    GetJSON.call(this,url,interval,options)
 }
 
 GetJSONFrost.prototype= Object.create(GetJSON.prototype)
@@ -696,9 +689,6 @@ function UI()
     }
 
     this.options={
-        interval: this.requestInterval.second16,  //  milliseconds (ms) request time for livedata JSON
-        slow_interval: this.requestInterval.min1,           // ms slow request for livedata JSON
-        fastRequestTimeout : this.requestInterval.min5,   // ms before starting slow request interval for livedata JSON
         fastRedrawTimeout : this.requestInterval.min5,    // ms before, reverting to fixed redraw interval, during fast redraw charts are redrawn as fast as the JSON request interval
         redraw_interval: this.requestInterval.min1,         // ms between each chart redraw
         tooltip: !isLowMemoryDevice,              // turn off for ipad1 - slow animation/disappearing
@@ -715,7 +705,10 @@ function UI()
         gwapi: {
             stationName: 'Tomasjord',
             stationIndex: 0, // Category index
-            latestHHMMSS: ''
+            latestHHMMSS: '',
+            interval: this.requestInterval.second16,  //  milliseconds (ms) request time for livedata JSON
+            slow_interval: this.requestInterval.min1,           // ms slow request for livedata JSON
+            fastRequestTimeout : this.requestInterval.min5,   // ms before starting slow request interval for livedata JSON
         },
         frostapi : {
             doc: 'https://frost.met.no/index.html',
@@ -797,9 +790,9 @@ UI.prototype.testMemory=function()
 UI.prototype.initJSONRequests=function(port)
 {
 
-    this.getJSON=new GetJSONLivedata(window.location.origin+'/api/livedata',this.options.interval,this.options.gwapi)
-    this.getJSON.req.addEventListener("load",this.onJSONLivedata.bind(this,this.getJSON))
-    setTimeout(this.getJSON.sendInterval.bind(this.getJSON,this.options.slow_interval),this.options.fastRequestTimeout)
+   this.getJSONLivedata=new GetJSONLivedata(window.location.origin+'/api/livedata',this.options.gwapi.interval,this.options.gwapi)
+   this.getJSONLivedata.req.addEventListener("load",this.onJSONLivedata.bind(this,this.getJSONLivedata))
+    setTimeout(this.getJSONLivedata.sendInterval.bind(this.getJSONLivedata,this.options.gwapi.slow_interval),this.options.gwapi.fastRequestTimeout)
 
     if (this.options.frostapi.enabled) {
         this.getJSONFrostLatest15Min = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest-15min',this.requestInterval.min15,this.options.frostapi)
@@ -2283,7 +2276,7 @@ UI.prototype.updateStationTimestampLatestChart=function()
 
 UI.prototype.updateCharts=function()
 {
-    var livedataJSON=this.getJSON,
+    var livedataJSON=this.getJSONLivedata,
         timestamp=livedataJSON.timestamp(),
         hhmmss=DateUtil.prototype.getHHMMSS(new Date(timestamp+new Date().getTimezoneOffset()*60000)) // assumes same timezone on GW as local computer
         redraw=false,
