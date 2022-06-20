@@ -1425,6 +1425,7 @@ UI.prototype.initTemperatureChart=function()
             title: false,
             tickInterval: 1,
             opposite: false,
+            gridLineWidth: this.options.weatherapi.geosatellite.enabled ? 0 : 1
             //max : null
             //max : 1.0
         //  max : 40
@@ -1434,7 +1435,8 @@ UI.prototype.initTemperatureChart=function()
             title:false,
             //opposite: true,
             min: 0,
-            max: 100
+            max: 100,
+            gridLineWidth: this.options.weatherapi.geosatellite.enabled ? 0 : 1
         },
         ],
         xAxis: [{
@@ -1606,6 +1608,7 @@ UI.prototype.initLatestChart=function()
                                     // Temperature
                                     {
                                     title: { text : 'Temperature' },
+                                    gridLineWidth: this.options.weatherapi.radar.enabled ? 0 : 1
                                     //max: 60
                                 },
                                 // Humidity
@@ -1614,45 +1617,52 @@ UI.prototype.initLatestChart=function()
                                     max: 100,
                                     title: { text : 'Humidity' },
                                     opposite: true,
-                                    visible: false
+                                    visible: false,
+                                    gridLineWidth: this.options.weatherapi.radar.enabled ? 0 : 1
                                 },
                                     // Wind
                                     {
                                         min: 0,
                                         title: { text : 'Wind speed' },
                                         opposite: true,
+                                        gridLineWidth: this.options.weatherapi.radar.enabled ? 0 : 1
                                     },
                                     // Wind direction
                                     {
                                         min: 0,
                                         title: { text : 'Wind dir.' },
                                         opposite: true,
-                                        visible: false
+                                        visible: false,
+                                        gridLineWidth: this.options.weatherapi.radar.enabled ? 0 : 1
                                     },
                                     // Pressure
                                     {
                                         min: 0,
                                         title: false,
                                         opposite: true,
-                                        visible: false
+                                        visible: false,
+                                        gridLineWidth: this.options.weatherapi.radar.enabled ? 0 : 1
                                     },
                                     // Irradiance
                                     {
                                         min: 0,
                                         title: false,
-                                        visible: false
+                                        visible: false,
+                                        gridLineWidth: this.options.weatherapi.radar.enabled ? 0 : 1
                                     },
                                     // UVI
                                     {
                                         min: 0,
                                         title: false,
-                                        visible: false
+                                        visible: false,
+                                        gridLineWidth: this.options.weatherapi.radar.enabled ? 0 : 1
                                     },
                                     // Rain rate
                                     {
                                         min: 0,
                                         title: { text : 'Rain rate'},
-                                        visible: false
+                                        visible: false,
+                                        gridLineWidth: this.options.weatherapi.radar.enabled ? 0 : 1
                                     }
                             ],
                                 xAxis: [{
