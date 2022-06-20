@@ -815,12 +815,16 @@ function UI()
             radar: {
                 enabled: true && navigatorIsNorway,
                 interval: this.requestInterval.min1,
-                url_troms_5level_reflectivity:'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity'
+                doc: 'https://api.met.no/weatherapi/radar/2.0/documentation',
+                url_troms_5level_reflectivity:'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity&content=animation',
+                url_troms_5level_reflectivity_image : 'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity&content=image'
             },
             geosatellite: {
-                enabled: true && navigatorIsNorway,
+                enabled: true,
                 interval: this.requestInterval.hour1,
-                url_europe: 'https://api.met.no/weatherapi/geosatellite/1.4/?area=europe'
+                doc: 'https://api.met.no/weatherapi/geosatellite/1.4/documentation',
+                url_europe: 'https://api.met.no/weatherapi/geosatellite/1.4/?area=europe',
+                url_europe_small: 'https://api.met.no/weatherapi/geosatellite/1.4/?area=europe&size=small'
             }
         }
     }
