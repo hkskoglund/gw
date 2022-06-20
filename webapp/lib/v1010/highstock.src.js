@@ -1590,6 +1590,9 @@
             /* eslint-enable valid-jsdoc */
             var e,
                 i;
+
+           // console.log(type,el)
+           // alert(type,el)
                 
             eventArguments = eventArguments || {};
             if (doc.createEvent &&
@@ -30761,6 +30764,7 @@
                         axis.redraw();
                     }
                 });
+
                 // the plot areas size has changed
                 if (isDirtyBox) {
                     chart.drawChartBox();
@@ -30771,7 +30775,7 @@
                 // redraw affected series
                 series.forEach(function (serie) {
                     if ((isDirtyBox || serie.isDirty) && serie.visible) {
-                        serie.redraw();
+                            serie.redraw();
                     }
                     // Set it here, otherwise we will have unlimited 'updatedData' calls
                     // for a hidden series after setData(). Fixes #6012
@@ -38207,7 +38211,9 @@
                 }
                 // Draw the data labels
                 if (series.drawDataLabels) {
+                    //console.profile('drawDataLabels')
                     series.drawDataLabels();
+                    //console.profileEnd()
                 }
                 // In pie charts, slices are added to the DOM, but actual rendering
                 // is postponed until labels reserved their space

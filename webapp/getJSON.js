@@ -1,7 +1,7 @@
 https://stackoverflow.com/questions/15455009/javascript-call-apply-vs-bind
 if (!Function.prototype.bind)
 {
-    //console.log('javascript bind not found, creating new Function.prototype.bind,'+window.navigator.userAgent)
+    console.log('javascript bind not found, creating new Function.prototype.bind,'+window.navigator.userAgent)
     Function.prototype.bind = function(ctx) {
         var fn = this,
             args=Array.prototype.slice.call(arguments,1) // Shallow copy - points to same memory - arguments when creating function with .bind(this,...)
@@ -11,6 +11,11 @@ if (!Function.prototype.bind)
         };
     };
 }
+
+ /*function alert()
+    {
+        return
+    } */
 
 Number.isInteger = Number.isInteger || function(value) {
     return typeof value === 'number' && 
@@ -28,6 +33,44 @@ window.addEventListener('load', function initui() {
         console.error(JSON.stringify(err))
     }
  })
+
+ function Station(name,id)
+ {
+    this.stationName=name
+    this.stationId=id
+    this.latestHHMMSS=''
+    this.latestReferencetime=0
+ }
+
+ function StationHarstadStation(name,id)
+ {
+    Station.call(this,name,id)
+ }
+
+StationHarstadStation.prototype= Object.create(Station.prototype)
+
+function StationVervarslinga(name,id)
+{
+    Station.call(this,name,id)
+}
+
+StationVervarslinga.prototype=Object.create(Station.prototype)
+ 
+
+function StationGW(name,id)
+{
+    Station.call(this,name,id)
+}
+
+StationGW.prototype=Object.create(Station.prototype)
+
+function StationWU(name,id)
+{
+    Station.call(this,name,id)
+}
+
+StationWU.prototype=Object.create(Station.prototype)
+
 
  function GetJSON(url,interval,options) {
    
@@ -469,6 +512,7 @@ GetJSONWUCurrentConditions.prototype.parse=function()
 
 GetJSONWUCurrentConditions.prototype.timestamp=function()
 {
+    // epoch Time in UNIX seconds
     return this.data.epoch*1000
 }
 
@@ -578,7 +622,8 @@ GetJSONFrost.prototype.parse=function()
         observation,
         elementId,
         unit,
-        lastObservation
+        lastObservation,
+        currentStation=0
 
     this.data= {}
 
@@ -589,9 +634,9 @@ GetJSONFrost.prototype.parse=function()
            // console.log(JSON.stringify(json.data[item]))
             timestamp=referenceTime.getTime()-referenceTime.getTimezoneOffset()*60000  // local timezone time
             hhmmss=DateUtil.prototype.getHHMMSS(referenceTime)
-            if (referenceTime>this.options.latestReferencetime) {
-                this.options.latestHHMMSS=hhmmss
-                this.options.latestReferencetime=referenceTime
+            if (referenceTime>this.options.stations[currentStation].latestReferencetime) {
+                this.options.stations[currentStation].latestHHMMSS=hhmmss
+                this.options.stations[currentStation].latestReferencetime=referenceTime
             }
         
            // console.log('observations '+json.data[item].observations.length)
@@ -641,6 +686,12 @@ GetJSONFrost.prototype.parse=function()
 
 GetJSONFrost.prototype.getLatestObservation=function(element)
 {
+    if (!this.data)
+    {
+        console.warn('JSON frost: No data')
+        return
+    }
+    
     var data=this.data[element]
     if (data)
         return data[data.length-1].value
@@ -678,6 +729,7 @@ function UI()
 
     var forceLowMemoryDevice=true
     var isLowMemoryDevice=this.isLowMemoryDevice() || forceLowMemoryDevice
+    var navigatorIsNorway= navigator.language.toLowerCase().indexOf('nb') !== -1 || this.isLGSmartTV2012()
 
     this.requestInterval={
         hour1:   3600000,
@@ -685,12 +737,14 @@ function UI()
         min10:    600000,
         min5:     300000,
         min1:      60000,
-        second16:  16000
+        second16:  16000,
+        second5: 5000,
+        second1: 1000,
     }
 
+    this.timeoutID={}
+
     this.options={
-        fastRedrawTimeout : this.requestInterval.min5,    // ms before, reverting to fixed redraw interval, during fast redraw charts are redrawn as fast as the JSON request interval
-        redraw_interval: this.requestInterval.min1,         // ms between each chart redraw
         tooltip: !isLowMemoryDevice,              // turn off for ipad1 - slow animation/disappearing
         animation: !isLowMemoryDevice,               // turn off animation for all charts
         addpointIfChanged : true,       // only addpoint if value changes (keep memory footprint low),
@@ -702,31 +756,50 @@ function UI()
         mousetracking: !isLowMemoryDevice,        // allocates memory for duplicate path for tracking
         forceLowMemoryDevice : forceLowMemoryDevice,        // for testing
         // navigator.languauge is "en-us" for LG Smart TV 2012
+        isLGSmartTV2012 : this.isLGSmartTV2012(),
         gwapi: {
             stationName: 'Tomasjord',
-            stationIndex: 0, // Category index
+           // stationName: 'Engenes',
             latestHHMMSS: '',
-            interval: this.requestInterval.second16,  //  milliseconds (ms) request time for livedata JSON
-            slow_interval: this.requestInterval.min1,           // ms slow request for livedata JSON
-            fastRequestTimeout : this.requestInterval.min5,   // ms before starting slow request interval for livedata JSON
+            interval: this.requestInterval.second16,                //  milliseconds (ms) request time for livedata JSON
+            slow_interval: this.requestInterval.min1,              // ms slow request for livedata JSON
+            fastRequestTimeout : this.requestInterval.min5,                // ms before starting slow request interval for livedata JSON
+            enabled: true
+
         },
         frostapi : {
             doc: 'https://frost.met.no/index.html',
             authorization: "Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:"), // http basic authorization header -> get key from https://frost.met.no/howto.html
-            enabled : true && ( (navigator.language.toLowerCase().indexOf('nb') !== -1) || this.isLGSmartTV2012()),    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
+            enabled : true && ( navigatorIsNorway || this.isLGSmartTV2012()),    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
             stationName: 'Værvarslinga SN90450',
             stationId: 'SN90450',
-            stationIndex: 2,
+           // stationName: 'Harstad Stadion',
+           // stationId: 'SN87640',
             latestHHMMSS: '',
-            latestReferencetime : 0
+            latestReferencetime : 0,
+            stations : [
+                {
+                    stationName: 'Harstad Stadion',
+                    stationId: 'SN87640',
+                    latestHHMMSS: '',
+                    latestReferencetime : 0, 
+                },
+                {
+                    stationName: 'Værvarslinga',
+                    stationId: 'SN90450',
+                    latestHHMMSS: '',
+                    latestReferencetime: 0
+                }
+            ]
         },
         wundergroundapi: {
             doc: 'https://docs.google.com/document/d/1eKCnKXI9xnoMGRRzOL1xPCBihNV2rOet08qpE_gArAY',
             apiKey: '9b606f1b6dde4afba06f1b6dde2afb1a', // get a personal api key from https://www.wunderground.com/member/api-keys
             stationId: 'IENGEN26',
             stationName: 'Engenes',
-            stationIndex: 1,
-            interval: this.requestInterval.min5,
+            //stationId: 'ITOMAS1',
+            //stationName: 'Tomasjord',
+            interval: this.requestInterval.min1,
             enabled : true,
             latestHHMMSS : '',
         },
@@ -737,6 +810,18 @@ function UI()
             interval: this.requestInterval.hour1,
             enabled: false,
             latestHHMMSS : ''
+        },
+        weatherapi: {
+            radar: {
+                enabled: true && navigatorIsNorway,
+                interval: this.requestInterval.min1,
+                url_troms_5level_reflectivity:'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity'
+            },
+            geosatellite: {
+                enabled: true && navigatorIsNorway,
+                interval: this.requestInterval.hour1,
+                url_europe: 'https://api.met.no/weatherapi/geosatellite/1.4/?area=europe'
+            }
         }
     }
 
@@ -751,12 +836,29 @@ function UI()
       port=window.location.port
 
     this.initJSONRequests(port)
-    //this.testMemory()
+   // this.testMemory()
+
+   //this.initImage('imgMETnoRadar',this.options.weatherapi.radar.enabled,this.options.weatherapi.radar.url_troms_5level_reflectivity,this.options.weatherapi.radar.interval)
     
+}
+
+UI.prototype.initImage=function(elementId,enabled,url,interval)
+{
+    if (!enabled)
+      return
+
+    var img=document.getElementById(elementId)
+
+    img.src=url
+    this.timeoutID[elementId]=setInterval(function _reloadMETnoImage() {  
+        console.log(new Date().toLocaleString()+' reloading '+url)
+        img.src=url },interval)
+   
 }
 
 UI.prototype.testMemory=function()
 // Allocates 1MB until memory is exausted and generates LowMemory log on ipad1
+// Test LG Smart TV 2012: 262MB before "not enough memory" popup
 {
     console.log('typeof Uint8Array: ' + typeof Uint8Array)
 
@@ -790,22 +892,30 @@ UI.prototype.testMemory=function()
 UI.prototype.initJSONRequests=function(port)
 {
 
-   this.getJSONLivedata=new GetJSONLivedata(window.location.origin+'/api/livedata',this.options.gwapi.interval,this.options.gwapi)
-   this.getJSONLivedata.req.addEventListener("load",this.onJSONLivedata.bind(this,this.getJSONLivedata))
-    setTimeout(this.getJSONLivedata.sendInterval.bind(this.getJSONLivedata,this.options.gwapi.slow_interval),this.options.gwapi.fastRequestTimeout)
+    if (this.options.gwapi.enabled) {
+        this.getJSONLivedata=new GetJSONLivedata(window.location.origin+'/api/livedata',this.options.gwapi.interval,this.options.gwapi)
+        this.getJSONLivedata.req.addEventListener("load",this.onJSONLivedata.bind(this,this.getJSONLivedata))
+        this.getJSONLivedata.req.addEventListener("load",this.redrawCharts.bind(this))
+        setTimeout(this.getJSONLivedata.sendInterval.bind(this.getJSONLivedata,this.options.gwapi.slow_interval),this.options.gwapi.fastRequestTimeout)
+    }
 
     if (this.options.frostapi.enabled) {
-        this.getJSONFrostLatest15Min = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest-15min',this.requestInterval.min15,this.options.frostapi)
+        this.getJSONFrostLatest15Min = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest',this.requestInterval.min15,this.options.frostapi)
         this.getJSONFrostLatest15Min.req.addEventListener("load",this.onJSONFrost.bind(this,this.getJSONFrostLatest15Min))
+        this.getJSONFrostLatest15Min.req.addEventListener("load",this.redrawCharts.bind(this))
 
-        this.getJSONFrostLatest1H = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest-1H',this.requestInterval.hour1,this.options.frostapi)
-        this.getJSONFrostLatest1H.req.addEventListener("load",this.onJSONFrost.bind(this,this.getJSONFrostLatest1H))
+       // this.getJSONFrostLatest1H = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest-1H',this.requestInterval.hour1,this.options.frostapi)
+       // this.getJSONFrostLatest1H.req.addEventListener("load",this.onJSONFrost.bind(this,this.getJSONFrostLatest1H))
+       // this.getJSONFrostLatest1H.req.addEventListener("load",this.onJSONloadredrawCharts.bind(this))
+
     }
 
     if (this.options.wundergroundapi.enabled) {
         var wu=this.options.wundergroundapi
         this.getJSONWUCurrentConditions = new GetJSONWUCurrentConditions('https://api.weather.com/v2/pws/observations/current?apiKey='+wu.apiKey+'&stationId='+wu.stationId+'&numericPrecision=decimal&format=json&units=m',this.options.wundergroundapi.interval,this.options.wundergroundapi)
         this.getJSONWUCurrentConditions.req.addEventListener("load",this.onJSONWUCurrentConditions.bind(this,this.getJSONWUCurrentConditions))
+        this.getJSONWUCurrentConditions.req.addEventListener("load",this.redrawCharts.bind(this))
+
     }
 
     if (this.options.holfuyapi.enabled)
@@ -816,6 +926,7 @@ UI.prototype.initJSONRequests=function(port)
         this.getJSONHolfuyLive.req.addEventListener("load",this.onJSONHolfuyLive.bind(this))
 
     } 
+    
 }
 
 UI.prototype.onJSONHolfuyLive=function(evt)
@@ -884,15 +995,20 @@ UI.prototype.addObservationsMETno=function(data)
 
             default : 
                 
-                console.warn('METno elementId '+elementId+' not added to series/chart')
+                console.warn('METno elementId '+elementId+' no series found in chart')
                 continue
                 
         }
 
+        if (!series) {
+            console.warn('Unable to get series for '+elementId)
+            continue
+        }
+            
         lastSeriesData=series.options.data[series.options.data.length-1]
         data[elementId].forEach(function _addObservation(observation) {
             if (!lastSeriesData || (lastSeriesData[0]!==observation.timestamp)) {
-                //    console.log('addpoint',series.name,[observation.timestamp,observation.value])
+                    console.log('addpoint',series.name,[observation.timestamp,observation.value])
                     series.addPoint([observation.timestamp,observation.value],false,this.options.shift,this.options.animation,false)
             }
                 else
@@ -907,11 +1023,12 @@ UI.prototype.addObservationsMETno=function(data)
 UI.prototype.updateFrostLatestChart=function(METnoRequest)
 {
     var redraw=false,
-        animation=this.options.animation
+        animation=this.options.animation,
+        currentStation=0
 
     if (this.latestChart)
     {
-        var stationIndex=this.options.frostapi.stationIndex // METno
+        var stationIndex=this.options.frostapi.stations[currentStation].stationIndex // METno
 
         this.updateStationTimestampLatestChart()
 
@@ -1243,6 +1360,8 @@ UI.prototype.initTemperatureChart=function()
         chart : {
             animation: this.options.animation,
             renderTo: 'temperaturechart',
+            plotBackgroundImage: this.options.weatherapi.geosatellite.enabled ? this.options.weatherapi.geosatellite.url_europe : '',
+            height: this.options.weatherapi.geosatellite.enabled ? 720 : undefined
         },
 
         rangeSelector: {
@@ -1463,18 +1582,22 @@ UI.prototype.initPressureChart=function()
 
 UI.prototype.initLatestChart=function()
 {
-    var stationNames=this.getStationNamesHHMM()
+    var stationNames=this.getStationNamesHHMMSS()
     
     this.latestChart=new Highcharts.chart('latestChart',
                             { chart : { 
                                  //animation: this.options.animation
+                                 plotBackgroundImage: this.options.weatherapi.radar.enabled ? this.options.weatherapi.radar.url_troms_5level_reflectivity : '',
+                                 height: this.options.weatherapi.radar.enabled ? 640 : undefined
                                 },
                                 title: {
                                     text: 'Latest observations'
                                 },
                                 credits: {
-                                    enabled: false
+                                    enabled: true,
+                                    text: 'MET Norway data - CC 4.0'
                                 },
+                               
                                 yAxis: [
                                     // Temperature
                                     {
@@ -1524,7 +1647,8 @@ UI.prototype.initLatestChart=function()
                                     // Rain rate
                                     {
                                         min: 0,
-                                        title: false,
+                                        title: { text : 'Rain rate'},
+                                        visible: false
                                     }
                             ],
                                 xAxis: [{
@@ -1533,18 +1657,17 @@ UI.prototype.initLatestChart=function()
                                 }],
                                
                                 tooltip: {
-                                    enabled: this.options.tooltip
+                                    enabled: true
                                 },
-                                caption : { 
-                                    text: 'API: <b>WU</b> https://api.weather.com, <b>METno</b> https://frost.met.no - CC 4.0'
-                                },
+
                                 series: [
                                     {
                                         name: 'Temperature',
                                         id: 'series-temperature',
                                         type: 'column',
+                                        // datalabels crashes on LG TV 2012 "not enough memory"
                                         dataLabels: {
-                                            enabled: true
+                                            enabled: true && !this.options.isLGSmartTV2012
                                         }
                                     },
                                     {
@@ -1552,7 +1675,7 @@ UI.prototype.initLatestChart=function()
                                         id: 'series-windchill',
                                         type: 'column',
                                         dataLabels: {
-                                            enabled: true
+                                            enabled: true && !this.options.isLGSmartTV2012
                                         },
                                         visible: false
                                     },
@@ -1562,7 +1685,7 @@ UI.prototype.initLatestChart=function()
                                         type: 'column',
                                         yAxis: 1,
                                         dataLabels: {
-                                            enabled: true
+                                            enabled: true && !this.isLGSmartTV2012
                                         },
                                         visible: false
                                     },
@@ -1572,7 +1695,7 @@ UI.prototype.initLatestChart=function()
                                         type: 'column',
                                         yAxis: 2,
                                         dataLabels: {
-                                            enabled: true,
+                                            enabled: true && !this.options.isLGSmartTV2012,
                                             // https://www.highcharts.com/docs/chart-concepts/labels-and-string-formatting?_ga=2.200835883.424482256.1654686807-470753587.1650372441#format-strings
                                             format : '{point.y:.1f}'
                                         }
@@ -1583,7 +1706,7 @@ UI.prototype.initLatestChart=function()
                                         type: 'column',
                                         yAxis: 2,
                                         dataLabels: {
-                                            enabled: true,
+                                            enabled: true && !this.options.isLGSmartTV2012,
                                             format : '{point.y:.1f}'
                                         }
                                     },
@@ -1593,7 +1716,7 @@ UI.prototype.initLatestChart=function()
                                         type: 'column',
                                         yAxis: 3,
                                         dataLabels: {
-                                            enabled: true
+                                            enabled: true && !this.options.isLGSmartTV2012
                                         }
                                     },
                                     {
@@ -1602,7 +1725,7 @@ UI.prototype.initLatestChart=function()
                                         type: 'column',
                                         yAxis: 7,
                                         dataLabels: {
-                                            enabled: true,
+                                            enabled: true && !this.options.isLGSmartTV2012,
                                             format : '{point.y:.1f}'
                                         },
                                         visible: true,
@@ -1614,7 +1737,7 @@ UI.prototype.initLatestChart=function()
                                         type: 'column',
                                         yAxis: 4,
                                         dataLabels: {
-                                            enabled: true,
+                                            enabled: true && !this.options.isLGSmartTV2012,
                                             format : '{point.y:.1f}'
                                         },
                                         visible: false
@@ -1625,7 +1748,7 @@ UI.prototype.initLatestChart=function()
                                         type: 'column',
                                         yAxis: 5,
                                         dataLabels: {
-                                            enabled: true
+                                            enabled: true && !this.options.isLGSmartTV2012
                                         },
                                         visible: false
                                     },
@@ -1635,13 +1758,11 @@ UI.prototype.initLatestChart=function()
                                         type: 'column',
                                         yAxis: 6,
                                         dataLabels: {
-                                            enabled: true
+                                            enabled: true && !this.options.isLGSmartTV2012
                                         },
                                         visible: false,
                                        // zones : this.zones.uvi
                                     },
-                                   
-                                   
                             ]
                             })
 
@@ -1691,7 +1812,7 @@ UI.prototype.initRainstatChart=function()
                                         type: 'column',
                                         data: [],
                                         dataLabels: {
-                                            enabled: true
+                                            enabled: true && !this.options.isLGSmartTV2012
                                         }
                                             
                                     },
@@ -1701,7 +1822,7 @@ UI.prototype.initRainstatChart=function()
                                         data: [],
                                         yAxis: 1,
                                         dataLabels: {
-                                            enabled: true
+                                            enabled: true && !this.options.isLGSmartTV2012
                                         },
                                     },
                                     {
@@ -1710,7 +1831,7 @@ UI.prototype.initRainstatChart=function()
                                         data: [],
                                         yAxis: 1,
                                         dataLabels: {
-                                            enabled: true
+                                            enabled: true && !this.options.isLGSmartTV2012
                                         },
                                     }
                             ]
@@ -2156,17 +2277,8 @@ UI.prototype.initCharts=function()
         },
         ]
     }
-
-    if (this.isLGSmartTV2012()) {
-
-        this.initTemperatureChart()
-        this.initWindBarbChart() 
-        this.initWindroseChart()
-        this.initPressureChart()
-        //this.initRainChart()
-        //this.initRainstatChart()
-        this.initSolarChart()
-    } else {
+   
+       // this.initTestChart()
         this.initLatestChart()
         this.initTemperatureChart()
         this.initWindBarbChart() 
@@ -2175,7 +2287,37 @@ UI.prototype.initCharts=function()
         this.initRainChart()
         this.initRainstatChart()
         this.initSolarChart() 
-    }
+}
+
+UI.prototype.initTestChart=function()
+{
+    this.testChart=new Highcharts.chart('testchart', {
+        chart: {
+                    type: 'column'
+                },
+              
+                xAxis: {
+                    categories: [
+                        'Jan','Feb'
+                    ],
+                   
+                },
+                yAxis: {
+                    min: 0,
+                    title: {
+                        text: 'Rainfall (mm)'
+                    }
+                },
+            
+                series: [{
+                    name: 'Tokyo',
+                   // data: [49.9, 71.5, 106.4, 129.2, 144.0, 176.0, 135.6, 148.5, 216.4, 194.1, 95.6, 54.4]
+                   dataLabels: {
+                    enabled: true && !this.options.isLGSmartTV2012
+                },
+                   data: [49.9,null]
+                }]
+            });
 }
 
 UI.prototype.onJSONLivedata=function (jsonReq,ev)
@@ -2234,32 +2376,28 @@ UI.prototype.onJSONLivedata=function (jsonReq,ev)
 
     this.updateCharts()
 
-    if (!this.fastRedrawTimeoutId)
-    {
-        console.log('Setting fast chart redraw timeout '+this.options.fastRedrawTimeout)
-        this.fastRedrawTimeoutId=setTimeout(this.setChartRedrawInterval.bind(this),this.options.fastRedrawTimeout)
-        this.redrawChart()
-    } else if (!this.chartRedrawInterval)
-        this.redrawChart()
-
 }
 
-UI.prototype.setChartRedrawInterval=function()
+UI.prototype.getStationNamesHHMMSS=function()
 {
-    if  (!this.chartRedrawInterval)
-    {
-      this.redrawChart()
-      console.log('Setting chart redraw interval '+this.options.redraw_interval)
-      this.chartRedrawInterval=setInterval(this.redrawChart.bind(this),this.options.redraw_interval)
+    var stationNames=[],
+        stationIndex=0,
+        currentStation=0
+
+    if (this.options.gwapi.enabled) {
+        stationNames[stationIndex]=this.options.gwapi.stationName+' '+this.options.gwapi.latestHHMMSS
+        this.options.gwapi.stationIndex=stationIndex++
     }
-}
 
-UI.prototype.getStationNamesHHMM=function()
-{
-    var stationNames=[]
-    stationNames[this.options.gwapi.stationIndex]=this.options.gwapi.stationName+' '+this.options.gwapi.latestHHMMSS
-    stationNames[this.options.frostapi.stationIndex]=this.options.frostapi.stationName+' '+this.options.frostapi.latestHHMMSS
-    stationNames[this.options.wundergroundapi.stationIndex]=this.options.wundergroundapi.stationName+' '+this.options.wundergroundapi.latestHHMMSS
+    if (this.options.wundergroundapi.enabled) {
+        stationNames[stationIndex]=this.options.wundergroundapi.stationName+' '+this.options.wundergroundapi.latestHHMMSS
+        this.options.wundergroundapi.stationIndex=stationIndex++
+    }
+
+    if (this.options.frostapi.enabled) {
+        stationNames[stationIndex]=this.options.frostapi.stations[currentStation].stationName+' '+this.options.frostapi.stations[currentStation].latestHHMMSS
+        this.options.frostapi.stations[currentStation].stationIndex=stationIndex++
+    }
     
     return stationNames
 }
@@ -2271,7 +2409,7 @@ UI.prototype.updateStationTimestampLatestChart=function()
     if (!this.latestChart)
         return
     
-    this.latestChart.xAxis[0].setCategories(this.getStationNamesHHMM(),redraw)
+    this.latestChart.xAxis[0].setCategories(this.getStationNamesHHMMSS(),redraw)
 }
 
 UI.prototype.updateCharts=function()
@@ -2318,7 +2456,7 @@ UI.prototype.updateCharts=function()
         })
         
     }
-   
+
     //console.log(this.windrosedata)
     if (this.windrosechart) {
          var newBeufortScale=livedataJSON.windgustspeed_beufort()
@@ -2396,7 +2534,7 @@ UI.prototype.updateCharts=function()
    
 }
 
-UI.prototype.redrawChart=function()
+UI.prototype.redrawCharts=function()
 {
     // https://api.highcharts.com/class-reference/Highcharts.Axis#setExtremes
    // y-axis start on 0 by default
@@ -2406,8 +2544,10 @@ UI.prototype.redrawChart=function()
                 this.pressurechart.series[0].yAxis.setExtremes(this.pressurechart.series[0].dataMin-2,this.pressurechart.series[0].dataMax+2,false)
     }
     //console.log('redraw all charts')
-    Highcharts.charts.forEach(function (chart) { chart.redraw() })
-
+    
+    Highcharts.charts.forEach(function (chart) { 
+        chart.redraw() 
+    })
 }
 
 

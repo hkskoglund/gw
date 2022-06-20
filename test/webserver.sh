@@ -282,6 +282,8 @@ webserver()
                                             *application/json*)
 
                                                 getHostFromQS "192.168.3.16"
+                                                //getHostFromQS "192.168.5.7"
+
 
                                                 #l_response_JSON=$( cd .. ; timeout 20 ./gw -v json -l 8016 )
                                                 set -x
@@ -337,23 +339,26 @@ webserver()
                                
                                 ;;
 
-                        /api/frost.met.no/latest-15min)
+                        /api/frost.met.no/latest)
 
                                # https://web.postman.co/workspace/Test-av-frost%2Frim-MET~2bc0415b-9a14-431a-84ff-ad0748f8adae/request/21055109-f182896f-5ca9-484f-874f-91b2c594e624
                                
                                l_sources=SN90450
                                #l_sources=SN87640
-                               l_timeresolution="PT1M,PT10M" # 1m, 10 min
-                               l_elements='mean(surface_downwelling_shortwave_flux_in_air%20PT1M),air_temperature,wind_speed,max(wind_speed_of_gust%20PT10M),wind_from_direction'
+                               l_timeresolution="PT1M,PT10M,PT1H"
+                               #l_elements='mean(surface_downwelling_shortwave_flux_in_air%20PT1M),air_temperature,wind_speed,max(wind_speed_of_gust%20PT10M),wind_from_direction'
+                                l_elements='air_temperature,wind_speed,max(wind_speed_of_gust%20PT10M),wind_from_direction,air_pressure_at_sea_level,relative_humidity,surface_snow_thickness'
                                # latest mean(surface_downwelling_shortwave_flux_in_air%20PT1M) seems to be updated in intervals of about 15 minutes
-                               #l_referencetime="latest"
-                               l_referencetime_start=$(date -d "15 minutes ago" --utc +%FT%TZ)
-                               l_referencetime_end=$(date --utc +%FT%TZ)
-                               l_referencetime="$l_referencetime_start/$l_referencetime_end"
+                               l_referencetime="latest"
+                               #l_referencetime_start=$(date -d "15 minutes ago" --utc +%FT%TZ)
+                               #l_referencetime_end=$(date --utc +%FT%TZ)
+                               #l_referencetime="$l_referencetime_start/$l_referencetime_end"
+                               l_request="https://frost.met.no/observations/v0.jsonld?elements=$l_elements&referencetime=$l_referencetime&sources=$l_sources&timeresolutions=$l_timeresolution"
+                                echo >&2 Sending request "$l_request"
 
-                               sendMETnoRequest  "https://frost.met.no/observations/v0.jsonld?elements=$l_elements&referencetime=$l_referencetime&sources=$l_sources&timeresolutions=$l_timeresolution"
+                               sendMETnoRequest "$l_request"
 
-                               unset l_sources l_timeresolution l_elements l_referencetime l_referencetime_start l_referencetime_end
+                               unset l_sources l_timeresolution l_elements l_referencetime l_referencetime_start l_referencetime_end l_request
                                ;;
 
                         /api/frost.met.no/*)
