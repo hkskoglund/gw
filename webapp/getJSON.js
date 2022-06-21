@@ -814,10 +814,10 @@ function UI()
         weatherapi: {
             radar: {
                 enabled: true && navigatorIsNorway,
-                interval: this.requestInterval.min1,
+                interval: this.requestInterval.hour1,
                 doc: 'https://api.met.no/weatherapi/radar/2.0/documentation',
-                url_troms_5level_reflectivity:'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity&content=animation',
-                url_troms_5level_reflectivity_image : 'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity&content=image'
+                url_troms_5level_reflectivity:'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity&content=image',
+                url_troms_5level_reflectivity_animation : 'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity&content=animation'
             },
             geosatellite: {
                 enabled: true,
@@ -842,21 +842,20 @@ function UI()
     this.initJSONRequests(port)
    // this.testMemory()
 
-   //this.initImage('imgMETnoRadar',this.options.weatherapi.radar.enabled,this.options.weatherapi.radar.url_troms_5level_reflectivity,this.options.weatherapi.radar.interval)
-    
+    this.reloadPlotBackgroundImage(this.latestChart,this.options.weatherapi.radar.enabled,this.options.weatherapi.radar.url_troms_5level_reflectivity,this.options.weatherapi.radar.interval)
+    this.reloadPlotBackgroundImage(this.latestChart,this.options.weatherapi.geosatellite.enabled,this.options.weatherapi.geosatellite.url_europe,this.options.weatherapi.geosatellite.interval)
 }
 
-UI.prototype.initImage=function(elementId,enabled,url,interval)
+UI.prototype.reloadPlotBackgroundImage=function(chart,enabled,url,interval)
 {
     if (!enabled)
       return
 
-    var img=document.getElementById(elementId)
-
-    img.src=url
-    this.timeoutID[elementId]=setInterval(function _reloadMETnoImage() {  
-        console.log(new Date().toLocaleString()+' reloading '+url)
-        img.src=url },interval)
+    this.timeoutID['plotbackgroundimage-'+chart.name]=setInterval(function _reloadPlotBackgroundImage() {  
+        // Problem: image not reloaded due to caching; Chrome devtools "disable cache" enabled -> reloads image
+        url=url+'&' // add empty key=value, to bypass cache in browser, not optimal but works, adding ?t=Date.now() is not accepted by webserver API,use slow interval=1 hour to limit url string length
+        chart.update({ chart : { plotBackgroundImage : url }})
+    }.bind(this),interval)
    
 }
 
@@ -1365,7 +1364,7 @@ UI.prototype.initTemperatureChart=function()
             animation: this.options.animation,
             renderTo: 'temperaturechart',
             plotBackgroundImage: this.options.weatherapi.geosatellite.enabled ? this.options.weatherapi.geosatellite.url_europe : '',
-            height: this.options.weatherapi.geosatellite.enabled ? 720 : undefined
+            height: this.options.weatherapi.geosatellite.enabled ? (720) : undefined
         },
 
         rangeSelector: {
@@ -1594,7 +1593,7 @@ UI.prototype.initLatestChart=function()
                             { chart : { 
                                  //animation: this.options.animation
                                  plotBackgroundImage: this.options.weatherapi.radar.enabled ? this.options.weatherapi.radar.url_troms_5level_reflectivity : '',
-                                 height: this.options.weatherapi.radar.enabled ? 640 : undefined
+                                 height: this.options.weatherapi.radar.enabled ? (640) : undefined
                                 },
                                 title: {
                                     text: 'Latest observations'
