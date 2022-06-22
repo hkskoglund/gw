@@ -799,7 +799,7 @@ function UI()
             stationName: 'Engenes',
             //stationId: 'ITOMAS1',
             //stationName: 'Tomasjord',
-            interval: this.requestInterval.min1,
+            interval: this.requestInterval.min5,
             enabled : true,
             latestHHMMSS : '',
         },
