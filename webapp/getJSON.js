@@ -818,6 +818,7 @@ function UI()
                 doc: 'https://api.met.no/weatherapi/radar/2.0/documentation',
                 url_troms_5level_reflectivity:'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity&content=image', // ca 173 kB
                 url_troms_5level_reflectivity_animation : 'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity&content=animation'
+               // url_test: 'https://www.yr.no/nb/innhold/1-2296106/meteogram.svg' // ca 14.4 kB
             },
             geosatellite: {
                 enabled: true,  // should be disabled on metered connection
@@ -846,12 +847,12 @@ function UI()
 
    if (this.options.weatherapi.radar.enabled) {
        this.updatePlotbackgroundImage(this.latestChart, this.options.weatherapi.radar.url_troms_5level_reflectivity)
-       this.reloadPlotBackgroundImage(this.latestChart,this.options.weatherapi.radar.url_troms_5level_reflectivity,this.options.weatherapi.radar.interval)
+       this.reloadPlotBackgroundImage(this.latestChart,this.options.weatherapi.radar.url_troms_5level_reflectivity,this.options.weatherapi.radar.interval,true)
    }
     
     if (this.options.weatherapi.geosatellite.enabled) {
         this.updatePlotbackgroundImage(this.temperatureChart, this.options.weatherapi.geosatellite.url_europe)
-        this.reloadPlotBackgroundImage(this.temperatureChart,this.options.weatherapi.geosatellite.url_europe,this.options.weatherapi.geosatellite.interval)
+        this.reloadPlotBackgroundImage(this.temperatureChart,this.options.weatherapi.geosatellite.url_europe,this.options.weatherapi.geosatellite.interval,true)
     }
 
     this.eventHandler={
@@ -886,7 +887,7 @@ UI.prototype.updatePlotbackgroundImage=function(chart,url)
     return visible
 }
 
-UI.prototype.reloadPlotBackgroundImage=function(chart,url,interval)
+UI.prototype.reloadPlotBackgroundImage=function(chart,url,interval,bypassBrowserCache)
 {
     var id=chart.renderTo.id
 
@@ -896,8 +897,10 @@ UI.prototype.reloadPlotBackgroundImage=function(chart,url,interval)
         // Problem: image not reloaded due to caching; Chrome devtools "disable cache" enabled -> reloads image
         // 15 minute interval: 4*24 = 96 &, 5 minute interval: 3*15min interval = 288 &
         // < server: nginx/1.18.0 (Ubuntu), default buffer size 1KB, should not allocate buffers for empty key=value pairs  http://nginx.org/en/docs/http/ngx_http_core_module.html#client_header_buffer_size
-        url=url+'&' // add empty key=value, to bypass cache in browser, not optimal but works,use slow interval=1 hour to limit url string length, in theory a "414 URI Too Long" may be generated https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/414
-        if (!this.updatePlotbackgroundImage(chart,url))
+        if (bypassBrowserCache)
+          url=url+'&' // add empty key=value, to bypass cache in browser, not optimal but works,use slow interval=1 hour to limit url string length, in theory a "414 URI Too Long" may be generated https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/414
+        
+          if (!this.updatePlotbackgroundImage(chart,url))
         {
             if (chart===this.latestChart)
             {
