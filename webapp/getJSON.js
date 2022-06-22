@@ -814,7 +814,7 @@ function UI()
         weatherapi: {
             radar: {
                 enabled: true && navigatorIsNorway, // should be disabled on metered connection
-                interval: this.requestInterval.hour1,
+                interval: this.requestInterval.min15,
                 doc: 'https://api.met.no/weatherapi/radar/2.0/documentation',
                 url_troms_5level_reflectivity:'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity&content=image', // ca 173 kB
                 url_troms_5level_reflectivity_animation : 'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity&content=animation'
@@ -863,22 +863,27 @@ function UI()
 
 UI.prototype.onScrollUpdateplotBGImage=function()
 {
-        if (!this.latestChart.plotBGImage)
-           this.updatePlotbackgroundImage(this.latestChart, this.options.weatherapi.radar.url_troms_5level_reflectivity)
-        if (!this.temperatureChart.plotBGImage)
-           this.updatePlotbackgroundImage(this.temperatureChart, this.options.weatherapi.geosatellite.url_europe)
+    var latestChartURL= this.options.weatherapi.radar.missedReloadURL || this.options.weatherapi.radar.url_troms_5level_reflectivity,
+        temperatureChartURL=  this.options.weatherapi.geosatellite.missedReloadURL || this.options.weatherapi.geosatellite.url_europe
 
-        if (this.temperatureChart.plotBGImage && this.latestChart.plotBGImage)
-          document.removeEventListener('scroll',this.eventHandler.scroll, {passive: true})
+        if (!this.latestChart.plotBGImage || this.options.weatherapi.radar.missedReloadURL)
+           this.updatePlotbackgroundImage(this.latestChart,latestChartURL)
+
+        if (!this.temperatureChart.plotBGImage || this.options.weatherapi.geosatellite.missedReloadURL)
+           this.updatePlotbackgroundImage(this.temperatureChart, temperatureChartURL)
+
+      //  if (this.temperatureChart.plotBGImage && this.latestChart.plotBGImage)
+      //    document.removeEventListener('scroll',this.eventHandler.scroll, {passive: true})
 }
 
 UI.prototype.updatePlotbackgroundImage=function(chart,url)
 {
-
-    if (this.isInViewport(chart.plotBackground.element))
+   var visible=this.isInViewport(chart.plotBackground.element)
+    if (visible)
       chart.update({ chart : { plotBackgroundImage : url }})
     //else
     //  console.warn('Chart not visible '+chart.renderTo.id)
+    return visible
 }
 
 UI.prototype.reloadPlotBackgroundImage=function(chart,url,interval)
@@ -892,7 +897,24 @@ UI.prototype.reloadPlotBackgroundImage=function(chart,url,interval)
         // 15 minute interval: 4*24 = 96 &, 5 minute interval: 3*15min interval = 288 &
         // < server: nginx/1.18.0 (Ubuntu), default buffer size 1KB, should not allocate buffers for empty key=value pairs  http://nginx.org/en/docs/http/ngx_http_core_module.html#client_header_buffer_size
         url=url+'&' // add empty key=value, to bypass cache in browser, not optimal but works,use slow interval=1 hour to limit url string length, in theory a "414 URI Too Long" may be generated https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/414
-        this.updatePlotbackgroundImage(chart,url)
+        if (!this.updatePlotbackgroundImage(chart,url))
+        {
+            if (chart===this.latestChart)
+            {
+                this.options.weatherapi.radar.missedReloadURL=url // for update in scroll event handler
+            } else if (chart===this.temperatureChart)
+            {
+                this.options.weatherapi.geosatellite.missedReloadURL=url
+            }
+        } else {
+            if (chart===this.latestChart)
+            {
+               delete  this.options.weatherapi.radar.missedReloadURL
+            } else if (chart===this.temperatureChart)
+            {
+                delete this.options.weatherapi.geosatellite.missedReloadURL
+            }
+        }
     }.bind(this),interval)
    
 }
@@ -901,8 +923,8 @@ UI.prototype.isInViewport=function(element) {
 // https://www.javascripttutorial.net/dom/css/check-if-an-element-is-visible-in-the-viewport/
     var rect = element.getBoundingClientRect(),
         visible
-    console.log('boundingclientrect '+JSON.stringify(rect))
-    console.log('innerHeight '+window.innerHeight+' innerwidth '+window.innerWidth+' clientHeight '+document.documentElement.clientHeight+' clientWidth '+document.documentElement.clientWidth)
+   // console.log('boundingclientrect '+JSON.stringify(rect))
+   // console.log('innerHeight '+window.innerHeight+' innerwidth '+window.innerWidth+' clientHeight '+document.documentElement.clientHeight+' clientWidth '+document.documentElement.clientWidth)
     visible=(
         rect.top >= 0 &&
         rect.left >= 0 &&
