@@ -813,17 +813,19 @@ function UI()
         },
         weatherapi: {
             radar: {
-                enabled: true && navigatorIsNorway,
+                enabled: true && navigatorIsNorway, // should be disabled on metered connection
                 interval: this.requestInterval.hour1,
                 doc: 'https://api.met.no/weatherapi/radar/2.0/documentation',
-                url_troms_5level_reflectivity:'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity&content=image',
+                url_troms_5level_reflectivity:'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity&content=image', // ca 173 kB
                 url_troms_5level_reflectivity_animation : 'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity&content=animation'
             },
             geosatellite: {
-                enabled: true,
+                enabled: true,  // should be disabled on metered connection
                 interval: this.requestInterval.hour1,
                 doc: 'https://api.met.no/weatherapi/geosatellite/1.4/documentation',
-                url_europe: 'https://api.met.no/weatherapi/geosatellite/1.4/?area=europe',
+                // test  curl -s -v 'https://api.met.no/weatherapi/geosatellite/1.4/?area=europe' -J -O
+                // https://stackoverflow.com/questions/2698552/how-do-i-save-a-file-using-the-response-header-filename-with-curl
+                url_europe: 'https://api.met.no/weatherapi/geosatellite/1.4/?area=europe', // ca 835 kB
                 url_europe_small: 'https://api.met.no/weatherapi/geosatellite/1.4/?area=europe&size=small'
             }
         }
@@ -842,22 +844,75 @@ function UI()
     this.initJSONRequests(port)
    // this.testMemory()
 
-    this.reloadPlotBackgroundImage(this.latestChart,this.options.weatherapi.radar.enabled,this.options.weatherapi.radar.url_troms_5level_reflectivity,this.options.weatherapi.radar.interval)
-    this.reloadPlotBackgroundImage(this.latestChart,this.options.weatherapi.geosatellite.enabled,this.options.weatherapi.geosatellite.url_europe,this.options.weatherapi.geosatellite.interval)
+   if (this.options.weatherapi.radar.enabled) {
+       this.updatePlotbackgroundImage(this.latestChart, this.options.weatherapi.radar.url_troms_5level_reflectivity)
+       this.reloadPlotBackgroundImage(this.latestChart,this.options.weatherapi.radar.url_troms_5level_reflectivity,this.options.weatherapi.radar.interval)
+   }
+    
+    if (this.options.weatherapi.geosatellite.enabled) {
+        this.updatePlotbackgroundImage(this.temperatureChart, this.options.weatherapi.geosatellite.url_europe)
+        this.reloadPlotBackgroundImage(this.temperatureChart,this.options.weatherapi.geosatellite.url_europe,this.options.weatherapi.geosatellite.interval)
+    }
+
+    this.eventHandler={
+        scroll : this.onScrollUpdateplotBGImage.bind(this)
+    }
+
+    document.addEventListener('scroll',this.eventHandler.scroll, { passive: true})
 }
 
-UI.prototype.reloadPlotBackgroundImage=function(chart,enabled,url,interval)
+UI.prototype.onScrollUpdateplotBGImage=function()
 {
-    if (!enabled)
-      return
+        if (!this.latestChart.plotBGImage)
+           this.updatePlotbackgroundImage(this.latestChart, this.options.weatherapi.radar.url_troms_5level_reflectivity)
+        if (!this.temperatureChart.plotBGImage)
+           this.updatePlotbackgroundImage(this.temperatureChart, this.options.weatherapi.geosatellite.url_europe)
 
-    this.timeoutID['plotbackgroundimage-'+chart.name]=setInterval(function _reloadPlotBackgroundImage() {  
+        if (this.temperatureChart.plotBGImage && this.latestChart.plotBGImage)
+          document.removeEventListener('scroll',this.eventHandler.scroll, {passive: true})
+}
+
+UI.prototype.updatePlotbackgroundImage=function(chart,url)
+{
+
+    if (this.isInViewport(chart.plotBackground.element))
+      chart.update({ chart : { plotBackgroundImage : url }})
+    //else
+    //  console.warn('Chart not visible '+chart.renderTo.id)
+}
+
+UI.prototype.reloadPlotBackgroundImage=function(chart,url,interval)
+{
+    var id=chart.renderTo.id
+
+      console.log('setting reload of ' +id+' plotbackgroundimage '+url+' to '+interval)
+
+    this.timeoutID['plotbackgroundimage-'+id]=setInterval(function _reloadPlotBackgroundImage() {  
         // Problem: image not reloaded due to caching; Chrome devtools "disable cache" enabled -> reloads image
-        url=url+'&' // add empty key=value, to bypass cache in browser, not optimal but works, adding ?t=Date.now() is not accepted by webserver API,use slow interval=1 hour to limit url string length
-        chart.update({ chart : { plotBackgroundImage : url }})
+        // 15 minute interval: 4*24 = 96 &, 5 minute interval: 3*15min interval = 288 &
+        // < server: nginx/1.18.0 (Ubuntu), default buffer size 1KB, should not allocate buffers for empty key=value pairs  http://nginx.org/en/docs/http/ngx_http_core_module.html#client_header_buffer_size
+        url=url+'&' // add empty key=value, to bypass cache in browser, not optimal but works,use slow interval=1 hour to limit url string length, in theory a "414 URI Too Long" may be generated https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/414
+        this.updatePlotbackgroundImage(chart,url)
     }.bind(this),interval)
    
 }
+
+UI.prototype.isInViewport=function(element) {
+// https://www.javascripttutorial.net/dom/css/check-if-an-element-is-visible-in-the-viewport/
+    var rect = element.getBoundingClientRect(),
+        visible
+    console.log('boundingclientrect '+JSON.stringify(rect))
+    console.log('innerHeight '+window.innerHeight+' innerwidth '+window.innerWidth+' clientHeight '+document.documentElement.clientHeight+' clientWidth '+document.documentElement.clientWidth)
+    visible=(
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+    );
+    
+      return visible
+}
+
 
 UI.prototype.testMemory=function()
 // Allocates 1MB until memory is exausted and generates LowMemory log on ipad1
@@ -957,16 +1012,16 @@ UI.prototype.addObservationsMETno=function(data)
             
             case 'air_temperature' :
 
-                if (this.temperaturechart) {
-                    series=this.temperaturechart.get('series-metno-temperature10min')
+                if (this.temperatureChart) {
+                    series=this.temperatureChart.get('series-metno-temperature10min')
                 }
 
                 break
             
             case 'relative_humidity' :
                 
-                if (this.temperaturechart)
-                    series=this.temperaturechart.get('series-metno-humidity1h')
+                if (this.temperatureChart)
+                    series=this.temperatureChart.get('series-metno-humidity1h')
                 break
 
             case 'wind_speed' :
@@ -1359,11 +1414,11 @@ UI.prototype.initTemperatureChart=function()
             zIndex : 1
         })
     
-    this.temperaturechart= new Highcharts.stockChart({ 
+    this.temperatureChart= new Highcharts.stockChart({ 
         chart : {
             animation: this.options.animation,
             renderTo: 'temperaturechart',
-            plotBackgroundImage: this.options.weatherapi.geosatellite.enabled ? this.options.weatherapi.geosatellite.url_europe : '',
+            //plotBackgroundImage: this.options.weatherapi.geosatellite.enabled ? this.options.weatherapi.geosatellite.url_europe : '',
             height: this.options.weatherapi.geosatellite.enabled ? (720) : undefined
         },
 
@@ -1592,7 +1647,7 @@ UI.prototype.initLatestChart=function()
     this.latestChart=new Highcharts.chart('latestChart',
                             { chart : { 
                                  //animation: this.options.animation
-                                 plotBackgroundImage: this.options.weatherapi.radar.enabled ? this.options.weatherapi.radar.url_troms_5level_reflectivity : '',
+                                // plotBackgroundImage: this.options.weatherapi.radar.enabled ? this.options.weatherapi.radar.url_troms_5level_reflectivity : '',
                                  height: this.options.weatherapi.radar.enabled ? (640) : undefined
                                 },
                                 title: {
@@ -2351,9 +2406,9 @@ UI.prototype.onJSONLivedata=function (jsonReq,ev)
             }
             if (this.windbarbchart)
                 this.windbarbchart.series.forEach(function (series) { series.tooltipOptions.valueSuffix=' '+jsonReq.unitWind()})
-            if (this.temperaturechart) {
-                this.temperaturechart.series[0].tooltipOptions.valueSuffix=' '+jsonReq.unitTemp()
-                this.temperaturechart.series[1].tooltipOptions.valueSuffix=' '+jsonReq.unitTemp()
+            if (this.temperatureChart) {
+                this.temperatureChart.series[0].tooltipOptions.valueSuffix=' '+jsonReq.unitTemp()
+                this.temperatureChart.series[1].tooltipOptions.valueSuffix=' '+jsonReq.unitTemp()
             }
             if (this.pressurechart) {
                 this.pressurechart.series[0].tooltipOptions.valueSuffix=' '+jsonReq.unitPressure()
@@ -2444,7 +2499,7 @@ UI.prototype.updateCharts=function()
   //      //console.log('Removing data from chart to avoid skewed presentation, max points: '+this.options.maxPoints)
   //      this.measurementCount=0
   //      this.windrosechart.series.forEach(function (element) { element.setData([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) })
-  //      this.temperaturechart.series.forEach(function (element) { element.setData([]) })
+  //      this.temperatureChart.series.forEach(function (element) { element.setData([]) })
   //      this.pressurechart.series.forEach(function (element) { element.setData([]) })
   //      this.windbarbchart.series.forEach(function (element) { element.setData([]) })
   //      this.solarchart.series.forEach(function (element) { element.setData([]) })
@@ -2488,8 +2543,8 @@ UI.prototype.updateCharts=function()
         }
     }
 
-    if (this.temperaturechart) {
-        var dataLength=this.temperaturechart.series[0].options.data.length 
+    if (this.temperatureChart) {
+        var dataLength=this.temperatureChart.series[0].options.data.length 
         
         if (!this.options.shift && ((this.isLowMemoryDevice() && (dataLength > this.options.shift_measurements_ipad1)) ||  dataLength > this.shift_measurements))
         {
@@ -2497,10 +2552,10 @@ UI.prototype.updateCharts=function()
             this.options.shift=true
         }
 
-        this.temperaturechart.series[0].addPoint([timestamp,livedataJSON.outtemp()],this.options.shift,this.options.animation,false)
-        this.temperaturechart.series[1].addPoint([timestamp,livedataJSON.intemp()],this.options.shift,this.options.animation,false)
-        this.temperaturechart.series[2].addPoint([timestamp,livedataJSON.outhumidity()],this.options.shift,this.options.animation,false)
-        this.temperaturechart.series[3].addPoint([timestamp,livedataJSON.inhumidity()],this.options.shift,this.options.animation,false)
+        this.temperatureChart.series[0].addPoint([timestamp,livedataJSON.outtemp()],this.options.shift,this.options.animation,false)
+        this.temperatureChart.series[1].addPoint([timestamp,livedataJSON.intemp()],this.options.shift,this.options.animation,false)
+        this.temperatureChart.series[2].addPoint([timestamp,livedataJSON.outhumidity()],this.options.shift,this.options.animation,false)
+        this.temperatureChart.series[3].addPoint([timestamp,livedataJSON.inhumidity()],this.options.shift,this.options.animation,false)
     }
 
     // https://api.highcharts.com/class-reference/Highcharts.Series#addPoint
