@@ -828,7 +828,14 @@ function UI()
                 // https://stackoverflow.com/questions/2698552/how-do-i-save-a-file-using-the-response-header-filename-with-curl
                 url_europe: 'https://api.met.no/weatherapi/geosatellite/1.4/?area=europe', // ca 835 kB
                 url_europe_small: 'https://api.met.no/weatherapi/geosatellite/1.4/?area=europe&size=small'
-            }
+            },
+            polarsatellite: {
+                enabled: true,  // should be disabled on metered connection
+                interval: this.requestInterval.hour1,
+                doc: 'https://api.met.no/weatherapi/polarsatellite/1.1/documentation',
+                url_latest_noaa_rgb_north_europe: 'https://api.met.no/weatherapi/polarsatellite/1.1/?satellite=noaa&channel=rgb&area=ne'
+            },
+
         }
     }
 
@@ -845,15 +852,14 @@ function UI()
     this.initJSONRequests(port)
    // this.testMemory()
 
-   if (this.options.weatherapi.radar.enabled) {
-       this.updatePlotbackgroundImage(this.latestChart, this.options.weatherapi.radar.url_troms_5level_reflectivity)
+   if (this.options.weatherapi.radar.enabled) 
        this.reloadPlotBackgroundImage(this.latestChart,this.options.weatherapi.radar.url_troms_5level_reflectivity,this.options.weatherapi.radar.interval,true)
-   }
     
-    if (this.options.weatherapi.geosatellite.enabled) {
-        this.updatePlotbackgroundImage(this.temperatureChart, this.options.weatherapi.geosatellite.url_europe)
+    if (this.options.weatherapi.geosatellite.enabled) 
         this.reloadPlotBackgroundImage(this.temperatureChart,this.options.weatherapi.geosatellite.url_europe,this.options.weatherapi.geosatellite.interval,true)
-    }
+
+    if (this.options.weatherapi.polarsatellite.enabled) 
+        this.reloadPlotBackgroundImage(this.pressureChart,this.options.weatherapi.polarsatellite.url_latest_noaa_rgb_north_europe,this.options.weatherapi.polarsatellite.interval,true)
 
     this.eventHandler={
         scroll : this.onScrollUpdateplotBGImage.bind(this)
@@ -864,14 +870,8 @@ function UI()
 
 UI.prototype.onScrollUpdateplotBGImage=function()
 {
-    var latestChartURL= this.options.weatherapi.radar.missedReloadURL || this.options.weatherapi.radar.url_troms_5level_reflectivity,
-        temperatureChartURL=  this.options.weatherapi.geosatellite.missedReloadURL || this.options.weatherapi.geosatellite.url_europe
-
-        if (!this.latestChart.plotBGImage || this.options.weatherapi.radar.missedReloadURL)
-           this.updatePlotbackgroundImage(this.latestChart,latestChartURL)
-
-        if (!this.temperatureChart.plotBGImage || this.options.weatherapi.geosatellite.missedReloadURL)
-           this.updatePlotbackgroundImage(this.temperatureChart, temperatureChartURL)
+    for (id in this.options.missedReloadURL)
+        this.updatePlotbackgroundImage(this.options.missedReloadURL[id].chart,this.options.missedReloadURL[id].url)
 
       //  if (this.temperatureChart.plotBGImage && this.latestChart.plotBGImage)
       //    document.removeEventListener('scroll',this.eventHandler.scroll, {passive: true})
@@ -879,17 +879,40 @@ UI.prototype.onScrollUpdateplotBGImage=function()
 
 UI.prototype.updatePlotbackgroundImage=function(chart,url)
 {
-   var visible=this.isInViewport(chart.plotBackground.element)
-    if (visible)
+   var visible=this.isInViewport(chart.plotBackground.element),
+       id=chart.renderTo.id
+
+    if (visible) {
+      console.log('Updating plotbackground '+id+' url '+url)
       chart.update({ chart : { plotBackgroundImage : url }})
-    //else
-    //  console.warn('Chart not visible '+chart.renderTo.id)
+      if (this.options.missedReloadURL)
+        delete this.options.missedReloadURL[id]
+    }
+    else
+    {
+      if (!this.options.missedReloadURL)
+        this.options.missedReloadURL={}
+
+      if (!this.options.missedReloadURL[id])
+        this.options.missedReloadURL[id]={ chart: chart, url : url, time: Date.now() }
+      else
+      {
+        this.options.missedReloadURL[id].chart=chart
+        this.options.missedReloadURL[id].url=url
+        this.options.missedReloadURL[id].time=Date.now()
+      }
+
+      // console.warn('Reload when visible '+id+' url '+url)
+    }
+
     return visible
 }
 
 UI.prototype.reloadPlotBackgroundImage=function(chart,url,interval,bypassBrowserCache)
 {
     var id=chart.renderTo.id
+
+    this.updatePlotbackgroundImage(chart,url)
 
       console.log('setting reload of ' +id+' plotbackgroundimage '+url+' to '+interval)
 
@@ -900,24 +923,7 @@ UI.prototype.reloadPlotBackgroundImage=function(chart,url,interval,bypassBrowser
         if (bypassBrowserCache)
           url=url+'&' // add empty key=value, to bypass cache in browser, not optimal but works,use slow interval=1 hour to limit url string length, in theory a "414 URI Too Long" may be generated https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/414
         
-          if (!this.updatePlotbackgroundImage(chart,url))
-        {
-            if (chart===this.latestChart)
-            {
-                this.options.weatherapi.radar.missedReloadURL=url // for update in scroll event handler
-            } else if (chart===this.temperatureChart)
-            {
-                this.options.weatherapi.geosatellite.missedReloadURL=url
-            }
-        } else {
-            if (chart===this.latestChart)
-            {
-               delete  this.options.weatherapi.radar.missedReloadURL
-            } else if (chart===this.temperatureChart)
-            {
-                delete this.options.weatherapi.geosatellite.missedReloadURL
-            }
-        }
+          this.updatePlotbackgroundImage(chart,url)
     }.bind(this),interval)
    
 }
@@ -1031,8 +1037,8 @@ UI.prototype.addObservationsMETno=function(data)
         {
             case 'air_pressure_at_sea_level' :
 
-                if (this.pressurechart)
-                    series = this.pressurechart.get('series-metno-air_pressure_at_sea_level')
+                if (this.pressureChart)
+                    series = this.pressureChart.get('series-metno-air_pressure_at_sea_level')
                 break
             
             case 'air_temperature' :
@@ -1578,9 +1584,10 @@ UI.prototype.initPressureChart=function()
         }
             
     
-        this.pressurechart= new Highcharts.stockChart({ chart : {
+        this.pressureChart= new Highcharts.stockChart({ chart : {
             animation: this.options.animation,
             renderTo: 'pressurechart',
+            height: 600
         },
         tooltip: {
             enabled: this.options.tooltip
@@ -2435,9 +2442,9 @@ UI.prototype.onJSONLivedata=function (jsonReq,ev)
                 this.temperatureChart.series[0].tooltipOptions.valueSuffix=' '+jsonReq.unitTemp()
                 this.temperatureChart.series[1].tooltipOptions.valueSuffix=' '+jsonReq.unitTemp()
             }
-            if (this.pressurechart) {
-                this.pressurechart.series[0].tooltipOptions.valueSuffix=' '+jsonReq.unitPressure()
-                this.pressurechart.series[1].tooltipOptions.valueSuffix=' '+jsonReq.unitPressure()
+            if (this.pressureChart) {
+                this.pressureChart.series[0].tooltipOptions.valueSuffix=' '+jsonReq.unitPressure()
+                this.pressureChart.series[1].tooltipOptions.valueSuffix=' '+jsonReq.unitPressure()
             }
             if (this.solarchart)
                 this.solarchart.series[0].tooltipOptions.valueSuffix=' '+jsonReq.unitSolarlight()
@@ -2516,7 +2523,7 @@ UI.prototype.updateCharts=function()
 
     this.options.gwapi.latestHHMMSS=hhmmss
 
-    //this.pressurechart.subtitle.element.textContent='Relative ' + livedataJSON.pressureToString(livedataJSON.relbaro()) + ' Absolute ' + livedataJSON.pressureToString(livedataJSON.absbaro())
+    //this.pressureChart.subtitle.element.textContent='Relative ' + livedataJSON.pressureToString(livedataJSON.relbaro()) + ' Absolute ' + livedataJSON.pressureToString(livedataJSON.absbaro())
 
     // Remove data if too old, otherwise they get skewed to the left
   //  if (this.windbarbchart.series[0].xData.length >= 1 &&   ( timestamp - this.windbarbchart.series[0].xData[this.windbarbchart.series[0].xData.length-1]) > this.options.interval*this.options.maxPoints)
@@ -2525,7 +2532,7 @@ UI.prototype.updateCharts=function()
   //      this.measurementCount=0
   //      this.windrosechart.series.forEach(function (element) { element.setData([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) })
   //      this.temperatureChart.series.forEach(function (element) { element.setData([]) })
-  //      this.pressurechart.series.forEach(function (element) { element.setData([]) })
+  //      this.pressureChart.series.forEach(function (element) { element.setData([]) })
   //      this.windbarbchart.series.forEach(function (element) { element.setData([]) })
   //      this.solarchart.series.forEach(function (element) { element.setData([]) })
   //  }
@@ -2585,9 +2592,9 @@ UI.prototype.updateCharts=function()
 
     // https://api.highcharts.com/class-reference/Highcharts.Series#addPoint
     
-   if (this.pressurechart) {
-        this.pressurechart.series[0].addPoint([timestamp,livedataJSON.relbaro()],this.options.shift,this.options.animation,false)
-        this.pressurechart.series[1].addPoint([timestamp,livedataJSON.absbaro()],this.options.shift,this.options.animation,false)
+   if (this.pressureChart) {
+        this.pressureChart.series[0].addPoint([timestamp,livedataJSON.relbaro()],this.options.shift,this.options.animation,false)
+        this.pressureChart.series[1].addPoint([timestamp,livedataJSON.absbaro()],this.options.shift,this.options.animation,false)
    }
 
    if (this.windbarbchart) {
@@ -2632,9 +2639,9 @@ UI.prototype.redrawCharts=function()
     // https://api.highcharts.com/class-reference/Highcharts.Axis#setExtremes
    // y-axis start on 0 by default
     
-   if (this.pressurechart) {
-        if (this.pressurechart.series[0].dataMin && this.pressurechart.series[0].dataMax)
-                this.pressurechart.series[0].yAxis.setExtremes(this.pressurechart.series[0].dataMin-2,this.pressurechart.series[0].dataMax+2,false)
+   if (this.pressureChart) {
+        if (this.pressureChart.series[0].dataMin && this.pressureChart.series[0].dataMax)
+                this.pressureChart.series[0].yAxis.setExtremes(this.pressureChart.series[0].dataMin-2,this.pressureChart.series[0].dataMax+2,false)
     }
     //console.log('redraw all charts')
     
