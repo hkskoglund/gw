@@ -1890,6 +1890,11 @@ UI.prototype.initLatestChart=function()
                                         id :'series-winddirection',
                                         type: 'column',
                                         yAxis: 3,
+                                        tooltip: {
+                                            pointFormatter : function () {
+                                                return this.series.name+' '+WindConverter.prototype.fromDegToCompassDirection(this.y)+' ('+this.y+')'
+                                            }
+                                        },
                                         dataLabels: {
                                             enabled: true && !this.options.isLGSmartTV2012,
                                             color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
