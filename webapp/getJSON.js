@@ -749,11 +749,9 @@ function UI()
     this.options={
         tooltip: !isLowMemoryDevice,              // turn off for ipad1 - slow animation/disappearing
         animation: !isLowMemoryDevice,               // turn off animation for all charts
-        addpointIfChanged : true,       // only addpoint if value changes (keep memory footprint low),
         shift: false,                   // shift series flag
         shift_measurements_ipad1: 2250, // number of measurements before shifting (3600/16=225 samples/hours*10 hours)
         shift_measurements: 5400,       // 1 day= 225 samples*24 hours =5400
-        invalid_security_certificate : isLowMemoryDevice, // have outdated security certificates for https request
         rangeSelector: !isLowMemoryDevice,        // keeps memory for series
         mousetracking: !isLowMemoryDevice,        // allocates memory for duplicate path for tracking
         forceLowMemoryDevice : forceLowMemoryDevice,        // for testing
@@ -853,8 +851,12 @@ function UI()
 
     this.initJSONRequests(port)
    // this.testMemory()
+   
+   this.eventHandler={
+    scroll : this.onScrollUpdateplotBGImage.bind(this)
+}
 
-   if (this.options.weatherapi.radar.enabled && this.latestChart) 
+    if (this.options.weatherapi.radar.enabled && this.latestChart) 
        this.reloadPlotBackgroundImage(this.latestChart,this.options.weatherapi.radar.url_troms_5level_reflectivity,this.options.weatherapi.radar.interval,true)
     
     if (this.options.weatherapi.geosatellite.enabled && this.temperatureChart) 
@@ -863,15 +865,13 @@ function UI()
     if (this.options.weatherapi.polarsatellite.enabled && this.pressureChart) 
         this.reloadPlotBackgroundImage(this.pressureChart,this.options.weatherapi.polarsatellite.url_latest_noaa_rgb_north_europe,this.options.weatherapi.polarsatellite.interval,true)
 
-    this.eventHandler={
-        scroll : this.onScrollUpdateplotBGImage.bind(this)
-    }
-
     document.addEventListener('scroll',this.eventHandler.scroll, { passive: true})
 }
 
-UI.prototype.onScrollUpdateplotBGImage=function()
+UI.prototype.onScrollUpdateplotBGImage=function(event)
 {
+    this.eventHandler.scrollTimestamp=Date.now()
+
     for (id in this.options.missedReloadURL)
         this.updatePlotbackgroundImage(this.options.missedReloadURL[id].chart,this.options.missedReloadURL[id].url)
 
@@ -884,7 +884,8 @@ UI.prototype.updatePlotbackgroundImage=function(chart,url)
    var visible=this.isInViewport(chart.plotBackground.element),
        id=chart.renderTo.id
 
-    if (visible) {
+    if (visible)
+    {
       console.log('Updating plotbackground '+id+' url '+url)
       chart.update({ chart : { plotBackgroundImage : url }})
       if (this.options.missedReloadURL)
@@ -2478,6 +2479,7 @@ UI.prototype.initCharts=function()
         this.initRainChart()
         this.initRainstatChart()
         this.initSolarChart()
+
 }
 
 UI.prototype.initTestChart=function()
