@@ -744,6 +744,8 @@ function UI()
 
     this.timeoutID={}
 
+    this.restoreHiddenSeries={}  
+
     this.options={
         tooltip: !isLowMemoryDevice,              // turn off for ipad1 - slow animation/disappearing
         animation: !isLowMemoryDevice,               // turn off animation for all charts
@@ -852,13 +854,13 @@ function UI()
     this.initJSONRequests(port)
    // this.testMemory()
 
-   if (this.options.weatherapi.radar.enabled) 
+   if (this.options.weatherapi.radar.enabled && this.latestChart) 
        this.reloadPlotBackgroundImage(this.latestChart,this.options.weatherapi.radar.url_troms_5level_reflectivity,this.options.weatherapi.radar.interval,true)
     
-    if (this.options.weatherapi.geosatellite.enabled) 
+    if (this.options.weatherapi.geosatellite.enabled && this.temperatureChart) 
         this.reloadPlotBackgroundImage(this.temperatureChart,this.options.weatherapi.geosatellite.url_europe,this.options.weatherapi.geosatellite.interval,true)
 
-    if (this.options.weatherapi.polarsatellite.enabled) 
+    if (this.options.weatherapi.polarsatellite.enabled && this.pressureChart) 
         this.reloadPlotBackgroundImage(this.pressureChart,this.options.weatherapi.polarsatellite.url_latest_noaa_rgb_north_europe,this.options.weatherapi.polarsatellite.interval,true)
 
     this.eventHandler={
@@ -1450,7 +1452,10 @@ UI.prototype.initTemperatureChart=function()
             animation: this.options.animation,
             renderTo: 'temperaturechart',
             //plotBackgroundImage: this.options.weatherapi.geosatellite.enabled ? this.options.weatherapi.geosatellite.url_europe : '',
-            height: this.options.weatherapi.geosatellite.enabled ? (720) : undefined
+            height: this.options.weatherapi.geosatellite.enabled ? (720) : undefined,
+            events: {
+                click : this.onClickToggleChartSeries.bind(this)
+            }
         },
 
         rangeSelector: {
@@ -1587,7 +1592,10 @@ UI.prototype.initPressureChart=function()
         this.pressureChart= new Highcharts.stockChart({ chart : {
             animation: this.options.animation,
             renderTo: 'pressurechart',
-            height: 600
+            height: 600,
+            events: {
+                click: this.onClickToggleChartSeries.bind(this)
+            }
         },
         tooltip: {
             enabled: this.options.tooltip
@@ -1663,13 +1671,43 @@ UI.prototype.initPressureChart=function()
                 enableMouseTracking: this.options.mousetracking,
                 dataGrouping: { 
                     groupPixelWidth: 30
-                }
+                },
+                lineWidth: 4
             }
         },
     
         series: pressureSeries,
 
         })
+}
+
+UI.prototype.onClickToggleChartSeries=function(event)
+// Toggle display of series to reveal underlying image
+{
+    var id=event.xAxis[0].axis.chart.renderTo.id,
+        restoreHiddenSeries=this.restoreHiddenSeries[id]
+
+    // console.log('click',event)
+
+    if (!restoreHiddenSeries)
+      restoreHiddenSeries=this.restoreHiddenSeries[id]=[]
+    
+     if (restoreHiddenSeries && restoreHiddenSeries.length) {   
+        restoreHiddenSeries.forEach(function (series) { series.show() })
+        this.restoreHiddenSeries[id]=[]
+    } else
+     {
+
+         event.xAxis[0].axis.series.forEach(function (series) {
+         
+             if (series.visible)    
+             {
+                 restoreHiddenSeries.push(series)
+                 series.hide()
+             }
+         
+         })
+     }
 }
 
 UI.prototype.initLatestChart=function()
@@ -1680,7 +1718,11 @@ UI.prototype.initLatestChart=function()
                             { chart : { 
                                  //animation: this.options.animation
                                 // plotBackgroundImage: this.options.weatherapi.radar.enabled ? this.options.weatherapi.radar.url_troms_5level_reflectivity : '',
-                                 height: this.options.weatherapi.radar.enabled ? (640) : undefined
+                                 height: this.options.weatherapi.radar.enabled ? (640) : undefined,
+                                 events: {
+                                    // Allow viewing of underlying image
+                                    click : this.onClickToggleChartSeries.bind(this)
+                                 }
                                 },
                                 title: {
                                     text: 'Latest observations'
@@ -1689,7 +1731,6 @@ UI.prototype.initLatestChart=function()
                                     enabled: true,
                                     text: 'MET Norway data - CC 4.0'
                                 },
-                               
                                 yAxis: [
                                     // Temperature
                                     {
@@ -1767,7 +1808,12 @@ UI.prototype.initLatestChart=function()
                                         type: 'column',
                                         // datalabels crashes on LG TV 2012 "not enough memory"
                                         dataLabels: {
-                                            enabled: true && !this.options.isLGSmartTV2012
+                                            enabled: true && !this.options.isLGSmartTV2012,
+                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                            style: {
+                                                fontSize: 14,
+                                                fontWeight: 'bold'
+                                            }
                                         }
                                     },
                                     {
@@ -1775,7 +1821,12 @@ UI.prototype.initLatestChart=function()
                                         id: 'series-windchill',
                                         type: 'column',
                                         dataLabels: {
-                                            enabled: true && !this.options.isLGSmartTV2012
+                                            enabled: true && !this.options.isLGSmartTV2012,
+                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                            style: {
+                                                fontSize: 14,
+                                                fontWeight: 'bold'
+                                            }
                                         },
                                         visible: false
                                     },
@@ -1785,7 +1836,12 @@ UI.prototype.initLatestChart=function()
                                         type: 'column',
                                         yAxis: 1,
                                         dataLabels: {
-                                            enabled: true && !this.isLGSmartTV2012
+                                            enabled: true && !this.isLGSmartTV2012,
+                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                            style: {
+                                                fontSize: 14,
+                                                fontWeight: 'bold'
+                                            }
                                         },
                                         visible: false
                                     },
@@ -1797,7 +1853,12 @@ UI.prototype.initLatestChart=function()
                                         dataLabels: {
                                             enabled: true && !this.options.isLGSmartTV2012,
                                             // https://www.highcharts.com/docs/chart-concepts/labels-and-string-formatting?_ga=2.200835883.424482256.1654686807-470753587.1650372441#format-strings
-                                            format : '{point.y:.1f}'
+                                            format : '{point.y:.1f}',
+                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                            style: {
+                                                fontSize: 14,
+                                                fontWeight: 'bold'
+                                            }
                                         }
                                     },
                                     {
@@ -1807,7 +1868,12 @@ UI.prototype.initLatestChart=function()
                                         yAxis: 2,
                                         dataLabels: {
                                             enabled: true && !this.options.isLGSmartTV2012,
-                                            format : '{point.y:.1f}'
+                                            format : '{point.y:.1f}',
+                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                            style: {
+                                                fontSize: 14,
+                                                fontWeight: 'bold'
+                                            }
                                         }
                                     },
                                     {
@@ -1816,7 +1882,12 @@ UI.prototype.initLatestChart=function()
                                         type: 'column',
                                         yAxis: 3,
                                         dataLabels: {
-                                            enabled: true && !this.options.isLGSmartTV2012
+                                            enabled: true && !this.options.isLGSmartTV2012,
+                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                            style: {
+                                                fontSize: 14,
+                                                fontWeight: 'bold'
+                                            }
                                         }
                                     },
                                     {
@@ -1826,7 +1897,12 @@ UI.prototype.initLatestChart=function()
                                         yAxis: 7,
                                         dataLabels: {
                                             enabled: true && !this.options.isLGSmartTV2012,
-                                            format : '{point.y:.1f}'
+                                            format : '{point.y:.1f}',
+                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                            style: {
+                                                fontSize: 14,
+                                                fontWeight: 'bold'
+                                            }
                                         },
                                         visible: true,
                                         //zones:  this.zones.rainrate
@@ -1838,7 +1914,12 @@ UI.prototype.initLatestChart=function()
                                         yAxis: 4,
                                         dataLabels: {
                                             enabled: true && !this.options.isLGSmartTV2012,
-                                            format : '{point.y:.1f}'
+                                            format : '{point.y:.1f}',
+                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                            style: {
+                                                fontSize: 14,
+                                                fontWeight: 'bold'
+                                            }
                                         },
                                         visible: false
                                     },
@@ -1848,7 +1929,12 @@ UI.prototype.initLatestChart=function()
                                         type: 'column',
                                         yAxis: 5,
                                         dataLabels: {
-                                            enabled: true && !this.options.isLGSmartTV2012
+                                            enabled: true && !this.options.isLGSmartTV2012,
+                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                            style: {
+                                                fontSize: 14,
+                                                fontWeight: 'bold'
+                                            }
                                         },
                                         visible: false
                                     },
@@ -1858,7 +1944,12 @@ UI.prototype.initLatestChart=function()
                                         type: 'column',
                                         yAxis: 6,
                                         dataLabels: {
-                                            enabled: true && !this.options.isLGSmartTV2012
+                                            enabled: true && !this.options.isLGSmartTV2012,
+                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                            style: {
+                                                fontSize: 14,
+                                                fontWeight: 'bold'
+                                            }
                                         },
                                         visible: false,
                                        // zones : this.zones.uvi
@@ -2382,11 +2473,11 @@ UI.prototype.initCharts=function()
         this.initLatestChart()
         this.initTemperatureChart()
         this.initWindBarbChart() 
-        this.initWindroseChart()
+        this.initWindroseChart() 
         this.initPressureChart()
         this.initRainChart()
         this.initRainstatChart()
-        this.initSolarChart() 
+        this.initSolarChart()
 }
 
 UI.prototype.initTestChart=function()
