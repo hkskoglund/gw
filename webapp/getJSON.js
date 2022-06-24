@@ -478,6 +478,14 @@ function WindConverter()
 
 }
 
+WindConverter.prototype.fromDegToCompassDirection=function(deg)
+{
+    // https://www.campbellsci.com/blog/convert-wind-directions
+    var direction=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW","N"]
+
+    return direction[Math.round((deg % 360)/22.5)]
+}
+
 WindConverter.prototype.fromKmhToMps=function(kmh)
 {
     return kmh*5/18
@@ -1888,6 +1896,9 @@ UI.prototype.initLatestChart=function()
                                             style: {
                                                 fontSize: 14,
                                                 fontWeight: 'bold'
+                                            },
+                                            formatter : function () {
+                                                return WindConverter.prototype.fromDegToCompassDirection(this.y)
                                             }
                                         }
                                     },
