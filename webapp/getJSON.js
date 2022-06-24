@@ -1936,7 +1936,7 @@ UI.prototype.initLatestChart=function()
                                         visible: false
                                     },
                                     {
-                                        name: 'Irradiance',
+                                        name: 'Sunlight',
                                         id: 'series-irradiance',
                                         type: 'column',
                                         yAxis: 5,
@@ -1948,7 +1948,7 @@ UI.prototype.initLatestChart=function()
                                                 fontWeight: 'bold'
                                             }
                                         },
-                                        visible: false
+                                        visible: true
                                     },
                                     {
                                         name: 'UVI',
@@ -2158,7 +2158,7 @@ UI.prototype.initSolarChart=function()
 {
     var solarSeries=[
         {
-                name: 'Irradiance',
+                name: 'Sunlight',
                 type: 'spline',
                 yAxis: 0,
                 data: []
