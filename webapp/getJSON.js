@@ -830,7 +830,7 @@ function UI()
             },
             geosatellite: {
                 enabled: true,  // should be disabled on metered connection
-                interval: this.requestInterval.hour1,
+                interval: this.requestInterval.min15,
                 doc: 'https://api.met.no/weatherapi/geosatellite/1.4/documentation',
                 // test  curl -s -v 'https://api.met.no/weatherapi/geosatellite/1.4/?area=europe' -J -O
                 // https://stackoverflow.com/questions/2698552/how-do-i-save-a-file-using-the-response-header-filename-with-curl
@@ -839,7 +839,7 @@ function UI()
             },
             polarsatellite: {
                 enabled: true,  // should be disabled on metered connection
-                interval: this.requestInterval.hour1,
+                interval: this.requestInterval.min15,
                 doc: 'https://api.met.no/weatherapi/polarsatellite/1.1/documentation',
                 url_latest_noaa_rgb_north_europe: 'https://api.met.no/weatherapi/polarsatellite/1.1/?satellite=noaa&channel=rgb&area=ne'
             },
