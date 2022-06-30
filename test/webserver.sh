@@ -10,11 +10,13 @@ HTTP_RESPONSE_501_NOTIMPLEMENTED="501"
 MIME_TYPE_TEXT="text" 
 MIME_PARAM_CHARSET_UTF8="charset=utf-8" # charset can be set optionally only for text, https://www.w3.org/International/articles/http-charset/index
 MIME_TYPE_APPLICATION="application"
+MIME_TYPE_IMAGE="image"
 MIME_SUBTYPE_PLAIN="plain"
 MIME_SUBTYPE_HTML="html"
 MIME_SUBTYPE_JAVASCRIPT="javascript"
 MIME_SUBTYPE_JSON="json"
 MIME_SUBTYPE_CSS="css"
+MIME_SUBTYPE_PNG="png"
 
 if [ -n "$ZSH_VERSION" ]; then
     #https://zsh.sourceforge.io/FAQ/zshfaq03.html
@@ -136,11 +138,22 @@ getHostFromQS()
 }
 
 sendFile()
+# $1 directory, $2 file
 {
      set -x
-    l_file=${HTTP_REQUEST_ABSPATH##*/}
-    l_dir=${HTTP_REQUEST_ABSPATH%"$l_file"}
+     if [ -z "$2" ]; then 
+        l_file=${HTTP_REQUEST_ABSPATH##*/}
+    else
+       l_file="$2"
+    fi
+    if [ -z "$1" ]; then
+        l_dir=${HTTP_REQUEST_ABSPATH%"$l_file"}
+    else
+      l_dir="$1"
+      fi
+
     l_server_file="$HTTP_SERVER_ROOT$l_dir$l_file"
+
     set +x
 
     if [ -s "$l_server_file" ]; then
@@ -153,6 +166,8 @@ sendFile()
                             ;;
                 *".html")   appendHttpResponseHeader "Content-Type" "$MIME_TYPE_TEXT/$MIME_SUBTYPE_HTML;$MIME_PARAM_CHARSET_UTF8"
                             ;;
+                *".png"|*radar_nowcast) appendHttpResponseHeader "Content-Type" "$MIME_TYPE_IMAGE/$MIME_SUBTYPE_PNG"
+                            ;;  
                 esac
             getFilesize "$l_server_file"
             appendHttpResponseHeader "Content-Length" "$VALUE_FILESIZE"
@@ -212,6 +227,40 @@ sendMETnoRequest()
         unset l_response_JSON l_exitcode l_user l_password
 }
 
+getDateNearest5Minute()
+# $1 UTC date 2022-06-27T14:00:00Z
+# set VALUE_DATE_NEAREST5MIN
+# round minutes to nearest 5 minute interval
+{
+     l_date_next5min=$( date -d "$1 + 5 minutes" --utc +%FT%H ) # in case day, hour wrap
+    IFS=:
+    #shellcheck disable=SC2086
+    set -- $1
+    l_minute=${2#0} # remove 0 prefix, otherwise octal base
+    l_modulo=$(( l_minute % 5 ))
+    if [ $l_modulo -le 2 ] && [ "$l_minute" -ge 5 ]; then
+        l_nearest5min=$(( l_minute -  l_modulo % 5 ))
+    elif [ $l_modulo -gt 2 ] && [ "$l_minute" -ge 5 ]; then
+        l_nearest5min=$(( l_minute + 5 - (l_minute+5) % 5  ))
+    elif [ $l_modulo -le 2 ] && [ "$l_minute" -le 2 ]; then
+        l_nearest5min=$(( l_minute -  l_modulo % 5 ))
+    elif [ $l_modulo -gt 2 ] && [ "$l_minute" -gt 2 ]; then
+        l_nearest5min=$(( l_minute + 5 - (l_minute+5) % 5  ))
+    fi
+
+    if [ $l_nearest5min -eq 60 ]; then
+       VALUE_DATE_NEAREST5MIN="$l_date_next5min:00:00Z"
+    else
+      if [ $l_nearest5min -le 9 ]; then
+        l_nearest5min="0$l_nearest5min" #reinsert prefix
+      fi
+
+      VALUE_DATE_NEAREST5MIN="$1:$l_nearest5min:00Z"
+    fi
+
+    unset l_minute l_modulo l_date_next5min l_nearest5min
+}
+
 webserver()
 # process runs in a subshell (function call in end of pipeline), pid can be accessed by $BASHPID/$$ is invoking shell, pstree -pal gives overview
 {
@@ -263,7 +312,10 @@ webserver()
     "livedata_url": "http://'"$HTTP_HEADER_host"'/api/livedata",
     "frostmetno_latest_url": "http://'"$HTTP_HEADER_host"'/api/frost.met.no/latest-hour",
     "frostmetno_latest_10min_url": "http://'"$HTTP_HEADER_host"'/api/frost.met.no/latest-10min",
-    "frostmetno_url": "http://'"$HTTP_HEADER_host"'/api/frost.met.no{/path}"
+    "frostmetno_url": "http://'"$HTTP_HEADER_host"'/api/frost.met.no{/path}",
+    "radar_nowcast_url": "http://'"$HTTP_HEADER_host"'/api/radar_nowcast"
+    
+
 }
 '
                                         sendJSON "$l_response_JSON"
@@ -319,7 +371,7 @@ webserver()
                                     ;;
 
                                         
-                        *".js"|*".css"|*".html") sendFile 
+                        *".js"|*".css"|*".html"|*".png") sendFile 
                                         ;;
 
                         /api/frost.met.no/latest-1H)
@@ -347,7 +399,7 @@ webserver()
                                #l_sources=SN87640
                                l_timeresolution="PT1M,PT10M,PT1H"
                                #l_elements='mean(surface_downwelling_shortwave_flux_in_air%20PT1M),air_temperature,wind_speed,max(wind_speed_of_gust%20PT10M),wind_from_direction'
-                                l_elements='air_temperature,wind_speed,max(wind_speed_of_gust%20PT10M),wind_from_direction,air_pressure_at_sea_level,relative_humidity,surface_snow_thickness'
+                                l_elements='air_temperature,wind_speed,max(wind_speed_of_gust%20PT10M),wind_from_direction,air_pressure_at_sea_level,relative_humidity,mean(surface_downwelling_shortwave_flux_in_air%20PT1M),surface_snow_thickness'
                                # latest mean(surface_downwelling_shortwave_flux_in_air%20PT1M) seems to be updated in intervals of about 15 minutes
                                l_referencetime="latest"
                                #l_referencetime_start=$(date -d "15 minutes ago" --utc +%FT%TZ)
@@ -372,6 +424,23 @@ webserver()
                                 unset l_query
 
                                 ;;
+
+                        /api/radar_nowcast*)
+                              # precipitation radar PNG image by quering WMS (primarily reserved by yr.no service, but uses public in url and Access-Control-Allow-Origin: * header)
+                              # analyzed web requests in the yr.no service and used QGIS to generate query (F12 to get request console in QGIS)
+                              # Test curl '192.168.3.3/api/radar_nowcast' --output test.png
+                               l_dir="/img/radar/"
+                               l_file="radar_nowcast.png"
+                               l_fname="$HTTP_SERVER_ROOT$l_dir$l_file"
+                               getDateNearest5Minute "$(date --utc +%FT%TZ)"
+                               l_url="https://public-wms.met.no/verportal/radar_nowcast.map?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=1348785.417150997091,10513254.4631713666,2876190.928262108471,11374438.4631713666&CRS=EPSG:3857&WIDTH=1278&HEIGHT=720&LAYERS=background,radar_nowcast&TIME=$VALUE_DATE_NEAREST5MIN&FORMAT=image/png&TRANSPARENT=TRUE"
+                               #l_url="https://public-wms.met.no/verportal/radar_nowcast.map?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=1218784.258785837796,10455088.7090703249,2517080.593458713498,11209671.769827649&CRS=EPSG:3857&WIDTH=1257&HEIGHT=730&LAYERS=background,radar_nowcast&TIME=$VALUE_DATE_NEAREST5MIN&FORMAT=image/png&TRANSPARENT=TRUE"     
+                                set -x
+                                curl -s -v  --compressed --output "$l_fname" "$l_url" 
+                                set +x
+                                sendFile "$l_dir" "$l_file"
+                               unset l_dir l_file l_fname l_url
+                        ;;
                         
                         *)      sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
                                 ;;

@@ -1,38 +1,39 @@
-https://stackoverflow.com/questions/15455009/javascript-call-apply-vs-bind
-if (!Function.prototype.bind)
-{
-    console.log('javascript bind not found, creating new Function.prototype.bind,'+window.navigator.userAgent)
-    Function.prototype.bind = function(ctx) {
-        var fn = this,
-            args=Array.prototype.slice.call(arguments,1) // Shallow copy - points to same memory - arguments when creating function with .bind(this,...)
-        return function() {
-            //https://gist.github.com/MiguelCastillo/38005792d33373f4d08c
-            fn.apply(ctx, args.concat(Array.prototype.slice.call(arguments))); // conact to append arguments when calling
+(function _WeatherStation() {
+
+    
+    https://stackoverflow.com/questions/15455009/javascript-call-apply-vs-bind
+    if (!Function.prototype.bind)
+    {
+        console.log('javascript bind not found, creating new Function.prototype.bind,'+window.navigator.userAgent)
+        Function.prototype.bind = function(ctx) {
+            var fn = this,
+                args=Array.prototype.slice.call(arguments,1) // Shallow copy - points to same memory - arguments when creating function with .bind(this,...)
+            return function() {
+                //https://gist.github.com/MiguelCastillo/38005792d33373f4d08c
+                fn.apply(ctx, args.concat(Array.prototype.slice.call(arguments))); // conact to append arguments when calling
+            };
         };
-    };
-}
-
- /*function alert()
-    {
-        return
-    } */
-
-Number.isInteger = Number.isInteger || function(value) {
-    return typeof value === 'number' && 
-      isFinite(value) && 
-      Math.floor(value) === value;
-  };
-
-window.addEventListener('load', function initui() {
-    // console.log('onload event, init ui')
-    // console.log('window location',window.location)
-    try {
-         var ui = new UI()
-    } catch (err)
-    {
-        console.error(JSON.stringify(err))
     }
- })
+
+    /*function alert()
+        {
+            return
+        } */
+
+    Number.isInteger = Number.isInteger || function(value) {
+        return typeof value === 'number' && isFinite(value) && Math.floor(value) === value;
+    };
+
+    window.addEventListener('load', function _initui() {
+        // console.log('onload event, init ui')
+        // console.log('window location',window.location)
+        try {
+            var ui = new UI()
+        } catch (err)
+        {
+            console.error(JSON.stringify(err))
+        }
+    })
 
  function Station(name,id)
  {
@@ -707,6 +708,7 @@ GetJSONFrost.prototype.getLatestObservation=function(element)
 
 function UI()
 {
+
     var port
 
     this.measurementCount=0
@@ -819,14 +821,22 @@ function UI()
             enabled: false,
             latestHHMMSS : ''
         },
+        publicwmsmetno: {
+            radar_nowcast : {
+                enabled : true,
+                interval : this.requestInterval.min15,
+                url: window.location.origin+'/api/radar_nowcast'
+            }
+        },
         weatherapi: {
             radar: {
                 enabled: true && navigatorIsNorway, // should be disabled on metered connection
                 interval: this.requestInterval.min15,
                 doc: 'https://api.met.no/weatherapi/radar/2.0/documentation',
                 url_troms_5level_reflectivity:'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity&content=image', // ca 173 kB
-                url_troms_5level_reflectivity_animation : 'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity&content=animation'
+                url_troms_5level_reflectivity_animation : 'https://api.met.no/weatherapi/radar/2.0/?area=troms&type=5level_reflectivity&content=animation',
                // url_test: 'https://www.yr.no/nb/innhold/1-2296106/meteogram.svg' // ca 14.4 kB
+               // url_test_webcam_1 : 'https://www.yr.no/webcams/1/2000/tromso/1.jpg'
             },
             geosatellite: {
                 enabled: true,  // should be disabled on metered connection
@@ -843,14 +853,17 @@ function UI()
                 doc: 'https://api.met.no/weatherapi/polarsatellite/1.1/documentation',
                 url_latest_noaa_rgb_north_europe: 'https://api.met.no/weatherapi/polarsatellite/1.1/?satellite=noaa&channel=rgb&area=ne'
             },
-
+        },
+        uvnettapi: {
+            enabled: false,
+            url : 'https://uvnett.dsa.no/dagsverdigraf_detaljert.aspx?Stasjon=And%u00f8ya&Dato=28/06/2022&Bredde=1024&Hoyde=768&Engelsk=True'
         }
     }
 
     //this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
 
     this.initCharts()
-  
+
     if (window.location.hostname === '127.0.0.1') // assume web server runs on port 80
         // Visual studio code live preview uses 127.0.0.1:3000
       port=80
@@ -864,9 +877,12 @@ function UI()
     scroll : this.onScrollUpdateplotBGImage.bind(this)
 }
 
-    if (this.options.weatherapi.radar.enabled && this.latestChart) 
-       this.reloadPlotBackgroundImage(this.latestChart,this.options.weatherapi.radar.url_troms_5level_reflectivity,this.options.weatherapi.radar.interval,true)
-    
+   // if (this.options.weatherapi.radar.enabled && this.latestChart) 
+   //    this.reloadPlotBackgroundImage(this.latestChart,this.options.weatherapi.radar.url_troms_5level_reflectivity,this.options.weatherapi.radar.interval,true)
+
+     if (this.options.publicwmsmetno.radar_nowcast.enabled && this.latestChart)
+         this.reloadPlotBackgroundImage(this.latestChart,this.options.publicwmsmetno.radar_nowcast.url,this.options.publicwmsmetno.radar_nowcast.interval,true)
+
     if (this.options.weatherapi.geosatellite.enabled && this.temperatureChart) 
         this.reloadPlotBackgroundImage(this.temperatureChart,this.options.weatherapi.geosatellite.url_europe,this.options.weatherapi.geosatellite.interval,true)
 
@@ -875,6 +891,8 @@ function UI()
 
     document.addEventListener('scroll',this.eventHandler.scroll, { passive: true})
 }
+
+window.WeatherStation=UI
 
 UI.prototype.onScrollUpdateplotBGImage=function(event)
 {
@@ -2109,7 +2127,7 @@ UI.prototype.initRainChart=function()
                             title: false,
                             min : 0,
                             opposite: false,
-                            tickInterval: 0.1
+                            tickInterval: 0.5
                            
                         },
                         {
@@ -2761,5 +2779,5 @@ UI.prototype.redrawCharts=function()
 
 
 
-   
+})() // Avoid intefering with global namespace https://developer.mozilla.org/en-US/docs/Glossary/IIFE 
 

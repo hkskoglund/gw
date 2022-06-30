@@ -18,3 +18,4 @@ fifo
 webapp/livedata.json
 test/test-key.pem
 test/test-cert.pem
+webapp/img/radar

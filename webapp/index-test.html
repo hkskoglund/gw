@@ -1,0 +1,25 @@
+<head>
+    <title>Test image</title>
+    <style>
+        .img {
+            position: absolute;
+            top: 0;
+            left: 0
+        }
+    </style>
+</head>
+<html>
+    <image class="img" id='imgRadar' src='https://public-wms.met.no/verportal/radar_nowcast.map?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=1218784.258785837796,10455088.7090703249,2517080.593458713498,11209671.769827649&CRS=EPSG:3857&WIDTH=1257&HEIGHT=730&LAYERS=radar_nowcast&TIME=2022-06-27T09:45:00Z&FORMAT=image/png&TRANSPARENT=TRUE'></image>
+    <image class="img" src='https://public-wms.met.no/verportal/radar_nowcast.map?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=1218784.258785837796,10455088.7090703249,2517080.593458713498,11209671.769827649&CRS=EPSG:3857&WIDTH=1257&HEIGHT=730&LAYERS=background&STYLES=&TIME=2022-06-27T09:45:00Z&FORMAT=image/png&TRANSPARENT=TRUE'></image>
+
+    <script>
+        function error(e)
+        {
+            // Certificate expired on Ipad 1
+                console.dir(e, { depth: null})
+        }
+
+       document.getElementById('imgRadar').addEventListener("error",error)
+    
+    </script>
+    </html>
