@@ -1038,6 +1038,7 @@ UI.prototype.initStations=function(port)
 
     this.addStation(new StationGW('Tomasjord','ITOMAS1'))
 
+
     /*
     if (this.options.frostapi.enabled) {
         this.getJSONFrostLatest15Min = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest',GetJSON.prototype.requestInterval.min15,this.options.frostapi)
@@ -1568,22 +1569,9 @@ UI.prototype.initTemperatureChart=function()
 
 UI.prototype.initPressureChart=function()
 {
-    var pressureSeries=[
-        {
-                name: 'Relative',
-                id: 'series-relbaro',
-                type: 'spline',
-                data: []
-            },
-            {
-                name: 'Absolute',
-                id:'series-absbaro',
-                type: 'spline',
-                data: [],
-                visible: false
-            }]
+   
     
-        if (this.options.frostapi.enabled) {
+      /*  if (this.options.frostapi.enabled) {
            pressureSeries.push(
             {
                 name: 'METno Sea-level pressure (QFF) 1h',
@@ -1592,7 +1580,7 @@ UI.prototype.initPressureChart=function()
                 data: [],
                 visible: false
             })
-        }
+        } */
             
     
         this.pressureChart= new Highcharts.stockChart({ chart : {
@@ -1682,7 +1670,7 @@ UI.prototype.initPressureChart=function()
             }
         },
     
-        series: pressureSeries,
+        series: [],
 
         })
 }
@@ -1740,7 +1728,8 @@ UI.prototype.initLatestChart=function()
                                     // Temperature
                                     {
                                     title: { text : 'Temperature' },
-                                    gridLineWidth: this.options.weatherapi.radar.enabled ? 0 : 1
+                                    gridLineWidth: this.options.weatherapi.radar.enabled ? 0 : 1,
+                                    visible: false
                                     //max: 60
                                 },
                                 // Humidity
@@ -1757,7 +1746,8 @@ UI.prototype.initLatestChart=function()
                                         min: 0,
                                         title: { text : 'Wind speed' },
                                         opposite: true,
-                                        gridLineWidth: this.options.weatherapi.radar.enabled ? 0 : 1
+                                        gridLineWidth: this.options.weatherapi.radar.enabled ? 0 : 1,
+                                        visible: false
                                     },
                                     // Wind direction
                                     {
@@ -2651,32 +2641,33 @@ UI.prototype.onJSONTemperatureChart=function(station)
     var getJSON=station.getJSON,
         timestamp=station.timestamp,
         id=station.id,
+        name=station.name
         redraw=false,
         shift=false
         animation=this.options.animation
 
         if (this.temperatureChart) {
 
-            var series= this.temperatureChart.get('series-outdoor-'+station.id)
+            var series= this.temperatureChart.get('series-outdoor-'+id)
             if (series)
                 series.addPoint([timestamp,getJSON.outtemp()],redraw,shift,animation)
             else 
-                this.temperatureChart.addSeries( {
-                    name: 'Outdoor '+station.name,
-                    id:'series-outdoor-'+station.id,
-                    type: 'spline',
-                    yAxis: 0,
-                    data: [[timestamp,getJSON.outtemp()]],
-                    zIndex: 5
-                },redraw,animation)
+                this.temperatureChart.addSeries({
+                        name: 'Outdoor '+name,
+                        id:'series-outdoor-'+id,
+                        type: 'spline',
+                        yAxis: 0,
+                        data: [[timestamp,getJSON.outtemp()]],
+                        zIndex: 5
+                    },redraw,animation)
 
-          series=this.temperatureChart.get('series-outdoor-humidity-'+station.id)
+          series=this.temperatureChart.get('series-outdoor-humidity-'+id)
           if (series)
             series.addPoint([timestamp,getJSON.outhumidity()],redraw,shift,animation)
           else
             this.temperatureChart.addSeries( {
-                name: 'Outdoor humidity '+station.name,
-                id:'series-outdoor-humidity-'+station.id,
+                name: 'Outdoor humidity '+name,
+                id:'series-outdoor-humidity-'+id,
                 type: 'spline',
                 yAxis: 1,
                 data: [[timestamp,getJSON.outhumidity()]],
@@ -2687,13 +2678,13 @@ UI.prototype.onJSONTemperatureChart=function(station)
                 visible: false
             },redraw,animation)
 
-         series= this.temperatureChart.get('series-indoor-'+station.id)
+         series= this.temperatureChart.get('series-indoor-'+id)
         if (series)
             series.addPoint([timestamp,getJSON.intemp()],redraw,shift,animation)
         else 
             this.temperatureChart.addSeries( {
-                name: 'Indoor '+station.name,
-                id:'series-indoor-'+station.id,
+                name: 'Indoor '+name,
+                id:'series-indoor-'+id,
                 type: 'spline',
                 yAxis: 0,
                 data: [[timestamp,getJSON.intemp()]],
@@ -2701,13 +2692,13 @@ UI.prototype.onJSONTemperatureChart=function(station)
                 visible: false
             },redraw,animation)
 
-        series=this.temperatureChart.get('series-indoor-humidity-'+station.id)
+        series=this.temperatureChart.get('series-indoor-humidity-'+id)
         if (series)
             series.addPoint([timestamp,getJSON.inhumidity()],redraw,shift,animation)
         else
             this.temperatureChart.addSeries( {
-                name: 'Indoor humidity '+station.name,
-                id:'series-indoor-humidity-'+station.id,
+                name: 'Indoor humidity '+name,
+                id:'series-indoor-humidity-'+id,
                 type: 'spline',
                 yAxis: 1,
                 data: [[timestamp,getJSON.inhumidity()]],
@@ -2725,14 +2716,36 @@ UI.prototype.onJSONTemperatureChart=function(station)
 UI.prototype.onJSONPressureChart=function(station)
 {
     var getJSON=station.getJSON,
-        timestamp=station.timestamp
+        timestamp=station.timestamp,
+        id=station.id,
+        name=station.name
         redraw=false,
         shift=false
         animation=this.options.animation
 
     if (this.pressureChart) {
-        this.pressureChart.series[0].addPoint([timestamp,getJSON.relbaro()],redraw,shift,animation)
-        this.pressureChart.series[1].addPoint([timestamp,getJSON.absbaro()],redraw,shift,animation)
+
+        var series=this.pressureChart.get('series-relbaro-'+id)
+        if (series)
+            series.addPoint([timestamp,getJSON.relbaro()],redraw,shift,animation)
+        else 
+            this.pressureChart.addSeries({
+                    name: 'Relative '+name,
+                    id: 'series-relbaro-'+id,
+                    type: 'spline',
+                    data: [[timestamp,getJSON.relbaro()]]
+                },redraw,animation)
+
+        series=this.pressureChart.get('series-absbaro-'+id)
+        if (series)
+            series.addPoint([timestamp,getJSON.absbaro()],redraw,shift,animation)
+        else 
+            this.pressureChart.addSeries({
+                    name: 'Absolute '+name,
+                    id: 'series-absbaro-'+id,
+                    type: 'spline',
+                    data: [[timestamp,getJSON.absbaro()]]
+                },redraw,animation)
    }
 }
 
