@@ -772,10 +772,12 @@ function UI()
     this.restoreHiddenSeries={}  
 
     this.options={
-        tooltip: !isLowMemoryDevice,              // turn off for ipad1 - slow animation/disappearing
+       // tooltip: !isLowMemoryDevice,              // turn off for ipad1 - slow animation/disappearing
+       tooltip: true,
         animation: !isLowMemoryDevice,               // turn off animation for all charts
         rangeSelector: !isLowMemoryDevice,        // keeps memory for series
-        mousetracking: !isLowMemoryDevice,        // allocates memory for duplicate path for tracking
+       // mousetracking: !isLowMemoryDevice,        // allocates memory for duplicate path for tracking
+       mousetracking: true,
         forceLowMemoryDevice : forceLowMemoryDevice,        // for testing
         // navigator.languauge is "en-us" for LG Smart TV 2012
         isLGSmartTV2012 : this.isLGSmartTV2012(),
@@ -1024,6 +1026,7 @@ UI.prototype.addStation=function(station)
         station.getJSON.request.addEventListener("load",this.onJSONSolarChart.bind(this,station))
         station.getJSON.request.addEventListener("load",this.onJSONRainchart.bind(this,station))
         station.getJSON.request.addEventListener("load",this.onJSONRainstatChart.bind(this,station))
+        station.getJSON.request.addEventListener("load",this.onJSONPressureChart.bind(this,station))
     }
 
     station.getJSON.request.addEventListener("load",this.redrawCharts.bind(this))
@@ -2686,7 +2689,7 @@ UI.prototype.onJSONTemperatureChart=function(station)
 
          series= this.temperatureChart.get('series-indoor-'+station.id)
         if (series)
-            series.addPoint([timestamp,getJSON.outtemp()],redraw,shift,animation)
+            series.addPoint([timestamp,getJSON.intemp()],redraw,shift,animation)
         else 
             this.temperatureChart.addSeries( {
                 name: 'Indoor '+station.name,
