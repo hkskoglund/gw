@@ -37,8 +37,8 @@
 
  function Station(name,id)
  {
-    this.stationName=name
-    this.stationId=id
+    this.name=name
+    this.id=id
     this.timestampHHMMSS=''
     this.latestReferencetime=0
  }
@@ -1049,7 +1049,7 @@ UI.prototype.initStations=function(port)
 
     if (this.options.wundergroundapi.enabled) {
         var wu=this.options.wundergroundapi
-        this.getJSONWUCurrentConditions = new GetJSONWUCurrentConditions('https://api.weather.com/v2/pws/observations/current?apiKey='+wu.apiKey+'&stationId='+wu.stationId+'&numericPrecision=decimal&format=json&units=m',this.options.wundergroundapi.interval,this.options.wundergroundapi)
+        this.getJSONWUCurrentConditions = new GetJSONWUCurrentConditions('https://api.weather.com/v2/pws/observations/current?apiKey='+wu.apiKey+'&stationId='+wu.id+'&numericPrecision=decimal&format=json&units=m',this.options.wundergroundapi.interval,this.options.wundergroundapi)
         this.getJSONWUCurrentConditions.request.addEventListener("load",this.onJSONWUCurrentConditions.bind(this,this.getJSONWUCurrentConditions))
         this.getJSONWUCurrentConditions.request.addEventListener("load",this.redrawCharts.bind(this))
 
@@ -1059,7 +1059,7 @@ UI.prototype.initStations=function(port)
     {
         var holfuyapi=this.options.holfuyapi
         // https://holfuy.com/puget/mjso.php?k=299 - has wind_chill temperature
-        //this.getJSONHolfuyLive = new GetJSONHolfuyLive('http://api.holfuy.com/live/?s='+holfuyapi.stationId+'&m=JSON&tu=C&su=m/s',holfuyapi.interval,this.options)
+        //this.getJSONHolfuyLive = new GetJSONHolfuyLive('http://api.holfuy.com/live/?s='+holfuyapi.id+'&m=JSON&tu=C&su=m/s',holfuyapi.interval,this.options)
         this.getJSONHolfuyLive.request.addEventListener("load",this.onJSONHolfuyLive.bind(this))
 
     } 
@@ -1430,52 +1430,8 @@ UI.prototype.initWindroseChart=function()
 
 UI.prototype.initTemperatureChart=function()
 {
-    var tempSeries=[
-        {
-                name: 'Outdoor',
-                id:'series-outdoor',
-                type: 'spline',
-                yAxis: 0,
-                data: [],
-                zIndex: 5
-            },
-            {
-                name: 'Indoor',
-                id: 'series-indoor',
-                type: 'spline',
-                data: [],
-                yAxis: 0,
-                visible: false,
-                zIndex: 5
-            },
-            {
-                name: 'Outdoor humidity',
-                series:'series-outdoor-humidity',
-                type: 'spline',
-                data: [],
-                yAxis: 1,
-                visible: false,
-                tooltip: {
-                    valueSuffix: ' %'
-                },
-                zIndex: 4
-            },
-            {
-                name: 'Indoor humidity ',
-                id: 'series-indoor-humidity',
-                type: 'spline',
-                data: [],
-                
-                yAxis: 1,
-                visible: false,
-                tooltip: {
-                    valueSuffix: ' %'
-                },
-                zIndex : 4
-            }
-           ] 
 
-    if (this.options.frostapi.enabled)
+  /*  if (this.options.frostapi.enabled)
            tempSeries.push(  {
             name: 'METno Temperature 10min',
             id:'series-metno-temperature10min',
@@ -1492,7 +1448,7 @@ UI.prototype.initTemperatureChart=function()
             data: [],
             visible: false,
             zIndex : 1
-        })
+        })*/
     
     this.temperatureChart= new Highcharts.stockChart({ 
         chart : {
@@ -1601,7 +1557,7 @@ UI.prototype.initTemperatureChart=function()
             }
         },
 
-        series: tempSeries
+        series: []
         
    })
 
@@ -2629,7 +2585,7 @@ UI.prototype.updateStationTimestampLatestChart=function()
     if (!this.latestChart)
         return
     
-    stationNames= this.options.latestChart.stations.map(function (station) { if (!station.timestampHHMMSS) return station.stationName; else return station.stationName+' '+station.timestampHHMMSS })
+    stationNames= this.options.latestChart.stations.map(function (station) { if (!station.timestampHHMMSS) return station.name; else return station.name+' '+station.timestampHHMMSS })
     this.latestChart.xAxis[0].setCategories(stationNames,redraw)
 }
 
@@ -2690,17 +2646,75 @@ UI.prototype.onJSONWindroseChart=function(station)
 UI.prototype.onJSONTemperatureChart=function(station)
 {
     var getJSON=station.getJSON,
-        timestamp=station.timestamp
+        timestamp=station.timestamp,
+        id=station.id,
         redraw=false,
         shift=false
         animation=this.options.animation
 
         if (this.temperatureChart) {
 
-            this.temperatureChart.series[0].addPoint([timestamp,getJSON.outtemp()],redraw,shift,animation)
-            this.temperatureChart.series[1].addPoint([timestamp,getJSON.intemp()],redraw,shift,animation)
-            this.temperatureChart.series[2].addPoint([timestamp,getJSON.outhumidity()],redraw,shift,animation)
-            this.temperatureChart.series[3].addPoint([timestamp,getJSON.inhumidity()],redraw,shift,animation)
+            var series= this.temperatureChart.get('series-outdoor-'+station.id)
+            if (series)
+                series.addPoint([timestamp,getJSON.outtemp()],redraw,shift,animation)
+            else 
+                this.temperatureChart.addSeries( {
+                    name: 'Outdoor '+station.name,
+                    id:'series-outdoor-'+station.id,
+                    type: 'spline',
+                    yAxis: 0,
+                    data: [[timestamp,getJSON.outtemp()]],
+                    zIndex: 5
+                },redraw,animation)
+
+          series=this.temperatureChart.get('series-outdoor-humidity-'+station.id)
+          if (series)
+            series.addPoint([timestamp,getJSON.outhumidity()],redraw,shift,animation)
+          else
+            this.temperatureChart.addSeries( {
+                name: 'Outdoor humidity '+station.name,
+                id:'series-outdoor-humidity-'+station.id,
+                type: 'spline',
+                yAxis: 1,
+                data: [[timestamp,getJSON.outhumidity()]],
+                tooltip: {
+                    valueSuffix: ' %'
+                },
+                zIndex: 5,
+                visible: false
+            },redraw,animation)
+
+         series= this.temperatureChart.get('series-indoor-'+station.id)
+        if (series)
+            series.addPoint([timestamp,getJSON.outtemp()],redraw,shift,animation)
+        else 
+            this.temperatureChart.addSeries( {
+                name: 'Indoor '+station.name,
+                id:'series-indoor-'+station.id,
+                type: 'spline',
+                yAxis: 0,
+                data: [[timestamp,getJSON.intemp()]],
+                zIndex: 5,
+                visible: false
+            },redraw,animation)
+
+        series=this.temperatureChart.get('series-indoor-humidity-'+station.id)
+        if (series)
+            series.addPoint([timestamp,getJSON.inhumidity()],redraw,shift,animation)
+        else
+            this.temperatureChart.addSeries( {
+                name: 'Indoor humidity '+station.name,
+                id:'series-indoor-humidity-'+station.id,
+                type: 'spline',
+                yAxis: 1,
+                data: [[timestamp,getJSON.inhumidity()]],
+                tooltip: {
+                    valueSuffix: ' %'
+                },
+                zIndex: 5,
+                visible: false
+            },redraw,animation)
+        
         }
     
 }
