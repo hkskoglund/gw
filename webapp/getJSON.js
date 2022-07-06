@@ -2083,7 +2083,6 @@ UI.prototype.initRainstatChart=function()
 
 UI.prototype.initRainChart=function()
 {
-                 
     this.rainchart= new Highcharts.stockChart({ chart : {
                             animation: this.options.animation,
                             renderTo: 'rainchart',
@@ -2141,7 +2140,9 @@ UI.prototype.initRainChart=function()
                             text: 'Rain'
                         },
                         yAxis: [{
-                            title: false,
+                            title: {
+                                text: 'Rainrate mm/h'
+                            },
                             min : 0,
                             opposite: false,
                             tickInterval: 0.5,
@@ -2149,7 +2150,9 @@ UI.prototype.initRainChart=function()
                            
                         },
                         {
-                            title: false,
+                            title: {
+                                text: 'Rain mm'
+                            },
                             min : 0,
                             tickInterval: 1,
                             id: 'axis-rain'
@@ -2169,30 +2172,7 @@ UI.prototype.initRainChart=function()
                                 }
                             }
                         },
-                        series: [
-                            {
-                                    name: 'Rain rate',
-                                    type: 'spline',
-                                    data: [],
-                                    //https://en.wikipedia.org/wiki/Rain#Intensity
-                                    //zoneAxis: 'y',
-                                    zones: this.zones.rainrate
-                            },
-                            {
-                                name: 'Rain event',
-                                type: 'spline',
-                                data: [],
-                                yAxis: 1,
-                                visible: false
-                            },
-                            {
-                                name: 'Rain day',
-                                type: 'spline',
-                                data: [],
-                                yAxis: 1
-                            }
-                        
-                        ] 
+                       
                         })
 }
 
@@ -2644,7 +2624,7 @@ UI.prototype.onJSONYrForecastNow=function(getJSONyrForecastNow,ev)
         series.setData(this.yrForecastnowPoints,redraw,shift,animation)
     else 
         this.rainchart.addSeries({
-                name: 'Yr rainrate',
+                name: 'Rainrate Yr',
                 id:'series-rainrate-yr',
                 type: 'spline',
                 yAxis: this.rainchart.yAxis.indexOf(this.rainchart.get('axis-rainrate')),
@@ -2932,14 +2912,66 @@ UI.prototype.onJSONRainchart=function(station)
     var getJSON=station.getJSON,
         timestamp=getJSON.timestamp(),
         redraw=false,
-        shift=false
-        animation=this.options.animation
+        shift=false,
+        animation=this.options.animation,
+        id=station.id,
+        name=station.name,
+        series,
+        seriesId
     
-    if (this.rainchart) {
-        this.rainchart.series[0].addPoint([timestamp,getJSON.rainrate()],redraw,shift,animation)
-        this.rainchart.series[1].addPoint([timestamp,getJSON.rainevent()],redraw,shift,animation)
-        this.rainchart.series[2].addPoint([timestamp,getJSON.rainday()],redraw,shift,animation)
-    }
+    if (!this.rainchart) 
+      return
+
+    seriesId='series-rainrate-'+id
+    series= this.rainchart.get(seriesId)
+    if (series)
+        series.addPoint([timestamp,getJSON.rainrate()],redraw,shift,animation)
+    else if (getJSON.rainrate()!==undefined)
+        this.rainchart.addSeries({
+                name: 'Rainrate '+name,
+                id: seriesId,
+                type: 'spline',
+                yAxis: 0,
+                data: [[timestamp,getJSON.rainrate()]],
+                zones: this.zones.rainrate,
+                tooltip: {
+                    valueSuffix: ' mm/h'
+                },
+            },redraw,animation)
+
+    seriesId='series-rainevent-'+id
+    series= this.rainchart.get(seriesId)
+    if (series)
+        series.addPoint([timestamp,getJSON.rainevent()],redraw,shift,animation)
+    else if (getJSON.rainevent()!== undefined)
+        this.rainchart.addSeries({
+                name: 'Rainevent '+name,
+                id: seriesId,
+                type: 'spline',
+                yAxis: 1,
+                visible: false,
+                data: [[timestamp,getJSON.rainevent()]],
+                tooltip: {
+                    valueSuffix: ' mm'
+                },
+            },redraw,animation)
+
+    seriesId='series-rainday-'+id
+    series= this.rainchart.get(seriesId)
+    if (series)
+        series.addPoint([timestamp,getJSON.rainday()],redraw,shift,animation)
+    else if (getJSON.rainday()!== undefined)
+        this.rainchart.addSeries({
+                name: 'Rainday '+name,
+                id: seriesId,
+                type: 'spline',
+                yAxis: 1,
+                visible: false,
+                data: [[timestamp,getJSON.rainday()]],
+                tooltip: {
+                    valueSuffix: ' mm'
+                },
+            },redraw,animation)
 }
 
 UI.prototype.onJSONRainstatChart=function(station)
