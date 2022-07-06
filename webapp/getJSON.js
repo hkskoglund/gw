@@ -789,7 +789,40 @@ function UI()
        // tooltip: !isLowMemoryDevice,              // turn off for ipad1 - slow animation/disappearing
        tooltip: true,
         animation: !isLowMemoryDevice,               // turn off animation for all charts
-        rangeSelector: !isLowMemoryDevice,        // keeps memory for series
+        navigator: {
+            enabled: !isLowMemoryDevice,
+            series: {
+                type: 'spline',
+                dataGrouping: {
+                    groupPixelWidth: 30
+                }
+            }
+        },
+        rangeSelector:
+        {
+                enabled: !isLowMemoryDevice,        // keeps memory for series,
+                inputEnabled: false,
+                buttons: [{
+                    type: 'hour',
+                    count: 1,
+                    text: '1h'
+                },
+                    {
+                    type: 'minute',
+                    count: 15,
+                    text: '15m'
+                },{
+                    type: 'minute',
+                    count: 1,
+                    text: '1m'
+                },
+                 {
+                    type: 'all',
+                    text: 'All'
+                }],
+                selected: 4,
+                verticalAlign: 'bottom'
+            },
        // mousetracking: !isLowMemoryDevice,        // allocates memory for duplicate path for tracking
        mousetracking: true,
         forceLowMemoryDevice : forceLowMemoryDevice,        // for testing
@@ -1483,44 +1516,13 @@ UI.prototype.initTemperatureChart=function()
             }
         },
 
-        rangeSelector: {
-            enabled: this.options.rangeSelector,
-            inputEnabled: false,
-            buttons: [{
-                type: 'hour',
-                count: 1,
-                text: '1h'
-            },
-                {
-                type: 'minute',
-                count: 15,
-                text: '15m'
-            },{
-                type: 'minute',
-                count: 1,
-                text: '1m'
-            },
-            {
-                type: 'all',
-                text: 'All'
-            }],
-            selected: 4,
-            verticalAlign: 'bottom'
-        },
+        rangeSelector: this.options.rangeSelector,
 
         scrollbar: {
             enabled: false
         },
 
-        navigator: {
-            enabled: this.options.rangeSelector,
-            series: {
-                type: 'spline',
-                dataGrouping: {
-                    groupPixelWidth: 30
-                }
-            }
-        },
+        navigator:this.options.navigator,
 
         legend: {
             enabled: true
@@ -1612,44 +1614,13 @@ UI.prototype.initPressureChart=function()
         tooltip: {
             enabled: this.options.tooltip
         },
-        rangeSelector: {
-            enabled: this.options.rangeSelector,
-            inputEnabled: false,
-            buttons: [{
-                type: 'hour',
-                count: 1,
-                text: '1h'
-            },
-                {
-                type: 'minute',
-                count: 15,
-                text: '15m'
-            },{
-                type: 'minute',
-                count: 1,
-                text: '1m'
-            },
-             {
-                type: 'all',
-                text: 'All'
-            }],
-            selected: 4,
-            verticalAlign: 'bottom'
-        },
+        rangeSelector: this.options.rangeSelector,
     
         scrollbar: {
             enabled: false
         },
     
-        navigator: {
-            enabled: this.options.rangeSelector,
-            series: {
-                type: 'spline',
-                dataGrouping: {
-                    groupPixelWidth: 30
-                }
-            }
-        },
+        navigator: this.options.navigator,
     
         legend: {
             enabled: true
@@ -2087,51 +2058,20 @@ UI.prototype.initRainChart=function()
                             animation: this.options.animation,
                             renderTo: 'rainchart',
                         },
-                        rangeSelector: {
-                            enabled: this.options.rangeSelector,
-                            inputEnabled : false,
-                            buttons: [{
-                                type: 'hour',
-                                count: 1,
-                                text: '1h'
-                            },
-                                {
-                                type: 'minute',
-                                count: 15,
-                                text: '15m'
-                            },{
-                                type: 'minute',
-                                count: 1,
-                                text: '1m'
-                            },
-                             {
-                                type: 'all',
-                                text: 'All'
-                            }],
-                            selected: 4,
-                            verticalAlign: 'bottom'
-                        },
+                        rangeSelector: this.options.rangeSelector,
                     
                         scrollbar: {
                             enabled: false
                         },
                     
-                        navigator: {
-                            enabled: this.options.rangeSelector,
-                            series: {
-                                type: 'spline',
-                                dataGrouping: {
-                                    groupPixelWidth: 30
-                                }
-                            }
-                        },
+                        navigator: this.options.navigator,
                     
                         legend: {
                             enabled: true
                         },
                         
                         tooltip : {
-                            enabled: this.options.tooltip,
+                            enabled: this.options.tooltip
                         },
                         credits: {
                             enabled: false
@@ -2182,44 +2122,13 @@ UI.prototype.initSolarChart=function()
                         animation: this.options.animation,
                         renderTo: 'solarchart',
                         },
-                        rangeSelector: {
-                            enabled: this.options.rangeSelector,
-                            inputEnabled: false,
-                            buttons: [{
-                                type: 'hour',
-                                count: 1,
-                                text: '1h'
-                            },
-                                {
-                                type: 'minute',
-                                count: 15,
-                                text: '15m'
-                            },{
-                                type: 'minute',
-                                count: 1,
-                                text: '1m'
-                            },
-                             {
-                                type: 'all',
-                                text: 'All'
-                            }],
-                            selected: 4,
-                            verticalAlign: 'bottom'
-                        },
+                        rangeSelector: this.options.rangeSelector,
 
                         scrollbar: {
                             enabled: false
                         },
 
-                        navigator: {
-                            enabled: this.options.rangeSelector,
-                            series: {
-                                type: 'spline',
-                                dataGrouping: {
-                                    groupPixelWidth: 30
-                                }
-                            }
-                        },
+                        navigator:this.options.navigator,
 
                         legend: {
                             enabled: true
@@ -2333,44 +2242,13 @@ UI.prototype.initWindBarbChart=function()
         animation: this.options.animation,
         renderTo: 'windbarbchart' },
 
-        rangeSelector: {
-            enabled: this.options.rangeSelector,
-            inputEnabled: false,
-            buttons: [{
-                type: 'hour',
-                count: 1,
-                text: '1h'
-            },
-                {
-                type: 'minute',
-                count: 15,
-                text: '15m'
-            },{
-                type: 'minute',
-                count: 1,
-                text: '1m'
-            },
-             {
-                type: 'all',
-                text: 'All'
-            }],
-            selected: 4,
-            verticalAlign: 'bottom'
-        },
+        rangeSelector: this.options.rangeSelector,
 
         scrollbar: {
             enabled: false
         },
 
-        navigator: {
-            enabled: this.options.rangeSelector,
-            series: {
-                type: 'spline',
-                dataGrouping: {
-                    groupPixelWidth: 30
-                }
-            }
-        },
+        navigator: this.options.navigator,
 
         legend: {
             enabled: true
@@ -2550,14 +2428,14 @@ UI.prototype.onJSONYrForecastNow=function(getJSONyrForecastNow,ev)
       this.yrForecastnowPointsIntensity=points.map(function (element) { return element[1]})
     }
     else
-                       // Keep history of forcasted precipitation in rainchart to compare with actual precipitation
+                       // Keep history of forcasted precipitation in rainchart to compare with actual precipitation measured by station
     {
         points.forEach(function (element)
         {
             var timestamp=element[0],
                 intensity=element[1],
                 i
-            if (i=this.yrForecastnowPointsTimestamp.indexOf(timestamp) !== -1)
+            if ((i=this.yrForecastnowPointsTimestamp.indexOf(timestamp)) !== -1)
                this.yrForecastnowPointsIntensity[i]=intensity // update with new intensity
             else
             {
