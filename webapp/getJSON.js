@@ -2178,43 +2178,6 @@ UI.prototype.initRainChart=function()
 
 UI.prototype.initSolarChart=function()
 {
-    var solarSeries=[
-        {
-                name: 'Sunlight',
-                type: 'spline',
-                yAxis: 0,
-                data: []
-        },
-              
-           // {
-           //     name: 'Solar UV',
-           //     type: 'spline',
-           //     data: [],
-           //     yAxis: 1,
-           // }
-           // ,
-            {
-                name: 'UVI',
-                type: 'areaspline',
-                yAxis: 1,
-                data: [],
-                
-                zones: this.zones.uvi
-            }] 
-        
-        if (this.options.frostapi.enabled)
-          solarSeries.push( {
-            // shortwave 295-2800nm (ultraviolet,visible,infrared)
-            //https://frost.met.no/elements/v0.jsonld?fields=id,oldElementCodes,category,name,description,unit,sensorLevelType,sensorLevelUnit,sensorLevelDefaultValue,sensorLevelValues,cmMethod,cmMethodDescription,cmInnerMethod,cmInnerMethodDescription,status&lang=en-US
-            // https://frost.met.no/elementtable
-            name: 'METno Solar mean 1m',
-            id:'series-metno-irradiance-mean1m',
-            type: 'spline',
-            yAxis: 0,
-            data: [],
-            visible: false
-    })
-
     this.solarchart= new Highcharts.stockChart({ chart : {
                         animation: this.options.animation,
                         renderTo: 'solarchart',
@@ -2276,7 +2239,8 @@ UI.prototype.initSolarChart=function()
                             title: false,
                             min : 0,
                             tickInterval: 50,
-                            opposite: false
+                            opposite: false,
+                            id: 'axis-irradiance'
                             //max : null
                             //max : 1.0
                         //  max : 40
@@ -2294,18 +2258,13 @@ UI.prototype.initSolarChart=function()
                         min: 0,
                         tickInterval:1,
                         allowDecimals: false,
+                        id: 'axis-uvi'
                     }
                 ],
                         xAxis: [{
-
                             id: 'datetime-axis',
-
                             type: 'datetime',
-
-                            offset : 10,
-
                             tickpixelinterval: 150,
-
                         }],
 
                         plotOptions: {
@@ -2314,11 +2273,9 @@ UI.prototype.initSolarChart=function()
                                 dataGrouping: { 
                                     groupPixelWidth: 30
                                 }
-
                             }
                         },
 
-                        series: solarSeries
                         })
 }
 
@@ -2844,30 +2801,31 @@ UI.prototype.onJSONPressureChart=function(station)
         shift=false
         animation=this.options.animation
 
-    if (this.pressureChart) {
+    if (!this.pressureChart)
+      return
 
-        var series=this.pressureChart.get('series-relbaro-'+id)
-        if (series)
-            series.addPoint([timestamp,getJSON.relbaro()],redraw,shift,animation)
-        else 
-            this.pressureChart.addSeries({
-                    name: 'Relative '+name,
-                    id: 'series-relbaro-'+id,
-                    type: 'spline',
-                    data: [[timestamp,getJSON.relbaro()]]
-                },redraw,animation)
+    var series=this.pressureChart.get('series-relbaro-'+id)
+    if (series)
+        series.addPoint([timestamp,getJSON.relbaro()],redraw,shift,animation)
+    else 
+        this.pressureChart.addSeries({
+                name: 'Relative '+name,
+                id: 'series-relbaro-'+id,
+                type: 'spline',
+                data: [[timestamp,getJSON.relbaro()]]
+            },redraw,animation)
 
-        series=this.pressureChart.get('series-absbaro-'+id)
-        if (series)
-            series.addPoint([timestamp,getJSON.absbaro()],redraw,shift,animation)
-        else 
-            this.pressureChart.addSeries({
-                    name: 'Absolute '+name,
-                    id: 'series-absbaro-'+id,
-                    type: 'spline',
-                    data: [[timestamp,getJSON.absbaro()]]
-                },redraw,animation)
-   }
+    series=this.pressureChart.get('series-absbaro-'+id)
+    if (series)
+        series.addPoint([timestamp,getJSON.absbaro()],redraw,shift,animation)
+    else 
+        this.pressureChart.addSeries({
+                name: 'Absolute '+name,
+                id: 'series-absbaro-'+id,
+                type: 'spline',
+                data: [[timestamp,getJSON.absbaro()]]
+            },redraw,animation)
+   
 }
 
 UI.prototype.onJSONWindbarbChart=function(station)
@@ -2878,19 +2836,21 @@ UI.prototype.onJSONWindbarbChart=function(station)
         shift=false
         animation=this.options.animation
 
-    if (this.windbarbchart) {
-        this.windbarbchart.series[0].addPoint([timestamp,getJSON.windgustspeed_mps(),getJSON.winddirection()],redraw,shift,animation)
-        
-        // https://api.highcharts.com/highcharts/series.line.data
-        // only support m/s unit
-        this.windbarbchart.series[1].addPoint([timestamp,getJSON.windspeed_mps()],redraw,shift,animation)
-        this.windbarbchart.series[2].addPoint([timestamp,getJSON.windgustspeed_mps()],redraw,shift,animation)
-       /* var winddailymax=getJSON.winddailymax()
-        if (winddailymax)
-       {
-            //this.windbarbchart.series[3].setData([['Wind daily max.',winddailymax]],false,this.options.animation,true)
-        } */
-    }
+    if (!this.windbarbchart)
+      return 
+      
+    this.windbarbchart.series[0].addPoint([timestamp,getJSON.windgustspeed_mps(),getJSON.winddirection()],redraw,shift,animation)
+    
+    // https://api.highcharts.com/highcharts/series.line.data
+    // only support m/s unit
+    this.windbarbchart.series[1].addPoint([timestamp,getJSON.windspeed_mps()],redraw,shift,animation)
+    this.windbarbchart.series[2].addPoint([timestamp,getJSON.windgustspeed_mps()],redraw,shift,animation)
+    /* var winddailymax=getJSON.winddailymax()
+    if (winddailymax)
+    {
+        //this.windbarbchart.series[3].setData([['Wind daily max.',winddailymax]],false,this.options.animation,true)
+    } */
+
 }
 
 UI.prototype.onJSONSolarChart=function(station)
@@ -2898,13 +2858,56 @@ UI.prototype.onJSONSolarChart=function(station)
     var getJSON=station.getJSON,
         timestamp=getJSON.timestamp(),
         redraw=false,
-        shift=false
-        animation=this.options.animation
+        shift=false,
+        animation=this.options.animation,
+        name=station.name,
+        id=station.id,
+        series,
+        seriesId
     
-    if (this.solarchart) {
-        this.solarchart.series[0].addPoint([timestamp,getJSON.solar_light()],redraw,shift,animation)
-        this.solarchart.series[1].addPoint([timestamp, getJSON.solar_uvi()],redraw,shift,animation)
-    }
+    if (!this.solarchart)
+      return
+
+    seriesId='series-irradiance-'+id
+    series=this.solarchart.get(seriesId)
+    if (series)
+        series.addPoint([timestamp,getJSON.solar_light()],redraw,shift,animation)
+    else 
+        this.solarchart.addSeries({
+                name: 'Sunlight '+name,
+                id: seriesId,
+                type: 'spline',
+                data: [[timestamp,getJSON.solar_light()]],
+                tooltip: {
+                    valueSuffix: ' watt/㎡'
+                }
+            },redraw,animation)
+
+    seriesId='series-uvi-'+id
+    series=this.solarchart.get(seriesId)
+    if (series)
+        series.addPoint([timestamp,getJSON.solar_uvi()],redraw,shift,animation)
+    else 
+        this.solarchart.addSeries({
+                name: 'UVI '+name,
+                id: seriesId,
+                type: 'areaspline',
+                data: [[timestamp,getJSON.solar_uvi()]],
+                zones: this.zones.uvi
+            },redraw,animation)
+
+    /*         if (this.options.frostapi.enabled)
+          solarSeries.push( {
+            // shortwave 295-2800nm (ultraviolet,visible,infrared)
+            //https://frost.met.no/elements/v0.jsonld?fields=id,oldElementCodes,category,name,description,unit,sensorLevelType,sensorLevelUnit,sensorLevelDefaultValue,sensorLevelValues,cmMethod,cmMethodDescription,cmInnerMethod,cmInnerMethodDescription,status&lang=en-US
+            // https://frost.met.no/elementtable
+            name: 'METno Solar mean 1m',
+            id:'series-metno-irradiance-mean1m',
+            type: 'spline',
+            yAxis: 0,
+            data: [],
+            visible: false
+    }) */
 }
 
 UI.prototype.onJSONRainchart=function(station)
