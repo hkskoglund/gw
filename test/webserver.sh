@@ -206,16 +206,27 @@ sendJSON()
 }
 
 sendMETnoRequest()
-# $1 http request url
+{
+    sendRequest "$1" "2c6cf1d9-b949-4f64-af83-0cb4d881658a" ""
+}
+
+sendRequest()
+# $1 http request url, $2 username optional, $3 password
 {
         appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
         appendHttpDefaultHeaders
         #using basic authentication with -u/new user must be registered at frost.met.no, -s turns off progress metering
         set -x
-        l_user=2c6cf1d9-b949-4f64-af83-0cb4d881658a
-        l_password=""
-        l_response_JSON=$( curl -v -s -u "$l_user:$l_password" "$1" );
-        l_exitcode=$?
+        l_user="$2"
+        l_password="$3"
+        if [ -n "$l_user" ]; then 
+            l_response_JSON=$( curl -v -s -u "$l_user:$l_password" "$1" );
+            l_exitcode=$?
+        else
+             l_response_JSON=$( curl -v -s "$1" );
+             l_exitcode=$?
+        fi
+
         set +x
         if [ $l_exitcode -gt 0 ]; then
             l_response_JSON='{ "exitcode": '$l_exitcode' }'
@@ -441,6 +452,18 @@ webserver()
                                 sendFile "$l_dir" "$l_file"
                                unset l_dir l_file l_fname l_url
                         ;;
+
+                        /api/yr_forecastnow*)
+
+                            # allow QS parameter location; /api/yr_forecastnow?location=
+                            if [ -z  "$HTTP_QUERY_STRING_location" ]; then
+                              l_location="1-305426" # default location/Tomasjord
+                            else
+                              l_location="$HTTP_QUERY_STRING_location"
+                            fi
+                            sendRequest "https://www.yr.no/api/v0/locations/$l_location/forecast/now"
+                            unset l_location
+                            ;;
                         
                         *)      sendHttpResponseCode "$HTTP_RESPONSE_404_NOTFOUND"
                                 ;;

@@ -119,7 +119,7 @@ GetJSON.prototype.requestInterval={
         //console.log('json:'+this.request.responseText)
         try {
             this.json = JSON.parse(this.request.responseText)
-            //console.dir(this.json, { depth: null })
+            console.dir(this.json, { depth: null })
 
             this.parse()
         } catch (err)
@@ -175,6 +175,10 @@ GetJSON.prototype.sendInterval= function(interval)
     this.requestIntervalID=setInterval(this.send.bind(this),interval)
     console.log('Setting new send interval '+this.url+' interval:'+interval+' previous interval: '+this.interval+' id:'+this.requestIntervalID)
     this.interval=interval
+}
+
+GetJSON.prototype.parse=function()
+{
 }
 
 
@@ -718,6 +722,16 @@ GetJSONFrost.prototype.parse=function()
 
 }
 
+GetJSONYrForecastNow=function(url,interval,options)
+{
+    GetJSON.call(this,url,interval,options)
+}
+
+GetJSONYrForecastNow.prototype= Object.create(GetJSON.prototype)
+
+
+
+
 GetJSONFrost.prototype.getLatestObservation=function(element)
 {
     if (!this.data)
@@ -832,7 +846,7 @@ function UI()
         publicwmsmetno: {
             radar_nowcast : {
                 enabled : true,
-                interval : GetJSON.prototype.requestInterval.min15,
+                interval : GetJSON.prototype.requestInterval.min5,
                 url: window.location.origin+'/api/radar_nowcast'
             }
         },
@@ -880,6 +894,10 @@ function UI()
 
     this.initStations(port)
    // this.testMemory()
+
+   var location='1-305426'
+   var getJSONYrForecastNow=new GetJSON(window.location.origin+'/api/yr_forecastnow?location='+location,GetJSON.prototype.requestInterval.min5)
+   getJSONYrForecastNow.request.addEventListener('load',this.onJSONYrForecastNow.bind(this,getJSONYrForecastNow))
    
    this.eventHandler={
     scroll : this.onScrollUpdateplotBGImage.bind(this)
@@ -1692,7 +1710,7 @@ UI.prototype.onClickToggleChartSeries=function(event)
     } else
      {
 
-         event.xAxis[0].axis.series.forEach(function (series) {
+         event.xAxis[0].axis.chart.series.forEach(function (series) {
          
              if (series.visible)    
              {
@@ -1752,7 +1770,8 @@ UI.prototype.initLatestChart=function()
                                     // Wind direction
                                     {
                                         min: 0,
-                                        title: { text : 'Wind dir.' },
+                                        max: 359,
+                                        title: { text : 'Wind direction' },
                                         opposite: true,
                                         visible: false,
                                         gridLineWidth: this.options.weatherapi.radar.enabled ? 0 : 1
@@ -1784,12 +1803,25 @@ UI.prototype.initLatestChart=function()
                                         min: 0,
                                         title: { text : 'Rain rate'},
                                         visible: false,
+                                        gridLineWidth: this.options.weatherapi.radar.enabled ? 0 : 1,
+                                        tickInterval: 0.5,
+                                        id: 'axis-rainrate'
+                                    },
+                                    // Rain Today
+                                    {
+                                        min: 0,
+                                        title: { text : 'Rain today'},
+                                        visible: false,
                                         gridLineWidth: this.options.weatherapi.radar.enabled ? 0 : 1
                                     }
+
                             ],
                                 xAxis: [{
                                  type: 'column',
                                  categories: []
+                                }, {
+                                    type: 'datetime',
+                                    id: 'axis-datetime'
                                 }],
                                
                                 tooltip: {
@@ -1804,9 +1836,9 @@ UI.prototype.initLatestChart=function()
                                         // datalabels crashes on LG TV 2012 "not enough memory"
                                         dataLabels: {
                                             enabled: true && !this.options.isLGSmartTV2012,
-                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                          //  color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
                                             style: {
-                                                fontSize: 14,
+                                                fontSize: 16,
                                                 fontWeight: 'bold'
                                             }
                                         }
@@ -1817,9 +1849,9 @@ UI.prototype.initLatestChart=function()
                                         type: 'column',
                                         dataLabels: {
                                             enabled: true && !this.options.isLGSmartTV2012,
-                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                          //  color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
                                             style: {
-                                                fontSize: 14,
+                                                fontSize: 16,
                                                 fontWeight: 'bold'
                                             }
                                         },
@@ -1832,9 +1864,9 @@ UI.prototype.initLatestChart=function()
                                         yAxis: 1,
                                         dataLabels: {
                                             enabled: true && !this.isLGSmartTV2012,
-                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                          //  color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
                                             style: {
-                                                fontSize: 14,
+                                                fontSize: 16,
                                                 fontWeight: 'bold'
                                             }
                                         },
@@ -1849,9 +1881,9 @@ UI.prototype.initLatestChart=function()
                                             enabled: true && !this.options.isLGSmartTV2012,
                                             // https://www.highcharts.com/docs/chart-concepts/labels-and-string-formatting?_ga=2.200835883.424482256.1654686807-470753587.1650372441#format-strings
                                             format : '{point.y:.1f}',
-                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                           // color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
                                             style: {
-                                                fontSize: 14,
+                                                fontSize: 16,
                                                 fontWeight: 'bold'
                                             }
                                         }
@@ -1864,15 +1896,15 @@ UI.prototype.initLatestChart=function()
                                         dataLabels: {
                                             enabled: true && !this.options.isLGSmartTV2012,
                                             format : '{point.y:.1f}',
-                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                           // color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
                                             style: {
-                                                fontSize: 14,
+                                                fontSize: 16,
                                                 fontWeight: 'bold'
                                             }
                                         }
                                     },
                                     {
-                                        name: 'Wind dir.',
+                                        name: 'Wind direction',
                                         id :'series-winddirection',
                                         type: 'column',
                                         yAxis: 3,
@@ -1883,9 +1915,9 @@ UI.prototype.initLatestChart=function()
                                         },
                                         dataLabels: {
                                             enabled: true && !this.options.isLGSmartTV2012,
-                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                          //  color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
                                             style: {
-                                                fontSize: 14,
+                                                fontSize: 16,
                                                 fontWeight: 'bold'
                                             },
                                             formatter : function () {
@@ -1894,16 +1926,33 @@ UI.prototype.initLatestChart=function()
                                         }
                                     },
                                     {
-                                        name: 'Rainrate',
+                                        name: 'Rain rate',
                                         id: 'series-rainrate',
                                         type: 'column',
                                         yAxis: 7,
                                         dataLabels: {
                                             enabled: true && !this.options.isLGSmartTV2012,
                                             format : '{point.y:.1f}',
-                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                          //  color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
                                             style: {
-                                                fontSize: 14,
+                                                fontSize: 16,
+                                                fontWeight: 'bold'
+                                            }
+                                        },
+                                        visible: true,
+                                        //zones:  this.zones.rainrate
+                                    },
+                                    {
+                                        name: 'Rain day',
+                                        id: 'series-raintoday',
+                                        type: 'column',
+                                        yAxis: 8,
+                                        dataLabels: {
+                                            enabled: true && !this.options.isLGSmartTV2012,
+                                            format : '{point.y:.1f}',
+                                          //  color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                            style: {
+                                                fontSize: 16,
                                                 fontWeight: 'bold'
                                             }
                                         },
@@ -1918,9 +1967,9 @@ UI.prototype.initLatestChart=function()
                                         dataLabels: {
                                             enabled: true && !this.options.isLGSmartTV2012,
                                             format : '{point.y:.1f}',
-                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                          //  color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
                                             style: {
-                                                fontSize: 14,
+                                                fontSize: 16,
                                                 fontWeight: 'bold'
                                             }
                                         },
@@ -1933,9 +1982,9 @@ UI.prototype.initLatestChart=function()
                                         yAxis: 5,
                                         dataLabels: {
                                             enabled: true && !this.options.isLGSmartTV2012,
-                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                          //  color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
                                             style: {
-                                                fontSize: 14,
+                                                fontSize: 16,
                                                 fontWeight: 'bold'
                                             }
                                         },
@@ -1948,9 +1997,9 @@ UI.prototype.initLatestChart=function()
                                         yAxis: 6,
                                         dataLabels: {
                                             enabled: true && !this.options.isLGSmartTV2012,
-                                            color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
+                                           // color : this.options.weatherapi.radar.enabled ?  '#ffffff' : undefined,
                                             style: {
-                                                fontSize: 14,
+                                                fontSize: 16,
                                                 fontWeight: 'bold'
                                             }
                                         },
@@ -2095,13 +2144,15 @@ UI.prototype.initRainChart=function()
                             title: false,
                             min : 0,
                             opposite: false,
-                            tickInterval: 0.5
+                            tickInterval: 0.5,
+                            id: 'axis-rainrate'
                            
                         },
                         {
                             title: false,
                             min : 0,
-                            tickInterval: 1
+                            tickInterval: 1,
+                            id: 'axis-rain'
                            
                         }],
                         xAxis: [{
@@ -2469,6 +2520,31 @@ UI.prototype.initCharts=function()
         {
             color: '#d8220e'    // redish
         },
+        ],
+
+        rainrate_yr: [ {
+            value: 1.0,
+            color: 'rgb(145,228,255)'
+        },
+        {
+            value: 1.5,
+            color: 'rgb(94,215,255)'
+        },
+        {
+            value: 2.0,
+            color: 'rgb(0,170,255)'
+        },
+        {
+            value: 2.5,
+            color: 'rgb(0,128,255)'
+        },
+        {
+            value: 3.0,
+            color: 'rgb(0,85,255)'
+        },
+        {
+            color: 'rgb(122,0,135)'
+        }
         ]
     }
    
@@ -2515,6 +2591,93 @@ UI.prototype.initTestChart=function()
             });
 }
 
+UI.prototype.onJSONYrForecastNow=function(getJSONyrForecastNow,ev)
+{
+    var redraw=true,
+        animation=this.options.animation,
+        updatePoints=true,
+        json=getJSONyrForecastNow.json
+
+    if (json.radarIsDown) {
+      console.error('Yr radar is down')
+      return
+    }
+
+    var timezoneOffset=new Date().getTimezoneOffset()*60000
+    var points=json.points.map(function (element) { return [new Date(element.time).getTime()-timezoneOffset,element.precipitation.intensity] })
+   // Test zones var count=0
+   // var points=json.points.map(function (element) { return [new Date(element.time).getTime()-timezoneOffset,count=count+0.5] })
+
+   if (!this.yrForecastnowPoints) {
+      this.yrForecastnowPointsTimestamp=points.map(function (element) { return element[0]})
+      this.yrForecastnowPointsIntensity=points.map(function (element) { return element[1]})
+    }
+    else
+                       // Keep history of forcasted precipitation in rainchart to compare with actual precipitation
+    {
+        points.forEach(function (element)
+        {
+            var timestamp=element[0],
+                intensity=element[1],
+                i
+            if (i=this.yrForecastnowPointsTimestamp.indexOf(timestamp) !== -1)
+               this.yrForecastnowPointsIntensity[i]=intensity // update with new intensity
+            else
+            {
+                this.yrForecastnowPointsTimestamp.push(timestamp) // add new point
+                this.yrForecastnowPointsIntensity.push(intensity)
+            }
+
+        }.bind(this))
+    }
+
+    this.yrForecastnowPoints= this.yrForecastnowPointsTimestamp.map(function (timestamp,index)
+        {
+            return [timestamp,this.yrForecastnowPointsIntensity[index]]
+        }.bind(this)
+    )
+
+    console.log('yr forecastnow',this.yrForecastnowPoints)
+
+    var series= this.rainchart.get('series-rainrate-yr')
+    if (series)
+        series.setData(this.yrForecastnowPoints,redraw,shift,animation)
+    else 
+        this.rainchart.addSeries({
+                name: 'Yr rainrate',
+                id:'series-rainrate-yr',
+                type: 'spline',
+                yAxis: this.rainchart.yAxis.indexOf(this.rainchart.get('axis-rainrate')),
+                data: this.yrForecastnowPoints,
+                tooltip: {
+                    valueSuffix: ' mm/h'
+                },
+                zones: this.zones.rainrate_yr
+            },redraw,animation)
+    
+   series=this.latestChart.get('series-rainrate-yr')
+   if (series)
+   series.setData(points,redraw,shift,animation)
+else 
+   this.latestChart.addSeries({
+           name: 'Yr rainrate',
+           id:'series-rainrate-yr',
+           type: 'spline',
+           xAxis: this.latestChart.xAxis.indexOf(this.latestChart.get('axis-datetime')),
+           yAxis: this.latestChart.yAxis.indexOf(this.latestChart.get('axis-rainrate')),
+          // zIndex: 0,
+          // opacity: 0.5,
+           data: points,
+           zones: this.zones.rainrate_yr,
+           // zIndex: 10,
+           tooltip: {
+            valueSuffix: ' mm/h'
+        },
+       },redraw,animation)
+
+
+}
+
 UI.prototype.onJSONLivedata=function (station,ev)
 {
     var jsonReq=station.getJSON
@@ -2523,29 +2686,6 @@ UI.prototype.onJSONLivedata=function (station,ev)
    //   this.weatherElement.style.display="block"
 
     this.measurementCount=this.measurementCount+1
-
-    if (this.measurementCount===1 )
-    {
-        if (this.options.tooltip.enabled) {
-            if (this.rainchart) {
-                this.rainchart.series[0].tooltipOptions.valueSuffix=' '+jsonReq.unitRainrate()
-                this.rainchart.series[1].tooltipOptions.valueSuffix=' '+jsonReq.unitRain()
-                this.rainchart.series[2].tooltipOptions.valueSuffix=' '+jsonReq.unitRain()
-            }
-            if (this.windbarbchart)
-                this.windbarbchart.series.forEach(function (series) { series.tooltipOptions.valueSuffix=' '+jsonReq.unitWind()})
-            if (this.temperatureChart) {
-                this.temperatureChart.series[0].tooltipOptions.valueSuffix=' '+jsonReq.unitTemp()
-                this.temperatureChart.series[1].tooltipOptions.valueSuffix=' '+jsonReq.unitTemp()
-            }
-            if (this.pressureChart) {
-                this.pressureChart.series[0].tooltipOptions.valueSuffix=' '+jsonReq.unitPressure()
-                this.pressureChart.series[1].tooltipOptions.valueSuffix=' '+jsonReq.unitPressure()
-            }
-            if (this.solarchart)
-                this.solarchart.series[0].tooltipOptions.valueSuffix=' '+jsonReq.unitSolarlight()
-        }
-    }
 
     this.outtempElement.textContent=jsonReq.outtemp()
     this.intempElement.textContent=jsonReq.intemp()
@@ -2601,7 +2741,8 @@ UI.prototype.onJSONLatestChart=function(station)
         this.latestChart.get('series-relbaro').options.data[stationCategoryIndex]=getJSON.relbaro()
         this.latestChart.get('series-irradiance').options.data[stationCategoryIndex]=getJSON.solar_light()
         this.latestChart.get('series-UVI').options.data[stationCategoryIndex]=getJSON.solar_uvi()
-        this.latestChart.get('series-rainrate').options.data[stationCategoryIndex]=getJSON.rainrate()        
+        this.latestChart.get('series-rainrate').options.data[stationCategoryIndex]=getJSON.rainrate() 
+        this.latestChart.get('series-raintoday').options.data[stationCategoryIndex]=getJSON.rainday()       
 
         this.latestChart.series.forEach(function (series) {
             series.setData(series.options.data,redraw,animation)

@@ -209,8 +209,15 @@ parseHttpQueryStringProperty()
     #shellcheck disable=SC2086
     set -- $1
     HTTP_QUERY_STRING_PROPERTIES="$HTTP_QUERY_STRING_PROPERTIES $1"
-    # allow \'\" allow () inside $2 expression, mean(surface_downwelling_shortwave_flux_in_air%20PT1H)
-    eval "HTTP_QUERY_STRING_$1=\'\"$2\"\'"
+   
+    case "$2" in
+       *\(*\)*)  # allow \'\" allow () inside $2 expression, mean(surface_downwelling_shortwave_flux_in_air%20PT1H)    
+                 eval "HTTP_QUERY_STRING_$1=\'\"$2\"\'"
+                ;;
+            *)  eval "HTTP_QUERY_STRING_$1=\"$2\""
+                    ;;
+    esac
+
 }
 
 parseHttpQueryString()
