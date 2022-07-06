@@ -10,7 +10,7 @@
                 args=Array.prototype.slice.call(arguments,1) // Shallow copy - points to same memory - arguments when creating function with .bind(this,...)
             return function() {
                 //https://gist.github.com/MiguelCastillo/38005792d33373f4d08c
-                fn.apply(ctx, args.concat(Array.prototype.slice.call(arguments))); // conact to append arguments when calling
+               return fn.apply(ctx, args.concat(Array.prototype.slice.call(arguments))); // conact to append arguments when calling
             };
         };
     }
@@ -2085,7 +2085,7 @@ UI.prototype.initRainChart=function()
                             },
                             min : 0,
                             opposite: false,
-                            tickInterval: 0.5,
+                            //tickInterval: 0.5,
                             id: 'axis-rainrate'
                            
                         },
@@ -2424,8 +2424,8 @@ UI.prototype.onJSONYrForecastNow=function(getJSONyrForecastNow,ev)
    // var points=json.points.map(function (element) { return [new Date(element.time).getTime()-timezoneOffset,count=count+0.5] })
 
    if (!this.yrForecastnowPoints) {
-      this.yrForecastnowPointsTimestamp=points.map(function (element) { return element[0]})
-      this.yrForecastnowPointsIntensity=points.map(function (element) { return element[1]})
+      this.yrForecastnowPointsTimestamp=points.map(function (element) { console.log('timestamp '+element[0]); return element[0]})
+      this.yrForecastnowPointsIntensity=points.map(function (element) { console.log('intensity '+element[1]); return element[1]})
     }
     else
                        // Keep history of forcasted precipitation in rainchart to compare with actual precipitation measured by station
@@ -2434,8 +2434,8 @@ UI.prototype.onJSONYrForecastNow=function(getJSONyrForecastNow,ev)
         {
             var timestamp=element[0],
                 intensity=element[1],
-                i
-            if ((i=this.yrForecastnowPointsTimestamp.indexOf(timestamp)) !== -1)
+                i=this.yrForecastnowPointsTimestamp.indexOf(timestamp)
+            if (i !== -1)
                this.yrForecastnowPointsIntensity[i]=intensity // update with new intensity
             else
             {
@@ -2448,11 +2448,12 @@ UI.prototype.onJSONYrForecastNow=function(getJSONyrForecastNow,ev)
 
     this.yrForecastnowPoints= this.yrForecastnowPointsTimestamp.map(function (timestamp,index)
         {
-            return [timestamp,this.yrForecastnowPointsIntensity[index]]
+            var intensity=this.yrForecastnowPointsIntensity[index]
+            return [timestamp,intensity]
         }.bind(this)
     )
-
-    console.log('yr forecastnow',this.yrForecastnowPoints)
+ 
+   // console.log('yr forecastnow '+JSON.stringify(this.yrForecastnowPoints))
 
     var series= this.rainchart.get('series-rainrate-yr')
     if (series)
