@@ -828,10 +828,7 @@ function UI()
         forceLowMemoryDevice : forceLowMemoryDevice,        // for testing
         // navigator.languauge is "en-us" for LG Smart TV 2012
         isLGSmartTV2012 : this.isLGSmartTV2012(),
-        latestChart : {
-            stations: []
-        },
-      
+        stations: [],
         frostapi : {
             doc: 'https://frost.met.no/index.html',
             authorization: "Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:"), // http basic authorization header -> get key from https://frost.met.no/howto.html
@@ -1080,8 +1077,8 @@ UI.prototype.addStation=function(station)
         station.getJSON.request.addEventListener("load",this.onJSONPressureChart.bind(this,station))
     }
 
+    this.options.stations.push(station)
     station.getJSON.request.addEventListener("load",this.redrawCharts.bind(this))
-    this.options.latestChart.stations.push(station)
 }
 
 UI.prototype.initStations=function(port)
@@ -1282,7 +1279,7 @@ UI.prototype.onJSONFrostPrecipitationHour=function(evt)
     json.data.forEach(function (data) { precipitationDay=precipitationDay+data.observations[0].value})
     var precipitationHour=json.data[json.data.length-1].observations[0].value
     //console.log('precipitation today: '+ precipitationDay+' precip. hour: '+precipitationHour)
-    this.rainstatchart.series[2].setData([['hour',precipitationHour],['day',precipitationDay],null,null,null],false,this.options.animation)
+   // this.rainstatchart.series[2].setData([['hour',precipitationHour],['day',precipitationDay],null,null,null],false,this.options.animation)
 }
 
 UI.prototype.onJSONWUCurrentConditions=function(jsonReq,evt)
@@ -2014,43 +2011,28 @@ UI.prototype.initRainstatChart=function()
                                 }],
                                 xAxis: [{
                                  type: 'column',
-                                 categories: ['hour','day','event','week','month','year']
+                                 categories: [] // Stations
                                 }],
-                               
                                 tooltip: {
                                     enabled: this.options.tooltip
                                 },
-                                series: [
-                                    {
-                                        name: 'Rain',
-                                        type: 'column',
-                                        data: [],
+                                plotOptions: {
+                                    series: {
                                         dataLabels: {
                                             enabled: true && !this.options.isLGSmartTV2012
                                         }
-                                            
-                                    },
-                                    {
-                                        name: 'Rain',
-                                        type: 'column',
-                                        data: [],
-                                        yAxis: 1,
-                                        dataLabels: {
-                                            enabled: true && !this.options.isLGSmartTV2012
-                                        },
-                                    },
-                                    {
-                                        name: 'Rain MET.no',
-                                        type: 'column',
-                                        data: [],
-                                        yAxis: 1,
-                                        dataLabels: {
-                                            enabled: true && !this.options.isLGSmartTV2012
-                                        },
-                                    }
-                            ]
+                                            }
+                                },
+                                series: [
+                                    { name: 'Rain hour',    id: 'series-rainhour',  type: 'column' },
+                                    { name: 'Rain day',     id: 'series-rainday',   type: 'column', yAxis: 1 },
+                                    { name: 'Rain event',   id: 'series-rainevent', type: 'column', yAxis: 1 },
+                                    { name: 'Rain week',    id: 'series-rainweek',  type: 'column', yAxis: 1 },
+                                    { name: 'Rain month',   id: 'series-rainmonth',  type: 'column', yAxis: 1 },
+                                    { name: 'Rain year',    id: 'series-rainyear',  type: 'column', yAxis: 1 }
+                              ]
                             })
-                        }
+}
 
 UI.prototype.initRainChart=function()
 {
@@ -2085,7 +2067,7 @@ UI.prototype.initRainChart=function()
                             },
                             min : 0,
                             opposite: false,
-                            //tickInterval: 0.5,
+                            //tickInterval: 0.1,
                             id: 'axis-rainrate'
                            
                         },
@@ -2094,7 +2076,7 @@ UI.prototype.initRainChart=function()
                                 text: 'Rain mm'
                             },
                             min : 0,
-                            tickInterval: 1,
+                           // tickInterval: 5,
                             id: 'axis-rain'
                            
                         }],
@@ -2424,8 +2406,8 @@ UI.prototype.onJSONYrForecastNow=function(getJSONyrForecastNow,ev)
    // var points=json.points.map(function (element) { return [new Date(element.time).getTime()-timezoneOffset,count=count+0.5] })
 
    if (!this.yrForecastnowPoints) {
-      this.yrForecastnowPointsTimestamp=points.map(function (element) { console.log('timestamp '+element[0]); return element[0]})
-      this.yrForecastnowPointsIntensity=points.map(function (element) { console.log('intensity '+element[1]); return element[1]})
+      this.yrForecastnowPointsTimestamp=points.map(function (element) { return element[0]})
+      this.yrForecastnowPointsIntensity=points.map(function (element) { return element[1]})
     }
     else
                        // Keep history of forcasted precipitation in rainchart to compare with actual precipitation measured by station
@@ -2526,16 +2508,16 @@ UI.prototype.onJSONLivedata=function (station,ev)
 
 }
 
-UI.prototype.updateStationTimestampLatestChart=function()
+UI.prototype.updateStationCategories=function(chart)
 {
     var redraw=false,
         stationNames
 
-    if (!this.latestChart)
+    if (!chart)
         return
     
-    stationNames= this.options.latestChart.stations.map(function (station) { if (!station.timestampHHMMSS) return station.name; else return station.name+' '+station.timestampHHMMSS })
-    this.latestChart.xAxis[0].setCategories(stationNames,redraw)
+    stationNames= this.options.stations.map(function (station) { if (!station.timestampHHMMSS) return station.name; else return station.name+' '+station.timestampHHMMSS })
+    chart.xAxis[0].setCategories(stationNames,redraw)
 }
 
 UI.prototype.onJSONLatestChart=function(station)
@@ -2543,30 +2525,33 @@ UI.prototype.onJSONLatestChart=function(station)
     var getJSON=station.getJSON,
         redraw=false,
         animation=this.options.animation,
-        stationCategoryIndex=this.options.latestChart.stations.indexOf(station)
+        stationCategoryIndex=this.options.stations.indexOf(station),
+        chart=this.latestChart
     
-    if (this.latestChart) {
-        this.updateStationTimestampLatestChart()
-        this.latestChart.get('series-temperature').options.data[stationCategoryIndex]=getJSON.outtemp()
-        //this.latestChart.series[0].options.data[1]=getJSON.intemp()
-        this.latestChart.get('series-humidity').options.data[stationCategoryIndex]=getJSON.outhumidity()
-        //this.latestChart.series[1].options.data[1]=getJSON.inhumidity()
-        this.latestChart.get('series-windspeed').options.data[stationCategoryIndex]=getJSON.windspeed_mps()
-        this.latestChart.get('series-windgust').options.data[stationCategoryIndex]=getJSON.windgustspeed_mps()
-        this.latestChart.get('series-winddirection').options.data[stationCategoryIndex]=getJSON.winddirection()
-        this.latestChart.get('series-relbaro').options.data[stationCategoryIndex]=getJSON.relbaro()
-        this.latestChart.get('series-irradiance').options.data[stationCategoryIndex]=getJSON.solar_light()
-        this.latestChart.get('series-UVI').options.data[stationCategoryIndex]=getJSON.solar_uvi()
-        this.latestChart.get('series-rainrate').options.data[stationCategoryIndex]=getJSON.rainrate() 
-        this.latestChart.get('series-raintoday').options.data[stationCategoryIndex]=getJSON.rainday()       
+    if (!chart)
+       return
+       
+    this.updateStationCategories(chart)
+    chart.get('series-temperature').options.data[stationCategoryIndex]=getJSON.outtemp()
+    //chart.series[0].options.data[1]=getJSON.intemp()
+    chart.get('series-humidity').options.data[stationCategoryIndex]=getJSON.outhumidity()
+    //chart.series[1].options.data[1]=getJSON.inhumidity()
+    chart.get('series-windspeed').options.data[stationCategoryIndex]=getJSON.windspeed_mps()
+    chart.get('series-windgust').options.data[stationCategoryIndex]=getJSON.windgustspeed_mps()
+    chart.get('series-winddirection').options.data[stationCategoryIndex]=getJSON.winddirection()
+    chart.get('series-relbaro').options.data[stationCategoryIndex]=getJSON.relbaro()
+    chart.get('series-irradiance').options.data[stationCategoryIndex]=getJSON.solar_light()
+    chart.get('series-UVI').options.data[stationCategoryIndex]=getJSON.solar_uvi()
+    chart.get('series-rainrate').options.data[stationCategoryIndex]=getJSON.rainrate() 
+    chart.get('series-raintoday').options.data[stationCategoryIndex]=getJSON.rainday()       
 
-        this.latestChart.series.forEach(function (series) {
-            series.setData(series.options.data,redraw,animation)
-        })
-        
-    }
+    chart.series.forEach(function (series) {
+        series.setData(series.options.data,redraw,animation)
+    })
 
 }
+
+
 
 UI.prototype.onJSONWindroseChart=function(station)
 {
@@ -2858,14 +2843,37 @@ UI.prototype.onJSONRainchart=function(station)
 
 UI.prototype.onJSONRainstatChart=function(station)
 {
+   
+//        this.rainstatchart.series[0].setData([['hour',getJSON.rainhour()],['day',getJSON.rainday()],['event',getJSON.rainevent()],['week',getJSON.rainweek()]],redraw,animation)
+//        this.rainstatchart.series[1].setData([null,null,null,null,['month',getJSON.rainmonth()],['year',getJSON.rainyear()]],redraw,animation)
+
     var getJSON=station.getJSON,
         redraw=false,
-        animation=this.options.animation
+        animation=this.options.animation,
+        stationCategoryIndex=this.options.stations.indexOf(station),
+        chart=this.rainstatchart
+    
+    if (!chart)
+       return
+       
+    this.updateStationCategories(chart)
 
-    if (this.rainstatchart) {
-        this.rainstatchart.series[0].setData([['hour',getJSON.rainhour()],['day',getJSON.rainday()],['event',getJSON.rainevent()],['week',getJSON.rainweek()]],redraw,animation)
-        this.rainstatchart.series[1].setData([null,null,null,null,['month',getJSON.rainmonth()],['year',getJSON.rainyear()]],redraw,animation)
-    }
+    var rainhour=getJSON.rainhour()
+    if (rainhour !== undefined)
+       chart.get('series-rainhour').options.data[stationCategoryIndex]=rainhour
+
+    var rainevent=getJSON.rainevent()
+    if (rainevent !== undefined)
+        chart.get('series-rainevent').options.data[stationCategoryIndex]=rainevent
+    
+        chart.get('series-rainday').options.data[stationCategoryIndex]=getJSON.rainday()
+    chart.get('series-rainweek').options.data[stationCategoryIndex]=getJSON.rainweek()
+    chart.get('series-rainmonth').options.data[stationCategoryIndex]=getJSON.rainmonth()
+    chart.get('series-rainyear').options.data[stationCategoryIndex]=getJSON.rainyear()
+
+    chart.series.forEach(function (series) {
+        series.setData(series.options.data,redraw,animation)
+    })
 }
 
 UI.prototype.redrawCharts=function()
