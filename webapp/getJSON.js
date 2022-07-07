@@ -43,6 +43,13 @@
     this.latestReferencetime=0
  }
 
+ Station.prototype.updateStationTimestamp=function()
+{
+    var timestamp=this.getJSON.timestamp()
+    this.timestamp=timestamp
+    this.timestampHHMMSS=DateUtil.prototype.getHHMMSS(new Date(timestamp+new Date().getTimezoneOffset()*60000)) // assumes same timezone on GW as local computer
+}
+
  function StationHarstadStation(name,id)
  {
     Station.call(this,name,id)
@@ -63,22 +70,20 @@ function StationGW(name,id)
 {
     Station.call(this,name,id)
     this.getJSON=new GetJSONLivedata(window.location.origin+'/api/livedata',GetJSON.prototype.requestInterval.second16)
-    this.getJSON.request.addEventListener('load',this.updateStationTimestampLatestChart.bind(this))
+    this.getJSON.request.addEventListener('load',this.updateStationTimestamp.bind(this))
     setTimeout(this.getJSON.sendInterval.bind(this.getJSON, GetJSON.prototype.requestInterval.min1), GetJSON.prototype.requestInterval.min5)
 }
 
 StationGW.prototype=Object.create(Station.prototype)
 
-StationGW.prototype.updateStationTimestampLatestChart=function()
-{
-    var timestamp=this.getJSON.timestamp()
-    this.timestamp=timestamp
-    this.timestampHHMMSS=DateUtil.prototype.getHHMMSS(new Date(timestamp+new Date().getTimezoneOffset()*60000)) // assumes same timezone on GW as local computer
-}
-
 function StationWU(name,id)
 {
     Station.call(this,name,id)
+    // API documentation  'https://docs.google.com/document/d/1eKCnKXI9xnoMGRRzOL1xPCBihNV2rOet08qpE_gArAY'
+    this.apiKey='9b606f1b6dde4afba06f1b6dde2afb1a', // get a personal api key from https://www.wunderground.com/member/api-keys
+    this.getJSON = new GetJSONWUCurrentConditions('https://api.weather.com/v2/pws/observations/current?apiKey='+this.apiKey+'&stationId='+this.id+'&numericPrecision=decimal&format=json&units=m', GetJSON.prototype.requestInterval.min5)
+    this.getJSON.request.addEventListener('load',this.updateStationTimestamp.bind(this))
+
 }
 
 StationWU.prototype=Object.create(Station.prototype)
@@ -179,6 +184,11 @@ GetJSON.prototype.sendInterval= function(interval)
 
 GetJSON.prototype.parse=function()
 {
+}
+
+GetJSON.prototype.windchill=function()
+{
+    return null
 }
 
 
@@ -569,12 +579,12 @@ GetJSONWUCurrentConditions.prototype.outhumidity=function()
     return this.data.humidity
 }
 
-GetJSONWUCurrentConditions.prototype.wind_speed=function()
+GetJSONWUCurrentConditions.prototype.windspeed_mps=function()
 {
     return WindConverter.prototype.fromKmhToMps(this.data.metric.windSpeed)
 }
 
-GetJSONWUCurrentConditions.prototype.windgust_speed=function()
+GetJSONWUCurrentConditions.prototype.windgustspeed_mps=function()
 {
     return WindConverter.prototype.fromKmhToMps(this.data.metric.windGust)
 }
@@ -602,6 +612,13 @@ GetJSONWUCurrentConditions.prototype.solar_uvi=function()
 GetJSONWUCurrentConditions.prototype.rainrate=function()
 {
     return this.data.metric.precipRate
+}
+
+GetJSONWUCurrentConditions.prototype.rainday=function()
+{
+    //Accumulated precipitation for today from midnight to present https://docs.google.com/document/d/1KGb8bTVYRsNgljnNH67AMhckY8AQT2FVwZ9urj8SWBs/edit
+    return this.data.metric.precipTotal
+
 }
 
 function GetJSONHolfuyLive(url,interval,options)
@@ -854,17 +871,7 @@ function UI()
                 }
             ]
         },
-        wundergroundapi: {
-            doc: 'https://docs.google.com/document/d/1eKCnKXI9xnoMGRRzOL1xPCBihNV2rOet08qpE_gArAY',
-            apiKey: '9b606f1b6dde4afba06f1b6dde2afb1a', // get a personal api key from https://www.wunderground.com/member/api-keys
-            stationId: 'IENGEN26',
-            stationName: 'Engenes',
-            //stationId: 'ITOMAS1',
-            //stationName: 'Tomasjord',
-            interval: GetJSON.prototype.requestInterval.min5,
-            enabled : true,
-            timestampHHMMSS : '',
-        },
+       
         holfuyapi: {
             doc: 'http://api.holfuy.com/live/', // does not support CORS in Chrome/Edge (use curl on backend?), but works in Firefox 100.0.1
             stationId: '101', // Test
@@ -1075,6 +1082,11 @@ UI.prototype.addStation=function(station)
         station.getJSON.request.addEventListener("load",this.onJSONRainchart.bind(this,station))
         station.getJSON.request.addEventListener("load",this.onJSONRainstatChart.bind(this,station))
         station.getJSON.request.addEventListener("load",this.onJSONPressureChart.bind(this,station))
+    } else if (station instanceof StationWU)
+    {
+        console.log('StationWU',station)
+        station.getJSON.request.addEventListener("load",this.onJSONLatestChart.bind(this,station))
+        
     }
 
     this.options.stations.push(station)
@@ -1085,6 +1097,7 @@ UI.prototype.initStations=function(port)
 {
 
     this.addStation(new StationGW('Tomasjord','ITOMAS1'))
+    this.addStation(new StationWU('Engenes','IENGEN26'))
 
 
     /*
@@ -1220,7 +1233,7 @@ UI.prototype.updateFrostLatestChart=function(METnoRequest)
     {
         var stationCategoryIndex=this.options.frostapi.stations[currentStation].stationCategoryIndex // METno
 
-        this.updateStationTimestampLatestChart()
+        this.updateStationCategories(station)
 
         var outtemp=METnoRequest.getLatestObservation('air_temperature')
         if (outtemp)
@@ -1635,7 +1648,7 @@ UI.prototype.initPressureChart=function()
         yAxis: [{
             //https://api.highcharts.com/highcharts/yAxis.max
             title: false,
-            tickInterval: 5,
+            tickInterval: 5
             //min: 950
             //max : null
             
@@ -1643,7 +1656,7 @@ UI.prototype.initPressureChart=function()
     
     ],
         xAxis: [{
-            type: 'datetime',
+            type: 'datetime'
         }],
     
         plotOptions: {
@@ -2442,7 +2455,7 @@ UI.prototype.onJSONYrForecastNow=function(getJSONyrForecastNow,ev)
         series.setData(this.yrForecastnowPoints,redraw,shift,animation)
     else 
         this.rainchart.addSeries({
-                name: 'Rainrate Yr',
+                name: 'Forecast Yr',
                 id:'series-rainrate-yr',
                 type: 'spline',
                 yAxis: this.rainchart.yAxis.indexOf(this.rainchart.get('axis-rainrate')),
@@ -2530,9 +2543,13 @@ UI.prototype.onJSONLatestChart=function(station)
     
     if (!chart)
        return
-       
+
     this.updateStationCategories(chart)
     chart.get('series-temperature').options.data[stationCategoryIndex]=getJSON.outtemp()
+    var windchill=getJSON.windchill() // available in WU
+    if (windchill !== undefined)
+       chart.get('series-windchill').options.data[stationCategoryIndex]=windchill
+      
     //chart.series[0].options.data[1]=getJSON.intemp()
     chart.get('series-humidity').options.data[stationCategoryIndex]=getJSON.outhumidity()
     //chart.series[1].options.data[1]=getJSON.inhumidity()
@@ -2542,10 +2559,14 @@ UI.prototype.onJSONLatestChart=function(station)
     chart.get('series-relbaro').options.data[stationCategoryIndex]=getJSON.relbaro()
     chart.get('series-irradiance').options.data[stationCategoryIndex]=getJSON.solar_light()
     chart.get('series-UVI').options.data[stationCategoryIndex]=getJSON.solar_uvi()
-    chart.get('series-rainrate').options.data[stationCategoryIndex]=getJSON.rainrate() 
-    chart.get('series-raintoday').options.data[stationCategoryIndex]=getJSON.rainday()       
+    chart.get('series-rainrate').options.data[stationCategoryIndex]=getJSON.rainrate()
+    chart.get('series-raintoday').options.data[stationCategoryIndex]=getJSON.rainday()
 
     chart.series.forEach(function (series) {
+        for (var i=0;i<series.options.data.length;i++) // make sure we have null data for stations thats not received JSON data yet
+          if (series.options.data[i]===undefined)
+             series.options.data[i]=null
+       // console.log('setData',series.name,series.options.data)
         series.setData(series.options.data,redraw,animation)
     })
 
@@ -2687,7 +2708,8 @@ UI.prototype.onJSONPressureChart=function(station)
                 name: 'Absolute '+name,
                 id: 'series-absbaro-'+id,
                 type: 'spline',
-                data: [[timestamp,getJSON.absbaro()]]
+                data: [[timestamp,getJSON.absbaro()]],
+                visible: false
             },redraw,animation)
    
 }
@@ -2843,10 +2865,6 @@ UI.prototype.onJSONRainchart=function(station)
 
 UI.prototype.onJSONRainstatChart=function(station)
 {
-   
-//        this.rainstatchart.series[0].setData([['hour',getJSON.rainhour()],['day',getJSON.rainday()],['event',getJSON.rainevent()],['week',getJSON.rainweek()]],redraw,animation)
-//        this.rainstatchart.series[1].setData([null,null,null,null,['month',getJSON.rainmonth()],['year',getJSON.rainyear()]],redraw,animation)
-
     var getJSON=station.getJSON,
         redraw=false,
         animation=this.options.animation,
@@ -2881,7 +2899,7 @@ UI.prototype.redrawCharts=function()
     // https://api.highcharts.com/class-reference/Highcharts.Axis#setExtremes
    // y-axis start on 0 by default
     
-   if (this.pressureChart) {
+   if (this.pressureChart && this.pressureChart.series[0]) {
         if (this.pressureChart.series[0].dataMin && this.pressureChart.series[0].dataMax)
                 this.pressureChart.series[0].yAxis.setExtremes(this.pressureChart.series[0].dataMin-2,this.pressureChart.series[0].dataMax+2,false)
     }
