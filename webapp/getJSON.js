@@ -73,15 +73,15 @@ function StationGW(name,id)
     this.getJSON.request.addEventListener('load',this.updateStationTimestamp.bind(this))
     setTimeout(this.getJSON.sendInterval.bind(this.getJSON, GetJSON.prototype.requestInterval.min1), GetJSON.prototype.requestInterval.min5)
 }
-
 StationGW.prototype=Object.create(Station.prototype)
+
 
 function StationWU(name,id)
 {
     Station.call(this,name,id)
     // API documentation  'https://docs.google.com/document/d/1eKCnKXI9xnoMGRRzOL1xPCBihNV2rOet08qpE_gArAY'
     this.apiKey='9b606f1b6dde4afba06f1b6dde2afb1a', // get a personal api key from https://www.wunderground.com/member/api-keys
-    this.getJSON = new GetJSONWUCurrentConditions('https://api.weather.com/v2/pws/observations/current?apiKey='+this.apiKey+'&stationId='+this.id+'&numericPrecision=decimal&format=json&units=m', GetJSON.prototype.requestInterval.min5)
+    this.getJSON = new GetJSONWUCurrentConditions('https://api.weather.com/v2/pws/observations/current?apiKey='+this.apiKey+'&stationId='+this.id+'&numericPrecision=decimal&format=json&units=m', GetJSON.prototype.requestInterval.min1)
     this.getJSON.request.addEventListener('load',this.updateStationTimestamp.bind(this))
 
 }
@@ -184,13 +184,24 @@ GetJSON.prototype.sendInterval= function(interval)
 }
 
 GetJSON.prototype.parse=function()
-{
-}
+{}
 
 GetJSON.prototype.windchill=function()
 {
     return null
 }
+
+GetJSON.prototype.intemp=function()
+{}
+
+GetJSON.prototype.inhumidity=function()
+{}
+
+GetJSON.prototype.absbaro=function()
+{}
+
+GetJSON.prototype.rainevent=function()
+{}
 
 
 function GetJSONLivedata(url,interval,options) {
@@ -1091,6 +1102,10 @@ UI.prototype.addStation=function(station)
     {
         console.log('StationWU',station)
         station.getJSON.request.addEventListener("load",this.onJSONLatestChart.bind(this,station))
+        station.getJSON.request.addEventListener("load",this.onJSONTemperatureChart.bind(this,station))
+        station.getJSON.request.addEventListener("load",this.onJSONSolarChart.bind(this,station))
+        station.getJSON.request.addEventListener("load",this.onJSONRainchart.bind(this,station))
+        station.getJSON.request.addEventListener("load",this.onJSONPressureChart.bind(this,station))
         
     }
 
@@ -1104,7 +1119,6 @@ UI.prototype.initStations=function(port)
     this.addStation(new StationGW('Tomasjord','ITOMAS1'))
     this.addStation(new StationWU('Engenes','IENGEN26'))
 
-
     /*
     if (this.options.frostapi.enabled) {
         this.getJSONFrostLatest15Min = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest',GetJSON.prototype.requestInterval.min15,this.options.frostapi)
@@ -1114,14 +1128,6 @@ UI.prototype.initStations=function(port)
        // this.getJSONFrostLatest1H = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest-1H',GetJSON.prototype.requestInterval.hour1,this.options.frostapi)
        // this.getJSONFrostLatest1H.request.addEventListener("load",this.onJSONFrost.bind(this,this.getJSONFrostLatest1H))
        // this.getJSONFrostLatest1H.request.addEventListener("load",this.onJSONloadredrawCharts.bind(this))
-
-    }
-
-    if (this.options.wundergroundapi.enabled) {
-        var wu=this.options.wundergroundapi
-        this.getJSONWUCurrentConditions = new GetJSONWUCurrentConditions('https://api.weather.com/v2/pws/observations/current?apiKey='+wu.apiKey+'&stationId='+wu.id+'&numericPrecision=decimal&format=json&units=m',this.options.wundergroundapi.interval,this.options.wundergroundapi)
-        this.getJSONWUCurrentConditions.request.addEventListener("load",this.onJSONWUCurrentConditions.bind(this,this.getJSONWUCurrentConditions))
-        this.getJSONWUCurrentConditions.request.addEventListener("load",this.redrawCharts.bind(this))
 
     }
 
@@ -1298,35 +1304,6 @@ UI.prototype.onJSONFrostPrecipitationHour=function(evt)
     var precipitationHour=json.data[json.data.length-1].observations[0].value
     //console.log('precipitation today: '+ precipitationDay+' precip. hour: '+precipitationHour)
    // this.rainstatchart.series[2].setData([['hour',precipitationHour],['day',precipitationDay],null,null,null],false,this.options.animation)
-}
-
-UI.prototype.onJSONWUCurrentConditions=function(jsonReq,evt)
-// candidate for refactoring into one function with updateCharts/onJSONLivedata
-{
-    var redraw=false,
-        animation=this.options.animation
-        stationCategoryIndex=this.options.wundergroundapi.stationCategoryIndex // Wunderground
-
-    this.options.wundergroundapi.timestampHHMMSS=DateUtil.prototype.getHHMMSS(new Date(jsonReq.timestamp()))
-
-    //console.log('wu cc',evt,this)
-    if (this.latestChart)
-    {
-        this.latestChart.get('series-temperature').options.data[stationCategoryIndex]=jsonReq.outtemp()
-        this.latestChart.get('series-windchill').options.data[stationCategoryIndex]=jsonReq.windchill()
-        this.latestChart.get('series-humidity').options.data[stationCategoryIndex]=jsonReq.outhumidity()
-        this.latestChart.get('series-windspeed').options.data[stationCategoryIndex]=jsonReq.wind_speed()
-        this.latestChart.get('series-windgust').options.data[stationCategoryIndex]=jsonReq.windgust_speed()
-        this.latestChart.get('series-winddirection').options.data[stationCategoryIndex]=jsonReq.winddirection()
-        this.latestChart.get('series-relbaro').options.data[stationCategoryIndex]=jsonReq.relbaro()
-        this.latestChart.get('series-irradiance').options.data[stationCategoryIndex]=jsonReq.solar_light()
-        this.latestChart.get('series-UVI').options.data[stationCategoryIndex]=jsonReq.solar_uvi()
-        this.latestChart.get('series-rainrate').options.data[stationCategoryIndex]=jsonReq.rainrate()        
-
-        this.latestChart.series.forEach(function (series) {
-            series.setData(series.options.data,redraw,animation)
-        })
-    }
 }
 
 UI.prototype.isLowMemoryDevice=function()
@@ -2646,36 +2623,43 @@ UI.prototype.onJSONTemperatureChart=function(station)
                 visible: false
             },redraw,animation)
 
-         series= this.temperatureChart.get('series-indoor-'+id)
-        if (series)
-            series.addPoint([timestamp,getJSON.intemp()],redraw,shift,animation)
-        else 
-            this.temperatureChart.addSeries( {
-                name: 'Indoor '+name,
-                id:'series-indoor-'+id,
-                type: 'spline',
-                yAxis: 0,
-                data: [[timestamp,getJSON.intemp()]],
-                zIndex: 5,
-                visible: false
-            },redraw,animation)
+        var intemp=getJSON.intemp()
+        if (intemp!==undefined) {
+            series= this.temperatureChart.get('series-indoor-'+id)
+            if (series)
+                series.addPoint([timestamp,intemp],redraw,shift,animation)
+            else 
+                this.temperatureChart.addSeries( {
+                    name: 'Indoor '+name,
+                    id:'series-indoor-'+id,
+                    type: 'spline',
+                    yAxis: 0,
+                    data: [[timestamp,intemp]],
+                    zIndex: 5,
+                    visible: false
+                },redraw,animation)
+            }
 
-        series=this.temperatureChart.get('series-indoor-humidity-'+id)
-        if (series)
-            series.addPoint([timestamp,getJSON.inhumidity()],redraw,shift,animation)
-        else
-            this.temperatureChart.addSeries( {
-                name: 'Indoor humidity '+name,
-                id:'series-indoor-humidity-'+id,
-                type: 'spline',
-                yAxis: 1,
-                data: [[timestamp,getJSON.inhumidity()]],
-                tooltip: {
-                    valueSuffix: ' %'
-                },
-                zIndex: 5,
-                visible: false
-            },redraw,animation)
+        var inhumidity=getJSON.inhumidity()
+
+        if (inhumidity!==undefined) {
+            series=this.temperatureChart.get('series-indoor-humidity-'+id)
+            if (series)
+                series.addPoint([timestamp,inhumidity],redraw,shift,animation)
+            else
+                this.temperatureChart.addSeries( {
+                    name: 'Indoor humidity '+name,
+                    id:'series-indoor-humidity-'+id,
+                    type: 'spline',
+                    yAxis: 1,
+                    data: [[timestamp,inhumidity]],
+                    tooltip: {
+                        valueSuffix: ' %'
+                    },
+                    zIndex: 5,
+                    visible: false
+                },redraw,animation)
+            }
         
         }
     
@@ -2705,17 +2689,20 @@ UI.prototype.onJSONPressureChart=function(station)
                 data: [[timestamp,getJSON.relbaro()]]
             },redraw,animation)
 
-    series=this.pressureChart.get('series-absbaro-'+id)
-    if (series)
-        series.addPoint([timestamp,getJSON.absbaro()],redraw,shift,animation)
-    else 
-        this.pressureChart.addSeries({
-                name: 'Absolute '+name,
-                id: 'series-absbaro-'+id,
-                type: 'spline',
-                data: [[timestamp,getJSON.absbaro()]],
-                visible: false
-            },redraw,animation)
+    var absbaro=getJSON.absbaro()
+    if (absbaro !== undefined) {
+        series=this.pressureChart.get('series-absbaro-'+id)
+        if (series)
+            series.addPoint([timestamp,getJSON.absbaro()],redraw,shift,animation)
+        else 
+            this.pressureChart.addSeries({
+                    name: 'Absolute '+name,
+                    id: 'series-absbaro-'+id,
+                    type: 'spline',
+                    data: [[timestamp,getJSON.absbaro()]],
+                    visible: false
+                },redraw,animation)
+    }
    
 }
 
@@ -2833,22 +2820,25 @@ UI.prototype.onJSONRainchart=function(station)
                 },
             },redraw,animation)
 
-    seriesId='series-rainevent-'+id
-    series= this.rainchart.get(seriesId)
-    if (series)
-        series.addPoint([timestamp,getJSON.rainevent()],redraw,shift,animation)
-    else if (getJSON.rainevent()!== undefined)
-        this.rainchart.addSeries({
-                name: 'Rainevent '+name,
-                id: seriesId,
-                type: 'spline',
-                yAxis: 1,
-                visible: false,
-                data: [[timestamp,getJSON.rainevent()]],
-                tooltip: {
-                    valueSuffix: ' mm'
-                },
-            },redraw,animation)
+    var rainevent=getJSON.rainevent()
+    if (rainevent !== undefined) {
+        seriesId='series-rainevent-'+id
+        series= this.rainchart.get(seriesId)
+        if (series)
+            series.addPoint([timestamp,getJSON.rainevent()],redraw,shift,animation)
+        else if (getJSON.rainevent()!== undefined)
+            this.rainchart.addSeries({
+                    name: 'Rainevent '+name,
+                    id: seriesId,
+                    type: 'spline',
+                    yAxis: 1,
+                    visible: false,
+                    data: [[timestamp,getJSON.rainevent()]],
+                    tooltip: {
+                        valueSuffix: ' mm'
+                    },
+                },redraw,animation)
+    }
 
     seriesId='series-rainday-'+id
     series= this.rainchart.get(seriesId)
