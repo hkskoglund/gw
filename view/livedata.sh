@@ -699,6 +699,7 @@ printLDTimestampJSON()
 {
     if [ -n "$LIVEDATA_SYSTEM_TIMESTAMP" ]; then
         printJSONmember "timestamp" "%u" "$(( LIVEDATA_SYSTEM_TIMESTAMP * 1000))"
+        printJSONmember "timezone_auto" "%u" "$(( LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT))"
     fi
 }
 

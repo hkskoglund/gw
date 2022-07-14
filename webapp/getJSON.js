@@ -47,7 +47,7 @@
 {
     var timestamp=this.getJSON.timestamp()
     this.timestamp=timestamp
-    this.timestampHHMMSS=DateUtil.prototype.getHHMMSS(new Date(timestamp+new Date().getTimezoneOffset()*60000)) // assumes same timezone on GW as local computer
+    this.timestampHHMMSS=DateUtil.prototype.getHHMMSS(new Date(timestamp)) 
 }
 
  function StationHarstadStation(name,id)
@@ -238,9 +238,13 @@ GetJSONLivedata.prototype.Mode = {
 }
 
 GetJSONLivedata.prototype.timestamp=function()
+// UTC time
 {
     // When gw system setting for time is AUTO=1, this will be in the local timezone
-    return this.data.timestamp
+    if (this.data.timezone_auto)
+       return this.data.timestamp+new Date().getTimezoneOffset()*60000
+    else
+      return this.data.timestamp
 }
 
 GetJSONLivedata.prototype.outtempToString=function()
