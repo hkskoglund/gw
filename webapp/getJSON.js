@@ -46,7 +46,7 @@
  Station.prototype.updateStationTimestamp=function()
 {
     var timestamp=this.getJSON.timestamp()
-    this.timestamp=timestamp
+    this.timestamp=timestamp-this.getJSON.timezoneOffset // local timezone timestamp
     this.timestampHHMMSS=DateUtil.prototype.getHHMMSS(new Date(timestamp)) 
 }
 
@@ -94,6 +94,7 @@ StationWU.prototype=Object.create(Station.prototype)
     this.url=url
     this.interval=interval
     this.options=options || {}
+    this.timezoneOffset=new Date().getTimezoneOffset()*60000
 
     this.request=new XMLHttpRequest()
     this.request.addEventListener("load", this.transferComplete.bind(this))
@@ -242,7 +243,7 @@ GetJSONLivedata.prototype.timestamp=function()
 {
     // When gw system setting for time is AUTO=1, this will be in the local timezone
     if (this.data.timezone_auto)
-       return this.data.timestamp+new Date().getTimezoneOffset()*60000
+       return this.data.timestamp+this.timezoneOffset
     else
       return this.data.timestamp
 }
@@ -2746,7 +2747,7 @@ UI.prototype.onJSONWindbarbChart=function(station)
 UI.prototype.onJSONSolarChart=function(station)
 {
     var getJSON=station.getJSON,
-        timestamp=getJSON.timestamp(),
+        timestamp=station.timestamp,
         redraw=false,
         shift=false,
         animation=this.options.animation,
