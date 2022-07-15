@@ -89,7 +89,7 @@ function StationWU(name,id)
     Station.call(this,name,id)
     // API documentation  'https://docs.google.com/document/d/1eKCnKXI9xnoMGRRzOL1xPCBihNV2rOet08qpE_gArAY'
     this.apiKey='9b606f1b6dde4afba06f1b6dde2afb1a', // get a personal api key from https://www.wunderground.com/member/api-keys
-    this.getJSON = new GetJSONWUCurrentConditions('https://api.weather.com/v2/pws/observations/current?apiKey='+this.apiKey+'&stationId='+this.id+'&numericPrecision=decimal&format=json&units=m', GetJSON.prototype.requestInterval.min5)
+    this.getJSON = new GetJSONWUCurrentConditions('https://api.weather.com/v2/pws/observations/current?apiKey='+this.apiKey+'&stationId='+this.id+'&numericPrecision=decimal&format=json&units=m', GetJSON.prototype.requestInterval.min1)
     this.getJSON.request.addEventListener('load',this.onJSON.bind(this))
 
 }
@@ -1188,6 +1188,7 @@ UI.prototype.addStation=function(station)
         this.initWindroseChart(station)
         station.getJSON.request.addEventListener("load",this.onJSONLatestChart.bind(this,station))
         station.getJSON.request.addEventListener("load",this.onJSONTemperatureChart.bind(this,station))
+        station.getJSON.request.addEventListener("load",this.onJSONWindbarbChart.bind(this,station))
         station.getJSON.request.addEventListener("load",this.onJSONWindroseChart.bind(this,station))
         station.getJSON.request.addEventListener("load",this.onJSONSolarChart.bind(this,station))
         station.getJSON.request.addEventListener("load",this.onJSONRainchart.bind(this,station))
@@ -2258,51 +2259,7 @@ UI.prototype.initSolarChart=function()
 
 UI.prototype.initWindBarbChart=function()
 {
-    var windSeries= [{
-        type: 'windbarb',
-        data: [],
-        name: 'Wind',
-        color: Highcharts.getOptions().colors[1],
-        showInLegend: false,
-        zIndex:2
-    }, 
-    {
-        type: 'areaspline',
-        data: [],
-        name: 'Wind',
-        id:'series-wind',
-        zIndex: 3
-    },
-    {
-        type: 'areaspline',
-        data: [],
-        zIndex: 2,
-        name: 'Wind gust',
-        id:'series-windgust'
-    }]
-
-    if (this.options.frostapi.enabled)
-    {
-       windSeries.push(
-        {
-            type: 'spline',
-            data: [],
-            //zIndex: 2,
-            name: 'METno Wind mean 10min',
-            id:'series-metno-windmean10min',
-            visible: false
-        })
-
-       windSeries.push(
-        {
-            type: 'spline',
-            data: [],
-            //zIndex: 2,
-            name: 'METno Wind gust max 10min',
-            id: 'series-metno-windgustmax10min',
-            visible: false
-        })
-    }
+   
 
 
     // based on https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/demo/windbarb-series/
@@ -2338,7 +2295,7 @@ UI.prototype.initWindBarbChart=function()
             categories : ['Wind daily max.']
         }],
 
-        yAxis: {
+        yAxis: [{
             title : false,
             tickInterval: 0.5,
          //   plotLines: [{
@@ -2347,14 +2304,18 @@ UI.prototype.initWindBarbChart=function()
          //       value: 1.7
          //   }]
         },
+        {
+            max: 359,
+            min: 0,
+            visible: false
+        }],
     
       plotOptions: {
         series: {
             enableMouseTracking: this.options.mousetracking
         }
     },
-        series: windSeries
-    
+      
     });
 }
 
@@ -2804,25 +2765,82 @@ UI.prototype.onJSONPressureChart=function(station)
 UI.prototype.onJSONWindbarbChart=function(station)
 {
     var getJSON=station.getJSON,
-        timestamp=station.timestamp
+        timestamp=station.timestamp,
         redraw=false,
-        shift=false
-        animation=this.options.animation
+        shift=false,
+        animation=this.options.animation,
+        series,
+        seriesId,
+        id=station.id,
+        nameStation=station.name
 
     if (!this.windbarbchart)
       return 
-      
-    this.windbarbchart.series[0].addPoint([timestamp,getJSON.windgustspeed_mps(),getJSON.winddirection()],redraw,shift,animation)
-    
-    // https://api.highcharts.com/highcharts/series.line.data
-    // only support m/s unit
-    this.windbarbchart.series[1].addPoint([timestamp,getJSON.windspeed_mps()],redraw,shift,animation)
-    this.windbarbchart.series[2].addPoint([timestamp,getJSON.windgustspeed_mps()],redraw,shift,animation)
-    /* var winddailymax=getJSON.winddailymax()
-    if (winddailymax)
-    {
-        //this.windbarbchart.series[3].setData([['Wind daily max.',winddailymax]],false,this.options.animation,true)
-    } */
+
+      seriesId='series-windbarb-'+id
+      series=this.windbarbchart.get(seriesId)
+      if (series)
+          series.addPoint([timestamp,getJSON.windgustspeed_mps(),getJSON.winddirection()],redraw,shift,animation)
+      else 
+          this.windbarbchart.addSeries({
+                  name: 'Windbarb '+nameStation,
+                  id: seriesId,
+                  type: 'windbarb',
+                  data: [[timestamp,getJSON.windgustspeed_mps(),getJSON.winddirection()]],
+                  showInLegend: true,
+                  visible : false
+              },redraw,animation)
+
+    seriesId='series-wind-'+id
+    series=this.windbarbchart.get(seriesId)
+    if (series)
+        series.addPoint([timestamp,getJSON.windspeed_mps()],redraw,shift,animation)
+    else 
+        this.windbarbchart.addSeries({
+                name: 'Wind speed '+nameStation,
+                id: seriesId,
+                type: 'spline',
+                data: [[timestamp,getJSON.windspeed_mps()]],
+                tooltip: {
+                    valueSuffix : ' m/s',
+                    valueDecimals : 1
+                }
+            },redraw,animation)
+
+    seriesId='series-windgust-'+id
+    series=this.windbarbchart.get(seriesId)
+    if (series)
+        series.addPoint([timestamp,getJSON.windgustspeed_mps()],redraw,shift,animation)
+    else 
+        this.windbarbchart.addSeries({
+                name: 'Wind gust '+nameStation,
+                id: seriesId,
+                type: 'spline',
+                data: [[timestamp,getJSON.windgustspeed_mps()]],
+                tooltip: {
+                    valueSuffix : ' m/s',
+                    valueDecimals : 1
+                }
+            },redraw,animation)      
+
+    seriesId='series-winddirection-'+id
+    series=this.windbarbchart.get(seriesId)
+    if (series)
+        series.addPoint([timestamp,getJSON.winddirection()],redraw,shift,animation)
+    else 
+        this.windbarbchart.addSeries({
+                name: 'Wind direction '+nameStation,
+                id: seriesId,
+                type: 'scatter',
+                yAxis: 1,
+                data: [[timestamp,getJSON.winddirection()]],
+                visible: false,
+                tooltip: {
+                    pointFormatter : function () {
+                        return WindConverter.prototype.fromDegToCompassDirection(this.y)+' ('+this.y+'°)'
+                    }
+                }
+            },redraw,animation)      
 
 }
 
