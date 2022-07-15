@@ -41,13 +41,18 @@
     this.id=id
     this.timestampHHMMSS=''
     this.latestReferencetime=0
+    this.measurementCount=0
+    this.windrosedata=[]
+    for (var beufort=0;beufort<12;beufort++)
+      this.windrosedata.push([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
  }
 
- Station.prototype.updateStationTimestamp=function()
+ Station.prototype.onJSON=function()
 {
     var timestamp=this.getJSON.timestamp()
     this.timestamp=timestamp-this.getJSON.timezoneOffset // local timezone timestamp
     this.timestampHHMMSS=DateUtil.prototype.getHHMMSS(new Date(timestamp)) 
+    this.measurementCount++
 }
 
  function StationHarstadStation(name,id)
@@ -70,9 +75,12 @@ function StationGW(name,id)
 {
     Station.call(this,name,id)
     this.getJSON=new GetJSONLivedata(window.location.origin+'/api/livedata',GetJSON.prototype.requestInterval.second16)
-    this.getJSON.request.addEventListener('load',this.updateStationTimestamp.bind(this))
+    this.getJSON.request.addEventListener('load',this.onJSON.bind(this))
     setTimeout(this.getJSON.sendInterval.bind(this.getJSON, GetJSON.prototype.requestInterval.min1), GetJSON.prototype.requestInterval.min5)
+   
+    
 }
+
 StationGW.prototype=Object.create(Station.prototype)
 
 
@@ -81,8 +89,8 @@ function StationWU(name,id)
     Station.call(this,name,id)
     // API documentation  'https://docs.google.com/document/d/1eKCnKXI9xnoMGRRzOL1xPCBihNV2rOet08qpE_gArAY'
     this.apiKey='9b606f1b6dde4afba06f1b6dde2afb1a', // get a personal api key from https://www.wunderground.com/member/api-keys
-    this.getJSON = new GetJSONWUCurrentConditions('https://api.weather.com/v2/pws/observations/current?apiKey='+this.apiKey+'&stationId='+this.id+'&numericPrecision=decimal&format=json&units=m', GetJSON.prototype.requestInterval.min1)
-    this.getJSON.request.addEventListener('load',this.updateStationTimestamp.bind(this))
+    this.getJSON = new GetJSONWUCurrentConditions('https://api.weather.com/v2/pws/observations/current?apiKey='+this.apiKey+'&stationId='+this.id+'&numericPrecision=decimal&format=json&units=m', GetJSON.prototype.requestInterval.min5)
+    this.getJSON.request.addEventListener('load',this.onJSON.bind(this))
 
 }
 
@@ -216,24 +224,7 @@ function GetJSONLivedata(url,interval,options) {
 GetJSONLivedata.prototype= Object.create(GetJSON.prototype)
 
 
-GetJSONLivedata.prototype.WindnewCompassDirection = {
-    WIND_N:      1,
-    WIND_NNE:    2,
-    WIND_NE:     3,
-    WIND_ENE:    4,
-    WIND_E:      5,
-    WIND_ESE:    6,
-    WIND_SE:     7,
-    WIND_SSE:    8,
-    WIND_S:      9,
-    WIND_SSW:   10,
-    WIND_SW:    11,
-    WIND_WSW:   12,
-    WIND_W:     13,
-    WIND_WNW:   14,
-    WIND_NW:    15,
-    WIND_NNW:   16
-}
+
 
 GetJSONLivedata.prototype.Mode = {
     temperature_celcius : 0,
@@ -547,6 +538,89 @@ WindConverter.prototype.fromKmhToMps=function(kmh)
     return kmh*5/18
 }
 
+WindConverter.prototype.getBeufort=function(mps)
+{
+    if (mps < 0.5)
+       return 0
+    else if (mps < 1.6)
+       return 1
+    else if (mps < 3.4)
+       return 2
+    else if (mps < 5.5)
+       return 3
+    else if (mps < 8.0)
+       return 4
+    else if (mps < 10.8)
+       return 5
+    else if (mps < 13.9)
+      return 6
+    else if (mps < 17.2)
+      return 7
+    else if (mps < 20.8)
+      return 8
+    else if (mps < 24.5)
+      return 9
+    else if (mps < 28.5)
+      return 10
+    else if (mps < 32.7)
+      return 11
+    else
+      return 12
+}
+
+WindConverter.prototype.getCompassDirectionValue=function(deg)
+{
+    if (deg < 11 || deg > 349)
+      return WindConverter.prototype.WIND_N
+    else if (deg > 11 && deg < 34)
+      return WindConverter.prototype.WIND_NNE
+    else if (deg > 34 && deg < 56)
+      return WindConverter.prototype.WIND_NE
+    else if (deg > 56 && deg < 79)
+      return WindConverter.prototype.WIND_ENE
+    else if (deg > 79 && deg < 101)
+      return WindConverter.prototype.WIND_E
+    else if (deg > 101 && deg < 124)
+      return WindConverter.prototype.WIND_ESE
+    else if (deg > 124 && deg < 146)
+      return WindConverter.prototype.WIND_SE
+    else if (deg > 146 && deg < 169)
+      return WindConverter.prototype.WIND_SSE 
+    else if (deg > 169 && deg < 191)
+      return WindConverter.prototype.WIND_S
+    else if (deg > 191 && deg < 214)
+      return WindConverter.prototype.WIND_SSW
+    else if (deg > 214 && deg < 236)
+      return WindConverter.prototype.WIND_SW
+    else if (deg > 236 && deg < 259)
+      return WindConverter.prototype.WIND_WSW
+    else if (deg > 259 && deg < 281)
+      return WindConverter.prototype.WIND_W
+    else if (deg > 281 && deg < 304)
+      return  WindConverter.prototype.WIND_WNW
+    else if (deg > 304 && deg < 326)
+      return WindConverter.prototype.WIND_NW
+    else if (deg > 326 && deg < 349)
+      return WindConverter.prototype.WIND_NNW
+}
+
+WindConverter.prototype.WIND_N=1
+WindConverter.prototype.WIND_NNE=2
+WindConverter.prototype.WIND_NE=3
+WindConverter.prototype.WIND_ENE=4
+WindConverter.prototype.WIND_E=5
+WindConverter.prototype.WIND_ESE=6
+WindConverter.prototype.WIND_SE=7
+WindConverter.prototype.WIND_SSE=8
+WindConverter.prototype.WIND_S=9
+WindConverter.prototype.WIND_SSW=10
+WindConverter.prototype.WIND_SW=11
+WindConverter.prototype.WIND_WSW=12
+WindConverter.prototype.WIND_W=13
+WindConverter.prototype.WIND_WNW=14
+WindConverter.prototype.WIND_NW=15
+WindConverter.prototype.WIND_NNW=16
+
 function DateUtil()
 {
 }
@@ -608,6 +682,16 @@ GetJSONWUCurrentConditions.prototype.windgustspeed_mps=function()
 GetJSONWUCurrentConditions.prototype.winddirection=function()
 {
     return this.data.winddir
+}
+
+GetJSONWUCurrentConditions.prototype.windgustspeed_beufort=function()
+{
+    return WindConverter.prototype.getBeufort(this.windgustspeed_mps())
+}
+
+GetJSONWUCurrentConditions.prototype.winddirection_compass_value=function()
+{
+    return WindConverter.prototype.getCompassDirectionValue(this.data.winddir)
 }
 
 GetJSONWUCurrentConditions.prototype.relbaro=function()
@@ -783,8 +867,6 @@ function UI()
 
     var port
 
-    this.measurementCount=0
-
     this.outtempElement=document.getElementById('outtemp')
     this.intempElement=document.getElementById('intemp')
     this.unitTempElement=document.getElementById('unit_temperature')
@@ -937,6 +1019,7 @@ function UI()
 
     //this.options.maxPoints=Math.round(this.options.shifttime*60*1000/this.options.interval) // max number of points for requested shifttime
 
+    this.windrosechart=[]
     this.initCharts()
 
     if (window.location.hostname === '127.0.0.1') // assume web server runs on port 80
@@ -1089,6 +1172,7 @@ UI.prototype.testMemory=function()
 UI.prototype.addStation=function(station)
 {
     if (station instanceof StationGW) {
+        this.initWindroseChart(station)
         station.getJSON.request.addEventListener("load",this.onJSONLivedata.bind(this,station))
         station.getJSON.request.addEventListener("load",this.onJSONLatestChart.bind(this,station))
         station.getJSON.request.addEventListener("load",this.onJSONTemperatureChart.bind(this,station))
@@ -1101,8 +1185,10 @@ UI.prototype.addStation=function(station)
     } else if (station instanceof StationWU)
     {
         console.log('StationWU',station)
+        this.initWindroseChart(station)
         station.getJSON.request.addEventListener("load",this.onJSONLatestChart.bind(this,station))
         station.getJSON.request.addEventListener("load",this.onJSONTemperatureChart.bind(this,station))
+        station.getJSON.request.addEventListener("load",this.onJSONWindroseChart.bind(this,station))
         station.getJSON.request.addEventListener("load",this.onJSONSolarChart.bind(this,station))
         station.getJSON.request.addEventListener("load",this.onJSONRainchart.bind(this,station))
         station.getJSON.request.addEventListener("load",this.onJSONPressureChart.bind(this,station))
@@ -1324,20 +1410,22 @@ UI.prototype.isLGSmartTV2012=function()
    return navigator.userAgent.indexOf("Mozilla/5.0 (X11; Linux; ko-KR) AppleWebKit/534.26+ (KHTML, like Gecko) Version/5.0 Safari/534.26") !== -1
 }
 
-UI.prototype.initWindroseChart=function()
-
+UI.prototype.initWindroseChart=function(station)
 {
-    var beufort
+    var newWindrose,
+        windrosechart,
+        renderTo='windrosechart-'+this.windrosechart.length
 
-    this.windrosedata=[]
-    for (beufort=0;beufort<12;beufort++)
-        this.windrosedata.push([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+    newWindrose=document.createElement('div')
+    newWindrose.setAttribute('id',renderTo)
 
-    this.windrosechart=Highcharts.chart('windrosechart', {
+    document.getElementById('windroses').appendChild(newWindrose)
+
+    windrosechart=Highcharts.chart(renderTo, {
         chart: {
             animation: this.options.animation,
             polar: true,
-            type: 'column',
+            type: 'column'
         },
 
         tooltip : {
@@ -1349,16 +1437,17 @@ UI.prototype.initWindroseChart=function()
         },
 
         title: {
-            text: 'Wind rose',
+            text: 'Wind rose '+station.name,
             //align: 'centre'
         },
     
-        subtitle: {
+       /* subtitle: {
             text: 'Based on windgust data',
             //align: 'left'
-        },
+        }, */
     
         legend: {
+            enabled: false,
             align: 'right',
             verticalAlign: 'top',
             y: 100,
@@ -1472,6 +1561,8 @@ UI.prototype.initWindroseChart=function()
             }
                 ]
     });
+
+    this.windrosechart.push(windrosechart)
 
 }
 
@@ -2344,7 +2435,7 @@ UI.prototype.initCharts=function()
         this.initLatestChart()
         this.initTemperatureChart()
         this.initWindBarbChart() 
-        this.initWindroseChart() 
+        //this.initWindroseChart() 
         this.initPressureChart()
         this.initRainChart()
         this.initRainstatChart()
@@ -2478,8 +2569,6 @@ UI.prototype.onJSONLivedata=function (station,ev)
    // if (this.weatherElement.style.display==="none")
    //   this.weatherElement.style.display="block"
 
-    this.measurementCount=this.measurementCount+1
-
     this.outtempElement.textContent=jsonReq.outtemp()
     this.intempElement.textContent=jsonReq.intemp()
     this.unitTempElement.textContent=jsonReq.unitTemp()
@@ -2560,25 +2649,33 @@ UI.prototype.onJSONWindroseChart=function(station)
 {
     var getJSON=station.getJSON,
         redraw=false,
-        animation=this.options.animation
+        animation=this.options.animation,
+        updatePoints=true,
+        stationCategoryIndex=this.options.stations.indexOf(station),
+        percentArr,
+        beufortScale,
+        measurementCount=station.measurementCount,
+        windrosedata=station.windrosedata
 
-      //console.log(this.windrosedata)
-      if (this.windrosechart) {
-        var newBeufortScale=getJSON.windgustspeed_beufort()
-       var newCompassDirection=getJSON.winddirection_compass_value()-1 
-         var beufort
-       var percentArr
-       this.windrosedata[newBeufortScale][newCompassDirection]=this.windrosedata[newBeufortScale][newCompassDirection]+1
+      if (stationCategoryIndex===-1)
+      {
+        console.error('Station not found for windrose')
+         return
+      }
+
+       beufortScale=getJSON.windgustspeed_beufort()
+       var windDirection=getJSON.winddirection_compass_value()-1 
+       windrosedata[beufortScale][windDirection]=windrosedata[beufortScale][windDirection]+1
+      // console.log('windrosedata '+station.name ,windrosedata[beufortScale])
      
-       for (beufort=0;beufort<12;beufort++) {
+       for (beufortScale=0;beufortScale<12;beufortScale++) {
            percentArr=[]
-           this.windrosedata[beufort].forEach(function (measurement) { 
-               percentArr.push(measurement/this.measurementCount*100)
-           }.bind(this))
+           windrosedata[beufortScale].forEach(function (measurement) { 
+               percentArr.push(measurement/measurementCount*100)
+           })
            //console.log('percentarray',percentArr)
-           this.windrosechart.series[beufort].setData(percentArr,redraw,animation,true) // updatePoints=true 
+           this.windrosechart[stationCategoryIndex].series[beufortScale].setData(percentArr,redraw,animation,updatePoints)  
        }
-   }
 }
 
 UI.prototype.onJSONTemperatureChart=function(station)
@@ -2591,78 +2688,76 @@ UI.prototype.onJSONTemperatureChart=function(station)
         shift=false
         animation=this.options.animation
 
-        if (this.temperatureChart) {
+        if (!this.temperatureChart)
+          return
 
-            var series= this.temperatureChart.get('series-outdoor-'+id)
-            if (series)
-                series.addPoint([timestamp,getJSON.outtemp()],redraw,shift,animation)
-            else 
-                this.temperatureChart.addSeries({
-                        name: 'Outdoor '+name,
-                        id:'series-outdoor-'+id,
-                        type: 'spline',
-                        yAxis: 0,
-                        data: [[timestamp,getJSON.outtemp()]],
-                        zIndex: 5
-                    },redraw,animation)
+        var series= this.temperatureChart.get('series-outdoor-'+id)
+        if (series)
+            series.addPoint([timestamp,getJSON.outtemp()],redraw,shift,animation)
+        else 
+            this.temperatureChart.addSeries({
+                    name: 'Outdoor '+name,
+                    id:'series-outdoor-'+id,
+                    type: 'spline',
+                    yAxis: 0,
+                    data: [[timestamp,getJSON.outtemp()]],
+                    zIndex: 5
+                },redraw,animation)
 
-          series=this.temperatureChart.get('series-outdoor-humidity-'+id)
-          if (series)
-            series.addPoint([timestamp,getJSON.outhumidity()],redraw,shift,animation)
-          else
+        series=this.temperatureChart.get('series-outdoor-humidity-'+id)
+        if (series)
+        series.addPoint([timestamp,getJSON.outhumidity()],redraw,shift,animation)
+        else
+        this.temperatureChart.addSeries( {
+            name: 'Outdoor humidity '+name,
+            id:'series-outdoor-humidity-'+id,
+            type: 'spline',
+            yAxis: 1,
+            data: [[timestamp,getJSON.outhumidity()]],
+            tooltip: {
+                valueSuffix: ' %'
+            },
+            zIndex: 5,
+            visible: false
+        },redraw,animation)
+
+    var intemp=getJSON.intemp()
+    if (intemp!==undefined) {
+        series= this.temperatureChart.get('series-indoor-'+id)
+        if (series)
+            series.addPoint([timestamp,intemp],redraw,shift,animation)
+        else 
             this.temperatureChart.addSeries( {
-                name: 'Outdoor humidity '+name,
-                id:'series-outdoor-humidity-'+id,
+                name: 'Indoor '+name,
+                id:'series-indoor-'+id,
+                type: 'spline',
+                yAxis: 0,
+                data: [[timestamp,intemp]],
+                zIndex: 5,
+                visible: false
+            },redraw,animation)
+        }
+
+    var inhumidity=getJSON.inhumidity()
+
+    if (inhumidity!==undefined) {
+        series=this.temperatureChart.get('series-indoor-humidity-'+id)
+        if (series)
+            series.addPoint([timestamp,inhumidity],redraw,shift,animation)
+        else
+            this.temperatureChart.addSeries( {
+                name: 'Indoor humidity '+name,
+                id:'series-indoor-humidity-'+id,
                 type: 'spline',
                 yAxis: 1,
-                data: [[timestamp,getJSON.outhumidity()]],
+                data: [[timestamp,inhumidity]],
                 tooltip: {
                     valueSuffix: ' %'
                 },
                 zIndex: 5,
                 visible: false
             },redraw,animation)
-
-        var intemp=getJSON.intemp()
-        if (intemp!==undefined) {
-            series= this.temperatureChart.get('series-indoor-'+id)
-            if (series)
-                series.addPoint([timestamp,intemp],redraw,shift,animation)
-            else 
-                this.temperatureChart.addSeries( {
-                    name: 'Indoor '+name,
-                    id:'series-indoor-'+id,
-                    type: 'spline',
-                    yAxis: 0,
-                    data: [[timestamp,intemp]],
-                    zIndex: 5,
-                    visible: false
-                },redraw,animation)
-            }
-
-        var inhumidity=getJSON.inhumidity()
-
-        if (inhumidity!==undefined) {
-            series=this.temperatureChart.get('series-indoor-humidity-'+id)
-            if (series)
-                series.addPoint([timestamp,inhumidity],redraw,shift,animation)
-            else
-                this.temperatureChart.addSeries( {
-                    name: 'Indoor humidity '+name,
-                    id:'series-indoor-humidity-'+id,
-                    type: 'spline',
-                    yAxis: 1,
-                    data: [[timestamp,inhumidity]],
-                    tooltip: {
-                        valueSuffix: ' %'
-                    },
-                    zIndex: 5,
-                    visible: false
-                },redraw,animation)
-            }
-        
         }
-    
 }
 
 UI.prototype.onJSONPressureChart=function(station)
