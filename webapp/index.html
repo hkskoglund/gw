@@ -1,34 +1,33 @@
 <!DOCTYPE html>
-<html >
+<html>
 
 <head>
     <meta charset="UTF-8">
     <title>Livedata</title>
 
-    
     <script src="./lib/highstock/highstock.src.js"></script>
     <script src="./lib/highstock/highcharts-more.js"></script>
     <script src="./lib/highstock/module/windbarb.js"></script>
     <link href="main.css" rel="stylesheet"></link>
-    <script src="./getJSON.js"></script>
-    
-    
-    
+    <script src="./src/util.js"></script>
+    <script src="./src/getJSON.js"></script>
+    <script src="./src/station.js"></script>
+    <script src="./src/weatherStation.js"></script>
+
 </head>
 
 <body>
-    
+
     <div id="divWeather" style="zoom: 7; font-weight: bold; text-align: center; display:none">
-       
+
         <div id="temp">
             <div id="intemp" style="display:inline"></div>
             <div id="outtemp" style="display:inline"></div>
             <div id="unit_temperature" style="display:inline"></div>
         </div>
-         <div id="wind">
-            <meter id="meter_windgustspeed" min="0" max="15.0" low="4.0" high="8.0" optimum="3.0"
-            >
-     </meter>
+        <div id="wind">
+            <meter id="meter_windgustspeed" min="0" max="15.0" low="4.0" high="8.0" optimum="3.0">
+            </meter>
             <div id="windspeed" style="display:inline"></div>
             <div id="windgustspeed" style="display:inline"></div>
             <div id="unit_wind" style="display:inline"></div>
@@ -41,32 +40,32 @@
             <div id="unit_pressure" style="display:inline"></div>
         </div>
         <div id="solar">
-            <div> 
+            <div>
                 <div id="solar_light" style="display:inline"></div>
-                <div id="unit_solar_light"style="display:inline"></div>
-           </div>
-           <div>
+                <div id="unit_solar_light" style="display:inline"></div>
+            </div>
+            <div>
                 <div id="solar_uv" style="display:inline"></div>
                 <div id="unitsolar_uv" style="display:inline"></div>
                 <div id="solar_uvi" style="display:inline"></div>
-           </div>
             </div>
+        </div>
     </div>
-   
+
     <div id="charts">
         <div id="testchart"></div>
         <div id="latestChart"></div>
         <div id="windbarbchart"></div>
         <div id="windroses">
-          <!-- <div id="windrosechart"></div> -->  
+            <!-- <div id="windrosechart"></div> -->
         </div>
         <div id="temperaturechart"></div>
-        <div id="solarchart" ></div>
+        <div id="solarchart"></div>
         <div id="rainchart"></div>
         <div id="rainstatchart"></div>
         <div id="pressurechart"></div>
     </div>
-    
+
 </body>
 
 </html>
