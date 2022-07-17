@@ -1597,7 +1597,7 @@
         else
             this.latestChart.addSeries({
                 name: 'Yr '+station.name,
-                id: 'series-rainrate-yr-forecastnow'+id,
+                id: seriesid,
                 type: 'spline',
                 xAxis: this.latestChart.xAxis.indexOf(this.latestChart.get('xaxis-datetime')),
                 yAxis: this.latestChart.yAxis.indexOf(this.latestChart.get('yaxis-rainrate')),
