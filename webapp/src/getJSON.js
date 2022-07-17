@@ -125,11 +125,11 @@ GetJSONLivedata.prototype.Mode = {
 GetJSONLivedata.prototype.timestamp = function ()
 // UTC time
 {
-    // When gw system setting for time is AUTO=1, this will be in the local timezone
+   // When gw system setting for time is AUTO=1, this will be in the local timezone
     if (this.data.timezone_auto)
         return this.data.timestamp + this.timezoneOffset
     else
-        return this.data.timestamp
+        return this.data.timestamp 
 }
 
 GetJSONLivedata.prototype.outtempToString = function () {

@@ -776,7 +776,7 @@
             ],
             xAxis: [{
 
-                id: 'datetime-axis',
+                id: 'axis-datetime',
 
                 type: 'datetime',
 
@@ -1281,8 +1281,7 @@
             }],
             xAxis: [{
 
-                id: 'rain-datetime-axis',
-                type: 'datetime',
+                type: 'datetime'
 
             }],
             plotOptions: {
@@ -1352,7 +1351,7 @@
             }
             ],
             xAxis: [{
-                id: 'datetime-axis',
+                id: 'axis-datetime',
                 type: 'datetime',
                 tickpixelinterval: 150,
             }],
@@ -1430,6 +1429,7 @@
     }
 
     WeatherStation.prototype.initCharts = function () {
+
         // Windrose demo https://jsfiddle.net/fq64pkhn/
         //var testChart=Highcharts.stockChart('testchart',{ title: { text: 'test chart' }}) 
         this.zones = {
@@ -1994,7 +1994,7 @@
 
     WeatherStation.prototype.onJSONRainchart = function (station) {
         var getJSON = station.getJSON,
-            timestamp = getJSON.timestamp(),
+            timestamp = station.timestamp,
             redraw = false,
             shift = false,
             animation = this.options.animation,
@@ -2038,6 +2038,7 @@
                     visible: false,
                     data: [[timestamp, getJSON.rainevent()]],
                     tooltip: {
+                        valueDecimals: 1,
                         valueSuffix: ' mm'
                     },
                 }, redraw, animation)
@@ -2056,6 +2057,7 @@
                 visible: false,
                 data: [[timestamp, getJSON.rainday()]],
                 tooltip: {
+                    valueDecimals: 1,
                     valueSuffix: ' mm'
                 },
             }, redraw, animation)
