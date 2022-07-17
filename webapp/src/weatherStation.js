@@ -1574,7 +1574,7 @@
                     valueDecimals: 1,
                     valueSuffix: ' mm/h'
                 },
-                zones: this.zones.rainrate_yr
+               // zones: this.zones.rainrate_yr
             }, redraw, animation)
 
        
@@ -1604,7 +1604,7 @@
                 // opacity: 0.5,
                 // zIndex: 10,
                 data: points,
-                zones: this.zones.rainrate_yr,
+                //zones: this.zones.rainrate_yr,
                 tooltip: {
                     valueDecimals : 1,
                     valueSuffix: ' mm/h'
