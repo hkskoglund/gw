@@ -47,3 +47,71 @@ function StationWU(name, id) {
 }
 
 StationWU.prototype = Object.create(Station.prototype)
+
+function StationYrForecastNow(name,id,location) {
+    Station.call(this, name, id)
+    this.getJSON = new GetJSON(window.location.origin + '/api/yr_forecastnow?location=' + location, GetJSON.prototype.requestInterval.min5)
+    this.getJSON.request.addEventListener('load', this.onJSONYrForecastNow.bind(this))
+}
+
+StationYrForecastNow.prototype = Object.create(Station.prototype)
+
+StationYrForecastNow.prototype.onJSONYrForecastNow=function()
+{
+    var json = this.getJSON.json,
+        points= json.points
+
+    if (json.radarIsDown) {
+        console.error('Yr radar is down')
+        return
+    }
+
+    var timezoneOffset = new Date().getTimezoneOffset() * 60000
+    this.points = points.map(function (element) { return [new Date(element.time).getTime() - timezoneOffset, element.precipitation.intensity] })
+    // Test zones var count=0
+    // var points=json.points.map(function (element) { return [new Date(element.time).getTime()-timezoneOffset,count=count+0.5] })
+
+    if (!this.yrForecastnowPoints) {
+        this.yrForecastnowPointsTimestamp = this.points.map(function (element) { return element[0] })
+        this.yrForecastnowPointsIntensity = this.points.map(function (element) { return element[1] })
+    }
+    else
+    // Keep history of forcasted precipitation in rainchart to compare with actual precipitation measured by station
+    {
+        this.points.forEach(function (element) {
+            var timestamp = element[0],
+                intensity = element[1],
+                i = this.yrForecastnowPointsTimestamp.indexOf(timestamp)
+            if (i !== -1)
+                this.yrForecastnowPointsIntensity[i] = intensity // update with new intensity
+            else {
+                this.yrForecastnowPointsTimestamp.push(timestamp) // add new point
+                this.yrForecastnowPointsIntensity.push(intensity)
+            }
+
+        }.bind(this))
+    }
+
+    this.yrForecastnowPoints = this.yrForecastnowPointsTimestamp.map(function (timestamp, index) {
+                    var intensity = this.yrForecastnowPointsIntensity[index]
+                    return [timestamp, intensity]
+                }.bind(this))
+
+     console.log('yr forecastnow '+JSON.stringify(this.yrForecastnowPoints))
+
+}
+
+StationYrForecastNow.prototype.hasPrecipitation=function()
+{
+    var hasPrecipitation
+    
+    if (!this.yrForecastnowPointsIntensity)
+      hasPrecipitation=false
+    else
+      hasPrecipitation= this.yrForecastnowPointsIntensity.some(function (intensity) { return intensity > 0 })
+    
+    //console.log('hasprecipitation',this.id,this.yrForecastnowPointsIntensity,hasPrecipitation)
+    return hasPrecipitation
+}
+
+

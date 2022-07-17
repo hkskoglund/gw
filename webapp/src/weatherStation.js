@@ -15,6 +15,7 @@
         var port
 
         this.stations= []
+        this.stationsYrForecastNow=[]
 
         this.outtempElement = document.getElementById('outtemp')
         this.intempElement = document.getElementById('intemp')
@@ -179,10 +180,7 @@
         this.initStations(port)
         // this.testMemory()
 
-        var location = '1-305426'
-        var getJSONYrForecastNow = new GetJSON(window.location.origin + '/api/yr_forecastnow?location=' + location, GetJSON.prototype.requestInterval.min5)
-        getJSONYrForecastNow.request.addEventListener('load', this.onJSONYrForecastNow.bind(this, getJSONYrForecastNow))
-
+     
         this.eventHandler = {
             scroll: this.onScrollUpdateplotBGImage.bind(this)
         }
@@ -330,6 +328,10 @@
             station.getJSON.request.addEventListener("load", this.onJSONRainchart.bind(this, station))
             station.getJSON.request.addEventListener("load", this.onJSONPressureChart.bind(this, station))
 
+        } else if (station instanceof StationYrForecastNow)
+        {
+            station.getJSON.request.addEventListener("load",this.onJSONYrForecastNow.bind(this,station))
+            this.stationsYrForecastNow.push(station)
         }
 
         this.stations.push(station)
@@ -340,6 +342,8 @@
 
         this.addStation(new StationGW('Tomasjord', 'ITOMAS1'))
         this.addStation(new StationWU('Engenes', 'IENGEN26'))
+        this.addStation(new StationYrForecastNow('Tomasjord','radar-forecast-ITOMAS1','1-305426'))
+        this.addStation(new StationYrForecastNow('Engenes','radar-forecast-IENGEN26','1-290674'))
 
         /*
         if (this.options.frostapi.enabled) {
@@ -998,7 +1002,7 @@
                     // Rain rate
                     {
                         min: 0,
-                        title: { text: 'Rain rate' },
+                        title: { text: 'Rain rate mm/h' },
                         visible: false,
                         gridLineWidth: this.options.weatherapi.radar.enabled ? 0 : 1,
                         tickInterval: 0.5,
@@ -1543,83 +1547,66 @@
         });
     }
 
-    WeatherStation.prototype.onJSONYrForecastNow = function (getJSONyrForecastNow, ev) {
-        var redraw = true,
+    WeatherStation.prototype.onJSONYrForecastNow = function (station) {
+        var redraw = false,
             animation = this.options.animation,
             updatePoints = true,
-            json = getJSONyrForecastNow.json
-
-        if (json.radarIsDown) {
-            console.error('Yr radar is down')
-            return
-        }
-
-        var timezoneOffset = new Date().getTimezoneOffset() * 60000
-        var points = json.points.map(function (element) { return [new Date(element.time).getTime() - timezoneOffset, element.precipitation.intensity] })
-        // Test zones var count=0
-        // var points=json.points.map(function (element) { return [new Date(element.time).getTime()-timezoneOffset,count=count+0.5] })
-
-        if (!this.yrForecastnowPoints) {
-            this.yrForecastnowPointsTimestamp = points.map(function (element) { return element[0] })
-            this.yrForecastnowPointsIntensity = points.map(function (element) { return element[1] })
-        }
-        else
-        // Keep history of forcasted precipitation in rainchart to compare with actual precipitation measured by station
-        {
-            points.forEach(function (element) {
-                var timestamp = element[0],
-                    intensity = element[1],
-                    i = this.yrForecastnowPointsTimestamp.indexOf(timestamp)
-                if (i !== -1)
-                    this.yrForecastnowPointsIntensity[i] = intensity // update with new intensity
-                else {
-                    this.yrForecastnowPointsTimestamp.push(timestamp) // add new point
-                    this.yrForecastnowPointsIntensity.push(intensity)
-                }
-
-            }.bind(this))
-        }
-
-        this.yrForecastnowPoints = this.yrForecastnowPointsTimestamp.map(function (timestamp, index) {
-            var intensity = this.yrForecastnowPointsIntensity[index]
-            return [timestamp, intensity]
-        }.bind(this)
-        )
-
-        // console.log('yr forecastnow '+JSON.stringify(this.yrForecastnowPoints))
-
-        var series = this.rainchart.get('series-rainrate-yr')
+            id = station.id,
+            seriesId,
+            series,
+            data=station.yrForecastnowPoints,
+            points=station.points,
+            yAxisRainrate,
+            hasPrecipitation
+        
+       seriesId='series-rainrate-yrforecastnow-'+id
+        series = this.rainchart.get(seriesId)
         if (series)
-            series.setData(this.yrForecastnowPoints, redraw, shift, animation)
+            series.setData(data, redraw, animation, updatePoints)
         else
             this.rainchart.addSeries({
-                name: 'Forecast Yr',
-                id: 'series-rainrate-yr',
+                name: 'Yr '+station.name,
+                id: seriesId,
                 type: 'spline',
                 yAxis: this.rainchart.yAxis.indexOf(this.rainchart.get('yaxis-rainrate')),
-                data: this.yrForecastnowPoints,
+                data: data,
                 tooltip: {
+                    valueDecimals: 1,
                     valueSuffix: ' mm/h'
                 },
                 zones: this.zones.rainrate_yr
             }, redraw, animation)
 
-        series = this.latestChart.get('series-rainrate-yr')
+       
+
+        yAxisRainrate=this.latestChart.get('yaxis-rainrate')
+        hasPrecipitation = this.stationsYrForecastNow.some(function (station) { 
+              return station.hasPrecipitation() 
+        })
+        
+        if (hasPrecipitation)
+          yAxisRainrate.visible=true
+        else
+          yAxisRainrate.visible=false
+
+        seriesId='series-rainrate-yrforecastnow-'+id
+        series = this.latestChart.get(seriesId)
+
         if (series)
-            series.setData(points, redraw, shift, animation)
+            series.setData(points, redraw, animation, updatePoints)
         else
             this.latestChart.addSeries({
-                name: 'Yr rainrate',
-                id: 'series-rainrate-yr',
+                name: 'Yr '+station.name,
+                id: 'series-rainrate-yr-forecastnow'+id,
                 type: 'spline',
                 xAxis: this.latestChart.xAxis.indexOf(this.latestChart.get('xaxis-datetime')),
                 yAxis: this.latestChart.yAxis.indexOf(this.latestChart.get('yaxis-rainrate')),
-                // zIndex: 0,
                 // opacity: 0.5,
+                // zIndex: 10,
                 data: points,
                 zones: this.zones.rainrate_yr,
-                // zIndex: 10,
                 tooltip: {
+                    valueDecimals : 1,
                     valueSuffix: ' mm/h'
                 },
             }, redraw, animation)
