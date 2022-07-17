@@ -441,8 +441,12 @@ webserver()
                               # analyzed web requests in the yr.no service and used QGIS to generate query (F12 to get request console in QGIS)
                               # Test curl '192.168.3.3/api/radar_nowcast' --output test.png
                                l_dir="/img/radar/"
+                               l_serverdir="$HTTP_SERVER_ROOT$l_dir"
+                               if ! [ -e "$l_serverdir" ]; then
+                                   mkdir -p "$l_serverdir"
+                               fi 
                                l_file="radar_nowcast.png"
-                               l_fname="$HTTP_SERVER_ROOT$l_dir$l_file"
+                               l_fname="$l_serverdir$l_file"
                                getDateNearest5Minute "$(date --utc +%FT%TZ)"
                                l_url="https://public-wms.met.no/verportal/radar_nowcast.map?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=1348785.417150997091,10513254.4631713666,2876190.928262108471,11374438.4631713666&CRS=EPSG:3857&WIDTH=1278&HEIGHT=720&LAYERS=background,radar_nowcast&TIME=$VALUE_DATE_NEAREST5MIN&FORMAT=image/png&TRANSPARENT=TRUE"
                                #l_url="https://public-wms.met.no/verportal/radar_nowcast.map?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=1218784.258785837796,10455088.7090703249,2517080.593458713498,11209671.769827649&CRS=EPSG:3857&WIDTH=1257&HEIGHT=730&LAYERS=background,radar_nowcast&TIME=$VALUE_DATE_NEAREST5MIN&FORMAT=image/png&TRANSPARENT=TRUE"     
@@ -450,7 +454,7 @@ webserver()
                                 curl -s -v  --compressed --output "$l_fname" "$l_url" 
                                 set +x
                                 sendFile "$l_dir" "$l_file"
-                               unset l_dir l_file l_fname l_url
+                               unset l_dir l_file l_fname l_url l_serverdir
                         ;;
 
                         /api/yr_forecastnow*)
