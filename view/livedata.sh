@@ -651,7 +651,10 @@ printJSONmember()
 
     # convert %s to "%s"
     case "$2" in
-      %s)  set -- "$1" \"%s\" "\"$3\""
+      %s)  case "$3" in 
+                true|false|null) set -- "$1" "%s" "$3" ;; ## disable "" around true|false|null, use %s
+                *) set -- "$1" \"%s\" "\"$3\"" ;; ## use "%s" to get "" around property value
+            esac
            #\" used to disable word splitting on space
             ;;
       %*f) # json requires . in floating point numbers
@@ -697,10 +700,20 @@ printLDIntempJSON()
 
 printLDTimestampJSON()
 {
-    if [ -n "$LIVEDATA_SYSTEM_TIMESTAMP" ]; then
-        printJSONmember "timestamp" "%u" "$(( LIVEDATA_SYSTEM_TIMESTAMP * 1000))"
-        printJSONmember "timezone_auto" "%u" "$(( LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT))"
+    [ -z "$LIVEDATA_SYSTEM_TIMESTAMP" ] && return 0
+
+    printJSONmember "timestamp" "%u" "$(( LIVEDATA_SYSTEM_TIMESTAMP * 1000))"
+
+    if [ "$LIVEDATA_SYSTEM_TIMEZONE_AUTO_BIT" -eq 1 ]; then
+        l_timezone_auto="true"
+    else
+        l_timezone_auto="false"
     fi
+    
+    printJSONmember "timezone_auto" "%s" "$l_timezone_auto"
+
+    unset l_timezone_auto
+
 }
 
 printLDOuttempJSON()

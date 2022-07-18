@@ -3,7 +3,6 @@ function Station(name, id) {
     this.id = id
     this.timestampHHMMSS = ''
     this.latestReferencetime = 0
-    this.measurementCount = 0
     this.windrosedata = []
     for (var beufort = 0; beufort < 12; beufort++)
         this.windrosedata.push([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
@@ -13,7 +12,6 @@ Station.prototype.onJSON = function () {
     var timestamp = this.getJSON.timestamp()
     this.timestamp = timestamp - this.getJSON.timezoneOffset // local timezone timestamp
     this.timestampHHMMSS = DateUtil.prototype.getHHMMSS(new Date(timestamp))
-    this.measurementCount++
 }
 
 function StationHarstadStation(name, id) {
@@ -97,14 +95,14 @@ StationYrForecastNow.prototype.onJSONYrForecastNow=function()
                     return [timestamp, intensity]
                 }.bind(this))
 
-     console.log('yr forecastnow '+JSON.stringify(this.yrForecastnowPoints))
-
+     console.log('yr forecastnow '+JSON.stringify(this.yrForecastnowPointsIntensity))
+     console.log('yr forecastnow '+JSON.stringify(this.yrForecastnowPointsTimestamp))
 }
 
 StationYrForecastNow.prototype.hasPrecipitation=function()
 {
     var hasPrecipitation
-    
+
     if (!this.yrForecastnowPointsIntensity)
       hasPrecipitation=false
     else

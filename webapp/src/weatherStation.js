@@ -1425,7 +1425,10 @@
 
             plotOptions: {
                 series: {
-                    enableMouseTracking: this.options.mousetracking
+                    enableMouseTracking: this.options.mousetracking,
+                    dataGrouping: {
+                        groupPixelWidth: 30
+                    },
                 }
             },
 
@@ -1698,7 +1701,7 @@
             stationCategoryIndex = this.stations.indexOf(station),
             percentArr,
             beufortScale,
-            measurementCount = station.measurementCount,
+            totalMeasurements = station.getJSON.statistics.measurements,
             windrosedata = station.windrosedata
 
         if (stationCategoryIndex === -1) {
@@ -1714,7 +1717,7 @@
         for (beufortScale = 0; beufortScale < 12; beufortScale++) {
             percentArr = []
             windrosedata[beufortScale].forEach(function (measurement) {
-                percentArr.push(measurement / measurementCount * 100)
+                percentArr.push(measurement / totalMeasurements * 100)
             })
             //console.log('percentarray',percentArr)
             this.windrosechart[stationCategoryIndex].series[beufortScale].setData(percentArr, redraw, animation, updatePoints)
@@ -1918,7 +1921,7 @@
                     pointFormatter: function () {
                         return WindConverter.prototype.fromDegToCompassDirection(this.y) + ' (' + this.y + '°)'
                     }
-                }
+                } 
             }, redraw, animation)
 
     }

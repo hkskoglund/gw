@@ -4,6 +4,10 @@ function GetJSON(url, interval, options) {
     this.interval = interval
     this.options = options || {}
     this.timezoneOffset = new Date().getTimezoneOffset() * 60000
+    this.statistics = {
+        measurements : 0,
+        content_length : 0
+    }
 
     this.request = new XMLHttpRequest()
     this.request.addEventListener("load", this.transferComplete.bind(this))
@@ -26,9 +30,12 @@ GetJSON.prototype.requestInterval = {
     second1: 1000,
 }
 
-GetJSON.prototype.transferComplete = function (evt) {
-    //console.log('transfer complete',evt)
+GetJSON.prototype.transferComplete = function (progressEvent) {
+    console.log('transfer complete',progressEvent)
     if (this.request.responseText.length > 0) {
+        this.statistics.measurements++
+        this.statistics.content_length+=progressEvent.total // https://developer.mozilla.org/en-US/docs/Web/API/ProgressEvent/total
+        console.log('statistics',this.statistics)
         //console.log('json:'+this.request.responseText)
         try {
             this.json = JSON.parse(this.request.responseText)
@@ -46,10 +53,10 @@ GetJSON.prototype.transferComplete = function (evt) {
     }
 }
 
-GetJSON.prototype.transferError = function (evt)
+GetJSON.prototype.transferError = function (progressEvent)
 // Chrome: about 2 seconds timeout
 {
-    console.error('Failed to receive json for ' + this.url, evt);
+    console.error('Failed to receive json for ' + this.url, progressEvent);
 }
 
 GetJSON.prototype.transferAbort = function (ev) {
