@@ -757,11 +757,13 @@
                 enabled: false
             },
             title: {
-                text: 'Temperature'
+                text: 'Temperature and Humidity'
             },
             yAxis: [{
                 //https://api.highcharts.com/highcharts/yAxis.max
-                title: false,
+                title: {
+                    text : 'Temperature ℃'
+                },
                 tickInterval: 1,
                 opposite: false,
                 gridLineWidth: this.options.weatherapi.geosatellite.enabled ? 0 : 1
@@ -771,7 +773,9 @@
             },
             // humidity
             {
-                title: false,
+                title: {
+                    text :'Humidity %'
+                },
                 //opposite: true,
                 min: 0,
                 max: 100,
@@ -853,11 +857,13 @@
                 enabled: false
             },
             title: {
-                text: 'Pressure'
+                text: 'Relative and Absolute Pressure'
             },
             yAxis: [{
                 //https://api.highcharts.com/highcharts/yAxis.max
-                title: false,
+                title : {
+                    text : 'Pressure hPa'
+                },
                 tickInterval: 5
                 //min: 950
                 //max : null
@@ -912,7 +918,6 @@
 
             })
 
-            console.log('axis',axis)
            chart.tooltip.hide(hideDelay) // tooltip for line series is not hidden when series is hidden
            if (axis.cross)
              axis.cross.hide() // not hidden when tooltip is hidden
@@ -1222,11 +1227,16 @@
                     enabled: false
                 },
                 yAxis: [{
-                    min: 0,
-                    title: false
-                }, {
+                   id : 'yaxis-rainrate',
                     min: 0,
                     title: false,
+                    opposite: false
+                }, {
+                    title : {
+                        text : 'Rain mm'
+                    },
+                    id: 'yaxis-rain',
+                    min: 0,
                     opposite: true,
                 }],
                 xAxis: [{
@@ -1342,11 +1352,13 @@
                 enabled: false
             },
             title: {
-                text: 'Solar'
+                text: 'Irradiance and UVI'
             },
             yAxis: [{
                 //https://api.highcharts.com/highcharts/yAxis.max
-                title: false,
+                title: {
+                    text : 'Irradiance W/㎡'
+                },
                 min: 0,
                 tickInterval: 50,
                 opposite: false,
@@ -1364,11 +1376,14 @@
             //   },
             // uvi
             {
-                title: false,
+                title: {
+                    text: 'Ultra Violet Index - UVI'
+                },
                 min: 0,
                 tickInterval: 1,
                 allowDecimals: false,
-                id: 'yaxis-uvi'
+               opposite: true,
+                id: 'yaxis-uvi',
             }
             ],
             xAxis: [{
@@ -1426,7 +1441,9 @@
             }],
 
             yAxis: [{
-                title: false,
+                title: {
+                    text : 'Speed m/s'
+                },
                 tickInterval: 0.5,
                 //   plotLines: [{
                 //       id: 'winddailymax',
@@ -1963,7 +1980,7 @@
             series.addPoint([timestamp, getJSON.solar_light()], redraw, shift, animation)
         else
             this.solarchart.addSeries({
-                name: 'Sunlight ' + name,
+                name: 'Irradiance ' + name,
                 id: seriesId,
                 type: 'spline',
                 data: [[timestamp, getJSON.solar_light()]],
@@ -1979,6 +1996,7 @@
         else
             this.solarchart.addSeries({
                 name: 'UVI ' + name,
+                yAxis : this.solarchart.yAxis.indexOf(this.solarchart.get('yaxis-uvi')),
                 id: seriesId,
                 type: 'areaspline',
                 data: [[timestamp, getJSON.solar_uvi()]],
