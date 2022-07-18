@@ -887,7 +887,8 @@
     WeatherStation.prototype.onClickToggleChartSeries = function (pointerEvent)
     // Toggle display of series to reveal underlying image
     {
-        var chart =pointerEvent.xAxis[0].axis.chart
+        var axis = pointerEvent.xAxis[0].axis,
+            chart = axis.chart,
             id = chart.renderTo.id,
             restoreHiddenSeries = this.restoreHiddenSeries[id],
             hideDelay=0
@@ -911,7 +912,11 @@
 
             })
 
+            console.log('axis',axis)
            chart.tooltip.hide(hideDelay) // tooltip for line series is not hidden when series is hidden
+           if (axis.cross)
+             axis.cross.hide() // not hidden when tooltip is hidden
+
         }
     }
 
