@@ -884,10 +884,11 @@
         })
     }
 
-    WeatherStation.prototype.onClickToggleChartSeries = function (event)
+    WeatherStation.prototype.onClickToggleChartSeries = function (pointerEvent)
     // Toggle display of series to reveal underlying image
     {
-        var id = event.xAxis[0].axis.chart.renderTo.id,
+        console.log('click',pointerEvent)
+        var id = pointerEvent.xAxis[0].axis.chart.renderTo.id,
             restoreHiddenSeries = this.restoreHiddenSeries[id]
 
         // console.log('click',event)
@@ -900,7 +901,7 @@
             this.restoreHiddenSeries[id] = []
         } else {
 
-            event.xAxis[0].axis.chart.series.forEach(function (series) {
+            pointerEvent.xAxis[0].axis.chart.series.forEach(function (series) {
 
                 if (series.visible) {
                     restoreHiddenSeries.push(series)
@@ -1028,6 +1029,12 @@
 
                 tooltip: {
                     enabled: true
+                },
+
+                plotOptions : {
+                    series : {
+                        stickyTracking : false // added to hide Tooltip from line series (yr radar precipitation forecast), otherwise it is not hidden when series is hidden by clicking on plotbackground, https://api.highcharts.com/highcharts/plotOptions.series.stickyTracking
+                    }
                 },
 
                 series: [
