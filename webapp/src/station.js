@@ -18,7 +18,7 @@ Station.prototype.initWindrosedata=function()
         this.windrosedata.push([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 }
 
-function StationFrost(name,id)
+function StationMETnoFrost(name,id)
 {
     Station.call(this,name,id)
     this.getJSON = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest?SN='+id,GetJSON.prototype.requestInterval.min15)
@@ -54,9 +54,9 @@ function StationFrost(name,id)
     }, */
 }
 
-StationFrost.prototype = Object.create(Station.prototype)
+StationMETnoFrost.prototype = Object.create(Station.prototype)
 
-StationFrost.prototype.init=function()
+StationMETnoFrost.prototype.init=function()
 {
     this.initWindrosedata()
 }

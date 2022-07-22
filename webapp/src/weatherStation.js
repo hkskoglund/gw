@@ -305,8 +305,8 @@
             this.stations.push(station)
 
 
-        }  else if (station instanceof StationFrost) {
-            //console.log('StationFrost', station)
+        }  else if (station instanceof StationMETnoFrost) {
+            //console.log('StationMETnoFrost', station)
        
             window.addEventListener('DOMContentLoaded', function (event)  {
                     this.initWindroseChart(station)
@@ -336,9 +336,9 @@
         this.stationsYrForecastNow=[]
 
          this.addStation(new StationGW('Tomasjord', 'ITOMAS1'))
-         this.addStation(new StationFrost('Værvarslinga','SN90450'))
+         this.addStation(new StationMETnoFrost('MET Værvarslinga','SN90450'))
         this.addStation(new StationWU('Engenes', 'IENGEN26'))
-        this.addStation(new StationFrost('Harstad Stadion','SN87640')) 
+        this.addStation(new StationMETnoFrost('MET Harstad Stadion','SN87640')) 
         this.addStation(new StationYrForecastNow('Tomasjord','radar-forecast-ITOMAS1','1-305426')) 
         this.addStation(new StationYrForecastNow('Engenes','radar-forecast-IENGEN26','1-290674'))
     
@@ -1697,7 +1697,8 @@
                 name: 'Outdoor ' + name,
                 type: 'spline',
                 yAxis: 0,
-                zIndex: 5
+                zIndex: 5,
+                visible : !(station instanceof StationMETnoFrost)
             })
 
         seriesId = 'series-outdoor-humidity-' + id
@@ -1757,6 +1758,7 @@
        this.addPoint(chart,seriesId,[point.timestamp, point.value], {
                 name: 'Relative ' + name,
                 type: 'spline',
+                visible : !(station instanceof StationMETnoFrost)
             })
 
         // optional
@@ -1839,7 +1841,8 @@
         this.addPoint(chart,seriesId,[point.timestamp, point.value],{
             name: 'Wind speed ' + name,
             type: 'spline',
-            tooltip: tooltipWindoptions
+            tooltip: tooltipWindoptions,
+            visible : !(station instanceof StationMETnoFrost)
         })
         
         point=getJSON.windgustspeed_mps()
@@ -1852,7 +1855,8 @@
         this.addPoint(chart,seriesId,[point.timestamp, point.value],{
             name: seriesName,
             type: 'spline',
-            tooltip: tooltipWindoptions
+            tooltip: tooltipWindoptions,
+            visible : !(station instanceof StationMETnoFrost)
         })
         
         point=getJSON.winddirection()
@@ -1900,7 +1904,8 @@
                 type: 'spline',
                 tooltip: {
                     valueSuffix: ' watt/㎡'
-                }
+                },
+                visible : !(station instanceof StationMETnoFrost)
             }, redraw, animation)
 
         seriesId = 'series-uvi-' + id
@@ -1911,7 +1916,8 @@
                 yAxis : chart.yAxis.indexOf(chart.get('yaxis-uvi')),
                 type: 'areaspline',
                 opacity: 0.5,
-                zones: this.zones.uvi
+                zones: this.zones.uvi,
+                visible : !(station instanceof StationMETnoFrost)
             }, redraw, animation)
 
         /*         if (this.options.frostapi.enabled)
@@ -1951,6 +1957,7 @@
                 tooltip: {
                     valueSuffix: ' mm/h'
                 },
+                visible : !(station instanceof StationMETnoFrost)
             })
 
         point = getJSON.rainevent()
