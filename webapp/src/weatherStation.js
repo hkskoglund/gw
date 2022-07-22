@@ -1817,7 +1817,8 @@
             tooltipWindoptions={
                 valueSuffix: ' m/s',
                 valueDecimals: 1
-            }
+            },
+            seriesName
 
         if (!this.windbarbchart)
             return
@@ -1834,7 +1835,7 @@
 
         point=getJSON.windspeed_mps()
         seriesId='series-wind-' + id
-        
+       
         this.addPoint(chart,seriesId,[point.timestamp, point.value],{
             name: 'Wind speed ' + name,
             type: 'spline',
@@ -1843,9 +1844,13 @@
         
         point=getJSON.windgustspeed_mps()
         seriesId='series-windgust-' + id
+        if (point.id)
+          seriesName=point.id+' '+name
+        else
+          seriesName='Wind gust '+name
         
         this.addPoint(chart,seriesId,[point.timestamp, point.value],{
-            name: 'Wind gust ' + name,
+            name: seriesName,
             type: 'spline',
             tooltip: tooltipWindoptions
         })
@@ -1876,17 +1881,22 @@
             name = station.name,
             id = station.id,
             seriesId,
-            point
-            chart=this.solarchart
+            point,
+            chart=this.solarchart,
+            seriesName
 
         if (!chart)
             return
 
         seriesId = 'series-irradiance-' + id
         point=getJSON.solar_light()
+        if (point.id)
+          seriesName=point.id+' '+name
+        else
+          seriesName='Irradiance ' + name
 
         this.addPoint(chart,seriesId,[point.timestamp,point.value],{
-                name: 'Irradiance ' + name,
+                name: seriesName,
                 type: 'spline',
                 tooltip: {
                     valueSuffix: ' watt/㎡'

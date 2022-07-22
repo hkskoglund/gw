@@ -618,7 +618,7 @@ GetJSONFrost.prototype.parse = function () {
                         timestamp: timestamp,
                         hhmmss: hhmmss,
                         value: observation.value,
-                        unit: unit
+                        unit: unit,
                     })
             }
 
@@ -627,7 +627,7 @@ GetJSONFrost.prototype.parse = function () {
 
     this.setTimestamp(latestReferencetime)
 
-    //console.log('METno data', this.data)
+    console.log('METno data', this.data)
 
 }
 
@@ -648,7 +648,9 @@ GetJSONFrost.prototype.relbaro=function()
 
 GetJSONFrost.prototype.windgustspeed_mps=function()
 {
-    return this.getLatestObservation('max(wind_speed_of_gust PT10M)')
+    var latest=this.getLatestObservation('max(wind_speed_of_gust PT10M)')
+    latest.id='Wind gust max 10m'
+    return latest
 }
 
 GetJSONFrost.prototype.winddirection=function()
@@ -674,7 +676,9 @@ GetJSONFrost.prototype.windgustspeed_beufort = function () {
 
 GetJSONFrost.prototype.solar_light=function()
 {
-    return this.getLatestObservation('mean(surface_downwelling_shortwave_flux_in_air PT1M)')
+    var latest=this.getLatestObservation('mean(surface_downwelling_shortwave_flux_in_air PT1M)')
+    latest.id='Irradiance mean 1m'
+    return latest
 }
 
 GetJSONFrost.prototype.getLatestObservation = function (element) {
