@@ -1,30 +1,66 @@
 function Station(name, id) {
     this.name = name
     this.id = id
-    this.timestampHHMMSS = ''
-    this.latestReferencetime = 0
+    this.init()
+}
+
+Station.prototype.onJSON = function () {
+}
+
+Station.prototype.init=function()
+{
+}
+
+Station.prototype.initWindrosedata=function()
+{
     this.windrosedata = []
     for (var beufort = 0; beufort < 12; beufort++)
         this.windrosedata.push([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 }
 
-Station.prototype.onJSON = function () {
-    var timestamp = this.getJSON.timestamp()
-    this.timestamp = timestamp - this.getJSON.timezoneOffset // local timezone timestamp
-    this.timestampHHMMSS = DateUtil.prototype.getHHMMSS(new Date(timestamp))
+function StationFrost(name,id)
+{
+    Station.call(this,name,id)
+    this.getJSON = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest?SN='+id,GetJSON.prototype.requestInterval.min15)
+     /*
+        if (this.options.frostapi.enabled) {
+            this.getJSONFrostLatest15Min = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest',GetJSON.prototype.requestInterval.min15,this.options.frostapi)
+            this.getJSONFrostLatest15Min.request.addEventListener("load",this.onJSONFrost.bind(this,this.getJSONFrostLatest15Min))
+            this.getJSONFrostLatest15Min.request.addEventListener("load",this.redrawCharts.bind(this))
+    
+           // this.getJSONFrostLatest1H = new GetJSONFrost(window.location.origin+'/api/frost.met.no/latest-1H',GetJSON.prototype.requestInterval.hour1,this.options.frostapi)
+           // this.getJSONFrostLatest1H.request.addEventListener("load",this.onJSONFrost.bind(this,this.getJSONFrostLatest1H))
+           // this.getJSONFrostLatest1H.request.addEventListener("load",this.onJSONloadredrawCharts.bind(this))
+    
+        }
+   /* frostapi: {
+        doc: 'https://frost.met.no/index.html',
+        authorization: "Basic " + btoa("2c6cf1d9-b949-4f64-af83-0cb4d881658a:"), // http basic authorization header -> get key from https://frost.met.no/howto.html
+        enabled: true && (navigatorIsNorway || this.isLGSmartTV2012()),    // use REST api from frost.met.no - The Norwegian Meterological Institute CC 4.0  
+        stationName: 'Værvarslinga SN90450',
+        stationId: 'SN90450',
+        // stationName: 'Harstad Stadion',
+        // stationId: 'SN87640',
+        stations: [
+            {
+                stationName: 'Harstad Stadion',
+                stationId: 'SN87640',
+            },
+            {
+                stationName: 'Værvarslinga',
+                stationId: 'SN90450',
+            }
+        ]
+    }, */
 }
 
-function StationHarstadStation(name, id) {
-    Station.call(this, name, id)
+StationFrost.prototype = Object.create(Station.prototype)
+
+StationFrost.prototype.init=function()
+{
+    this.initWindrosedata()
 }
 
-StationHarstadStation.prototype = Object.create(Station.prototype)
-
-function StationVervarslinga(name, id) {
-    Station.call(this, name, id)
-}
-
-StationVervarslinga.prototype = Object.create(Station.prototype)
 
 function StationGW(name, id) {
     Station.call(this, name, id)
@@ -35,16 +71,25 @@ function StationGW(name, id) {
 
 StationGW.prototype = Object.create(Station.prototype)
 
+StationGW.prototype.init=function()
+{
+    this.initWindrosedata()
+}
+
 function StationWU(name, id) {
     Station.call(this, name, id)
     // API documentation  'https://docs.google.com/document/d/1eKCnKXI9xnoMGRRzOL1xPCBihNV2rOet08qpE_gArAY'
     this.apiKey = '9b606f1b6dde4afba06f1b6dde2afb1a', // get a personal api key from https://www.wunderground.com/member/api-keys
-        this.getJSON = new GetJSONWUCurrentConditions('https://api.weather.com/v2/pws/observations/current?apiKey=' + this.apiKey + '&stationId=' + this.id + '&numericPrecision=decimal&format=json&units=m', GetJSON.prototype.requestInterval.min5)
+    this.getJSON = new GetJSONWUCurrentConditions('https://api.weather.com/v2/pws/observations/current?apiKey=' + this.apiKey + '&stationId=' + this.id + '&numericPrecision=decimal&format=json&units=m', GetJSON.prototype.requestInterval.min5)
     this.getJSON.request.addEventListener('load', this.onJSON.bind(this))
-
 }
 
 StationWU.prototype = Object.create(Station.prototype)
+
+StationWU.prototype.init=function()
+{
+    this.initWindrosedata()
+}
 
 function StationYrForecastNow(name,id,location) {
     Station.call(this, name, id)
@@ -95,8 +140,8 @@ StationYrForecastNow.prototype.onJSONYrForecastNow=function()
                     return [timestamp, intensity]
                 }.bind(this))
 
-     console.log('yr forecastnow '+JSON.stringify(this.yrForecastnowPointsIntensity))
-     console.log('yr forecastnow '+JSON.stringify(this.yrForecastnowPointsTimestamp))
+     //console.log('yr forecastnow '+JSON.stringify(this.yrForecastnowPointsIntensity))
+     //console.log('yr forecastnow '+JSON.stringify(this.yrForecastnowPointsTimestamp))
 }
 
 StationYrForecastNow.prototype.hasPrecipitation=function()

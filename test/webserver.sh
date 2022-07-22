@@ -140,7 +140,6 @@ getHostFromQS()
 sendFile()
 # $1 directory, $2 file
 {
-     set -x
      if [ -z "$2" ]; then 
         l_file=${HTTP_REQUEST_ABSPATH##*/}
     else
@@ -153,8 +152,6 @@ sendFile()
       fi
 
     l_server_file="$HTTP_SERVER_ROOT$l_dir$l_file"
-
-    set +x
 
     if [ -s "$l_server_file" ]; then
             appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
@@ -216,7 +213,6 @@ sendRequest()
         appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
         appendHttpDefaultHeaders
         #using basic authentication with -u/new user must be registered at frost.met.no, -s turns off progress metering
-        set -x
         l_user="$2"
         l_password="$3"
         if [ -n "$l_user" ]; then 
@@ -227,7 +223,6 @@ sendRequest()
              l_exitcode=$?
         fi
 
-        set +x
         if [ $l_exitcode -gt 0 ]; then
             l_response_JSON='{ "exitcode": '$l_exitcode' }'
         fi
@@ -281,7 +276,7 @@ webserver()
 
         while IFS=" " read -r l_http_request_line; do
 
-           logErr "> $l_http_request_line" 
+           logErr "> $l_http_request_line" 2>&1 | grep -E "User-Agent|GET" 1>&2 
             
             l_received=$(( l_received + 1 ))
         
@@ -338,6 +333,8 @@ webserver()
 
                                         appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
                                         appendHttpDefaultHeaders
+                                        #appendHttpResponseHeader "Cache-Control" "max-age=4" # probably ignored by Safari ipad1
+                                        #appendHttpResponseHeader "Expires" "$( date -R -d '4 seconds')"
 
                                         # shellcheck disable=SC2154
                                         case "$HTTP_HEADER_accept" in
@@ -349,10 +346,8 @@ webserver()
 
 
                                                 #l_response_JSON=$( cd .. ; timeout 20 ./gw -v json -l 8016 )
-                                                set -x
                                                l_response_JSON=$( cd .. ; ./gw -g "$VALUE_HOST" -v json -c l );
                                                 l_exitcode_livedata=$?
-                                               set +x
                                                if [ $l_exitcode_livedata -gt 0 ]; then
                                                     l_response_JSON='{ "exitcode": '$l_exitcode_livedata' }'
                                                fi
@@ -402,12 +397,15 @@ webserver()
                                
                                 ;;
 
-                        /api/frost.met.no/latest)
+                        /api/frost.met.no/latest?*)
 
                                # https://web.postman.co/workspace/Test-av-frost%2Frim-MET~2bc0415b-9a14-431a-84ff-ad0748f8adae/request/21055109-f182896f-5ca9-484f-874f-91b2c594e624
                                
-                               l_sources=SN90450
-                               #l_sources=SN87640
+                                if [ -z "$HTTP_QUERY_STRING_SN" ]; then
+                                  l_sources="SN90450" # default Værvarslinga
+                                else
+                                   l_sources="$HTTP_QUERY_STRING_SN"
+                                fi
                                l_timeresolution="PT1M,PT10M,PT1H"
                                #l_elements='mean(surface_downwelling_shortwave_flux_in_air%20PT1M),air_temperature,wind_speed,max(wind_speed_of_gust%20PT10M),wind_from_direction'
                                 l_elements='air_temperature,wind_speed,max(wind_speed_of_gust%20PT10M),wind_from_direction,air_pressure_at_sea_level,relative_humidity,mean(surface_downwelling_shortwave_flux_in_air%20PT1M),surface_snow_thickness'
@@ -417,24 +415,24 @@ webserver()
                                #l_referencetime_end=$(date --utc +%FT%TZ)
                                #l_referencetime="$l_referencetime_start/$l_referencetime_end"
                                l_request="https://frost.met.no/observations/v0.jsonld?elements=$l_elements&referencetime=$l_referencetime&sources=$l_sources&timeresolutions=$l_timeresolution"
-                                echo >&2 Sending request "$l_request"
+                                >&2 echo Sending request "$l_request"
 
                                sendMETnoRequest "$l_request"
 
                                unset l_sources l_timeresolution l_elements l_referencetime l_referencetime_start l_referencetime_end l_request
                                ;;
 
-                        /api/frost.met.no/*)
+                     #   /api/frost.met.no/*)
 
                                 # runs request as specified
-                                appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
-                                appendHttpDefaultHeaders
-                                l_query=${HTTP_REQUEST_ABSPATH#/api/frost.met.no/}
-                                sendMETnoRequest "https://frost.met.no/$l_query"
+                     #           appendHttpResponseCodeMessage "$HTTP_RESPONSE_200_OK"
+                     #           appendHttpDefaultHeaders
+                     #           l_query=${HTTP_REQUEST_ABSPATH#/api/frost.met.no/}
+                     #           sendMETnoRequest "https://frost.met.no/$l_query"
                               
-                                unset l_query
+                      #          unset l_query
 
-                                ;;
+                      #          ;;
 
                         /api/radar_nowcast*)
                               # precipitation radar PNG image by quering WMS (primarily reserved by yr.no service, but uses public in url and Access-Control-Allow-Origin: * header)
@@ -450,9 +448,7 @@ webserver()
                                getDateNearest5Minute "$(date --utc +%FT%TZ)"
                                l_url="https://public-wms.met.no/verportal/radar_nowcast.map?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=1348785.417150997091,10513254.4631713666,2876190.928262108471,11374438.4631713666&CRS=EPSG:3857&WIDTH=1278&HEIGHT=720&LAYERS=background,radar_nowcast&TIME=$VALUE_DATE_NEAREST5MIN&FORMAT=image/png&TRANSPARENT=TRUE"
                                #l_url="https://public-wms.met.no/verportal/radar_nowcast.map?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=1218784.258785837796,10455088.7090703249,2517080.593458713498,11209671.769827649&CRS=EPSG:3857&WIDTH=1257&HEIGHT=730&LAYERS=background,radar_nowcast&TIME=$VALUE_DATE_NEAREST5MIN&FORMAT=image/png&TRANSPARENT=TRUE"     
-                                set -x
                                 curl -s -v  --compressed --output "$l_fname" "$l_url" 
-                                set +x
                                 sendFile "$l_dir" "$l_file"
                                unset l_dir l_file l_fname l_url l_serverdir
                         ;;

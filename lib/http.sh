@@ -155,8 +155,7 @@ parseHttpRequestLine()
       IFS=" $CR" read -r HTTP_REQUEST_METHOD HTTP_REQUEST_ABSPATH HTTP_REQUEST_VERSION <<EOL 
 $1
 EOL
-    #[ $DEBUG -eq 1 ] &&  
-     echo >&2 "parseHttpRequestLine method: $HTTP_REQUEST_METHOD abspath: $HTTP_REQUEST_ABSPATH version: $HTTP_REQUEST_VERSION"
+    [ $DEBUG -eq 1 ] &&  echo >&2 "parseHttpRequestLine method: $HTTP_REQUEST_METHOD abspath: $HTTP_REQUEST_ABSPATH version: $HTTP_REQUEST_VERSION"
 
     resetHttpQueryStringProperties
     parseHttpQueryString "$HTTP_REQUEST_ABSPATH"
@@ -195,9 +194,9 @@ resetHttpQueryStringProperties()
 {
     IFS=" "
     for lprop in $HTTP_QUERY_STRING_PROPERTIES; do
-      set -x
+      #set -x
       unset "HTTP_QUERY_STRING_$lprop"
-      set +x
+      #set +x
     done
     unset lprop HTTP_QUERY_STRING_PROPERTIES
 }

@@ -3,20 +3,25 @@ function GetJSON(url, interval, options) {
     this.url = url
     this.interval = interval
     this.options = options || {}
+    
     this.timezoneOffset = new Date().getTimezoneOffset() * 60000
+    this.timestamp_local = 0
+    this.timestamp_utc = 0
+    
     this.statistics = {
         measurements : 0,
         content_length : 0
     }
 
     this.request = new XMLHttpRequest()
+
     this.request.addEventListener("load", this.transferComplete.bind(this))
     this.request.addEventListener("error", this.transferError.bind(this))
     this.request.addEventListener("abort", this.transferAbort.bind(this))
+    this.request.addEventListener("timeout",this.transferTimeout.bind(this))
 
     this.sendInterval(interval)
 
-    console.log('GetJSON', this)
 }
 
 GetJSON.prototype.requestInterval = {
@@ -31,21 +36,23 @@ GetJSON.prototype.requestInterval = {
 }
 
 GetJSON.prototype.transferComplete = function (progressEvent) {
-    console.log('transfer complete',progressEvent)
+    //console.log('transfer complete',progressEvent)
     if (this.request.responseText.length > 0) {
         this.statistics.measurements++
         this.statistics.content_length+=progressEvent.total // https://developer.mozilla.org/en-US/docs/Web/API/ProgressEvent/total
-        console.log('statistics',this.statistics)
+        //console.log('statistics',this.statistics)
         //console.log('json:'+this.request.responseText)
         try {
             this.json = JSON.parse(this.request.responseText)
-            console.dir(this.json, { depth: null })
+            //console.dir(this.json, { depth: null })
 
-            this.parse()
         } catch (err) {
             console.error('Failed parsing JSON')
             console.error(JSON.stringify(err))
         }
+
+        this.parse()
+
 
     } else {
         console.error("No JSON received " + this.request.status + ' ' + this.request.statusText)
@@ -54,6 +61,7 @@ GetJSON.prototype.transferComplete = function (progressEvent) {
 }
 
 GetJSON.prototype.transferError = function (progressEvent)
+
 // Chrome: about 2 seconds timeout
 {
     console.error('Failed to receive json for ' + this.url, progressEvent);
@@ -63,11 +71,23 @@ GetJSON.prototype.transferAbort = function (ev) {
     console.warn('request aborted ' + JSON.stringify(ev))
 }
 
+GetJSON.prototype.transferTimeout = function (ev) {
+    console.warn('request timeout ' + JSON.stringify(ev))
+}
+
+GetJSON.prototype.setBasicAuthorization=function(key)
+{
+    var authorization= "Basic " + btoa(key) // http basic authorization header -> get key from https://frost.met.no/howto.html
+
+    this.options.authorization=authorization
+}
+
 GetJSON.prototype.send = function () {
     this.request.open('GET', this.url)
     this.request.setRequestHeader("Accept", "application/json")
     if (this.options.authorization)
         this.request.setRequestHeader("Authorization", this.options.authorization);
+    //console.log('GET '+this.url)
     this.request.send()
 }
 
@@ -87,23 +107,76 @@ GetJSON.prototype.sendInterval = function (interval) {
     }
 
     this.requestIntervalID = setInterval(this.send.bind(this), interval)
-    console.log('Setting new send interval ' + this.url + ' interval:' + interval + ' previous interval: ' + this.interval + ' id:' + this.requestIntervalID)
+    //console.log('Setting new send interval ' + this.url + ' interval:' + interval + ' previous interval: ' + this.interval + ' id:' + this.requestIntervalID)
     this.interval = interval
 }
 
 GetJSON.prototype.parse = function () { }
 
 GetJSON.prototype.windchill = function () {
-    return null
+    return { timestamp : null, value : null }
 }
 
-GetJSON.prototype.intemp = function () { }
+GetJSON.prototype.intemp = function () {
+    return { timestamp : null, value : null }
+ }
 
-GetJSON.prototype.inhumidity = function () { }
+ GetJSON.prototype.outhumidity = function () {
+    return { timestamp : null, value : null }
+ }
 
-GetJSON.prototype.absbaro = function () { }
+GetJSON.prototype.inhumidity = function () {
+    return { timestamp : null, value : null }
+ }
 
-GetJSON.prototype.rainevent = function () { }
+GetJSON.prototype.absbaro = function () { 
+    return { timestamp : null, value : null }
+}
+
+GetJSON.prototype.rainevent = function () { 
+    return { timestamp : null, value : null }
+}
+
+GetJSON.prototype.rainday = function() {
+    return { timestamp : null, value : null }
+}
+
+GetJSON.prototype.rainrate=function() {
+    return { timestamp : null, value : null }
+}
+
+GetJSON.prototype.solar_light=function() {
+    return { timestamp : null, value : null }
+}
+
+GetJSON.prototype.solar_uvi=function() {
+    return { timestamp : null, value : null }
+}
+
+GetJSON.prototype.windspeed_mps=function() {
+    return { timestamp : null, value : null }
+}
+
+GetJSON.prototype.windgustspeed_mps=function()
+{
+    return { timestamp : null, value : null }
+}
+
+GetJSON.prototype.winddirection=function()
+{
+    return { timestamp : null, value : null }
+}
+
+GetJSON.prototype.windgustspeed_beufort = function () {
+    var windgustspeed_beufort=this.windgustspeed_mps()
+    if (windgustspeed_beufort.value!==null)
+       return WindConverter.prototype.getBeufort(windgustspeed_beufort.value)
+}
+
+GetJSON.prototype.relbaro=function()
+{
+    return { timestamp : null, value : null }
+}
 
 function GetJSONLivedata(url, interval, options) {
     // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest
@@ -129,117 +202,121 @@ GetJSONLivedata.prototype.Mode = {
     light_wattm2: 1
 }
 
-GetJSONLivedata.prototype.timestamp = function ()
-// UTC time
+GetJSONLivedata.prototype.setTimestamp = function (timestamp_ms)
 {
    // When gw system setting for time is AUTO=1, this will be in the local timezone
     if (this.data.timezone_auto)
-        return this.data.timestamp + this.timezoneOffset
+    {
+        this.timestamp_local=timestamp_ms
+        this.timestamp_utc=timestamp_ms + this.timezoneOffset
+    }
     else
-        return this.data.timestamp 
+    {
+        this.timestamp_utc=timestamp_ms
+        this.timestamp_local=timestamp_ms-this.timezoneOffset
+    }
 }
 
 GetJSONLivedata.prototype.outtempToString = function () {
-    return this.outtemp().toFixed(1) + ' ' + this.unitTemp()
+    return this.outtemp().value.toFixed(1) + ' ' + this.unitTemp()
 }
 
 GetJSONLivedata.prototype.outtemp = function () {
-    return this.data.outtemp
+    return { timestamp: this.timestamp_local, value : this.data.outtemp }
 }
 
 GetJSONLivedata.prototype.intempToString = function () {
-    return this.intemp().toFixed(1) + ' ' + this.unitTemp()
+    return this.intemp().value.toFixed(1) + ' ' + this.unitTemp()
 }
 
 GetJSONLivedata.prototype.intemp = function () {
-    return this.data.intemp
+    return { timestamp: this.timestamp_local, value: this.data.intemp }
 }
 
 GetJSONLivedata.prototype.inhumidityToString = function () {
-    return this.inhumidity() + ' %'
+    return this.inhumidity().value + ' %'
 }
 
 GetJSONLivedata.prototype.inhumidity = function () {
-    return this.data.inhumidity
+    return { timestamp: this.timestamp_local, value : this.data.inhumidity }
 }
 
 GetJSONLivedata.prototype.outhumidityToString = function () {
-    return this.outhumidity() + ' %'
+    return this.outhumidity().value + ' %'
 }
 
 GetJSONLivedata.prototype.outhumidity = function () {
-    return this.data.outhumidity
+    return { timestamp: this.timestamp_local, value: this.data.outhumidity }
 }
 
 GetJSONLivedata.prototype.windspeedToString = function () {
-    return this.windspeed().toFixed(1) + ' ' + this.unitWind()
+    return this.windspeed().value.toFixed(1) + ' ' + this.unitWind()
 }
 GetJSONLivedata.prototype.windspeed = function () {
     //https://javascript.info/number
-    return this.data.windspeed
+    return { timestamp: this.timestamp_local, value: this.data.windspeed }
 }
 
 GetJSONLivedata.prototype.winddailymax = function () {
-    return this.data.winddailymax
+    return { timestamp: this.timestamp_local, value : this.data.winddailymax }
 }
 
 GetJSONLivedata.prototype.winddailymaxToString = function () {
-    return this.winddailymax().toFixed(1) + ' ' + this.unitWind()
+    return this.winddailymax().value.toFixed(1) + ' ' + this.unitWind()
 }
 
 GetJSONLivedata.prototype.windspeed_mps = function ()
 // highcharts windbarb requires m/s
 {
     if (this.mode.wind === this.Mode.wind_mps)
-        return this.windspeed()
+        return { timestamp: this.timestamp_local, value : this.data.windspeed }
     else
         console.error('Converter to m/s neccessary for wind mode : ' + this.mode.wind)
 }
 
 GetJSONLivedata.prototype.windgustspeedToString = function () {
-    return this.windgustspeed().toFixed(1) + ' ' + this.unitWind()
+    return this.windgustspeed().value.toFixed(1) + ' ' + this.unitWind()
 }
 
 GetJSONLivedata.prototype.windgustspeed = function () {
-    return this.data.windgustspeed
+    return { timestamp: this.timestamp_local, value: this.data.windgustspeed }
 }
 
 GetJSONLivedata.prototype.windgustspeed_mps = function ()
 // highcharts windbarb requires m/s
 {
     if (this.mode.wind === this.Mode.wind_mps)
-        return this.windgustspeed()
+        return { timestamp: this.timestamp_local, value: this.data.windgustspeed }
     else
         console.error('Converter to m/s neccessary for wind mode : ' + this.mode.wind)
-
 }
 
 GetJSONLivedata.prototype.winddirection = function () {
-    return this.data.winddirection
+    return { timestamp: this.timestamp_local, value: this.data.winddirection }
 }
 
 GetJSONLivedata.prototype.windgustspeed_beufort = function () {
-    return this.data.windgustspeed_beufort
+    return { timestamp: this.timestamp_local, value : this.data.windgustspeed_beufort }
 }
 
 GetJSONLivedata.prototype.winddirection_compass_value = function () {
-    return this.data.winddirection_compass_value
+    return { timestamp: this.timestamp_local, value : this.data.winddirection_compass_value }
 }
 
 GetJSONLivedata.prototype.winddirection_compass = function () {
-    return this.data.winddirection_compass + ' (' + this.data.winddirection + this.unit.winddirection + ')'
+    return { timestamp: this.timestamp_local, value: this.data.winddirection_compass + ' (' + this.data.winddirection + this.unit.winddirection + ')' }
 }
 
 GetJSONLivedata.prototype.windgustbeufort_description = function () {
-    return this.data.windgustspeed_beufort_description + ' (' + this.data.windgustspeed_beufort + ')'
+    return { timestamp: this.timestamp_local, value: this.data.windgustspeed_beufort_description + ' (' + this.data.windgustspeed_beufort + ')' }
 }
 
 GetJSONLivedata.prototype.relbaro = function () {
-    return this.data.relbaro
+    return { timestamp: this.timestamp_local, value: this.data.relbaro }
 }
 
 GetJSONLivedata.prototype.absbaro = function () {
-    return this.data.absbaro
+    return { timestamp: this.timestamp_local, value: this.data.absbaro }
 }
 
 GetJSONLivedata.prototype.pressureCalibrationToString = function (pressure) {
@@ -256,27 +333,27 @@ GetJSONLivedata.prototype.pressureToString = function (pressure) {
 }
 
 GetJSONLivedata.prototype.solar_lightToString = function () {
-    return this.solar_light().toFixed(1) + ' ' + this.unitSolarlight()
+    return this.solar_light().value.toFixed(1) + ' ' + this.unitSolarlight()
 }
 
 GetJSONLivedata.prototype.solar_light = function () {
-    return this.data.solar_light
+    return { timestamp: this.timestamp_local, value: this.data.solar_light }
 }
 
 GetJSONLivedata.prototype.solar_uvToString = function () {
-    return this.solar_uv().toFixed(1) + ' ' + this.unitSolarUV()
+    return this.solar_uv().value.toFixed(1) + ' ' + this.unitSolarUV()
 }
 
 GetJSONLivedata.prototype.solar_uv = function () {
-    return this.data.solar_uv
+    return { timestamp: this.timestamp_local, value : this.data.solar_uv }
 }
 
 GetJSONLivedata.prototype.solar_uvi = function () {
-    return this.data.solar_uvi
+    return { timestamp: this.timestamp_local, value: this.data.solar_uvi }
 }
 
 GetJSONLivedata.prototype.rainrate_description = function () {
-    return this.data.rainrate_description
+    return { timestamp: this.timestamp_local, value: this.data.rainrate_description }
 }
 
 GetJSONLivedata.prototype.rainrateToString = function () {
@@ -287,35 +364,35 @@ GetJSONLivedata.prototype.rainrateToString = function () {
     else
         numdecimals = 2
 
-    return this.rainrate().toFixed(numdecimals) + ' ' + this.unitRainrate()
+    return this.rainrate().value.toFixed(numdecimals) + ' ' + this.unitRainrate()
 }
 
 GetJSONLivedata.prototype.rainrate = function () {
-    return this.data.rainrate
+    return { timestamp: this.timestamp_local, value: this.data.rainrate }
 }
 
 GetJSONLivedata.prototype.rainevent = function () {
-    return this.data.rainevent
+    return { timestamp: this.timestamp_local, value: this.data.rainevent }
 }
 
 GetJSONLivedata.prototype.rainhour = function () {
-    return this.data.rainhour
+    return { timestamp: this.timestamp_local, value: this.data.rainhour }
 }
 
 GetJSONLivedata.prototype.rainday = function () {
-    return this.data.rainday
+    return { timestamp: this.timestamp_local, value: this.data.rainday }
 }
 
 GetJSONLivedata.prototype.rainweek = function () {
-    return this.data.rainweek
+    return { timestamp: this.timestamp_local, value: this.data.rainweek }
 }
 
 GetJSONLivedata.prototype.rainmonth = function () {
-    return this.data.rainmonth
+    return { timestamp: this.timestamp_local, value: this.data.rainmonth }
 }
 
 GetJSONLivedata.prototype.rainyear = function () {
-    return this.data.rainyear
+    return { timestamp: this.timestamp_local, value: this.data.rainyear }
 }
 
 GetJSONLivedata.prototype.unitRainrate = function () {
@@ -339,7 +416,7 @@ GetJSONLivedata.prototype.unitSolarlight = function () {
 }
 
 GetJSONLivedata.prototype.solar_uvi_description = function () {
-    return this.data.solar_uvi_description
+    return { timestamp : this.timestamp_local, value: this.data.solar_uvi_description }
 }
 
 GetJSONLivedata.prototype.unitSolarUV = function () {
@@ -354,6 +431,7 @@ GetJSONLivedata.prototype.parse = function () {
     this.data = this.json.data
     this.unit = this.json.unit
     this.mode = this.json.mode
+    this.setTimestamp(this.data.timestamp)
 }
 
 function GetJSONFrostPrecipitation(url, interval, options) {
@@ -371,68 +449,69 @@ GetJSONWUCurrentConditions.prototype = Object.create(GetJSON.prototype)
 GetJSONWUCurrentConditions.prototype.parse = function () {
     if (this.json.observations && this.json.observations[0]) {
         this.data = this.json.observations[0]
+        this.setTimestamp(this.data.epoch*1000) //     // epoch = Time in UNIX seconds
         // console.log('wu data '+JSON.stringify(this.data))
-        console.log('WU', this.data)
+       // console.log('WU', this.data)
     } else
         console.error('Not a WU observation ' + JSON.stringify(this.json))
 }
 
-GetJSONWUCurrentConditions.prototype.timestamp = function () {
-    // epoch Time in UNIX seconds
-    return this.data.epoch * 1000
+GetJSONWUCurrentConditions.prototype.setTimestamp = function (timestamp_utc_ms) {
+    this.timestamp_utc=timestamp_utc_ms
+    this.timestamp_local=timestamp_utc_ms-this.timezoneOffset
 }
 
 GetJSONWUCurrentConditions.prototype.outtemp = function () {
-    return this.data.metric.temp
+    return { timestamp : this.timestamp_local, value : this.data.metric.temp }
 }
 
 GetJSONWUCurrentConditions.prototype.windchill = function () {
-    return this.data.metric.windChill
+    return { timestamp : this.timestamp_local, value : this.data.metric.windChill }
 }
 
 GetJSONWUCurrentConditions.prototype.outhumidity = function () {
-    return this.data.humidity
+    return { timestamp : this.timestamp_local, value : this.data.humidity }
 }
 
 GetJSONWUCurrentConditions.prototype.windspeed_mps = function () {
-    return WindConverter.prototype.fromKmhToMps(this.data.metric.windSpeed)
+    return { timestamp : this.timestamp_local, value : WindConverter.prototype.fromKmhToMps(this.data.metric.windSpeed) }
 }
 
 GetJSONWUCurrentConditions.prototype.windgustspeed_mps = function () {
-    return WindConverter.prototype.fromKmhToMps(this.data.metric.windGust)
+    return { timestamp : this.timestamp_local, value : WindConverter.prototype.fromKmhToMps(this.data.metric.windGust) }
 }
 
 GetJSONWUCurrentConditions.prototype.winddirection = function () {
-    return this.data.winddir
+    return { timestamp : this.timestamp_local, value : this.data.winddir }
 }
 
 GetJSONWUCurrentConditions.prototype.windgustspeed_beufort = function () {
-    return WindConverter.prototype.getBeufort(this.windgustspeed_mps())
+    return { timestamp : this.timestamp_local, value : WindConverter.prototype.getBeufort(this.windgustspeed_mps().value) }
 }
 
 GetJSONWUCurrentConditions.prototype.winddirection_compass_value = function () {
-    return WindConverter.prototype.getCompassDirectionValue(this.data.winddir)
+    return { timestamp : this.timestamp_local, value : WindConverter.prototype.getCompassDirectionValue(this.data.winddir) }
 }
 
 GetJSONWUCurrentConditions.prototype.relbaro = function () {
-    return this.data.metric.pressure
+    return { timestamp : this.timestamp_local, value : this.data.metric.pressure }
 }
 
 GetJSONWUCurrentConditions.prototype.solar_light = function () {
-    return this.data.solarRadiation
+    return { timestamp : this.timestamp_local, value : this.data.solarRadiation }
 }
 
 GetJSONWUCurrentConditions.prototype.solar_uvi = function () {
-    return this.data.uv
+    return { timestamp : this.timestamp_local, value : this.data.uv }
 }
 
 GetJSONWUCurrentConditions.prototype.rainrate = function () {
-    return this.data.metric.precipRate
+    return { timestamp : this.timestamp_local, value : this.data.metric.precipRate }
 }
 
 GetJSONWUCurrentConditions.prototype.rainday = function () {
     //Accumulated precipitation for today from midnight to present https://docs.google.com/document/d/1KGb8bTVYRsNgljnNH67AMhckY8AQT2FVwZ9urj8SWBs/edit
-    return this.data.metric.precipTotal
+    return { timestamp : this.timestamp_local, value : this.data.metric.precipTotal }
 }
 
 function GetJSONHolfuyLive(url, interval, options) {
@@ -441,8 +520,9 @@ function GetJSONHolfuyLive(url, interval, options) {
 
 GetJSONHolfuyLive.prototype = Object.create(GetJSON.prototype)
 
-function GetJSONFrost(url, interval, options) {
-    GetJSON.call(this, url, interval, options)
+function GetJSONFrost(url, interval) {
+    GetJSON.call(this, url, interval)
+    this.setBasicAuthorization("2c6cf1d9-b949-4f64-af83-0cb4d881658a:") // http basic authorization header -> get key from https://frost.met.no/howto.html
 }
 
 GetJSONFrost.prototype = Object.create(GetJSON.prototype)
@@ -468,6 +548,11 @@ GetJSONFrost.prototype.dateutil = function () {
        precipitationHourURL=frostapi_url+'?sources='+sourceId+'&referencetime='+dateISOMidnight.toISOString().split('.')[0]+'Z'+'/'+dateISO+'&elements=sum(precipitation_amount%20PT1H)&timeResolution=hours' */
 }
 
+GetJSONFrost.prototype.setTimestamp = function (timestamp_utc_ms) {
+    this.timestamp_utc=timestamp_utc_ms
+    this.timestamp_local=timestamp_utc_ms-this.timezoneOffset
+}
+
 GetJSONFrost.prototype.parse = function () {
     var json = this.json
     // https://frost.met.no/api.html#!/observations/observations
@@ -487,7 +572,7 @@ GetJSONFrost.prototype.parse = function () {
         elementId,
         unit,
         lastObservation,
-        currentStation = 0
+        latestReferencetime=0
 
     this.data = {}
 
@@ -496,12 +581,10 @@ GetJSONFrost.prototype.parse = function () {
         referenceTime = new Date(json.data[item].referenceTime)
         // console.log('referenceTime '+referenceTime)
         // console.log(JSON.stringify(json.data[item]))
-        timestamp = referenceTime.getTime() - referenceTime.getTimezoneOffset() * 60000  // local timezone time
+        timestamp = referenceTime.getTime() - this.timezoneOffset// local timezone time
         hhmmss = DateUtil.prototype.getHHMMSS(referenceTime)
-        if (referenceTime > this.stations[currentStation].latestReferencetime) {
-            this.stations[currentStation].timestampHHMMSS = hhmmss
-            this.stations[currentStation].latestReferencetime = referenceTime
-        }
+        if (referenceTime >latestReferencetime) 
+            latestReferencetime=referenceTime
 
         // console.log('observations '+json.data[item].observations.length)
         for (obsNr = 0; obsNr < json.data[item].observations.length; obsNr++) {
@@ -542,15 +625,57 @@ GetJSONFrost.prototype.parse = function () {
         }
     }
 
-    console.log('METno', this.data)
+    this.setTimestamp(latestReferencetime)
+
+    //console.log('METno data', this.data)
 
 }
 
-GetJSONYrForecastNow = function (url, interval, options) {
-    GetJSON.call(this, url, interval, options)
+GetJSONFrost.prototype.outtemp=function()
+{
+    return this.getLatestObservation('air_temperature')
 }
 
-GetJSONYrForecastNow.prototype = Object.create(GetJSON.prototype)
+GetJSONFrost.prototype.outhumidity=function()
+{
+    return this.getLatestObservation('relative_humidity')
+}
+
+GetJSONFrost.prototype.relbaro=function()
+{
+    return this.getLatestObservation('air_pressure_at_sea_level')
+}
+
+GetJSONFrost.prototype.windgustspeed_mps=function()
+{
+    return this.getLatestObservation('max(wind_speed_of_gust PT10M)')
+}
+
+GetJSONFrost.prototype.winddirection=function()
+{
+    return this.getLatestObservation('wind_from_direction')
+}
+
+GetJSONFrost.prototype.windspeed_mps=function()
+{
+    return this.getLatestObservation('wind_speed')
+}
+
+GetJSONFrost.prototype.winddirection_compass_value = function () {
+    var winddir=this.winddirection()
+    winddir.value=WindConverter.prototype.getCompassDirectionValue(winddir.value) 
+    return winddir
+}
+
+GetJSONFrost.prototype.windgustspeed_beufort = function () {
+    var windgust=this.windgustspeed_mps()
+    return { timestamp : windgust.timestamp, value : WindConverter.prototype.getBeufort(windgust.value) }
+}
+
+GetJSONFrost.prototype.solar_light=function()
+{
+    return this.getLatestObservation('mean(surface_downwelling_shortwave_flux_in_air PT1M)')
+}
 
 GetJSONFrost.prototype.getLatestObservation = function (element) {
     if (!this.data) {
@@ -560,5 +685,14 @@ GetJSONFrost.prototype.getLatestObservation = function (element) {
 
     var data = this.data[element]
     if (data)
-        return data[data.length - 1].value
+        return data[data.length - 1]
+    else
+       return { timestamp : null, value: null } // null value accepted for column chart/latestchart - solar_light may not be available for a station
 }
+
+GetJSONYrForecastNow = function (url, interval, options) {
+    GetJSON.call(this, url, interval, options)
+}
+
+GetJSONYrForecastNow.prototype = Object.create(GetJSON.prototype)
+

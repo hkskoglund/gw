@@ -64,38 +64,39 @@ WindConverter.prototype.getBeufort = function (mps) {
 }
 
 WindConverter.prototype.getCompassDirectionValue = function (deg) {
-    if (deg < 11 || deg > 349)
+    if (deg < 11 || deg >= 349)
         return WindConverter.prototype.WIND_N
-    else if (deg > 11 && deg < 34)
+    else if (deg >= 11 && deg < 34)
         return WindConverter.prototype.WIND_NNE
-    else if (deg > 34 && deg < 56)
+    else if (deg >= 34 && deg < 56)
         return WindConverter.prototype.WIND_NE
-    else if (deg > 56 && deg < 79)
+    else if (deg >= 56 && deg < 79)
         return WindConverter.prototype.WIND_ENE
-    else if (deg > 79 && deg < 101)
+    else if (deg >= 79 && deg < 101)
         return WindConverter.prototype.WIND_E
-    else if (deg > 101 && deg < 124)
+    else if (deg >= 101 && deg < 124)
         return WindConverter.prototype.WIND_ESE
-    else if (deg > 124 && deg < 146)
+    else if (deg >= 124 && deg < 146)
         return WindConverter.prototype.WIND_SE
-    else if (deg > 146 && deg < 169)
+    else if (deg >= 146 && deg < 169)
         return WindConverter.prototype.WIND_SSE
-    else if (deg > 169 && deg < 191)
+    else if (deg >= 169 && deg < 191)
         return WindConverter.prototype.WIND_S
-    else if (deg > 191 && deg < 214)
+    else if (deg >= 191 && deg < 214)
         return WindConverter.prototype.WIND_SSW
-    else if (deg > 214 && deg < 236)
+    else if (deg >= 214 && deg < 236)
         return WindConverter.prototype.WIND_SW
-    else if (deg > 236 && deg < 259)
+    else if (deg >= 236 && deg < 259)
         return WindConverter.prototype.WIND_WSW
-    else if (deg > 259 && deg < 281)
+    else if (deg >= 259 && deg < 281)
         return WindConverter.prototype.WIND_W
-    else if (deg > 281 && deg < 304)
+    else if (deg >= 281 && deg < 304)
         return WindConverter.prototype.WIND_WNW
-    else if (deg > 304 && deg < 326)
+    else if (deg >= 304 && deg < 326)
         return WindConverter.prototype.WIND_NW
-    else if (deg > 326 && deg < 349)
+    else if (deg >= 326 && deg < 349)
         return WindConverter.prototype.WIND_NNW
+    else console.error('Compass direction value not found for '+deg)
 }
 
 WindConverter.prototype.WIND_N = 1
