@@ -1,6 +1,6 @@
 // https://stackoverflow.com/questions/15455009/javascript-call-apply-vs-bind
     if (!Function.prototype.bind) {
-        console.log('javascript bind not found, creating new Function.prototype.bind,' + window.navigator.userAgent)
+        //console.log('Function.prototype.bind not found, using polyfill ' + window.navigator.userAgent)
         Function.prototype.bind = function (ctx) {
             var fn = this,
                 args = Array.prototype.slice.call(arguments, 1) // Shallow copy - points to same memory - arguments when creating function with .bind(this,...)

@@ -196,7 +196,7 @@ sendJSON()
     appendHttpResponseCRLF
     if [ "$HTTP_REQUEST_METHOD" = "GET" ]; then 
         appendHttpResponseBody "$1"
-        logErr "Sending JSON length: $VALUE_UNICODE_STRING_LENGTH"
+        #logErr "Sending JSON length: $VALUE_UNICODE_STRING_LENGTH"
     fi
 
     sendHttpResponse
@@ -415,7 +415,6 @@ webserver()
                                #l_referencetime_end=$(date --utc +%FT%TZ)
                                #l_referencetime="$l_referencetime_start/$l_referencetime_end"
                                l_request="https://frost.met.no/observations/v0.jsonld?elements=$l_elements&referencetime=$l_referencetime&sources=$l_sources&timeresolutions=$l_timeresolution"
-                                >&2 echo Sending request "$l_request"
 
                                sendMETnoRequest "$l_request"
 
@@ -557,7 +556,7 @@ startwebserver()
     startwebserver "$@"
 else
    #cloned process parses http request
-    logErr "webserver pid: $$"
+    logErr "webserver pid: $$ $(date)"
     #lsof -p $$ >&2
     #pstree -pa >&2
     webserver

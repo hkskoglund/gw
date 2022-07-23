@@ -1488,8 +1488,7 @@
     }
 
     WeatherStation.prototype.onJSONYrForecastNow = function (station) {
-        var redraw = false,
-            redraw_onaddSeries=true,
+        var redraw = true,
             animation = this.options.animation,
             updatePoints = true,
             id = station.id,
@@ -1498,7 +1497,11 @@
             data=station.yrForecastnowPoints,
             points=station.points,
             yAxisRainrate,
-            hasPrecipitation
+            hasPrecipitation,
+            tooltipRainrateOptions={
+                valueDecimals: 1,
+                valueSuffix: ' mm/h'
+            }
 
         if (this.rainchart) {
         
@@ -1508,17 +1511,14 @@
                 series.setData(data, redraw, animation, updatePoints)
             else
                 this.rainchart.addSeries({
-                    name: 'Yr '+station.name,
+                    name: 'Yr radar '+station.name,
                     id: seriesId,
                     type: 'spline',
                     yAxis: this.rainchart.yAxis.indexOf(this.rainchart.get('yaxis-rainrate')),
                     data: data,
-                    tooltip: {
-                        valueDecimals: 1,
-                        valueSuffix: ' mm/h'
-                    },
+                    tooltip: tooltipRainrateOptions,
                 // zones: this.zones.rainrate_yr
-                }, redraw_onaddSeries, animation)
+                }, redraw, animation)
         }
 
         if (!this.latestChart)
@@ -1541,7 +1541,7 @@
             series.setData(points, redraw, animation, updatePoints)
         else
             this.latestChart.addSeries({
-                name: 'Yr '+station.name,
+                name: 'Yr radar '+station.name,
                 id: seriesId,
                 type: 'spline',
                 xAxis: this.latestChart.xAxis.indexOf(this.latestChart.get('xaxis-datetime')),
@@ -1550,11 +1550,8 @@
                 // zIndex: 10,
                 data: points,
                 //zones: this.zones.rainrate_yr,
-                tooltip: {
-                    valueDecimals : 1,
-                    valueSuffix: ' mm/h'
-                },
-            }, redraw_onaddSeries, animation)
+                tooltip: tooltipRainrateOptions
+            }, redraw, animation)
     }
 
     WeatherStation.prototype.onJSONLivedata = function (station, ev) {
@@ -1609,14 +1606,17 @@
             redraw = false,
             animation = this.options.animation,
             stationCategoryIndex = this.stations.indexOf(station),
-            chart = this.latestChart
+            chart = this.latestChart,
+            temperatureSeries
 
         if (!chart)
             return
 
         this.updateStationCategories(chart)
 
-        chart.get('series-temperature').options.data[stationCategoryIndex] = getJSON.outtemp().value
+        temperatureSeries=chart.get('series-temperature')
+        temperatureSeries.options.data[stationCategoryIndex] = getJSON.outtemp().value
+       
         var windchill = getJSON.windchill().value // available in WU
         if (windchill !== undefined)
             chart.get('series-windchill').options.data[stationCategoryIndex] = windchill
@@ -1642,6 +1642,8 @@
         })
 
         chart.redraw()
+
+       // temperatureSeries.data[0].onMouseOver()
 
     }
 

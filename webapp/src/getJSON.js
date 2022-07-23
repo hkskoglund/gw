@@ -627,7 +627,7 @@ GetJSONFrost.prototype.parse = function () {
 
     this.setTimestamp(latestReferencetime)
 
-    console.log('METno data', this.data)
+    //console.log('METno data', this.data)
 
 }
 
